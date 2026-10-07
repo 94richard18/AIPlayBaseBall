@@ -117,6 +117,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # soft toss out-earned the release rewards and the release speed fell from 124 to 63 km/h
     post_release_speed_pow: float = 4.0
     post_release_pelvis_z: float = 0.75  # m; lower than this is penalised by the balance term
+    post_release_head_z: float = 1.10  # m; head lower than this is penalised by the balance term
+    fallen_head_z: float = 0.75  # m; head below this = fallen (reference minimum ~1.0 m)
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3

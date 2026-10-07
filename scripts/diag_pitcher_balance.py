@@ -67,7 +67,7 @@ def main():
             tilt = torch.rad2deg(torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1, 1)))
             newly_rel = base.released & (t_rel < 0)
             t_rel[newly_rel] = t[newly_rel]
-            fallen = (z < 0.5) | (tilt > 60)
+            fallen = base.fallen.clone()  # same rule as training (pelvis or head near the ground)
             newly = fallen & (t_fall < 0)
             t_fall[newly] = t[newly]
             if k % int(0.25 / base.step_dt) == 0:

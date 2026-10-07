@@ -82,6 +82,7 @@ class PitchEnv(DirectRLEnv):
         self.pad_local = torch.tensor(pads, dtype=torch.float32, device=dev).unsqueeze(0).expand(n, 4, 3)
         self.pad_hist = torch.zeros(n, 8, device=dev)  # max pad speed over the last 8 physics steps
         self.pelvis_id = self.robot.find_bodies("pelvis")[0][0]
+        self.torso_id = self.robot.find_bodies("torso")[0][0]
         self.key_ids = [self.robot.find_bodies(b)[0][0] for b in PITCH_KEY_BODIES]
 
         # buffers
@@ -200,6 +201,12 @@ class PitchEnv(DirectRLEnv):
         r["root_pos"] = r["root_pos"] + o
         r["key_pos"] = r["key_pos"] + o.unsqueeze(1)
         return r
+
+    def _head_z(self) -> torch.Tensor:
+        """Height of the head centre (0.62 m up the torso link axis)."""
+        q = self.robot.data.body_link_quat_w[:, self.torso_id]
+        up = quat_apply(q, torch.tensor([0.0, 0.0, 0.62], device=self.device).expand(q.shape[0], 3))
+        return self.robot.data.body_link_pos_w[:, self.torso_id, 2] + up[:, 2]
 
     def _grip_point(self):
         d = self.robot.data
@@ -436,12 +443,14 @@ class PitchEnv(DirectRLEnv):
         before = self._ref_time() < self.release_ref
         hold = (~self.released & before).float() * torch.exp(-((gap / 0.02) ** 2))
 
-        # after the release: balance instead of tracking a frozen last frame
-        tilt = torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0))
+        # after the release: stay up. Heights, not pelvis tilt: a pitcher's pelvis is tilted 45-65 deg around the
+        # release (the reference itself) while perfectly balanced, so a tilt term punished the real motion.
         pelvis_z = d.body_link_pos_w[:, self.pelvis_id, 2]
+        head_z = self._head_z()
         ang_v = d.root_ang_vel_b.norm(dim=-1)
-        balance = (torch.exp(-(tilt / 0.35) ** 2) * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
-                   * torch.exp(-(ang_v / 4.0) ** 2))
+        balance = (torch.exp(-((head_z - c.post_release_head_z).clamp(max=0.0) / 0.20) ** 2)
+                   * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
+                   * torch.exp(-(ang_v / 8.0) ** 2))
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward
                + c.w_balance * self.released.float() * self.post_gain * balance
@@ -518,7 +527,8 @@ class PitchEnv(DirectRLEnv):
                           f"{rec['backspin_rpm']:+.0f}) | flight {rec['flight_time']:.3f} s", flush=True)
 
         d = self.robot.data
-        self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < 0.5) | (d.projected_gravity_b[:, 2] > -0.5)
+        # fallen = pelvis or head near the ground (the old "pelvis tilt > 60 deg" fired on the reference posture)
+        self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < 0.5) | (self._head_z() < self.cfg.fallen_head_z)
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         follow = int(round(c.follow_through_s / self.step_dt))
         if c.play_mode:
