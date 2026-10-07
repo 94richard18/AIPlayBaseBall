@@ -69,8 +69,16 @@ def _quat_wxyz(R):
 
 def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, rate: float = 120.0,
              robot: Robot | None = None, bat: BatSpec | None = None, verbose: bool = True,
-             finger_pose: dict | None = None, ball_local: np.ndarray | None = None) -> RetargetResult:
-    """Batting (robot with bat) or pitching (no bat: hand keypoints; `ball_local` = ball centre in r_hand)."""
+             finger_pose: dict | None = None, ball_local: np.ndarray | None = None,
+             smooth: dict[str, float] | None = None, max_joint_vel: dict[str, float] | None = None,
+             keep: np.ndarray | None = None) -> RetargetResult:
+    """Batting (robot with bat) or pitching (no bat: hand keypoints; `ball_local` = ball centre in r_hand).
+
+    `smooth`: temporal-smoothness weight per joint-name substring (default 0.1 everywhere).
+    `max_joint_vel`: rad/s cap per joint-name substring (frame-to-frame bound). Both stop the per-frame IK
+    from flipping between solutions at joint limits (the pitching legs jumped 0.6 rad in one frame).
+    `keep`: (K, 6 + J) solved states [pelvis pos, rotvec, joints] reused for the first K frames (only the rest is solved).
+    """
     bat = bat or BatSpec()
     robot = robot or build_humanoid(with_bat=True, bat=bat)
     has_bat = "bat" in robot.links
@@ -124,7 +132,7 @@ def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, ra
             on_ground = float(min(lm[f"{s}_toe"][f, 2], lm[f"{s}_heel"][f, 2]) < 0.10)
             res.append(1.0 * on_ground * Rf[:, 2] - on_ground * np.array([0, 0, 1.0]))
         if x_prev is not None:
-            res.append(0.1 * (x - x_prev))
+            res.append(w_smooth * (x - x_prev))
         return np.concatenate(res)
 
     # initial guess: batting stance solution, heading from the athlete's pelvis
@@ -137,15 +145,28 @@ def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, ra
     x[6:] = np.clip(x[6:], lo + 1e-4, hi - 1e-4)
     big = np.full(6, np.inf)
     lb, ub = np.concatenate([-big, lo]), np.concatenate([big, hi])
+    w_smooth = np.full(len(x), 0.1)
+    step = np.full(len(x), np.inf)
+    for i, n in enumerate(names):
+        for key, v in (smooth or {}).items():
+            if key in n:
+                w_smooth[6 + i] = v
+        for key, v in (max_joint_vel or {}).items():
+            if key in n:
+                step[6 + i] = v / rate
 
     T = len(times)
     out = np.zeros((T, len(x)))
     kp_err, bat_err, grip = np.zeros(T), np.zeros(T), np.zeros(T)
     x_prev = None
     for f in range(T):
-        sol = least_squares(residual, x, args=(f, x_prev), bounds=(lb, ub), max_nfev=200 if f == 0 else 60,
-                            xtol=1e-6, ftol=1e-6)
-        x = sol.x
+        if keep is not None and f < len(keep):
+            x = np.clip(keep[f], lb + 1e-9, ub - 1e-9)
+        lb_f, ub_f = (lb, ub) if x_prev is None else (np.maximum(lb, x_prev - step), np.minimum(ub, x_prev + step))
+        if keep is None or f >= len(keep):
+            x = np.clip(x, lb_f + 1e-9, ub_f - 1e-9)
+            x = least_squares(residual, x, args=(f, x_prev), bounds=(lb_f, ub_f), max_nfev=200 if f == 0 else 60,
+                              xtol=1e-6, ftol=1e-6).x
         out[f] = x
         x_prev = x.copy()
         p, R, q = unpack(x)

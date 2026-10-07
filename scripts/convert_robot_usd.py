@@ -15,6 +15,7 @@ import sys
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--asset_dir", type=str, default="assets/aib1", help="e.g. assets/aib1_human")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -28,7 +29,7 @@ from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg  # noqa: E40
 
 from aibaseball.robot.stance import Stance  # noqa: E402
 
-ASSET_DIR = os.path.join(ROOT, "assets", "aib1")
+ASSET_DIR = os.path.join(ROOT, args.asset_dir)
 
 
 def find_prim(stage, name):

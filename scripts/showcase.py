@@ -17,7 +17,7 @@ import sys
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--task", type=str, default="launch", choices=["pitched", "perception", "multi", "launch", "power", "mimic", "rl"],
+parser.add_argument("--task", type=str, default="launch", choices=["pitched", "human", "perception", "multi", "launch", "power", "mimic", "rl"],
                     help="mimic: OBP imitation policy, rl: pure-RL policy")
 parser.add_argument("--checkpoint", type=str, default=None, help="model_*.pt (default: newest in logs/)")
 parser.add_argument("--out", type=str, default="videos/showcase.mp4")
@@ -59,6 +59,8 @@ from aibaseball.tasks.tee_batting.mimic_env_cfg import (  # noqa: E402
     TeeBattingMimicPowerPlayEnvCfg,
     TeeBattingMultiEnvCfg,
     TeeBattingMultiPlayEnvCfg,
+    TeeBattingHumanEnvCfg,
+    TeeBattingHumanPlayEnvCfg,
     TeeBattingPerceptionEnvCfg,
     TeeBattingPerceptionPlayEnvCfg,
 )
@@ -67,6 +69,7 @@ from aibaseball.tasks.tee_batting.tee_batting_env_cfg import TeeBattingEnvCfg, T
 
 TASKS = {
     "pitched": ("AIB-PitchedBatting-Play-v0", PitchedBattingPlayEnvCfg, PitchedBattingEnvCfg, TeeBattingMimicPPORunnerCfg),
+    "human": ("AIB-TeeBatting-Human-Play-v0", TeeBattingHumanPlayEnvCfg, TeeBattingHumanEnvCfg, TeeBattingMimicPPORunnerCfg),
     "perception": ("AIB-TeeBatting-Perception-Play-v0", TeeBattingPerceptionPlayEnvCfg, TeeBattingPerceptionEnvCfg,
                    TeeBattingMimicPPORunnerCfg),
     "multi": ("AIB-TeeBatting-Multi-Play-v0", TeeBattingMultiPlayEnvCfg, TeeBattingMultiEnvCfg, TeeBattingMimicPPORunnerCfg),

@@ -3,8 +3,11 @@ from __future__ import annotations
 import glob
 import os
 
+from isaaclab.assets import ArticulationCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
+
+from aibaseball.robot.aib1_cfg import make_aib1_cfg
 
 from .tee_batting_env_cfg import TeeBattingEnvCfg
 
@@ -162,6 +165,26 @@ class TeeBattingPerceptionEnvCfg(TeeBattingMultiEnvCfg):
 
 @configclass
 class TeeBattingPerceptionPlayEnvCfg(TeeBattingPerceptionEnvCfg):
+    play_mode: bool = True
+    rsi_prob: float = 0.0
+    episode_length_s = 9.0
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)
+
+
+@configclass
+class TeeBattingHumanEnvCfg(TeeBattingPerceptionEnvCfg):
+    """Step B with a human-strength batter (same limits as the pitcher): the swing is played at the athlete's own
+    speed (the strong-motor batter played it 1.45x faster)."""
+
+    robot: ArticulationCfg = make_aib1_cfg(human_strength=True)
+    speed: float = 1.0
+    speed_end: float = 1.0
+    speed_ramp_steps: int = 0
+    w_spray: float = 10.0  # the human batter pulled half its balls foul
+
+
+@configclass
+class TeeBattingHumanPlayEnvCfg(TeeBattingHumanEnvCfg):
     play_mode: bool = True
     rsi_prob: float = 0.0
     episode_length_s = 9.0

@@ -13,6 +13,7 @@ from aibaseball.physics.constants import BallSpec
 from aibaseball.robot.aib1_cfg import make_elastic_pitcher_cfg, make_pitcher_cfg
 
 BALL = BallSpec()
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 MOTION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "motions"))
 KMH = 1 / 3.6
 
@@ -54,7 +55,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     )
 
     # ---------------------------------------------------------------- reference motion
-    motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4.npz")
+    motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4.npz")  # capture + synthesised 0.8 s follow-through
+    phase_duration_s: float = 1.1167  # phase observation = t / this (length of the capture alone; keeps trained policies valid)
     # aim the whole delivery (rotation about the vertical axis through the rubber); the retargeted
     # hand releases ~9.5 deg toward first base, so the reference is turned that much toward third base
     ref_yaw_deg: float = -8.0
@@ -110,13 +112,17 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_fall_after_release: float = 30.0  # falling within the follow-through window
     # follow-through (no reference after the release): balance reward replaces most of the tracking reward
     w_balance: float = 1.0  # per step: upright x pelvis not dropping x calming angular velocity
-    w_post_release_track: float = 0.2  # remaining weight of tracking the frozen last reference frame
+    w_post_release_track: float = 1.0  # the reference now has a real follow-through (was 0.2 with a frozen last frame)
+    # post-release rewards x (release speed / target)^p: with a real follow-through to track, standing up after a
+    # soft toss out-earned the release rewards and the release speed fell from 124 to 63 km/h
+    post_release_speed_pow: float = 4.0
     post_release_pelvis_z: float = 0.75  # m; lower than this is penalised by the balance term
-    post_release_residual_gain: float = 2.0  # residual action authority after the release (step / brace)
+    post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3
     recovery_buffer_size: int = 4096
     recovery_min_states: int = 256
+    recovery_states_file: str = ""  # load release states from a file (balance skill) instead of collecting them
     w_action_rate: float = 0.002
 
     # ---------------------------------------------------------------- play / evaluation
@@ -145,4 +151,29 @@ class PitchElasticPlayEnvCfg(PitchElasticEnvCfg):
     play_mode: bool = True
     rsi_prob: float = 0.0
     episode_length_s = 4.0
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)
+
+
+@configclass
+class PitchBalanceEnvCfg(PitchElasticEnvCfg):
+    """Follow-through balance skill: a separate policy that takes over at the release.
+
+    Every episode starts from a recorded real release of the pitching policy (scripts/collect_release_states.py);
+    the reward is staying upright and settling, the follow-through reference is only a weak guide.
+    """
+
+    recovery_states_file: str = os.path.join(ROOT_DIR, "data", "pitch_release_states.pt")
+    recovery_prob: float = 1.0
+    recovery_min_states: int = 1
+    follow_through_s: float = 1.5
+    episode_length_s = 3.5
+    w_post_release_track: float = 0.1
+    post_release_speed_pow: float = 0.0
+    post_release_residual_gain: float = 4.0  # legs +-1 rad around the follow-through reference: room for a step
+    w_balance: float = 1.0
+    w_fall_after_release: float = 30.0
+
+
+@configclass
+class PitchBalancePlayEnvCfg(PitchBalanceEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)

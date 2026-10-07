@@ -15,6 +15,7 @@ from .stance import Stance
 ASSET_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "aib1")
 USD_PATH = os.path.join(ASSET_DIR, "aib1.usd")
 STANCE_PATH = os.path.join(ASSET_DIR, "batting_stance.json")
+HUMAN_USD_PATH = os.path.join(ASSET_DIR + "_human", "aib1.usd")  # same robot, human arm masses (de Leva)
 
 GROUP_JOINTS = {
     "hip": [".*_hip_.*"],
@@ -52,14 +53,17 @@ def _actuators(effort_scale: float = 1.0, groups: dict | None = None) -> dict[st
     return acts
 
 
-def make_aib1_cfg(root_pos=(0.0, 0.0, 1.0), yaw: float = BATTER_YAW, effort_scale: float | None = None) -> ArticulationCfg:
+def make_aib1_cfg(root_pos=(0.0, 0.0, 1.0), yaw: float = BATTER_YAW, effort_scale: float | None = None,
+                  human_strength: bool = False) -> ArticulationCfg:
+    """Batter (with bat). `human_strength`: human-level joint torque / speed limits (HUMAN_ACTUATOR_GROUPS) and
+    human arm masses (like the pitcher)."""
     if effort_scale is None:  # experiments: AIB_EFFORT_SCALE=2.0
         effort_scale = float(os.environ.get("AIB_EFFORT_SCALE", "1.0"))
     stance = Stance.load(STANCE_PATH)
     return ArticulationCfg(
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=USD_PATH,
+            usd_path=HUMAN_USD_PATH if human_strength else USD_PATH,
             activate_contact_sensors=False,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False,
@@ -85,7 +89,7 @@ def make_aib1_cfg(root_pos=(0.0, 0.0, 1.0), yaw: float = BATTER_YAW, effort_scal
             joint_vel={".*": 0.0},
         ),
         soft_joint_pos_limit_factor=1.0,
-        actuators=_actuators(effort_scale),
+        actuators=_actuators(effort_scale, HUMAN_ACTUATOR_GROUPS if human_strength else None),
     )
 
 

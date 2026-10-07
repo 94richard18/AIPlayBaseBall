@@ -9,17 +9,28 @@ import os
 import sys
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+from aibaseball.mocap.follow_through import append_follow_through  # noqa: E402
 from aibaseball.mocap.motion import prepare  # noqa: E402
 from aibaseball.mocap.obp import load_trial  # noqa: E402
 from aibaseball.mocap.retarget import retarget, save  # noqa: E402
 from aibaseball.robot.ball_grip import FINGER_JOINTS, BallGrip  # noqa: E402
-from aibaseball.robot.humanoid import build_humanoid  # noqa: E402
+from aibaseball.robot.humanoid import HUMAN_ACTUATOR_GROUPS, build_humanoid  # noqa: E402
 
 GRIP = os.path.join(ROOT, "assets", "aib1_pitcher", "grip.json")
+# leg IK: strong temporal smoothness + human joint-speed caps (without them the IK flipped between solutions at
+# joint limits around release: 0.6 rad hip-yaw jumps in one frame, ~50 rad/s leg joint speeds)
+# Applied only from KEEP_UNTIL_S on: smoothing the whole clip also bent the trunk path before the release (the waist lost
+# its forward flexion and the release speed collapsed), so the clean plain-IK frames before that are kept.
+LEG_SMOOTH = {"hip": 0.6, "knee": 0.6, "ankle": 0.6, "waist": 0.3}
+LEG_MAX_VEL = {k: HUMAN_ACTUATOR_GROUPS[k].velocity for k in ("hip", "knee", "ankle", "waist")}
+KEEP_FROM = os.path.join(ROOT, "assets", "motions", "pitch_2916-4_v1.npz")  # plain-IK clip (if present)
+KEEP_UNTIL_S = 0.96  # the first IK flip (waist / lead hip) is at the release frame, 0.98 s
+FOLLOW_THROUGH_S = 0.8
 
 
 def main(paths):
@@ -36,8 +47,16 @@ def main(paths):
         t_rel = trial.contact / trial.rate
         print(f"[pitch] {trial.name}: {trial.exit_velo_mph:.1f} mph, athlete {trial.height:.2f} m, "
               f"release ~{t_rel:.2f} s, peak hand marker {trial.bat_speed_mph.max():.1f} mph", flush=True)
+        plain = np.load(KEEP_FROM) if os.path.exists(KEEP_FROM) else None  # the trained policies' reference
+        if plain is None:
+            r0 = retarget(trial, t_before=t_rel, t_after=0.14, rate=120.0, robot=robot, verbose=False,
+                          finger_pose=fingers, ball_local=ball_local)
+            plain = dict(time=r0.time, root_pos=r0.root_pos, root_quat=r0.root_quat, joint_pos=r0.joint_pos)
+        rv = Rotation.from_quat(np.concatenate([plain["root_quat"][:, 1:], plain["root_quat"][:, :1]], -1)).as_rotvec()
+        keep = np.concatenate([plain["root_pos"], rv, plain["joint_pos"]], 1)[plain["time"] <= KEEP_UNTIL_S]
         res = retarget(trial, t_before=t_rel, t_after=0.14, rate=120.0, robot=robot, verbose=False,
-                       finger_pose=fingers, ball_local=ball_local)
+                       finger_pose=fingers, ball_local=ball_local, smooth=LEG_SMOOTH, max_joint_vel=LEG_MAX_VEL, keep=keep)
+        res = append_follow_through(res, robot, fingers, duration=FOLLOW_THROUGH_S)
         save(res, out)
         d = prepare(out, out, finger_pose=fingers, ball_local=ball_local)
         ball = d["key_pos"][:, -1]

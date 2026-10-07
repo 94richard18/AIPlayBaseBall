@@ -37,6 +37,7 @@ def main():
         cfg, tid = (C.PitchEnvCfg(), "AIB-Pitch-v0") if args.train_cfg else (C.PitchPlayEnvCfg(), "AIB-Pitch-Play-v0")
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
+    cfg.recovery_prob = 0.0
     cfg.episode_length_s = 4.0
     if hasattr(cfg, "terminate_on_cross"):
         cfg.terminate_on_cross = False

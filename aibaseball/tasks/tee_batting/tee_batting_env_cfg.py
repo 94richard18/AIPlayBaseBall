@@ -90,6 +90,8 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     launch_target_deg: float = 28.0
     launch_sigma_deg: float = 0.0  # > 0: Gaussian launch-angle score instead of the smooth direction score
     foul_factor: float = 0.2
+    w_spray: float = 0.0  # x exit speed x exp(-(spray / sigma)^2): toward centre field
+    spray_sigma_deg: float = 20.0
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002

@@ -1,10 +1,11 @@
 """Generate the AIB-1 humanoid URDF, solve the batting stance, and render a preview image.
 
 Usage (any python with numpy/scipy/matplotlib, Isaac Sim not required):
-    python scripts/build_robot.py
-Outputs to assets/aib1/: aib1.urdf, meshes/bat.obj, batting_stance.json, preview.png
+    python scripts/build_robot.py [--arm_masses human]
+Outputs to assets/aib1/ (human arm masses: assets/aib1_human/): aib1.urdf, meshes/bat.obj, batting_stance.json, preview.png
 """
 
+import argparse
 import os
 import sys
 
@@ -98,22 +99,26 @@ def render_hand(robot, q, path):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--arm_masses", choices=["robot", "human"], default="robot")
+    out = OUT if parser.parse_args().arm_masses == "robot" else OUT + "_human"
+    arm_masses = "robot" if out == OUT else "human"
     bat = BatSpec()
-    robot = build_humanoid(with_bat=True, bat=bat)
+    robot = build_humanoid(with_bat=True, bat=bat, arm_masses=arm_masses)
     print(summary(robot))
     print("bat:", {k: round(v, 4) for k, v in bat.mass_properties().items()})
-    urdf = write_urdf(robot, OUT, bat=bat)
+    urdf = write_urdf(robot, out, bat=bat)
     print("URDF ->", urdf)
 
     stance = solve_stance(robot, bat)
-    stance.save(os.path.join(OUT, "batting_stance.json"))
+    stance.save(os.path.join(out, "batting_stance.json"))
     print(f"stance: cost {stance.residual:.4f}, top-hand gap {stance.info['top_hand_gap_m']*1000:.2f} mm, "
           f"limits hit: {stance.info['at_limit']}")
 
     root = np.array([0, 0, stance.root_height])
-    render_preview(robot, stance.joint_pos, root, os.path.join(OUT, "preview.png"), bat)
-    render_hand(robot, stance.joint_pos, os.path.join(OUT, "preview_hands.png"))
-    print("preview ->", os.path.join(OUT, "preview.png"))
+    render_preview(robot, stance.joint_pos, root, os.path.join(out, "preview.png"), bat)
+    render_hand(robot, stance.joint_pos, os.path.join(out, "preview_hands.png"))
+    print("preview ->", os.path.join(out, "preview.png"))
 
 
 if __name__ == "__main__":

@@ -378,7 +378,8 @@ class TeeBattingEnv(DirectRLEnv):
              + cfg.w_success * success.float()
              + cfg.w_exit_velo * ev_n
              + cfg.w_launch * ev_n * self._launch_score(v, ev, la)
-             + cfg.w_backspin * ev_n * (backspin / 2000.0).clamp(-1.0, 1.0))
+             + cfg.w_backspin * ev_n * (backspin / 2000.0).clamp(-1.0, 1.0)
+             + cfg.w_spray * ev_n * fair.float() * torch.exp(-(spray / cfg.spray_sigma_deg) ** 2))
         self.hit_reward[ids] = r
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)

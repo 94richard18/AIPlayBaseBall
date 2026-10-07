@@ -141,3 +141,23 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg",
     },
 )
+
+gym.register(
+    id="AIB-TeeBatting-Human-v0",
+    entry_point=f"{__name__}.mimic_env:TeeBattingMimicEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.mimic_env_cfg:TeeBattingHumanEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="AIB-TeeBatting-Human-Play-v0",
+    entry_point=f"{__name__}.mimic_env:TeeBattingMimicEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.mimic_env_cfg:TeeBattingHumanPlayEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg",
+    },
+)

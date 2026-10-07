@@ -112,8 +112,13 @@ class PitchEnv(DirectRLEnv):
         self.rb_qpos = torch.zeros(cap, nj, device=dev)
         self.rb_qvel = torch.zeros(cap, nj, device=dev)
         self.rb_t = torch.zeros(cap, device=dev)  # reference time at the release
+        self.rb_gain = torch.zeros(cap, device=dev)  # post-release reward gain of that release
+        self.post_gain = torch.ones(n, device=dev)  # (release speed / target)^p: standing up after a soft toss pays little
         self.rb_sea = None  # (motor_pos, motor_vel) per SEA actuator
+        self.rb_speed = torch.zeros(cap, device=dev)  # release speed (m/s)
         self.rb_count, self.rb_head = 0, 0
+        if cfg.recovery_states_file:
+            self.load_release_states(cfg.recovery_states_file)
         self.recovery_ep = torch.zeros(n, dtype=torch.bool, device=dev)
         zc = cfg.zone_bottom + 0.5 * cfg.zone_height
         self.zone_center = torch.tensor([cfg.zone_center_y, zc], device=dev)
@@ -270,9 +275,10 @@ class PitchEnv(DirectRLEnv):
             self.rel_vel[ids] = v
             self.rel_omega[ids] = self.ball.data.root_ang_vel_w[ids]
             self.rel_pos[ids] = self.ball.data.root_pos_w[ids]
+            self.post_gain[ids] = (v.norm(dim=-1) / self.cfg.target_speed).clamp(max=1.0) ** self.cfg.post_release_speed_pow
             slow = v.norm(dim=-1) < self.cfg.min_release_speed
             self.dropped[ids] = slow | (v[:, 0] <= 0)
-            if not self.cfg.play_mode:
+            if not self.cfg.play_mode and not getattr(self, "rb_frozen", False):
                 good = ids[~self.dropped[ids] & ~self.recovery_ep[ids]]
                 if len(good) > 0:
                     self._store_release_states(good)
@@ -292,6 +298,8 @@ class PitchEnv(DirectRLEnv):
         self.rb_qpos[slots] = d.joint_pos[ids]
         self.rb_qvel[slots] = d.joint_vel[ids]
         self.rb_t[slots] = self._ref_time()[ids]
+        self.rb_gain[slots] = self.post_gain[ids]
+        self.rb_speed[slots] = self.rel_vel[ids].norm(dim=-1)
         seas = self._seas()
         if seas:
             if self.rb_sea is None:
@@ -302,6 +310,31 @@ class PitchEnv(DirectRLEnv):
                 bv[slots] = a.motor_vel[ids]
         self.rb_head = (self.rb_head + k) % cap
         self.rb_count = min(cap, self.rb_count + k)
+
+    def save_release_states(self, path: str):
+        """Write the release-state buffer (starts for the separate follow-through balance skill)."""
+        k = self.rb_count
+        out = dict(root=self.rb_root[:k], qpos=self.rb_qpos[:k], qvel=self.rb_qvel[:k], t=self.rb_t[:k],
+                   speed=self.rb_speed[:k], sea=[(p[:k], v[:k]) for p, v in (self.rb_sea or [])])
+        torch.save({key: (val.cpu() if torch.is_tensor(val) else [(p.cpu(), v.cpu()) for p, v in val])
+                    for key, val in out.items()}, path)
+
+    def load_release_states(self, path: str):
+        d = torch.load(path)
+        k = min(len(d["t"]), self.cfg.recovery_buffer_size)
+        dev = self.device
+        self.rb_root[:k], self.rb_qpos[:k], self.rb_qvel[:k] = d["root"][:k].to(dev), d["qpos"][:k].to(dev), d["qvel"][:k].to(dev)
+        self.rb_t[:k], self.rb_speed[:k] = d["t"][:k].to(dev), d["speed"][:k].to(dev)
+        self.rb_gain[:k] = 1.0
+        if d["sea"]:
+            self.rb_sea = []
+            for p, v in d["sea"]:
+                bp = torch.zeros(self.cfg.recovery_buffer_size, p.shape[1], device=dev)
+                bv = torch.zeros_like(bp)
+                bp[:k], bv[:k] = p[:k].to(dev), v[:k].to(dev)
+                self.rb_sea.append((bp, bv))
+        self.rb_count, self.rb_head = k, 0
+        self.rb_frozen = True
 
     def _start_recovery(self, env_ids):
         """Start these envs right after a stored real release (ball already gone): follow-through only."""
@@ -316,6 +349,7 @@ class PitchEnv(DirectRLEnv):
             a.motor_vel[env_ids] = bv[idx]
             a.needs_sync[env_ids] = False
         self.t0[env_ids] = self.rb_t[idx]
+        self.post_gain[env_ids] = self.rb_gain[idx]
         self.q_target[env_ids] = self.rb_qpos[idx]
         self.qd_target[env_ids] = 0.0
         open_q = self.robot.data.joint_pos[env_ids][:, self.finger_ids]
@@ -368,7 +402,7 @@ class PitchEnv(DirectRLEnv):
             ball_vrel * 0.1,
             self.ball.data.root_ang_vel_w * 0.01,
             self.released.float().unsqueeze(-1),
-            (t / self.ref.duration).unsqueeze(-1),
+            (t / self.cfg.phase_duration_s).unsqueeze(-1),
             nxt["joint_pos"] - q[:, self.body_ids],
             quat_rotate_inverse(d.root_link_quat_w, nxt["root_pos"] - d.root_link_pos_w),
             quat_rotate_inverse(d.root_link_quat_w, nxt["key_pos"][:, -1] - self.ball.data.root_pos_w),
@@ -408,9 +442,9 @@ class PitchEnv(DirectRLEnv):
         ang_v = d.root_ang_vel_b.norm(dim=-1)
         balance = (torch.exp(-(tilt / 0.35) ** 2) * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
                    * torch.exp(-(ang_v / 4.0) ** 2))
-        track = torch.where(self.released, c.w_post_release_track * track, track)
+        track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward
-               + c.w_balance * self.released.float() * balance
+               + c.w_balance * self.released.float() * self.post_gain * balance
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_fall * self.fallen.float()
