@@ -1,0 +1,26 @@
+# training output / checkpoints / logs
+logs/
+logs_*.txt
+outputs/
+
+# videos and previews rendered from the simulator
+videos/
+
+# third-party motion-capture data (Driveline OpenBiomechanics, CC BY-NC-SA 4.0) and data derived from it
+data/
+assets/motions/
+
+# generated Isaac Sim converter caches
+assets/**/.asset_hash
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+assets/**/config.yaml

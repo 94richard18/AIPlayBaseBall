@@ -1,0 +1,554 @@
+"""Pitching a fastball (target_speed, default 120 km/h) into an 18.44 m away strike zone with the five-finger AIB-1.
+
+* The ball is a free PhysX rigid body held only by finger contacts and friction (four-seam grip).
+  Grip force comes from finger PD targets set past the contact surface (`grip_squeeze`); the policy
+  controls the 16 right-hand finger joints, so holding, the release instant and the spin are learned.
+* The body imitates a retargeted OBP fastball (residual PD targets + velocity feed-forward + RSI);
+  `speed` can play the reference faster than the athlete.
+* On release, the trajectory to the plate is integrated with the drag + Magnus model; the reward
+  uses release speed and where the ball crosses the plate plane (strike zone 65 x 95 cm).
+* Play mode: the ball flies in PhysX with aerodynamic forces applied every physics step.
+"""
+
+from __future__ import annotations
+
+import math
+import re
+from collections.abc import Sequence
+
+import torch
+
+import isaaclab.sim as sim_utils
+from isaaclab.assets import Articulation, RigidObject
+from isaaclab.envs import DirectRLEnv
+from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
+from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_rotate_inverse
+
+from aibaseball.mocap.motion import PITCH_KEY_BODIES, MotionRef
+from aibaseball.physics import PhysicsSpec
+from aibaseball.physics.ball_flight import aero_acceleration, simulate_to_plane
+from aibaseball.robot.aib1_cfg import BODY_JOINT_EXPR, GROUP_JOINTS, PITCHER_GRIP
+from aibaseball.robot.ball_grip import FINGER_JOINTS, BallGrip
+
+from .pitch_env_cfg import PitchEnvCfg
+
+# finger joints squeezed past contact to create grip force
+SQUEEZE_JOINTS = ("index_mcp", "index_pip", "middle_mcp", "middle_pip", "ring_mcp", "ring_pip", "thumb_cmc_flex",
+                  "thumb_mcp")
+
+
+class PitchEnv(DirectRLEnv):
+    cfg: PitchEnvCfg
+
+    def __init__(self, cfg: PitchEnvCfg, render_mode: str | None = None, **kwargs):
+        super().__init__(cfg, render_mode, **kwargs)
+        dev, n = self.device, self.num_envs
+        self.phys = PhysicsSpec()
+        self.ref = MotionRef(cfg.motion_file, dev)
+        self.ref.rotate_z(math.radians(cfg.ref_yaw_deg))
+        self.release_ref = self.ref.contact_time  # reference release time (stored as "contact")
+
+        # joints
+        ids, names = self.robot.find_joints(BODY_JOINT_EXPR, preserve_order=True)
+        self.body_ids, self.body_names = torch.tensor(ids, device=dev), names
+        f_ids, _ = self.robot.find_joints([f"r_{j}" for j in FINGER_JOINTS], preserve_order=True)
+        self.finger_ids = torch.tensor(f_ids, device=dev)
+        name_to_ref = {nm: i for i, nm in enumerate(self.ref.joint_names)}
+        self.ref_cols = torch.tensor([name_to_ref[nm] for nm in self.body_names], device=dev)
+        scale = torch.zeros(len(names), device=dev)
+        for group, s in cfg.action_scale.items():
+            for i, nm in enumerate(names):
+                if any(re.fullmatch(e, nm) for e in GROUP_JOINTS[group]):
+                    scale[i] = s
+        assert (scale > 0).all()
+        self.action_scale = scale
+        lim = self.robot.data.soft_joint_pos_limits[0]
+        self.q_lo, self.q_hi = lim[:, 0], lim[:, 1]
+
+        grip = BallGrip.load(PITCHER_GRIP)
+        self.ball_local = torch.tensor(grip.ball_center_hand, device=dev).expand(n, 3)
+        self.grip_q = self.robot.data.default_joint_pos[0, self.finger_ids].clone()
+        squeeze = torch.tensor([cfg.grip_squeeze if j in SQUEEZE_JOINTS else 0.0 for j in FINGER_JOINTS], device=dev)
+        self.hold_q = torch.clamp(self.grip_q + squeeze, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids])
+
+        self.hand_id = self.robot.find_bodies("r_hand")[0][0]
+        # finger pads that can push the ball: (body id, pad point in the body frame)
+        from aibaseball.robot.ball_grip import TIPS as GRIP_TIPS
+
+        self.pad_ids = [self.robot.find_bodies(GRIP_TIPS[k][0])[0][0] for k in ("index", "middle", "ring")]
+        self.pad_ids.append(self.robot.find_bodies("r_thumb_distal")[0][0])
+        pads = [GRIP_TIPS[k][1] for k in ("index", "middle", "ring")] + [[0.0, 0.0, 0.0]]
+        self.pad_local = torch.tensor(pads, dtype=torch.float32, device=dev).unsqueeze(0).expand(n, 4, 3)
+        self.pad_hist = torch.zeros(n, 8, device=dev)  # max pad speed over the last 8 physics steps
+        self.pelvis_id = self.robot.find_bodies("pelvis")[0][0]
+        self.key_ids = [self.robot.find_bodies(b)[0][0] for b in PITCH_KEY_BODIES]
+
+        # buffers
+        self.actions = torch.zeros(n, cfg.action_space, device=dev)
+        self.prev_actions = torch.zeros_like(self.actions)
+        self.q_target = self.robot.data.default_joint_pos.clone()
+        self.finger_prev = self.q_target[:, self.finger_ids].clone() if hasattr(self, "finger_ids") else None
+        self.finger_next = self.finger_prev
+        self.substep = 0
+        self.qd_target = torch.zeros_like(self.q_target)
+        self.t0 = torch.zeros(n, device=dev)
+        self.speed = float(cfg.speed)
+        self.released = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.new_release = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.dropped = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.release_step = torch.zeros(n, dtype=torch.long, device=dev)
+        self.rel_vel = torch.zeros(n, 3, device=dev)
+        self.rel_omega = torch.zeros(n, 3, device=dev)
+        self.rel_pos = torch.zeros(n, 3, device=dev)
+        self.release_reward = torch.zeros(n, device=dev)
+        self.crossed = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.fallen = torch.zeros(n, dtype=torch.bool, device=dev)
+        self._lost = torch.zeros(n, dtype=torch.bool, device=dev)
+        # release-state buffer: states captured right after real releases, used to start "recovery" episodes
+        # that only practise the follow-through (one release per pitch is too few balance-recovery samples)
+        cap, nj = cfg.recovery_buffer_size, self.robot.num_joints
+        self.rb_root = torch.zeros(cap, 13, device=dev)  # root state relative to the env origin
+        self.rb_qpos = torch.zeros(cap, nj, device=dev)
+        self.rb_qvel = torch.zeros(cap, nj, device=dev)
+        self.rb_t = torch.zeros(cap, device=dev)  # reference time at the release
+        self.rb_sea = None  # (motor_pos, motor_vel) per SEA actuator
+        self.rb_count, self.rb_head = 0, 0
+        self.recovery_ep = torch.zeros(n, dtype=torch.bool, device=dev)
+        zc = cfg.zone_bottom + 0.5 * cfg.zone_height
+        self.zone_center = torch.tensor([cfg.zone_center_y, zc], device=dev)
+        self.stats = {k: torch.zeros((), device=dev) for k in (
+            "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
+            "spin_rpm", "backspin_rpm", "release_time_err", "track_reward", "key_err_m", "hold_gap_mm",
+            "post_release_fail", "recovery_fall", "recovery_share")}
+        self.stats["speed"] = torch.tensor(self.speed, device=dev)
+        self.stats["eject_excess"] = torch.zeros((), device=dev)
+        self.raw_speed = torch.zeros(n, device=dev)
+        self.play_log: list[dict] = []
+
+    # ------------------------------------------------------------------ scene
+    def _setup_scene(self):
+        self.robot = Articulation(self.cfg.robot)
+        self.ball = RigidObject(self.cfg.ball)
+        ground = GroundPlaneCfg(physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9))
+        if self.cfg.play_mode:
+            ground.size = (200.0, 200.0)
+            ground.color = (0.16, 0.36, 0.14)
+        spawn_ground_plane("/World/ground", ground)
+        self.scene.clone_environments(copy_from_source=False)
+        self.scene.filter_collisions(global_prim_paths=["/World/ground"])
+        self.scene.articulations["robot"] = self.robot
+        self.scene.rigid_objects["ball"] = self.ball
+        light = sim_utils.DomeLightCfg(intensity=2500.0, color=(0.9, 0.9, 0.9))
+        light.func("/World/Light", light)
+        if self.cfg.play_mode:
+            self._spawn_zone_markers()
+
+    def _spawn_zone_markers(self):
+        """Strike-zone frame (yellow) at the plate plane, home plate (white), crossing points (red)."""
+        c = self.cfg
+        self.zone_markers = VisualizationMarkers(VisualizationMarkersCfg(
+            prim_path="/Visuals/zone",
+            markers={
+                "edge": sim_utils.SphereCfg(radius=0.012, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(1.0, 0.85, 0.0), emissive_color=(0.8, 0.6, 0.0))),
+                "plate": sim_utils.CuboidCfg(size=(0.43, 0.43, 0.01), visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.95, 0.95, 0.95))),
+                "rubber": sim_utils.CuboidCfg(size=(0.15, 0.61, 0.01), visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.95, 0.95, 0.95))),
+            },
+        ))
+        self.cross_markers = VisualizationMarkers(VisualizationMarkersCfg(
+            prim_path="/Visuals/cross",
+            markers={"hit": sim_utils.SphereCfg(radius=BALL_R, visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(1.0, 0.15, 0.1)))},
+        ))
+        self.cross_markers.set_visibility(False)
+        pts, idx = [], []
+        x = c.plate_distance
+        y0, y1 = c.zone_center_y - c.zone_width / 2, c.zone_center_y + c.zone_width / 2
+        z0, z1 = c.zone_bottom, c.zone_bottom + c.zone_height
+        for k in range(40):
+            a = k / 39
+            pts += [[x, y0 + a * (y1 - y0), z0], [x, y0 + a * (y1 - y0), z1], [x, y0, z0 + a * (z1 - z0)],
+                    [x, y1, z0 + a * (z1 - z0)]]
+            idx += [0, 0, 0, 0]
+        pts.append([x + 0.215, c.zone_center_y, 0.005])
+        idx.append(1)
+        pts.append([-0.075, 0.0, 0.005])
+        idx.append(2)
+        origin = self.scene.env_origins[0]
+        P = torch.tensor(pts, device=self.device) + origin
+        self.zone_markers.visualize(translations=P, marker_indices=torch.tensor(idx, device=self.device))
+
+    # ------------------------------------------------------------------ reference helpers
+    def _ref_time(self, extra: int = 0) -> torch.Tensor:
+        return self.t0 + self.speed * (self.episode_length_buf.float() + extra) * self.step_dt
+
+    def _ref(self, t):
+        r = self.ref.sample(t)
+        r["joint_pos"] = r["joint_pos"][:, self.ref_cols]
+        r["joint_vel"] = r["joint_vel"][:, self.ref_cols] * self.speed
+        r["root_lin_vel"] = r["root_lin_vel"] * self.speed
+        r["root_ang_vel"] = r["root_ang_vel"] * self.speed
+        o = self.scene.env_origins
+        r["root_pos"] = r["root_pos"] + o
+        r["key_pos"] = r["key_pos"] + o.unsqueeze(1)
+        return r
+
+    def _grip_point(self):
+        d = self.robot.data
+        return d.body_link_pos_w[:, self.hand_id] + quat_apply(d.body_link_quat_w[:, self.hand_id], self.ball_local)
+
+    # ------------------------------------------------------------------ actions
+    def _pre_physics_step(self, actions: torch.Tensor):
+        c = self.cfg
+        if c.speed_ramp_steps > 0:
+            self.speed = c.speed + (c.speed_end - c.speed) * min(1.0, self.common_step_counter / c.speed_ramp_steps)
+        self.prev_actions[:] = self.actions
+        self.actions = actions.clamp(-2.0, 2.0)
+        nxt = self._ref(self._ref_time(1))
+        # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets
+        # more authority to step / brace and recover its balance
+        scale = torch.where(self.released, c.residual_scale * c.post_release_residual_gain, c.residual_scale).unsqueeze(-1)
+        body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale
+        self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
+        self.qd_target[:, self.body_ids] = nxt["joint_vel"] * c.vel_feedforward
+        fing = self.hold_q + self.actions[:, 29:] * c.finger_action_scale
+        self.finger_prev = self.q_target[:, self.finger_ids].clone()
+        self.finger_next = torch.clamp(fing, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids])
+        self.substep = 0
+        self.new_release[:] = False
+        self.release_reward[:] = 0.0
+
+    def _apply_action(self):
+        if self.cfg.play_mode:
+            self._apply_aero()
+        # finger targets ramp linearly over the physics sub-steps (sub-control-step release timing)
+        self.substep += 1
+        a = min(1.0, self.substep / self.cfg.decimation)
+        self.q_target[:, self.finger_ids] = self.finger_prev + a * (self.finger_next - self.finger_prev)
+        self._record_pad_speed()
+        self.robot.set_joint_position_target(self.q_target)
+        self.robot.set_joint_velocity_target(self.qd_target)
+
+    def _record_pad_speed(self):
+        d = self.robot.data
+        q = d.body_link_quat_w[:, self.pad_ids]
+        r = quat_apply(q.reshape(-1, 4), self.pad_local.reshape(-1, 3)).view(-1, 4, 3)
+        v = d.body_link_lin_vel_w[:, self.pad_ids] + torch.cross(d.body_link_ang_vel_w[:, self.pad_ids], r, dim=-1)
+        self.pad_hist = torch.roll(self.pad_hist, 1, dims=1)
+        self.pad_hist[:, 0] = v.norm(dim=-1).max(dim=-1).values
+
+    def _apply_aero(self):
+        """Play mode: drag + Magnus on released balls (PhysX integrates gravity and contacts)."""
+        flying = self.released & ~self.crossed
+        v, w = self.ball.data.root_lin_vel_w, self.ball.data.root_ang_vel_w
+        f = aero_acceleration(v, w, self.phys) * self.phys.ball.mass * flying.unsqueeze(-1).float()
+        fb = quat_rotate_inverse(self.ball.data.root_quat_w, f).unsqueeze(1)
+        self.ball.set_external_force_and_torque(fb, torch.zeros_like(fb))
+
+    # ------------------------------------------------------------------ release detection / outcome
+    def _check_release(self):
+        gap = (self.ball.data.root_pos_w - self._grip_point()).norm(dim=-1)
+        new = (~self.released) & (gap > self.cfg.release_distance)
+        if new.any():
+            ids = new.nonzero(as_tuple=False).squeeze(-1)
+            v = self.ball.data.root_lin_vel_w[ids]
+            # momentum audit: a ball cannot leave faster than the finger pads that push it. Any surplus is a
+            # contact-solver ejection (squeezed sphere) -> removed, and logged as an artefact fraction.
+            allowed = self.cfg.pad_speed_tolerance * self.pad_hist[ids].max(dim=-1).values
+            speed = v.norm(dim=-1)
+            excess = ((speed - allowed) / speed.clamp_min(1e-6)).clamp_min(0.0)
+            v = torch.where((speed > allowed).unsqueeze(-1), v * (allowed / speed.clamp_min(1e-6)).unsqueeze(-1), v)
+            self.ball.write_root_velocity_to_sim(torch.cat([v, self.ball.data.root_ang_vel_w[ids]], -1), ids)
+            self.stats["eject_excess"] = 0.95 * self.stats["eject_excess"] + 0.05 * excess.mean()
+            self.raw_speed[ids] = speed
+            self.released[ids] = True
+            self.new_release[ids] = True
+            self.release_step[ids] = self.episode_length_buf[ids]
+            self.rel_vel[ids] = v
+            self.rel_omega[ids] = self.ball.data.root_ang_vel_w[ids]
+            self.rel_pos[ids] = self.ball.data.root_pos_w[ids]
+            slow = v.norm(dim=-1) < self.cfg.min_release_speed
+            self.dropped[ids] = slow | (v[:, 0] <= 0)
+            if not self.cfg.play_mode:
+                good = ids[~self.dropped[ids] & ~self.recovery_ep[ids]]
+                if len(good) > 0:
+                    self._store_release_states(good)
+        return gap
+
+    def _seas(self):
+        return [a for k, a in self.robot.actuators.items() if k.endswith("_sea")]
+
+    def _store_release_states(self, ids):
+        d = self.robot.data
+        cap = self.cfg.recovery_buffer_size
+        k = len(ids)
+        slots = (torch.arange(k, device=self.device) + self.rb_head) % cap
+        root = d.root_state_w[ids].clone()
+        root[:, :3] -= self.scene.env_origins[ids]
+        self.rb_root[slots] = root
+        self.rb_qpos[slots] = d.joint_pos[ids]
+        self.rb_qvel[slots] = d.joint_vel[ids]
+        self.rb_t[slots] = self._ref_time()[ids]
+        seas = self._seas()
+        if seas:
+            if self.rb_sea is None:
+                self.rb_sea = [(torch.zeros(cap, a.num_joints, device=self.device),
+                                torch.zeros(cap, a.num_joints, device=self.device)) for a in seas]
+            for (bp, bv), a in zip(self.rb_sea, seas):
+                bp[slots] = a.motor_pos[ids]
+                bv[slots] = a.motor_vel[ids]
+        self.rb_head = (self.rb_head + k) % cap
+        self.rb_count = min(cap, self.rb_count + k)
+
+    def _start_recovery(self, env_ids):
+        """Start these envs right after a stored real release (ball already gone): follow-through only."""
+        n = len(env_ids)
+        idx = torch.randint(0, self.rb_count, (n,), device=self.device)
+        root = self.rb_root[idx].clone()
+        root[:, :3] += self.scene.env_origins[env_ids]
+        self.robot.write_root_state_to_sim(root, env_ids)
+        self.robot.write_joint_state_to_sim(self.rb_qpos[idx], self.rb_qvel[idx], env_ids=env_ids)
+        for (bp, bv), a in zip(self.rb_sea or [], self._seas()):
+            a.motor_pos[env_ids] = bp[idx]
+            a.motor_vel[env_ids] = bv[idx]
+            a.needs_sync[env_ids] = False
+        self.t0[env_ids] = self.rb_t[idx]
+        self.q_target[env_ids] = self.rb_qpos[idx]
+        self.qd_target[env_ids] = 0.0
+        open_q = self.robot.data.joint_pos[env_ids][:, self.finger_ids]
+        self.finger_prev[env_ids] = open_q
+        self.finger_next[env_ids] = open_q
+        self.released[env_ids] = True  # the ball is gone: no release reward, follow-through window starts now
+        self.release_step[env_ids] = 0
+        far = self.scene.env_origins[env_ids] + torch.tensor([10.0, 0.0, 1.0], device=self.device)
+        ball = torch.cat([far, torch.tensor([1.0, 0, 0, 0], device=self.device).expand(n, 4),
+                          torch.zeros(n, 6, device=self.device)], -1)
+        self.ball.write_root_state_to_sim(ball, env_ids)
+
+    def _release_outcome(self, ids):
+        c = self.cfg
+        o = self.scene.env_origins[ids]
+        p_local = self.rel_pos[ids] - o
+        # a few balls per step: the CPU is ~5x faster than many tiny GPU kernel launches (Windows WDDM)
+        cross, _, t_cross, reached = simulate_to_plane(p_local.cpu(), self.rel_vel[ids].cpu(), self.rel_omega[ids].cpu(),
+                                                       self.phys, c.plate_distance)
+        cross, t_cross, reached = cross.to(self.device), t_cross.to(self.device), reached.to(self.device)
+        yz = cross[:, 1:]
+        half = torch.tensor([c.zone_width / 2, c.zone_height / 2], device=self.device) + self.phys.ball.radius
+        off = (yz - self.zone_center).abs()
+        strike = reached & (off <= half).all(-1)
+        # miss distance; balls short of the plate also count the missing x distance
+        short = (c.plate_distance - cross[:, 0]).clamp_min(0.0)
+        dist = torch.sqrt(((yz - self.zone_center) ** 2).sum(-1) + short**2)
+        speed = self.rel_vel[ids].norm(dim=-1)
+        return dict(cross=cross, strike=strike, dist=dist, speed=speed, reached=reached, t_cross=t_cross)
+
+    # ------------------------------------------------------------------ observations
+    def _get_observations(self) -> dict:
+        d = self.robot.data
+        hq = d.body_link_quat_w[:, self.hand_id]
+        ball_rel = quat_rotate_inverse(hq, self.ball.data.root_pos_w - self._grip_point())
+        ball_vrel = quat_rotate_inverse(hq, self.ball.data.root_lin_vel_w - d.body_link_lin_vel_w[:, self.hand_id])
+        t = self._ref_time()
+        nxt = self._ref(self._ref_time(1))
+        q = d.joint_pos
+        obs = torch.cat([
+            q[:, self.body_ids] - nxt["joint_pos"],
+            d.joint_vel[:, self.body_ids] * 0.05,
+            q[:, self.finger_ids] - self.grip_q,
+            d.joint_vel[:, self.finger_ids] * 0.05,
+            d.projected_gravity_b,
+            d.root_lin_vel_b * 0.5,
+            d.root_ang_vel_b * 0.25,
+            d.root_link_pos_w[:, 2:3] - 1.0,
+            ball_rel * 10.0,
+            ball_vrel * 0.1,
+            self.ball.data.root_ang_vel_w * 0.01,
+            self.released.float().unsqueeze(-1),
+            (t / self.ref.duration).unsqueeze(-1),
+            nxt["joint_pos"] - q[:, self.body_ids],
+            quat_rotate_inverse(d.root_link_quat_w, nxt["root_pos"] - d.root_link_pos_w),
+            quat_rotate_inverse(d.root_link_quat_w, nxt["key_pos"][:, -1] - self.ball.data.root_pos_w),
+            self.actions,
+        ] + self._sea_obs(), -1)
+        return {"policy": torch.nan_to_num(obs)}
+
+    def _sea_obs(self) -> list:
+        """Elastic-arm variant: stretched tendon state (spring deflection, rad) of the throwing arm."""
+        seas = [a for k, a in self.robot.actuators.items() if k.endswith("_sea")]
+        return [torch.cat([a.deflection for a in seas], -1) * 2.0] if seas else []
+
+    # ------------------------------------------------------------------ rewards
+    def _get_rewards(self) -> torch.Tensor:
+        c = self.cfg
+        d = self.robot.data
+        r = self._ref(self._ref_time())
+        q = d.joint_pos[:, self.body_ids]
+        pose_err = ((q - r["joint_pos"]) ** 2).mean(-1)
+        vel_err = ((d.joint_vel[:, self.body_ids] - r["joint_vel"]) ** 2).mean(-1)
+        key = torch.cat([d.body_link_pos_w[:, self.key_ids], self.ball.data.root_pos_w.unsqueeze(1)], 1)
+        key_err = ((key - r["key_pos"]) ** 2).sum(-1).mean(-1)
+        root_err = ((d.root_link_pos_w - r["root_pos"]) ** 2).sum(-1)
+        rot_err = quat_error_magnitude(d.root_link_quat_w, r["root_quat"]) ** 2
+        track = (c.w_pose * torch.exp(-pose_err / c.sigma_pose ** 2) + c.w_vel * torch.exp(-vel_err / c.sigma_vel ** 2)
+                 + c.w_key * torch.exp(-key_err / c.sigma_key ** 2)
+                 + c.w_root * torch.exp(-root_err / c.sigma_root ** 2 - rot_err / c.sigma_rot ** 2))
+        self._key_err = key_err.sqrt()
+
+        gap = (self.ball.data.root_pos_w - self._grip_point()).norm(dim=-1)
+        before = self._ref_time() < self.release_ref
+        hold = (~self.released & before).float() * torch.exp(-((gap / 0.02) ** 2))
+
+        # after the release: balance instead of tracking a frozen last frame
+        tilt = torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0))
+        pelvis_z = d.body_link_pos_w[:, self.pelvis_id, 2]
+        ang_v = d.root_ang_vel_b.norm(dim=-1)
+        balance = (torch.exp(-(tilt / 0.35) ** 2) * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
+                   * torch.exp(-(ang_v / 4.0) ** 2))
+        track = torch.where(self.released, c.w_post_release_track * track, track)
+        rew = (c.w_track * track + c.w_hold * hold + self.release_reward
+               + c.w_balance * self.released.float() * balance
+               - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
+               - c.w_drop * (self.new_release & self.dropped).float()
+               - c.w_fall * self.fallen.float()
+               # a real fall within the follow-through window costs as much as a good pitch earns (the policy
+               # used to dive off the mound: "lost" ended those episodes first, without any penalty)
+               - c.w_fall_after_release * (self.released & self.fallen).float())
+
+        a = 0.01
+        self.stats["track_reward"] = (1 - a) * self.stats["track_reward"] + a * track.mean()
+        self.stats["key_err_m"] = (1 - a) * self.stats["key_err_m"] + a * key_err.sqrt().mean()
+        held = ~self.released
+        if held.any():
+            self.stats["hold_gap_mm"] = (1 - a) * self.stats["hold_gap_mm"] + a * gap[held].mean() * 1000
+        done = self.reset_terminated | self.reset_time_outs
+        if done.any():
+            b = 0.02
+            self.stats["release_rate"] = (1 - b) * self.stats["release_rate"] + b * (self.released & ~self.dropped)[done].float().mean()
+            self.stats["drop_rate"] = (1 - b) * self.stats["drop_rate"] + b * self.dropped[done].float().mean()
+            self.stats["fall_rate"] = (1 - b) * self.stats["fall_rate"] + b * self.fallen[done].float().mean()
+            # honest follow-through metric: episodes that ended by falling OR losing the reference after release
+            fail = (self.released & self.fallen)[done].float().mean()
+            rec = done & self.recovery_ep
+            if rec.any():
+                self.stats["recovery_fall"] = (1 - b) * self.stats["recovery_fall"] + b * self.fallen[rec].float().mean()
+            self.stats["recovery_share"] = (1 - b) * self.stats["recovery_share"] + b * self.recovery_ep[done].float().mean()
+            self.stats["post_release_fail"] = (1 - b) * self.stats["post_release_fail"] + b * fail
+        self.stats["speed"] = torch.tensor(self.speed, device=self.device)
+        self.extras["log"] = {f"pitch/{k}": v.clone() for k, v in self.stats.items()}
+        return rew
+
+    # ------------------------------------------------------------------ dones
+    def _get_dones(self):
+        c = self.cfg
+        self._check_release()
+        good = self.new_release & ~self.dropped
+        if good.any():
+            ids = good.nonzero(as_tuple=False).squeeze(-1)
+            out = self._release_outcome(ids)
+            speed_n = (out["speed"] / c.target_speed).clamp(0, 1.0)  # no extra credit above target_speed
+            fast = out["speed"] >= c.target_speed
+            # overspeed costs control (faster arm -> larger direction error per ms of release timing)
+            over = ((out["speed"] - c.speed_soft_cap) / 3.0).clamp_min(0.0)
+            r = (c.w_speed * speed_n + c.w_speed_bonus * fast.float() + c.w_strike * out["strike"].float()
+                 - c.w_overspeed * over
+                 + c.w_zone * torch.exp(-((out["dist"] / 0.4) ** 2)) + c.w_aim * torch.exp(-((out["dist"] / 2.0) ** 2))
+                 + c.w_aim_wide * torch.exp(-((out["dist"] / 8.0) ** 2))
+                 + c.w_both * (fast & out["strike"]).float())
+            self.release_reward[ids] = r
+            w = self.rel_omega[ids]
+            v = self.rel_vel[ids]
+            vh = torch.nn.functional.normalize(torch.cat([v[:, :2], torch.zeros_like(v[:, :1])], -1), dim=-1)
+            back_axis = torch.cross(vh, torch.tensor([0.0, 0.0, 1.0], device=self.device).expand_as(vh), dim=-1)
+            backspin = (w * back_axis).sum(-1) * 60 / (2 * math.pi)
+            a = 0.05
+            t_rel = self.t0[ids] + self.speed * self.release_step[ids].float() * self.step_dt
+            for k, val in (("release_kmh", out["speed"].mean() * 3.6), ("strike_rate", out["strike"].float().mean()),
+                           ("zone_dist_m", out["dist"].mean()), ("success_rate", (fast & out["strike"]).float().mean()),
+                           ("spin_rpm", w.norm(dim=-1).mean() * 60 / (2 * math.pi)), ("backspin_rpm", backspin.mean()),
+                           ("release_time_err", (t_rel - self.release_ref).mean())):
+                self.stats[k] = (1 - a) * self.stats[k] + a * val
+            if c.play_mode:
+                for j, i in enumerate(ids.tolist()):
+                    rec = dict(env=i, release_kmh=float(out["speed"][j] * 3.6), raw_kmh=float(self.raw_speed[i] * 3.6),
+                               plate_y=float(out["cross"][j, 1]), plate_z=float(out["cross"][j, 2]),
+                               strike=bool(out["strike"][j]), flight_time=float(out["t_cross"][j]),
+                               spin_rpm=float(w[j].norm() * 60 / (2 * math.pi)), backspin_rpm=float(backspin[j]))
+                    self.play_log.append(rec)
+                    ok = "STRIKE" if rec["strike"] else "ball"
+                    print(f"[pitch] env {i}: {rec['release_kmh']:5.1f} km/h (raw {rec['raw_kmh']:5.1f}) | plate y {rec['plate_y']:+.2f} m, "
+                          f"z {rec['plate_z']:.2f} m -> {ok} | spin {rec['spin_rpm']:.0f} rpm (backspin "
+                          f"{rec['backspin_rpm']:+.0f}) | flight {rec['flight_time']:.3f} s", flush=True)
+
+        d = self.robot.data
+        self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < 0.5) | (d.projected_gravity_b[:, 2] > -0.5)
+        time_out = self.episode_length_buf >= self.max_episode_length - 1
+        follow = int(round(c.follow_through_s / self.step_dt))
+        if c.play_mode:
+            ball = self.ball.data.root_pos_w - self.scene.env_origins
+            newly = self.released & ~self.crossed & (ball[:, 0] >= c.plate_distance)
+            if newly.any():
+                self.cross_markers.set_visibility(True)
+                self.cross_markers.visualize(translations=self.ball.data.root_pos_w[newly])
+            self.crossed |= newly | (self.released & (ball[:, 2] < 0.05))
+            terminated = self.crossed & torch.tensor(c.terminate_on_cross, device=self.device)
+            return terminated, time_out
+        lost = self._key_err > c.max_key_err if hasattr(self, "_key_err") else torch.zeros_like(self.released)
+        # After the release the reference only holds its last frame, so a real follow-through must drift away
+        # from it: tracking loss ends the episode only before the release; afterwards only real falls count.
+        lost = lost & ~self.released
+        self._lost = lost
+        done_follow = self.released & (self.episode_length_buf - self.release_step >= follow)
+        # the reference holds its last (post-release) pose; keep going through the follow-through window
+        ref_end = self._ref_time(1) >= self.ref.duration + c.follow_through_s
+        terminated = self.fallen | (self.released & self.dropped) | done_follow | lost
+        return terminated, time_out | ref_end
+
+    # ------------------------------------------------------------------ reset (reference state initialisation)
+    def _reset_idx(self, env_ids: Sequence[int] | None):
+        if env_ids is None or len(env_ids) == self.num_envs:
+            env_ids = self.robot._ALL_INDICES
+        super()._reset_idx(env_ids)
+        n, dev, c = len(env_ids), self.device, self.cfg
+        rsi = torch.rand(n, device=dev) < c.rsi_prob
+        t_max = max(0.0, self.release_ref - c.rsi_margin_before_release)
+        self.t0[env_ids] = torch.where(rsi, torch.rand(n, device=dev) * t_max, torch.zeros(n, device=dev))
+        r = self.ref.sample(self.t0[env_ids])
+        o = self.scene.env_origins[env_ids]
+        root = torch.cat([r["root_pos"] + o, r["root_quat"], r["root_lin_vel"] * self.speed, r["root_ang_vel"] * self.speed], -1)
+        self.robot.write_root_state_to_sim(root, env_ids)
+        jp = self.robot.data.default_joint_pos[env_ids].clone()
+        jv = torch.zeros_like(jp)
+        jp[:, self.body_ids] = r["joint_pos"][:, self.ref_cols]
+        jv[:, self.body_ids] = r["joint_vel"][:, self.ref_cols] * self.speed
+        jp[:, self.finger_ids] = self.grip_q
+        self.robot.write_joint_state_to_sim(jp, jv, env_ids=env_ids)
+        self.q_target[env_ids] = jp
+        self.q_target[env_ids.unsqueeze(-1), self.finger_ids] = self.hold_q
+        self.finger_prev[env_ids] = self.hold_q
+        self.finger_next[env_ids] = self.hold_q
+        self.qd_target[env_ids] = jv
+        # ball in the grip: reference ball position / velocity (last key point)
+        t = self.t0[env_ids]
+        r2 = self.ref.sample(t + 1e-3)
+        ball_v = (r2["key_pos"][:, -1] - r["key_pos"][:, -1]) / 1e-3 * self.speed
+        ball = torch.cat([r["key_pos"][:, -1] + o, torch.tensor([1.0, 0, 0, 0], device=dev).expand(n, 4), ball_v,
+                          torch.zeros(n, 3, device=dev)], -1)
+        self.ball.write_root_state_to_sim(ball, env_ids)
+        self.actions[env_ids] = 0.0
+        self.prev_actions[env_ids] = 0.0
+        for buf in (self.released, self.new_release, self.dropped, self.crossed):
+            buf[env_ids] = False
+        self.release_step[env_ids] = 0
+        self.recovery_ep[env_ids] = False
+        if not c.play_mode and self.rb_count >= c.recovery_min_states and c.recovery_prob > 0:
+            rec = env_ids[torch.rand(n, device=dev) < c.recovery_prob]
+            if len(rec) > 0:
+                self._start_recovery(rec)
+                self.recovery_ep[rec] = True
+
+
+BALL_R = PhysicsSpec().ball.radius
