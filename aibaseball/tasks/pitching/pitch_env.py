@@ -177,7 +177,9 @@ class PitchEnv(DirectRLEnv):
         h = c.mound_height
         if h <= 0:
             return
-        mat = sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9)
+        # spikes on mound clay: "max" combine so the mound's friction is the contact's friction
+        mat = sim_utils.RigidBodyMaterialCfg(static_friction=c.mound_static_friction, dynamic_friction=c.mound_dynamic_friction,
+                                             friction_combine_mode="max")
         look = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.55, 0.38, 0.24))
         x0, w = c.mound_slope_start_x, 2.4
         top = sim_utils.CuboidCfg(size=(x0 + 1.2, w, h), collision_props=sim_utils.CollisionPropertiesCfg(),

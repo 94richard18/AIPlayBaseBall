@@ -82,6 +82,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     mound_height: float = 0.254
     mound_slope: float = 1.0 / 12.0
     mound_slope_start_x: float = 0.54
+    # baseball spikes dig into the mound clay. The reference's braking at foot strike needs a friction coefficient of
+    # ~0.9-1.4; at 1.0 the lead foot slid (~0.9 m/s) and lifted right after landing.
+    mound_static_friction: float = 1.8
+    mound_dynamic_friction: float = 1.6
     zone_height: float = 0.95
     zone_width: float = 0.65
     target_speed: float = 120.0 * KMH  # 33.3 m/s (lowered from 150 km/h for the human-strength pitcher)
