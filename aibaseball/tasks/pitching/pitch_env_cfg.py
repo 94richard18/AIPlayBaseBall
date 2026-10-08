@@ -244,6 +244,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_contact: float = 0.5
     w_slip: float = 0.3
     w_support: float = 0.5
+    # the new flat-foot reference: every full pitch lost tracking at 0.84-0.95 s (lead foot not yet down) and ended just
+    # before the release, so landing, release and follow-through were never experienced
+    max_key_err: float = 0.8
+    rsi_prob: float = 0.4
 
 
 @configclass
