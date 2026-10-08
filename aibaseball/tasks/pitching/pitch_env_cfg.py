@@ -244,3 +244,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_contact: float = 0.5
     w_slip: float = 0.3
     w_support: float = 0.5
+
+
+@configclass
+class PitchSpeedEnvCfg(PitchStandFirstEnvCfg):
+    """Stage 2: the pitcher stays up (stage 1); now the speed reward saturates at 120 km/h again."""
+
+    target_speed: float = 120.0 * KMH

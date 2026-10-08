@@ -14,6 +14,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pitch", type=str, required=True)
 parser.add_argument("--balance", type=str, required=True)
 parser.add_argument("--envs", type=int, default=32)
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="elastic",
+                    help="env config the pitching policy was trained with")
 parser.add_argument("--hold_s", type=float, default=1.5, help="must stay up this long after the release")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -32,8 +34,9 @@ from aibaseball.tasks.pitching.agents.rsl_rl_ppo_cfg import PitchBalancePPORunne
 
 
 def main():
-    cfg = C.PitchElasticEnvCfg()
-    bal_cfg = C.PitchBalanceEnvCfg()
+    cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+    single = os.path.abspath(args.pitch) == os.path.abspath(args.balance)  # one policy does the whole pitch
+    bal_cfg = cfg if single else C.PitchBalanceEnvCfg()
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
