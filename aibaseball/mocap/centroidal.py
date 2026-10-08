@@ -19,11 +19,14 @@ def mound_z(x, top: float, height: float, slope: float, x0: float):
 
 
 def reference_centroidal(motion_file: str, ground=lambda x: np.zeros_like(x), contact_gap: float = 0.025,
-                         contact_speed: float = 1.0, fill_s: float = 0.15) -> dict:
-    """COM (T,3), COM velocity (T,3) and planted feet (T,2: left, right) of a pitching reference.
+                         contact_speed: float = 1.0, touch_speed: float = 3.0, fill_s: float = 0.15) -> dict:
+    """COM (T,3), COM velocity (T,3), feet on the ground (T,2: left, right) and planted-still feet (T,2).
 
-    A foot is planted when its lowest sole corner is within `contact_gap` of the ground and the sole moves slower
-    than `contact_speed`; gaps shorter than `fill_s` (rolling heel-to-toe, IK jitter) are filled.
+    `contact`: the lowest sole corner is within `contact_gap` of the ground and slower than `touch_speed`; this
+    includes the pivot foot dragging on its toe after the push-off (~1.5 m/s; it touches the mound until ~1.03 s,
+    after the lead foot lands at 0.88 s) but not the lead foot skimming over the mound in its swing (4-6 m/s).
+    `still`: in contact and the sole moves slower than `contact_speed` (no-slip applies only to these).
+    Gaps shorter than `fill_s` (rolling heel-to-toe, IK jitter) are filled in both.
     """
     from ..robot.ball_grip import FINGER_JOINTS, BallGrip
     from ..robot.humanoid import build_humanoid
@@ -52,12 +55,14 @@ def reference_centroidal(motion_file: str, ground=lambda x: np.zeros_like(x), co
     sole_vel = np.gradient(sole, dt, axis=0)
     gap = sole[..., 2].min(-1) - ground(sole[..., 0].mean(-1))
     speed = np.linalg.norm(sole_vel, axis=-1).max(-1)
-    contact = (gap < contact_gap) & (speed < contact_speed)
+    contact = (gap < contact_gap) & (speed < touch_speed)
+    still = contact & (speed < contact_speed)
     k = int(round(fill_s / dt))
-    for i in range(2):  # closing: fill short gaps between planted spans
-        c = contact[:, i]
-        on = np.nonzero(c)[0]
-        for a, b in zip(on[:-1], on[1:]):
-            if 1 < b - a <= k:
-                c[a:b] = True
-    return dict(time=t, com=com, com_vel=com_vel, contact=contact)
+    for arr in (contact, still):
+        for i in range(2):  # closing: fill short gaps between spans
+            c = arr[:, i]
+            on = np.nonzero(c)[0]
+            for a, b in zip(on[:-1], on[1:]):
+                if 1 < b - a <= k:
+                    c[a:b] = True
+    return dict(time=t, com=com, com_vel=com_vel, contact=contact, still=still)

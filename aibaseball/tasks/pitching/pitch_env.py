@@ -58,7 +58,8 @@ class PitchEnv(DirectRLEnv):
                           device=dev)
         self.ref_com = torch.tensor(cen["com"], dtype=torch.float32, device=dev) @ Rz.T
         self.ref_com_vel = torch.tensor(cen["com_vel"], dtype=torch.float32, device=dev) @ Rz.T
-        self.ref_contact = torch.tensor(cen["contact"], dtype=torch.float32, device=dev)  # (T, 2): left, right
+        self.ref_contact = torch.tensor(cen["contact"], dtype=torch.float32, device=dev)  # (T, 2): left, right on the ground
+        self.ref_still = torch.tensor(cen["still"], dtype=torch.float32, device=dev)  # planted and not sliding
 
         # joints
         ids, names = self.robot.find_joints(BODY_JOINT_EXPR, preserve_order=True)
@@ -253,7 +254,9 @@ class PitchEnv(DirectRLEnv):
         i0, i1, a = self.ref._idx(t)
         com = self.ref_com[i0] * (1 - a) + self.ref_com[i1] * a + self.scene.env_origins
         vel = (self.ref_com_vel[i0] * (1 - a) + self.ref_com_vel[i1] * a) * self.speed
-        contact = torch.where(a < 0.5, self.ref_contact[i0], self.ref_contact[i1]) > 0.5
+        near = a < 0.5
+        contact = torch.where(near, self.ref_contact[i0], self.ref_contact[i1]) > 0.5
+        self._ref_still_now = torch.where(near, self.ref_still[i0], self.ref_still[i1]) > 0.5
         return com, vel, contact
 
     def _com(self):
@@ -530,7 +533,7 @@ class PitchEnv(DirectRLEnv):
         planted = forces > c.contact_force_n
         contact_match = (planted == rcontact).float().mean(-1)
         foot_v = d.body_link_lin_vel_w[:, self.foot_ids, :2].norm(dim=-1)
-        slip = (planted.float() * foot_v).sum(-1)
+        slip = ((planted & self._ref_still_now).float() * foot_v).sum(-1)  # the dragging pivot foot may slide
         o = self.scene.env_origins
         n_env = com.shape[0]
         fwd = torch.tensor([0.04, 0.0, 0.0], device=self.device).expand(n_env, 2, 3)
