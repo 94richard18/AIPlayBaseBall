@@ -74,7 +74,13 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # ---------------------------------------------------------------- field (OBP lab frame: +x toward home plate)
     plate_distance: float = 18.44  # m, pitching rubber -> home plate
     zone_center_y: float = 0.0
-    zone_bottom: float = 0.45
+    zone_bottom: float = 0.45  # above the plate-level ground
+    # pitcher's mound (MLB: rubber 10 in above the plate, 1 in / ft slope). z = 0 is the rubber; the field is at
+    # -mound_height. The capture was recorded on a mound (the lead foot lands 9.5 cm below the rubber); on a flat
+    # floor the lead foot struck the ground early, the body stayed ~10 cm high and the pitcher fell after every release.
+    mound_height: float = 0.254
+    mound_slope: float = 1.0 / 12.0
+    mound_slope_start_x: float = 0.40  # m in front of the rubber; puts the capture's landing spot 9.5 cm down
     zone_height: float = 0.95
     zone_width: float = 0.65
     target_speed: float = 120.0 * KMH  # 33.3 m/s (lowered from 150 km/h for the human-strength pitcher)
@@ -118,7 +124,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     post_release_speed_pow: float = 4.0
     post_release_pelvis_z: float = 0.75  # m; lower than this is penalised by the balance term
     post_release_head_z: float = 1.10  # m; head lower than this is penalised by the balance term
-    fallen_head_z: float = 0.75  # m; head below this = fallen (reference minimum ~1.0 m)
+    # fallen = body (nearly) on the ground; z = 0 is the rubber, the lead foot stands ~0.1 m lower. Higher thresholds
+    # ended deep but recoverable follow-through bends before the policy could learn to recover from them.
+    fallen_head_z: float = 0.45
+    fallen_pelvis_z: float = 0.30
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3

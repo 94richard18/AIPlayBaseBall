@@ -207,8 +207,8 @@ class GraphedFlight:
 
 @torch.no_grad()
 def simulate_to_plane(pos: torch.Tensor, vel: torch.Tensor, omega: torch.Tensor, spec: PhysicsSpec, plane_x: float,
-                      dt: float = 0.02, t_max: float = 1.0):
-    """Integrate (RK4, drag + Magnus) until each ball reaches x = plane_x (pitch toward +X).
+                      dt: float = 0.02, t_max: float = 1.0, ground_z: float = 0.0):
+    """Integrate (RK4, drag + Magnus) until each ball reaches x = plane_x (pitch toward +X) or the ground (z = ground_z).
 
     Returns (crossing position (N,3), speed at the plane (N,), time (N,), reached (N,) bool).
     """
@@ -233,7 +233,7 @@ def simulate_to_plane(pos: torch.Tensor, vel: torch.Tensor, omega: torch.Tensor,
         cross = torch.where(crossed.unsqueeze(-1), pos + frac * (new_pos - pos), cross)
         speed = torch.where(crossed, (vel + frac * (new_vel - vel)).norm(dim=-1), speed)
         t_cross = torch.where(crossed, t + frac.squeeze(-1) * dt, t_cross)
-        done = done | crossed | (new_pos[:, 2] < 0.0)  # hit the ground first: stop (not reached)
+        done = done | crossed | (new_pos[:, 2] < ground_z)  # hit the ground first: stop (not reached)
         pos, vel = torch.where(done.unsqueeze(-1), pos, new_pos), torch.where(done.unsqueeze(-1), vel, new_vel)
         t += dt
         if k % 5 == 4 and bool(done.all()):

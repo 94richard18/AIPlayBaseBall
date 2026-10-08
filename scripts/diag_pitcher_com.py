@@ -14,6 +14,8 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--elastic", action="store_true")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--gain", type=float, default=None, help="override post_release_residual_gain")
+parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
+parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -38,6 +40,10 @@ def main():
     cfg.episode_length_s = 4.0
     if args.gain is not None:
         cfg.post_release_residual_gain = args.gain
+    if args.leg_scale != 1.0:
+        for g in ("hip", "knee", "ankle"):
+            act = cfg.robot.actuators[g]
+            act.effort_limit_sim = act.effort_limit_sim * args.leg_scale
     env = gym.make(tid, cfg=cfg)
     base = env.unwrapped
     orig = base._get_dones
@@ -69,7 +75,10 @@ def main():
         obs, _ = w.reset()
         o = base.scene.env_origins
         for k in range(int(2.5 / base.step_dt)):
-            obs, _, _, _ = w.step(pol(obs))
+            act = pol(obs)
+            if args.ref_after_release:  # pure reference PD tracking once the ball is gone
+                act = torch.where(base.released.unsqueeze(-1), torch.zeros_like(act), act)
+            obs, _, _, _ = w.step(act)
             d = rob.data
             t = base.episode_length_buf.float() * base.step_dt
             com = (d.body_com_pos_w * mass.unsqueeze(-1)).sum(1) / M - o
