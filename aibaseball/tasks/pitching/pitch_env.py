@@ -121,7 +121,7 @@ class PitchEnv(DirectRLEnv):
         if cfg.recovery_states_file:
             self.load_release_states(cfg.recovery_states_file)
         self.recovery_ep = torch.zeros(n, dtype=torch.bool, device=dev)
-        zc = -cfg.mound_height + cfg.zone_bottom + 0.5 * cfg.zone_height
+        zc = self.field_z + cfg.zone_bottom + 0.5 * cfg.zone_height
         self.zone_center = torch.tensor([cfg.zone_center_y, zc], device=dev)
         self.stats = {k: torch.zeros((), device=dev) for k in (
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
@@ -134,13 +134,15 @@ class PitchEnv(DirectRLEnv):
 
     # ------------------------------------------------------------------ scene
     def _setup_scene(self):
+        c = self.cfg
+        self.field_z = c.mound_top_z - c.mound_height if c.mound_height > 0 else 0.0  # plate-level ground
         self.robot = Articulation(self.cfg.robot)
         self.ball = RigidObject(self.cfg.ball)
         ground = GroundPlaneCfg(physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9))
         if self.cfg.play_mode:
             ground.size = (200.0, 200.0)
             ground.color = (0.16, 0.36, 0.14)
-        spawn_ground_plane("/World/ground", ground, translation=(0.0, 0.0, -self.cfg.mound_height))
+        spawn_ground_plane("/World/ground", ground, translation=(0.0, 0.0, self.field_z))
         self._spawn_mound("/World/envs/env_0")
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])
@@ -152,7 +154,7 @@ class PitchEnv(DirectRLEnv):
             self._spawn_zone_markers()
 
     def _spawn_mound(self, env_path: str):
-        """Static mound per env: a flat top around the rubber (z = 0) and a 1:12 slope down to the field."""
+        """Static mound per env: a flat top around the rubber (z = mound_top_z) and a 1:12 slope down to the field."""
         c = self.cfg
         h = c.mound_height
         if h <= 0:
@@ -162,13 +164,13 @@ class PitchEnv(DirectRLEnv):
         x0, w = c.mound_slope_start_x, 2.4
         top = sim_utils.CuboidCfg(size=(x0 + 1.2, w, h), collision_props=sim_utils.CollisionPropertiesCfg(),
                                   physics_material=mat, visual_material=look)
-        top.func(f"{env_path}/MoundTop", top, translation=((x0 - 1.2) / 2, 0.0, -h / 2))
+        top.func(f"{env_path}/MoundTop", top, translation=((x0 - 1.2) / 2, 0.0, c.mound_top_z - h / 2))
         run = h / c.mound_slope
         th = math.atan(c.mound_slope)
         length, thick = math.hypot(run, h), 0.3
         slope = sim_utils.CuboidCfg(size=(length, w, thick), collision_props=sim_utils.CollisionPropertiesCfg(),
                                     physics_material=mat, visual_material=look)
-        mid = (x0 + run / 2, -h / 2)  # middle of the top surface
+        mid = (x0 + run / 2, c.mound_top_z - h / 2)  # middle of the top surface
         n = (math.sin(th), math.cos(th))  # its normal
         slope.func(f"{env_path}/MoundSlope", slope, translation=(mid[0] - n[0] * thick / 2, 0.0, mid[1] - n[1] * thick / 2),
                    orientation=(math.cos(th / 2), 0.0, math.sin(th / 2), 0.0))
@@ -196,16 +198,16 @@ class PitchEnv(DirectRLEnv):
         pts, idx = [], []
         x = c.plate_distance
         y0, y1 = c.zone_center_y - c.zone_width / 2, c.zone_center_y + c.zone_width / 2
-        z0 = c.zone_bottom - c.mound_height
+        z0 = self.field_z + c.zone_bottom
         z1 = z0 + c.zone_height
         for k in range(40):
             a = k / 39
             pts += [[x, y0 + a * (y1 - y0), z0], [x, y0 + a * (y1 - y0), z1], [x, y0, z0 + a * (z1 - z0)],
                     [x, y1, z0 + a * (z1 - z0)]]
             idx += [0, 0, 0, 0]
-        pts.append([x + 0.215, c.zone_center_y, 0.005 - c.mound_height])
+        pts.append([x + 0.215, c.zone_center_y, self.field_z + 0.005])
         idx.append(1)
-        pts.append([-0.075, 0.0, 0.005])
+        pts.append([-0.075, 0.0, c.mound_top_z + 0.005])
         idx.append(2)
         origin = self.scene.env_origins[0]
         P = torch.tensor(pts, device=self.device) + origin
@@ -399,7 +401,7 @@ class PitchEnv(DirectRLEnv):
         p_local = self.rel_pos[ids] - o
         # a few balls per step: the CPU is ~5x faster than many tiny GPU kernel launches (Windows WDDM)
         cross, _, t_cross, reached = simulate_to_plane(p_local.cpu(), self.rel_vel[ids].cpu(), self.rel_omega[ids].cpu(),
-                                                       self.phys, c.plate_distance, ground_z=-c.mound_height)
+                                                       self.phys, c.plate_distance, ground_z=self.field_z)
         cross, t_cross, reached = cross.to(self.device), t_cross.to(self.device), reached.to(self.device)
         yz = cross[:, 1:]
         half = torch.tensor([c.zone_width / 2, c.zone_height / 2], device=self.device) + self.phys.ball.radius
@@ -561,7 +563,7 @@ class PitchEnv(DirectRLEnv):
             if newly.any():
                 self.cross_markers.set_visibility(True)
                 self.cross_markers.visualize(translations=self.ball.data.root_pos_w[newly])
-            self.crossed |= newly | (self.released & (ball[:, 2] < 0.05 - c.mound_height))
+            self.crossed |= newly | (self.released & (ball[:, 2] < self.field_z + 0.05))
             terminated = self.crossed & torch.tensor(c.terminate_on_cross, device=self.device)
             return terminated, time_out
         lost = self._key_err > c.max_key_err if hasattr(self, "_key_err") else torch.zeros_like(self.released)

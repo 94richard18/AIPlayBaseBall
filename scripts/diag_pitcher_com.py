@@ -15,6 +15,7 @@ parser.add_argument("--elastic", action="store_true")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--gain", type=float, default=None, help="override post_release_residual_gain")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
+parser.add_argument("--timeline", action="store_true", help="print robot vs reference lead foot / COM over time")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -96,6 +97,16 @@ def main():
                 tau = d.applied_torque[:, leg_ids][post].abs()
                 sat += (tau >= 0.98 * effort[post]).float().sum(0)
                 sat_n += int(post.sum())
+            if args.timeline and k % int(0.05 / base.step_dt) == 0 and t[0] <= 1.6:
+                rr = base._ref(base._ref_time())
+                o0 = base.scene.env_origins
+                lf_ref = (rr["key_pos"][:, 2] - o0).mean(0)
+                root_ref = (rr["root_pos"] - o0).mean(0)
+                pel = (d.root_link_pos_w - o0).mean(0)
+                lfm = feet[:, 0].mean(0)
+                print(f"[tl] t {t[0]:.2f} ref_t {base._ref_time()[0]:.2f} | lead foot robot ({lfm[0]:.2f},{lfm[1]:.2f},{lfm[2]:.2f}) "
+                      f"ref ({lf_ref[0]:.2f},{lf_ref[1]:.2f},{lf_ref[2]:.2f}) | pelvis robot ({pel[0]:.2f},{pel[1]:.2f},{pel[2]:.2f}) "
+                      f"ref ({root_ref[0]:.2f},{root_ref[1]:.2f},{root_ref[2]:.2f}) | released {int(base.released.sum())}", flush=True)
             rows.append((t.clone(), base._ref_time().clone(), com.clone(), vcom.clone(), feet.clone(), tilt.clone(), z.clone()))
     g = 9.81
     print("[com] per env at release (frame: +x toward plate). cp = capture point = com + v*sqrt(h/g)", flush=True)
