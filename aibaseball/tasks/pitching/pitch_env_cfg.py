@@ -76,12 +76,12 @@ class PitchEnvCfg(DirectRLEnvCfg):
     zone_center_y: float = 0.0
     zone_bottom: float = 0.45  # above the plate-level ground
     # pitcher's mound (MLB: rubber 10 in above the plate, 1 in / ft slope); the field is mound_height below its top.
-    # Fitted to the capture's soles (scripts/analyze_ref_dynamics.py): the pivot foot stands at z = +0.03 on the
-    # rubber and the lead foot lands at z = -0.04, x = 1.6 m. On a flat floor the lead foot struck the ground early.
-    mound_top_z: float = 0.03
+    # Fitted to the reference soles (scripts/analyze_ref_dynamics.py): the pivot foot stands at z = +0.058 on the
+    # rubber (flat) and the lead foot lands at z = -0.03, x = 1.6 m. On a flat floor the lead foot struck the ground early.
+    mound_top_z: float = 0.058
     mound_height: float = 0.254
     mound_slope: float = 1.0 / 12.0
-    mound_slope_start_x: float = 0.76
+    mound_slope_start_x: float = 0.54
     zone_height: float = 0.95
     zone_width: float = 0.65
     target_speed: float = 120.0 * KMH  # 33.3 m/s (lowered from 150 km/h for the human-strength pitcher)

@@ -71,12 +71,15 @@ def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, ra
              robot: Robot | None = None, bat: BatSpec | None = None, verbose: bool = True,
              finger_pose: dict | None = None, ball_local: np.ndarray | None = None,
              smooth: dict[str, float] | None = None, max_joint_vel: dict[str, float] | None = None,
-             keep: np.ndarray | None = None) -> RetargetResult:
+             keep: np.ndarray | None = None, flat_weight: float = 1.0, flat_both: bool = False) -> RetargetResult:
     """Batting (robot with bat) or pitching (no bat: hand keypoints; `ball_local` = ball centre in r_hand).
 
     `smooth`: temporal-smoothness weight per joint-name substring (default 0.1 everywhere).
     `max_joint_vel`: rad/s cap per joint-name substring (frame-to-frame bound). Both stop the per-frame IK
     from flipping between solutions at joint limits (the pitching legs jumped 0.6 rad in one frame).
+    `flat_weight`: weight of "planted foot flat". `flat_both`: a foot counts as planted only when both its toe and
+    heel markers are low and both move slower than 0.5 m/s (a foot dragging behind is not flattened). Heel/toe markers do not show foot roll, so without
+    a strong flat term the pitching pivot foot rolled 28 deg onto its edge (ankle-roll limit).
     `keep`: (K, 6 + J) solved states [pelvis pos, rotvec, joints] reused for the first K frames (only the rest is solved).
     """
     bat = bat or BatSpec()
@@ -106,6 +109,9 @@ def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, ra
         if k not in ("pelvis_fwd", "pelvis_left"):
             lm[k] = lm[k] - np.array([0, 0, foot_min - 0.02])
 
+    foot_speed = {s: np.maximum(*(np.linalg.norm(np.gradient(lm[f"{s}_{k}"], 1.0 / rate, axis=0), axis=1)
+                                  for k in ("toe", "heel"))) for s in ("l", "r")}  # planted = low and still
+
     def unpack(x):
         p = x[:3]
         R = Rotation.from_rotvec(x[3:6]).as_matrix()
@@ -129,8 +135,9 @@ def retarget(trial: SwingTrial, t_before: float = 1.2, t_after: float = 0.45, ra
         res.append(0.5 * (R[:, 0] - lm["pelvis_fwd"][f]))
         for s in ("l", "r"):  # feet flat when near the ground
             Rf, _ = P[f"{s}_foot"]
-            on_ground = float(min(lm[f"{s}_toe"][f, 2], lm[f"{s}_heel"][f, 2]) < 0.10)
-            res.append(1.0 * on_ground * Rf[:, 2] - on_ground * np.array([0, 0, 1.0]))
+            low = (max if flat_both else min)(lm[f"{s}_toe"][f, 2], lm[f"{s}_heel"][f, 2])
+            on_ground = float(low < (0.12 if flat_both else 0.10) and (not flat_both or foot_speed[s][f] < 0.5))
+            res.append(flat_weight * on_ground * (Rf[:, 2] - np.array([0, 0, 1.0])))
         if x_prev is not None:
             res.append(w_smooth * (x - x_prev))
         return np.concatenate(res)

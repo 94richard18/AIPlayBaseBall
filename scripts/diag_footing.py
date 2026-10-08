@@ -12,6 +12,7 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=16)
+parser.add_argument("--zero", action="store_true", help="no policy: pure PD tracking of the reference")
 parser.add_argument("--flat", action="store_true", help="no mound (contact-report test)")
 parser.add_argument("--all_bodies", action="store_true", help="contact sensors on every body: who carries the weight?")
 AppLauncher.add_app_launcher_args(parser)
@@ -58,7 +59,8 @@ def main():
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(int(1.6 / base.step_dt)):
-            obs, _, _, _ = w.step(pol(obs))
+            act = pol(obs)
+            obs, _, _, _ = w.step(torch.zeros_like(act) if args.zero else act)
             if k % int(0.05 / base.step_dt):
                 continue
             t = base._ref_time()

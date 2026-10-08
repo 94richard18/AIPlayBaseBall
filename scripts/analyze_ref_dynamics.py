@@ -26,8 +26,8 @@ G = 9.81
 SOLE = dict(x=(-0.09, 0.17), y=(-0.055, 0.055), z=-0.08)  # foot box (0.26 x 0.11), bottom 8 cm under the ankle frame
 
 
-def mound_z(x, top=0.03, h=0.254, slope=1 / 12, x0=0.76):
-    """Mound surface fitted to the capture: rubber soles at +0.03 m, the lead foot lands at -0.04 m (x = 1.6 m)."""
+def mound_z(x, top=0.058, h=0.254, slope=1 / 12, x0=0.54):
+    """Mound surface fitted to the capture: pivot sole at +0.058 m, the lead foot lands at -0.03 m (x = 1.6 m)."""
     return np.where(x < x0, top, np.maximum(top - (x - x0) * slope, top - h))
 
 
