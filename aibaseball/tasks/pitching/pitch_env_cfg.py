@@ -142,6 +142,18 @@ class PitchEnvCfg(DirectRLEnvCfg):
     sigma_lead_plant: float = 0.08  # m
     w_release_time: float = 0.0  # at the release x exp(-((t - reference release) / sigma)^2)
     sigma_release_time: float = 0.03  # s
+    # centre of mass and footing like the athlete (0 = off); reference from mocap/centroidal.py
+    w_com: float = 0.0  # per step x exp(-(COM error / sigma)^2) x exp(-(COM velocity error / sigma_v)^2)
+    sigma_com: float = 0.10  # m
+    sigma_com_vel: float = 0.6  # m/s
+    w_contact: float = 0.0  # per step x share of feet whose ground contact matches the athlete's
+    contact_force_n: float = 30.0  # N on a foot = planted
+    contact_bodies: str = ".*_foot"  # contact-sensor bodies (regex)
+    contact_history: int = 16  # physics steps (20 ms) a foot counts as planted after a contact
+    w_slip: float = 0.0  # per step x speed (m/s) of planted feet
+    w_support: float = 0.0  # per step (from the lead-foot landing on) x capture point over the planted feet
+    support_radius: float = 0.12  # m around a foot centre counts as support
+    sigma_support: float = 0.15  # m
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -228,3 +240,7 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     post_release_residual_gain: float = 2.0
     w_lead_plant: float = 1.0
     w_release_time: float = 20.0
+    w_com: float = 0.5
+    w_contact: float = 0.5
+    w_slip: float = 0.3
+    w_support: float = 0.5

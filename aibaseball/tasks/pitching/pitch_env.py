@@ -22,9 +22,11 @@ import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation, RigidObject
 from isaaclab.envs import DirectRLEnv
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+from isaaclab.sensors import ContactSensor, ContactSensorCfg
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_rotate_inverse
 
+from aibaseball.mocap.centroidal import mound_z, reference_centroidal
 from aibaseball.mocap.motion import PITCH_KEY_BODIES, MotionRef
 from aibaseball.physics import PhysicsSpec
 from aibaseball.physics.ball_flight import aero_acceleration, simulate_to_plane
@@ -48,6 +50,15 @@ class PitchEnv(DirectRLEnv):
         self.ref = MotionRef(cfg.motion_file, dev)
         self.ref.rotate_z(math.radians(cfg.ref_yaw_deg))
         self.release_ref = self.ref.contact_time  # reference release time (stored as "contact")
+        # reference COM / planted feet (robot masses, fitted mound), rotated like the reference
+        cen = reference_centroidal(cfg.motion_file, lambda x: mound_z(x, cfg.mound_top_z, cfg.mound_height,
+                                                                       cfg.mound_slope, cfg.mound_slope_start_x))
+        yaw = math.radians(cfg.ref_yaw_deg)
+        Rz = torch.tensor([[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]],
+                          device=dev)
+        self.ref_com = torch.tensor(cen["com"], dtype=torch.float32, device=dev) @ Rz.T
+        self.ref_com_vel = torch.tensor(cen["com_vel"], dtype=torch.float32, device=dev) @ Rz.T
+        self.ref_contact = torch.tensor(cen["contact"], dtype=torch.float32, device=dev)  # (T, 2): left, right
 
         # joints
         ids, names = self.robot.find_joints(BODY_JOINT_EXPR, preserve_order=True)
@@ -84,6 +95,9 @@ class PitchEnv(DirectRLEnv):
         self.pelvis_id = self.robot.find_bodies("pelvis")[0][0]
         self.torso_id = self.robot.find_bodies("torso")[0][0]
         self.key_ids = [self.robot.find_bodies(b)[0][0] for b in PITCH_KEY_BODIES]
+        self.foot_ids = [self.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
+        self.foot_sensor_ids = [self.feet.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
+        self.body_mass = self.robot.root_physx_view.get_masses().to(dev)  # (n, bodies)
 
         # buffers
         self.actions = torch.zeros(n, cfg.action_space, device=dev)
@@ -125,7 +139,8 @@ class PitchEnv(DirectRLEnv):
         self.zone_center = torch.tensor([cfg.zone_center_y, zc], device=dev)
         self.stats = {k: torch.zeros((), device=dev) for k in (
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
-            "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "track_reward", "key_err_m", "hold_gap_mm",
+            "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
+            "capture_out_m", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
@@ -148,6 +163,9 @@ class PitchEnv(DirectRLEnv):
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])
         self.scene.articulations["robot"] = self.robot
         self.scene.rigid_objects["ball"] = self.ball
+        self.feet = ContactSensor(ContactSensorCfg(prim_path="/World/envs/env_.*/Robot/" + self.cfg.contact_bodies,
+                                                   update_period=0.0, history_length=self.cfg.contact_history))
+        self.scene.sensors["feet"] = self.feet
         light = sim_utils.DomeLightCfg(intensity=2500.0, color=(0.9, 0.9, 0.9))
         light.func("/World/Light", light)
         if self.cfg.play_mode:
@@ -227,6 +245,20 @@ class PitchEnv(DirectRLEnv):
         r["root_pos"] = r["root_pos"] + o
         r["key_pos"] = r["key_pos"] + o.unsqueeze(1)
         return r
+
+    def _ref_centroid(self, t: torch.Tensor):
+        """Reference COM position / velocity (world) and planted feet (n, 2: left, right) at reference time t."""
+        i0, i1, a = self.ref._idx(t)
+        com = self.ref_com[i0] * (1 - a) + self.ref_com[i1] * a + self.scene.env_origins
+        vel = (self.ref_com_vel[i0] * (1 - a) + self.ref_com_vel[i1] * a) * self.speed
+        contact = torch.where(a < 0.5, self.ref_contact[i0], self.ref_contact[i1]) > 0.5
+        return com, vel, contact
+
+    def _com(self):
+        d = self.robot.data
+        w = self.body_mass.unsqueeze(-1)
+        M = self.body_mass.sum(-1, keepdim=True)
+        return (d.body_com_pos_w * w).sum(1) / M, (d.body_com_lin_vel_w * w).sum(1) / M
 
     def _head_z(self) -> torch.Tensor:
         """Height of the head centre (0.62 m up the torso link axis)."""
@@ -481,8 +513,40 @@ class PitchEnv(DirectRLEnv):
         balance = (torch.exp(-((head_z - c.post_release_head_z).clamp(max=0.0) / 0.20) ** 2)
                    * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
                    * torch.exp(-(ang_v / 8.0) ** 2))
+        # centre of mass and footing like the athlete: COM path (incl. the braking at foot strike), each foot on the
+        # ground exactly when the athlete's is, no sliding while planted, capture point over the planted feet
+        com, com_v = self._com()
+        rc, rv, rcontact = self._ref_centroid(self._ref_time())
+        com_err = (com - rc).norm(dim=-1)
+        com_rew = (torch.exp(-((com_err / c.sigma_com) ** 2))
+                   * torch.exp(-(((com_v - rv).norm(dim=-1) / c.sigma_com_vel) ** 2)))
+        # a planted foot chatters (contact on/off every few physics steps): planted = touched within the history window
+        forces = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids].norm(dim=-1).max(1).values  # (n, 2)
+        planted = forces > c.contact_force_n
+        contact_match = (planted == rcontact).float().mean(-1)
+        foot_v = d.body_link_lin_vel_w[:, self.foot_ids, :2].norm(dim=-1)
+        slip = (planted.float() * foot_v).sum(-1)
+        o = self.scene.env_origins
+        n_env = com.shape[0]
+        fwd = torch.tensor([0.04, 0.0, 0.0], device=self.device).expand(n_env, 2, 3)
+        feet_xy = d.body_link_pos_w[:, self.foot_ids, :2] + quat_apply(d.body_link_quat_w[:, self.foot_ids], fwd)[..., :2]
+        x_loc = com[:, 0] - o[:, 0]
+        g_z = torch.where(x_loc < c.mound_slope_start_x, torch.full_like(x_loc, c.mound_top_z),
+                          (c.mound_top_z - (x_loc - c.mound_slope_start_x) * c.mound_slope).clamp_min(self.field_z))
+        h = (com[:, 2] - g_z).clamp_min(0.3)
+        cp = com[:, :2] + com_v[:, :2] * torch.sqrt(h / 9.81).unsqueeze(-1)
+        d_feet = (cp.unsqueeze(1) - feet_xy).norm(dim=-1) - c.support_radius  # (n, 2)
+        ab = feet_xy[:, 1] - feet_xy[:, 0]
+        u = (((cp - feet_xy[:, 0]) * ab).sum(-1) / (ab * ab).sum(-1).clamp_min(1e-6)).clamp(0, 1)
+        d_seg = (cp - (feet_xy[:, 0] + u.unsqueeze(-1) * ab)).norm(dim=-1) - c.support_radius
+        d_sup = torch.where(planted.all(-1), d_seg, torch.where(planted[:, 0], d_feet[:, 0],
+                            torch.where(planted[:, 1], d_feet[:, 1], torch.ones_like(d_seg)))).clamp_min(0.0)
+        support_on = self._ref_time() >= c.lead_plant_t
+        support = support_on.float() * torch.exp(-((d_sup / c.sigma_support) ** 2))
+        footing = c.w_com * com_rew + c.w_contact * contact_match + c.w_support * support - c.w_slip * slip
+
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
-        rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant
+        rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing
                + c.w_balance * self.released.float() * self.post_gain * balance
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
@@ -494,6 +558,11 @@ class PitchEnv(DirectRLEnv):
         a = 0.01
         self.stats["track_reward"] = (1 - a) * self.stats["track_reward"] + a * track.mean()
         self.stats["key_err_m"] = (1 - a) * self.stats["key_err_m"] + a * key_err.sqrt().mean()
+        for k, val in (("com_err_m", com_err.mean()), ("contact_match", contact_match.mean()),
+                       ("foot_slip_mps", slip.mean())):
+            self.stats[k] = (1 - a) * self.stats[k] + a * val
+        if support_on.any():
+            self.stats["capture_out_m"] = (1 - a) * self.stats["capture_out_m"] + a * d_sup[support_on].mean()
         if plant_on.any():
             self.stats["lead_foot_err_m"] = (1 - a) * self.stats["lead_foot_err_m"] + a * lead_err[plant_on].mean()
         held = ~self.released

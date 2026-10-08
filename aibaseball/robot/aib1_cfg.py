@@ -110,7 +110,7 @@ def make_pitcher_cfg(fix_root: bool = False, effort_scale: float = 1.0, human_st
         prim_path="/World/envs/env_.*/Robot",
         spawn=sim_utils.UsdFileCfg(
             usd_path=PITCHER_USD,
-            activate_contact_sensors=False,
+            activate_contact_sensors=True,  # foot contact sensors (footing rewards)
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 disable_gravity=False, retain_accelerations=False, linear_damping=0.0, angular_damping=0.0,
                 max_linear_velocity=1000.0, max_angular_velocity=1000.0, max_depenetration_velocity=1.0,
