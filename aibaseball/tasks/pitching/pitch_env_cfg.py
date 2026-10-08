@@ -188,3 +188,15 @@ class PitchBalanceEnvCfg(PitchElasticEnvCfg):
 @configclass
 class PitchBalancePlayEnvCfg(PitchBalanceEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)
+
+
+@configclass
+class PitchHandoverEnvCfg(PitchElasticEnvCfg):
+    """Pitching skill only: the follow-through belongs to the balance skill (AIB-PitchBalance-v0), which takes
+    over at the release, so episodes end shortly after it and nothing after the release is rewarded."""
+
+    follow_through_s: float = 0.1
+    recovery_prob: float = 0.0
+    w_balance: float = 0.0
+    w_post_release_track: float = 0.0
+    w_fall_after_release: float = 0.0
