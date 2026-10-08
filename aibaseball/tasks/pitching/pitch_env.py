@@ -497,9 +497,12 @@ class PitchEnv(DirectRLEnv):
                  + c.w_root * torch.exp(-root_err / c.sigma_root ** 2 - rot_err / c.sigma_rot ** 2))
         self._key_err = key_err.sqrt()
         # lead foot planted where and when the capture puts it (the pitcher used to keep it in the air past the release)
+        # wide + narrow band: a foot 0.5 m off gets no signal from the 8 cm band alone; the wide band follows the swing
         plant_on = self._ref_time() >= c.lead_plant_t
+        path_on = self._ref_time() >= c.lead_path_t
         lead_err = (d.body_link_pos_w[:, self.key_ids[2]] - r["key_pos"][:, 2]).norm(dim=-1)
-        plant = plant_on.float() * torch.exp(-((lead_err / c.sigma_lead_plant) ** 2))
+        plant = (plant_on.float() * torch.exp(-((lead_err / c.sigma_lead_plant) ** 2))
+                 + path_on.float() * torch.exp(-((lead_err / c.sigma_lead_wide) ** 2)))
 
         gap = (self.ball.data.root_pos_w - self._grip_point()).norm(dim=-1)
         before = self._ref_time() < self.release_ref
@@ -542,7 +545,8 @@ class PitchEnv(DirectRLEnv):
         d_sup = torch.where(planted.all(-1), d_seg, torch.where(planted[:, 0], d_feet[:, 0],
                             torch.where(planted[:, 1], d_feet[:, 1], torch.ones_like(d_seg)))).clamp_min(0.0)
         support_on = self._ref_time() >= c.lead_plant_t
-        support = support_on.float() * torch.exp(-((d_sup / c.sigma_support) ** 2))
+        support = support_on.float() * 0.5 * (torch.exp(-((d_sup / c.sigma_support) ** 2))
+                                               + torch.exp(-((d_sup / c.sigma_support_wide) ** 2)))
         footing = c.w_com * com_rew + c.w_contact * contact_match + c.w_support * support - c.w_slip * slip
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)

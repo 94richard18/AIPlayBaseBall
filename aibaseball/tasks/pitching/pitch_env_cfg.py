@@ -140,6 +140,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_lead_plant: float = 0.0  # per step x exp(-(lead foot - reference)^2 / sigma^2), from lead_plant_t on
     lead_plant_t: float = 0.83  # s, capture: the lead foot lands at 0.83 s
     sigma_lead_plant: float = 0.08  # m
+    lead_path_t: float = 0.40  # s, wide-band lead-foot tracking from here on (the swing)
+    sigma_lead_wide: float = 0.30  # m
     w_release_time: float = 0.0  # at the release x exp(-((t - reference release) / sigma)^2)
     sigma_release_time: float = 0.03  # s
     # centre of mass and footing like the athlete (0 = off); reference from mocap/centroidal.py
@@ -154,6 +156,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_support: float = 0.0  # per step (from the lead-foot landing on) x capture point over the planted feet
     support_radius: float = 0.12  # m around a foot centre counts as support
     sigma_support: float = 0.15  # m
+    sigma_support_wide: float = 0.60  # m
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
