@@ -125,7 +125,7 @@ class PitchEnv(DirectRLEnv):
         self.zone_center = torch.tensor([cfg.zone_center_y, zc], device=dev)
         self.stats = {k: torch.zeros((), device=dev) for k in (
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
-            "spin_rpm", "backspin_rpm", "release_time_err", "track_reward", "key_err_m", "hold_gap_mm",
+            "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
@@ -464,6 +464,10 @@ class PitchEnv(DirectRLEnv):
                  + c.w_key * torch.exp(-key_err / c.sigma_key ** 2)
                  + c.w_root * torch.exp(-root_err / c.sigma_root ** 2 - rot_err / c.sigma_rot ** 2))
         self._key_err = key_err.sqrt()
+        # lead foot planted where and when the capture puts it (the pitcher used to keep it in the air past the release)
+        plant_on = self._ref_time() >= c.lead_plant_t
+        lead_err = (d.body_link_pos_w[:, self.key_ids[2]] - r["key_pos"][:, 2]).norm(dim=-1)
+        plant = plant_on.float() * torch.exp(-((lead_err / c.sigma_lead_plant) ** 2))
 
         gap = (self.ball.data.root_pos_w - self._grip_point()).norm(dim=-1)
         before = self._ref_time() < self.release_ref
@@ -478,7 +482,7 @@ class PitchEnv(DirectRLEnv):
                    * torch.exp(-((pelvis_z - c.post_release_pelvis_z).clamp(max=0.0) / 0.15) ** 2)
                    * torch.exp(-(ang_v / 8.0) ** 2))
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
-        rew = (c.w_track * track + c.w_hold * hold + self.release_reward
+        rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant
                + c.w_balance * self.released.float() * self.post_gain * balance
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
@@ -490,6 +494,8 @@ class PitchEnv(DirectRLEnv):
         a = 0.01
         self.stats["track_reward"] = (1 - a) * self.stats["track_reward"] + a * track.mean()
         self.stats["key_err_m"] = (1 - a) * self.stats["key_err_m"] + a * key_err.sqrt().mean()
+        if plant_on.any():
+            self.stats["lead_foot_err_m"] = (1 - a) * self.stats["lead_foot_err_m"] + a * lead_err[plant_on].mean()
         held = ~self.released
         if held.any():
             self.stats["hold_gap_mm"] = (1 - a) * self.stats["hold_gap_mm"] + a * gap[held].mean() * 1000
@@ -527,6 +533,8 @@ class PitchEnv(DirectRLEnv):
                  + c.w_zone * torch.exp(-((out["dist"] / 0.4) ** 2)) + c.w_aim * torch.exp(-((out["dist"] / 2.0) ** 2))
                  + c.w_aim_wide * torch.exp(-((out["dist"] / 8.0) ** 2))
                  + c.w_both * (fast & out["strike"]).float())
+            t_rel = self.t0[ids] + self.speed * self.release_step[ids].float() * self.step_dt
+            r = r + c.w_release_time * torch.exp(-(((t_rel - self.release_ref) / c.sigma_release_time) ** 2))
             self.release_reward[ids] = r
             w = self.rel_omega[ids]
             v = self.rel_vel[ids]
@@ -534,7 +542,6 @@ class PitchEnv(DirectRLEnv):
             back_axis = torch.cross(vh, torch.tensor([0.0, 0.0, 1.0], device=self.device).expand_as(vh), dim=-1)
             backspin = (w * back_axis).sum(-1) * 60 / (2 * math.pi)
             a = 0.05
-            t_rel = self.t0[ids] + self.speed * self.release_step[ids].float() * self.step_dt
             for k, val in (("release_kmh", out["speed"].mean() * 3.6), ("strike_rate", out["strike"].float().mean()),
                            ("zone_dist_m", out["dist"].mean()), ("success_rate", (fast & out["strike"]).float().mean()),
                            ("spin_rpm", w.norm(dim=-1).mean() * 60 / (2 * math.pi)), ("backspin_rpm", backspin.mean()),

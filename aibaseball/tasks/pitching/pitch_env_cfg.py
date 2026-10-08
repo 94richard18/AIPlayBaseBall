@@ -136,6 +136,12 @@ class PitchEnvCfg(DirectRLEnvCfg):
     recovery_min_states: int = 256
     recovery_states_file: str = ""  # load release states from a file (balance skill) instead of collecting them
     w_action_rate: float = 0.002
+    # lead foot planted at the capture's spot from its landing on, and release timing (0 = off)
+    w_lead_plant: float = 0.0  # per step x exp(-(lead foot - reference)^2 / sigma^2), from lead_plant_t on
+    lead_plant_t: float = 0.83  # s, capture: the lead foot lands at 0.83 s
+    sigma_lead_plant: float = 0.08  # m
+    w_release_time: float = 0.0  # at the release x exp(-((t - reference release) / sigma)^2)
+    sigma_release_time: float = 0.03  # s
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -201,3 +207,24 @@ class PitchHandoverEnvCfg(PitchElasticEnvCfg):
     w_balance: float = 0.0
     w_post_release_track: float = 0.0
     w_fall_after_release: float = 0.0
+
+
+@configclass
+class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
+    """Stage 1 on the mound: stand after the pitch first, speed second (the user's order).
+
+    The follow-through is rewarded whatever the release speed, a fall costs twice a good pitch, the lead foot is
+    pulled onto the capture's landing spot and the release toward the capture's timing; the speed reward saturates
+    at 100 km/h (stage 2 raises it back to 120 km/h).
+    """
+
+    target_speed: float = 100.0 * KMH
+    follow_through_s: float = 1.5
+    episode_length_s = 3.5
+    post_release_speed_pow: float = 0.0
+    w_post_release_track: float = 1.0
+    w_balance: float = 1.0
+    w_fall_after_release: float = 60.0
+    post_release_residual_gain: float = 2.0
+    w_lead_plant: float = 1.0
+    w_release_time: float = 20.0
