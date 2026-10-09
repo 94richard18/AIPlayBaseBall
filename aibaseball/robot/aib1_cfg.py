@@ -143,12 +143,15 @@ SEA_JOINT_EXPR = {"shoulder": ["r_shoulder_.*"], "elbow": ["r_elbow"], "wrist": 
 WAIST_SEA_PARAMS = {"waist_yaw": (400.0, 40.0), "waist_pitch": (600.0, 30.0)}
 
 
-def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False) -> dict:
+def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False,
+                       leg_stiffness: dict | None = None) -> dict:
     from .sea import SeriesElasticActuatorCfg
 
     acts = _actuators(1.0, HUMAN_ACTUATOR_GROUPS)
-    for group, damping in (leg_damping or {}).items():  # stiff but well-damped legs: brace without bouncing
+    for group, damping in (leg_damping or {}).items():  # well-damped legs: brace without bouncing
         acts[group] = acts[group].replace(damping=damping)
+    for group, stiffness in (leg_stiffness or {}).items():  # PD gain only; torque limits stay human-level
+        acts[group] = acts[group].replace(stiffness=stiffness)
     for group in SEA_PARAMS:  # left arm keeps the implicit human-level PD actuators
         acts[group] = acts[group].replace(joint_names_expr=[e.replace(".*_", "l_") for e in GROUP_JOINTS[group]])
     for group, (k_s, joint_vel) in SEA_PARAMS.items():
@@ -170,6 +173,7 @@ def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea
     return acts
 
 
-def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False) -> ArticulationCfg:
+def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False,
+                             leg_stiffness: dict | None = None) -> ArticulationCfg:
     """Human-strength pitcher whose throwing arm (and optionally trunk) has tendon-like series elasticity."""
-    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping, waist_sea))
+    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping, waist_sea, leg_stiffness))

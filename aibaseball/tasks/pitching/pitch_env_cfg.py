@@ -276,8 +276,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # kinetic chain (two pitching-mechanics articles): arm up at foot strike, proximal-to-distal timing, pivot-leg
     # drive, a braced lead leg (damped, not softened: the knee flipped between +-250 Nm and the foot bounced)
     # + elastic trunk (waist yaw / pitch SEAs): obs += 2 spring deflections
+    # leg PD stiffness x0.6 (what-if: half the stiffness cut the lead-foot bounce by a third; depenetration was not it)
     robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 150.0, "knee": 150.0,
-                                                                                   "ankle": 60.0}, waist_sea=True)
+                                                                                   "ankle": 60.0}, waist_sea=True,
+                                                      leg_stiffness={"hip": 1200.0, "knee": 1200.0, "ankle": 600.0})
     observation_space = 200
     w_arm_launch: float = 1.0
     w_chain: float = 1.0
