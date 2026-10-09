@@ -173,6 +173,12 @@ class PitchEnvCfg(DirectRLEnvCfg):
     sigma_drive: float = 0.35  # rad (root-sum-square over 3 joints)
     w_brace: float = 0.0  # lead-leg brace: COM not sinking faster than the athlete's from foot strike to release + 0.15 s
     w_trunk_release: float = 0.0  # trunk orientation like the athlete's around the release (no diving)
+    # soft, planted lead-foot landing (penalties, 0 = off)
+    w_soft_descent: float = 0.0  # x (downward lead-foot speed above soft_landing_speed)^2 just before touch-down
+    soft_landing_speed: float = 1.0  # m/s
+    w_lead_stay: float = 0.0  # lead foot off the ground / moving up while the athlete's lead foot is planted
+    w_impact: float = 0.0  # x (lead-foot contact force above impact_limit_bw) in body weights
+    impact_limit_bw: float = 3.0
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -278,6 +284,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_drive: float = 0.5
     w_brace: float = 0.5
     w_trunk_release: float = 0.5
+    # soft landing (the lead foot hit at -2.5 m/s / ~8 BW and bounced up +0.75 m/s; 44% stood after the release)
+    w_soft_descent: float = 0.5
+    w_lead_stay: float = 0.5
+    w_impact: float = 0.2
 
 
 @configclass
