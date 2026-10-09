@@ -630,7 +630,8 @@ class PitchEnv(DirectRLEnv):
                # a real fall within the follow-through window costs as much as a good pitch earns (the policy
                # used to dive off the mound: "lost" ended those episodes first, without any penalty)
                - c.w_fall_after_release * (self.released & self.fallen).float()
-               - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float())
+               - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
+               - c.w_lost * self._lost.float())
 
         a = 0.01
         self.stats["track_reward"] = (1 - a) * self.stats["track_reward"] + a * track.mean()
