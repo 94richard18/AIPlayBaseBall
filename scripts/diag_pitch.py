@@ -28,6 +28,7 @@ parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; 
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8")
 parser.add_argument("--zero", action="store_true", help="what-if: no policy, pure reference PD tracking")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
+parser.add_argument("--after_s", type=float, default=0.5, help="section 8: timeline length after the release")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
 parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
@@ -359,7 +360,7 @@ def main():
                 np.degrees(np.arccos(np.clip(Rt[:, 2, 2], -1, 1))),
                 PR.angular_momentum(mass, inertia, R, rec["p"][:, i], rec["v"][:, i], rec["w"][:, i]),
                 rec["jq"][:, i, jn.index("l_knee")], rec["jq"][:, i, jn.index("l_hip_pitch")])
-        offsets = np.arange(0.0, 0.501, 0.05)
+        offsets = np.arange(0.0, args.after_s + 1e-3, 0.05 if args.after_s <= 0.5 else 0.1)
         keys = list(next(iter(rob_s.values())).keys())
         for block in (keys[:8], keys[8:]):
             say("  dt(s) " + "".join(f"| {k[:26]:>26s} " for k in block))

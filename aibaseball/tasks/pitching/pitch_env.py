@@ -112,6 +112,7 @@ class PitchEnv(DirectRLEnv):
         self.drive_cols = [bn.index(j) for j in ("r_hip_pitch", "r_hip_yaw", "r_knee")]  # pivot-leg drive
         self.chain_cols = [bn.index("r_shoulder_yaw"), bn.index("r_elbow")]
         self.lead_leg_cols = [i for i, j in enumerate(bn) if j.startswith("l_") and any(k in j for k in ("hip", "knee", "ankle"))]
+        self.back_leg_cols = [i for i, j in enumerate(bn) if j.startswith("r_") and any(k in j for k in ("hip", "knee", "ankle"))]
 
         # buffers
         self.actions = torch.zeros(n, cfg.action_space, device=dev)
@@ -303,6 +304,8 @@ class PitchEnv(DirectRLEnv):
         post = torch.full((len(self.body_names),), c.post_release_residual_gain, device=self.device)
         if c.lead_leg_post_release_gain is not None:
             post[self.lead_leg_cols] = c.lead_leg_post_release_gain
+        if c.back_leg_post_release_gain is not None:
+            post[self.back_leg_cols] = c.back_leg_post_release_gain
         scale = torch.where(self.released.unsqueeze(-1), c.residual_scale * post.unsqueeze(0),
                             torch.full_like(post, c.residual_scale).unsqueeze(0))
         body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale

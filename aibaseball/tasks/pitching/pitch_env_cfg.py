@@ -135,6 +135,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     fallen_pelvis_z: float = 0.30
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
+    back_leg_post_release_gain: float | None = None  # own post-release gain for the back (pivot) leg
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3
     recovery_buffer_size: int = 4096
@@ -274,6 +275,9 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # the policy kept holding the ball (full pitches released at 1.27 s / 25 km/h even with a -100 late penalty):
     # stage 1 is about standing, so the fingers open on the athlete's schedule
     scripted_release_s: float | None = 0.0
+    # the back foot hovered 3-7 cm above the mound after the follow-through (reference joint angles alone do not reach the
+    # ground from the robot's lower, more tilted body); the robot ended on one leg and fell ~1 s after the release
+    back_leg_post_release_gain: float | None = 1.0
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0
