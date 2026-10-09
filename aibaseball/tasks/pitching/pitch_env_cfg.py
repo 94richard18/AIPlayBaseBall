@@ -141,6 +141,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     recovery_min_states: int = 256
     recovery_states_file: str = ""  # load release states from a file (balance skill) instead of collecting them
     w_action_rate: float = 0.002
+    late_release_s: float = 0.0  # > 0: no release by the reference release + this ends the episode (penalty w_late_release)
+    w_late_release: float = 30.0
     # lead foot planted at the capture's spot from its landing on, and release timing (0 = off)
     w_lead_plant: float = 0.0  # per step x exp(-(lead foot - reference)^2 / sigma^2), from lead_plant_t on
     lead_plant_t: float = 0.83  # s, capture: the lead foot lands at 0.83 s
@@ -259,7 +261,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     target_speed: float = 100.0 * KMH
     follow_through_s: float = 1.5
     episode_length_s = 3.5
-    post_release_speed_pow: float = 0.0
+    # standing after a soft lob pays less (with a reference-only follow-through the policy delayed the release to 1.28 s
+    # and lobbed at 23 km/h: holding the ball keeps control, releasing hands the body to the reference)
+    post_release_speed_pow: float = 2.0
+    late_release_s: float = 0.12
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0

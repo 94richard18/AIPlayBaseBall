@@ -629,7 +629,8 @@ class PitchEnv(DirectRLEnv):
                - c.w_fall * self.fallen.float()
                # a real fall within the follow-through window costs as much as a good pitch earns (the policy
                # used to dive off the mound: "lost" ended those episodes first, without any penalty)
-               - c.w_fall_after_release * (self.released & self.fallen).float())
+               - c.w_fall_after_release * (self.released & self.fallen).float()
+               - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float())
 
         a = 0.01
         self.stats["track_reward"] = (1 - a) * self.stats["track_reward"] + a * track.mean()
@@ -735,7 +736,9 @@ class PitchEnv(DirectRLEnv):
         done_follow = self.released & (self.episode_length_buf - self.release_step >= follow)
         # the reference holds its last (post-release) pose; keep going through the follow-through window
         ref_end = self._ref_time(1) >= self.ref.duration + c.follow_through_s
-        terminated = self.fallen | (self.released & self.dropped) | done_follow | lost
+        # late release: holding the ball past the reference release (+ late_release_s) ends the pitch
+        self._late = (~self.released) & (self._ref_time() > self.release_ref + c.late_release_s) if c.late_release_s > 0             else torch.zeros_like(self.released)
+        terminated = self.fallen | (self.released & self.dropped) | done_follow | lost | self._late
         return terminated, time_out | ref_end
 
     # ------------------------------------------------------------------ reset (reference state initialisation)
