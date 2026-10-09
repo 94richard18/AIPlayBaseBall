@@ -14,6 +14,8 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--out", type=str, default="videos/pitch_side.mp4")
 parser.add_argument("--pitches", type=int, default=3)
 parser.add_argument("--slow", type=float, default=4.0, help="slow-motion factor")
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first",
+                    help="env config the policy was trained with")
 parser.add_argument("--seconds", type=float, default=1.8, help="simulated time per pitch")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -54,7 +56,10 @@ def put(img, lines):
 
 
 def main():
-    cfg = C.PitchElasticPlayEnvCfg()
+    cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+    cfg.play_mode = True  # ball flies with PhysX + aerodynamics, zone drawn
+    cfg.rsi_prob = 0.0
+    cfg.recovery_prob = 0.0
     cfg.scene.num_envs = 1
     cfg.terminate_on_cross = False
     cfg.episode_length_s = args.seconds + 0.5

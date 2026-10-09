@@ -38,4 +38,5 @@ grep -E "pitch/(release_rate|release_kmh|post_release_fail|release_time_err|lead
     logs_pitch_stand.txt | tail -10
 $PY -u scripts/record_pitch_side.py --headless --pitches 3 --checkpoint "$NEW" --out "videos/pitch_iter_$STOP.mp4" 2>&1 \
     | grep -E "^\[side\]|Traceback"
+$PY -u scripts/diag_pitch.py --headless --checkpoint "$NEW" --sections 1,4,5,6 2>&1     | sed -n '/^== diag_pitch/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/diag_iter_$STOP.txt"
 echo "[cycle] next: $NEW"
