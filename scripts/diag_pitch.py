@@ -54,6 +54,11 @@ def say(*a):
     print(*a, flush=True)
 
 
+def ext(a, fn):
+    """min / max of a window, NaN when the window is empty (e.g. a pitch released before its foot strike)."""
+    return float(fn(a)) if a.size else float("nan")
+
+
 def med(x):
     x = [v for v in x if v is not None and np.isfinite(v)]
     return float(np.median(x)) if x else float("nan")
@@ -262,6 +267,8 @@ def main():
 
         def group_peaks(tt, E, rel, strike):
             m = (tt > strike - 0.3) & (tt <= rel + 0.02)
+            if not m.any():
+                return [(np.nan, np.nan)] * E.shape[1]
             return [(E[m, j].max() - E[0, j], tt[m][np.argmax(E[m, j])] - rel) for j in range(E.shape[1])]
 
         rg = group_peaks(ref["t"], ref["E"], ref["release"], ref["strike"])
@@ -273,18 +280,18 @@ def main():
         mr = (ref["t"] > ref["strike"] - 0.2) & (ref["t"] <= ref["release"])
         ar = ref["arm_rate"]
         say(f"  arm + ball energy rate, peak (W): athlete {ar[mr].max():.0f} at {(ref['t'][mr][np.argmax(ar[mr])] - ref['release']) * 1000:+.0f} ms"
-            f" | robot {med([rate[(t > t_strike[i] - 0.2) & (t <= t_rel[i])].max() for i, E, rate, flow, g in res]):.0f}")
+            f" | robot {med([ext(rate[(t > t_strike[i] - 0.2) & (t <= t_rel[i])], np.max) for i, E, rate, flow, g in res]):.0f}")
         say(f"  of it through the shoulder from the trunk (robot; minus elbow/wrist/finger muscle power), peak (W): "
-            f"{med([flow[(t > t_strike[i] - 0.2) & (t <= t_rel[i])].max() for i, E, rate, flow, g in res]):.0f}; energy in, stride -> release: "
+            f"{med([ext(flow[(t > t_strike[i] - 0.2) & (t <= t_rel[i])], np.max) for i, E, rate, flow, g in res]):.0f}; energy in, stride -> release: "
             f"{med([np.clip(flow[(t > t_strike[i] - 0.2) & (t <= t_rel[i])], 0, None).sum() * dt for i, E, rate, flow, g in res]):.0f} J")
         ball_ke_ref = 0.5 * PR.BALL_MASS * PR.at(ref["t"], ref["ball_speed"], ref["release"]) ** 2
         say(f"  ball kinetic energy at release: athlete {ball_ke_ref:.0f} J | robot {med([0.5 * PR.BALL_MASS * (b / 3.6) ** 2 for b in ball_kmh if b]):.0f} J")
         mm = (ref["t"] >= ref["strike"]) & (ref["t"] <= ref["release"])
         say(f"  ground reaction (whole body, from the COM; literature: lead foot alone ~0.75 BW braking at max ER):")
         say(f"    braking (toward the rubber) peak, strike -> release: athlete {-ref['grf'][mm, 0].min():.2f} BW | robot "
-            f"{med([-g[(t >= t_strike[i]) & (t <= t_rel[i]), 0].min() for i, E, rate, flow, g in res]):.2f} BW")
+            f"{med([-ext(g[(t >= t_strike[i]) & (t <= t_rel[i]), 0], np.min) for i, E, rate, flow, g in res]):.2f} BW")
         say(f"    vertical peak, strike -> release:                    athlete {ref['grf'][mm, 2].max():.2f} BW | robot "
-            f"{med([g[(t >= t_strike[i]) & (t <= t_rel[i]), 2].max() for i, E, rate, flow, g in res]):.2f} BW")
+            f"{med([ext(g[(t >= t_strike[i]) & (t <= t_rel[i]), 2], np.max) for i, E, rate, flow, g in res]):.2f} BW")
         # joint (muscle) power: who generates / absorbs energy before the release
         groups = {"pivot hip (r)": ["r_hip_pitch", "r_hip_roll", "r_hip_yaw"], "pivot knee (r)": ["r_knee"],
                   "lead hip (l)": ["l_hip_pitch", "l_hip_roll", "l_hip_yaw"], "lead knee (l)": ["l_knee"],
@@ -299,7 +306,7 @@ def main():
                 pw = (rec["tau"][m, i][:, ix] * rec["jv"][m, i][:, ix]).sum(-1)
                 pos.append(np.clip(pw, 0, None).sum() * dt)
                 neg.append(np.clip(pw, None, 0).sum() * dt)
-                pk.append(pw.max())
+                pk.append(ext(pw, np.max))
             say(f"    {label:18s} +{med(pos):6.0f} J  {med(neg):+7.0f} J  peak {med(pk):6.0f} W")
 
     # ---------------------------------------------------------------- 7 saturation
