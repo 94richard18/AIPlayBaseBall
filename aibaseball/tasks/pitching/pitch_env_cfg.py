@@ -290,7 +290,7 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # soft landing (the lead foot hit at -2.5 m/s / ~8 BW and bounced up +0.75 m/s; 44% stood after the release)
     w_soft_descent: float = 0.5
     w_lead_stay: float = 2.0  # 0.5 did not stop the learned lead-foot lift after the release
-    lead_leg_post_release_gain: float = 1.0
+    lead_leg_post_release_gain: float = 0.0  # the lead leg only tracks the reference after the release: with any residual the policy lifted the planted foot (COM then ran past it); reference-only kept it planted and delayed falls from +0.38 to +0.88 s
     w_impact: float = 0.2
 
 
