@@ -190,6 +190,24 @@ def main():
                 slip.append((fv * feet_on[m, i]).sum(-1).mean())
             say(f"  {label:36s} contact match {med(match) * 100:5.1f}% | COM error {med(cerr):.2f} m | planted-foot slip {med(slip):.2f} m/s")
         say(f"  lead-foot strike: athlete {ref['strike']:.3f} s | robot median {med(t_strike):.3f} s")
+        # after the release, foot by foot: is the lead foot still planted, when does the back foot come down?
+        lead_held, back_land, back_land_ref = [], [], []
+        rc = rec["ref_contact"]
+        for i in range(n):
+            if not np.isfinite(t_rel[i]):
+                continue
+            m = (t >= t_rel[i]) & (t < t_rel[i] + 0.5)
+            ref_lead = m & rc[:, i, 0]
+            if ref_lead.any():
+                lead_held.append(feet_on[ref_lead, i, 0].mean())
+            later = t > t_rel[i] + 0.05
+            on = later & feet_on[:, i, 1]
+            back_land.append(t[np.argmax(on)] - t_rel[i] if on.any() else np.nan)
+            on_ref = later & rc[:, i, 1]
+            back_land_ref.append(t[np.argmax(on_ref)] - t_rel[i] if on_ref.any() else np.nan)
+        say(f"  after the release: lead foot planted while the athlete's is {med(lead_held) * 100:.0f}% of the time; "
+            f"back foot lands {med(back_land):+.2f} s after the release (reference {med(back_land_ref):+.2f} s, "
+            f"{int(np.isfinite(back_land).sum())}/{len(back_land)} land before the episode ends)")
 
     # ---------------------------------------------------------------- 3 foot strike
     if 3 in SECTIONS:
