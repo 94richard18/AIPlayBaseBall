@@ -60,6 +60,12 @@ class PitchEnv(DirectRLEnv):
         self.ref_com_vel = torch.tensor(cen["com_vel"], dtype=torch.float32, device=dev) @ Rz.T
         self.ref_contact = torch.tensor(cen["contact"], dtype=torch.float32, device=dev)  # (T, 2): left, right on the ground
         self.ref_still = torch.tensor(cen["still"], dtype=torch.float32, device=dev)  # planted and not sliding
+        f32 = lambda a: torch.tensor(a, dtype=torch.float32, device=dev)  # noqa: E731
+        self.ref_hand_rel = f32(cen["hand_rel"]) @ Rz.T  # throwing hand - throwing shoulder
+        self.ref_torso_up = f32(cen["torso_up"]) @ Rz.T
+        self.ref_seg_w = torch.stack([f32(cen["pelvis_wz"]), f32(cen["torso_wz"])], -1)  # rad/s about the vertical
+        lead_on = cen["contact"][:, 0] & (cen["time"] > 0.3)
+        self.ref_lead_strike = float(cen["time"][lead_on.argmax()])
 
         # joints
         ids, names = self.robot.find_joints(BODY_JOINT_EXPR, preserve_order=True)
@@ -99,6 +105,12 @@ class PitchEnv(DirectRLEnv):
         self.foot_ids = [self.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
         self.foot_sensor_ids = [self.feet.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
         self.body_mass = self.robot.root_physx_view.get_masses().to(dev)  # (n, bodies)
+        self.sh_id = self.robot.find_bodies("r_shoulder_pitch_link")[0][0]
+        jn = self.robot.joint_names
+        self.chain_joints = [jn.index("r_shoulder_yaw"), jn.index("r_elbow")]  # internal rotation, elbow extension
+        bn = list(self.body_names)
+        self.drive_cols = [bn.index(j) for j in ("r_hip_pitch", "r_hip_yaw", "r_knee")]  # pivot-leg drive
+        self.chain_cols = [bn.index("r_shoulder_yaw"), bn.index("r_elbow")]
 
         # buffers
         self.actions = torch.zeros(n, cfg.action_space, device=dev)
@@ -141,7 +153,7 @@ class PitchEnv(DirectRLEnv):
         self.stats = {k: torch.zeros((), device=dev) for k in (
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
-            "capture_out_m", "track_reward", "key_err_m", "hold_gap_mm",
+            "capture_out_m", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
@@ -554,8 +566,39 @@ class PitchEnv(DirectRLEnv):
                                                + torch.exp(-((d_sup / c.sigma_support_wide) ** 2)))
         footing = c.w_com * com_rew + c.w_contact * contact_match + c.w_support * support - c.w_slip * slip
 
+        # pitching mechanics (kinetic chain): arm in the launch position at foot strike, pelvis / trunk / arm speeds on
+        # the athlete's timeline, pivot-leg drive, lead-leg brace (COM not dropping), trunk not diving at the release
+        tr = self._ref_time()
+        i0, i1, a_ = self.ref._idx(tr)
+        lerp = lambda x: x[i0] * (1 - a_) + x[i1] * a_ if x.dim() > 1 else x[i0] * (1 - a_.squeeze(-1)) + x[i1] * a_.squeeze(-1)  # noqa: E731
+        hand_rel = d.body_link_pos_w[:, self.hand_id] - d.body_link_pos_w[:, self.sh_id]
+        arm_err = (hand_rel - lerp(self.ref_hand_rel)).norm(dim=-1)
+        arm_on = ((tr >= c.arm_window[0]) & (tr <= c.arm_window[1])).float()
+        arm = arm_on * 0.5 * (torch.exp(-(arm_err / 0.10) ** 2) + torch.exp(-(arm_err / 0.30) ** 2))
+        seg_ref = lerp(self.ref_seg_w)
+        seg = torch.stack([d.root_ang_vel_w[:, 2], d.body_ang_vel_w[:, self.torso_id, 2]], -1)
+        jv_ref = r["joint_vel"][:, self.chain_cols]
+        jv = d.joint_vel[:, self.chain_joints]
+        chain_on = ((tr >= c.chain_window[0]) & (tr <= c.chain_window[1])).float()
+        chain = chain_on * 0.25 * (torch.exp(-((seg - seg_ref) / c.sigma_seg_w) ** 2).sum(-1)
+                                   + torch.exp(-((jv - jv_ref) / c.sigma_arm_w) ** 2).sum(-1))
+        q_drive = d.joint_pos[:, self.body_ids[self.drive_cols]]
+        drive_err = ((q_drive - r["joint_pos"][:, self.drive_cols]) ** 2).sum(-1)
+        drive_on = ((tr >= c.drive_window[0]) & (tr <= self.release_ref)).float()
+        drive = drive_on * torch.exp(-drive_err / c.sigma_drive ** 2)
+        brace_on = ((tr >= self.ref_lead_strike) & (tr <= self.release_ref + 0.15)).float()
+        drop = (rv[:, 2] - com_v[:, 2]).clamp_min(0.0)  # COM sinking faster than the athlete's
+        brace = brace_on * torch.exp(-(drop / 0.4) ** 2)
+        up = quat_apply(d.body_link_quat_w[:, self.torso_id], torch.tensor([0.0, 0.0, 1.0], device=self.device).expand(
+            n_env, 3))
+        trunk_err = torch.acos((up * lerp(self.ref_torso_up)).sum(-1).clamp(-1, 1))
+        trunk_on = ((tr >= self.release_ref - 0.1) & (tr <= self.release_ref + 0.15)).float()
+        trunk = trunk_on * torch.exp(-(trunk_err / 0.3) ** 2)
+        mech = (c.w_arm_launch * arm + c.w_chain * chain + c.w_drive * drive + c.w_brace * brace
+                + c.w_trunk_release * trunk)
+
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
-        rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing
+        rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
                + c.w_balance * self.released.float() * self.post_gain * balance
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
@@ -569,6 +612,13 @@ class PitchEnv(DirectRLEnv):
         self.stats["key_err_m"] = (1 - a) * self.stats["key_err_m"] + a * key_err.sqrt().mean()
         for k, val in (("com_err_m", com_err.mean()), ("contact_match", contact_match.mean()),
                        ("foot_slip_mps", slip.mean())):
+            self.stats[k] = (1 - a) * self.stats[k] + a * val
+        for k, val, on in (("arm_launch_err_m", arm_err, arm_on), ("trunk_err_deg", trunk_err * 57.3, trunk_on),
+                           ("com_drop_mps", drop, brace_on), ("drive_err_rad", drive_err.sqrt(), drive_on)):
+            if on.any():
+                self.stats[k] = (1 - a) * self.stats[k] + a * val[on > 0].mean()
+        for k, val in (("chain_score", (chain / chain_on.clamp_min(1e-6))[chain_on > 0].mean() if chain_on.any()
+                        else self.stats["chain_score"]),):
             self.stats[k] = (1 - a) * self.stats[k] + a * val
         if support_on.any():
             self.stats["capture_out_m"] = (1 - a) * self.stats["capture_out_m"] + a * d_sup[support_on].mean()

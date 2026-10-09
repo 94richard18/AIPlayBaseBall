@@ -161,6 +161,18 @@ class PitchEnvCfg(DirectRLEnvCfg):
     support_radius: float = 0.12  # m around a foot centre counts as support
     sigma_support: float = 0.15  # m
     sigma_support_wide: float = 0.60  # m
+    # pitching mechanics (kinetic chain) rewards, 0 = off; see scripts/diag_mechanics.py / diag_kinetic_chain.py
+    w_arm_launch: float = 0.0  # throwing hand relative to the shoulder like the athlete's (launch position at foot strike)
+    arm_window: tuple = (0.75, 0.98)  # s, reference time
+    w_chain: float = 0.0  # pelvis / trunk rotation speeds, shoulder internal rotation and elbow extension speeds
+    chain_window: tuple = (0.70, 1.05)
+    sigma_seg_w: float = 4.0  # rad/s (pelvis, trunk about the vertical)
+    sigma_arm_w: float = 15.0  # rad/s (shoulder internal rotation, elbow)
+    w_drive: float = 0.0  # pivot-leg hip / knee angles like the athlete's from drive_window[0] to the release
+    drive_window: tuple = (0.45, 0.98)
+    sigma_drive: float = 0.35  # rad (root-sum-square over 3 joints)
+    w_brace: float = 0.0  # lead-leg brace: COM not sinking faster than the athlete's from foot strike to release + 0.15 s
+    w_trunk_release: float = 0.0  # trunk orientation like the athlete's around the release (no diving)
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -255,6 +267,15 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # before the release, so landing, release and follow-through were never experienced
     max_key_err: float = 0.8
     rsi_prob: float = 0.4
+    # kinetic chain (two pitching-mechanics articles): arm up at foot strike, proximal-to-distal timing, pivot-leg
+    # drive, a braced lead leg (damped, not softened: the knee flipped between +-250 Nm and the foot bounced)
+    robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 150.0, "knee": 150.0,
+                                                                                   "ankle": 60.0})
+    w_arm_launch: float = 1.0
+    w_chain: float = 1.0
+    w_drive: float = 0.5
+    w_brace: float = 0.5
+    w_trunk_release: float = 0.5
 
 
 @configclass

@@ -44,12 +44,16 @@ def reference_centroidal(motion_file: str, ground=lambda x: np.zeros_like(x), co
     T = len(t)
     com = np.zeros((T, 3))
     sole = np.zeros((T, 2, 4, 3))
+    hand_rel = np.zeros((T, 3))  # throwing hand relative to the throwing shoulder
+    torso_R = np.zeros((T, 3, 3))
     for f in range(T):
         P = robot.fk(dict(zip(names, d["joint_pos"][f])) | fingers, root_pos=d["root_pos"][f], root_rot=R[f])
         com[f] = sum(mi * (P[lk.name][1] + P[lk.name][0] @ lk.com) for mi, lk in zip(m, links)) / m.sum()
         for i, s in enumerate("lr"):
             Rf, pf = P[f"{s}_foot"]
             sole[f, i] = [pf + Rf @ c for c in SOLE]
+        hand_rel[f] = P["r_hand"][1] - P["r_shoulder_pitch_link"][1]
+        torso_R[f] = P["torso"][0]
     win = 9 if T > 20 else 5
     com_vel = savgol_filter(com, win, 3, deriv=1, delta=dt, axis=0)
     sole_vel = np.gradient(sole, dt, axis=0)
@@ -65,4 +69,10 @@ def reference_centroidal(motion_file: str, ground=lambda x: np.zeros_like(x), co
             for a, b in zip(on[:-1], on[1:]):
                 if 1 < b - a <= k:
                     c[a:b] = True
-    return dict(time=t, com=com, com_vel=com_vel, contact=contact, still=still)
+    rt = Rotation.from_matrix(torso_R)
+    torso_w = np.zeros((T, 3))
+    torso_w[1:-1] = (rt[2:] * rt[:-2].inv()).as_rotvec() / (2 * dt)
+    torso_w[0], torso_w[-1] = torso_w[1], torso_w[-2]
+    return dict(time=t, com=com, com_vel=com_vel, contact=contact, still=still, hand_rel=hand_rel,
+                torso_up=torso_R[:, :, 2], torso_wz=savgol_filter(torso_w[:, 2], win, 3),
+                pelvis_wz=savgol_filter(d["root_ang_vel"][:, 2], win, 3))

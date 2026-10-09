@@ -139,10 +139,12 @@ SEA_PARAMS = {  # group: (spring Nm/rad, joint speed limit rad/s)
 SEA_JOINT_EXPR = {"shoulder": ["r_shoulder_.*"], "elbow": ["r_elbow"], "wrist": ["r_wrist_.*"]}
 
 
-def _pitcher_actuators(sea_dt: float) -> dict:
+def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None) -> dict:
     from .sea import SeriesElasticActuatorCfg
 
     acts = _actuators(1.0, HUMAN_ACTUATOR_GROUPS)
+    for group, damping in (leg_damping or {}).items():  # stiff but well-damped legs: brace without bouncing
+        acts[group] = acts[group].replace(damping=damping)
     for group in SEA_PARAMS:  # left arm keeps the implicit human-level PD actuators
         acts[group] = acts[group].replace(joint_names_expr=[e.replace(".*_", "l_") for e in GROUP_JOINTS[group]])
     for group, (k_s, joint_vel) in SEA_PARAMS.items():
@@ -155,6 +157,6 @@ def _pitcher_actuators(sea_dt: float) -> dict:
     return acts
 
 
-def make_elastic_pitcher_cfg(sea_dt: float) -> ArticulationCfg:
+def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None) -> ArticulationCfg:
     """Human-strength pitcher whose throwing arm has tendon-like series elasticity."""
-    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt))
+    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping))
