@@ -112,6 +112,34 @@ def energy_flow(t, names, E_kin, E_pot, ball_e, released, dt, internal_power=Non
     return E, rate, flow
 
 
+def angular_momentum(m, I_body, R_body, p_com, v_com, w_world):
+    """Whole-body angular momentum about the COM (T,3)."""
+    M = m.sum()
+    C = (p_com * m[None, :, None]).sum(1) / M
+    Cv = (v_com * m[None, :, None]).sum(1) / M
+    lin = np.cross(p_com - C[:, None], v_com - Cv[:, None]) * m[None, :, None]
+    Iw = np.einsum("tbij,bjk,tblk,tbl->tbi", R_body, I_body, R_body, w_world)
+    return (lin + Iw).sum(1)
+
+
+def after_release_series(t, com, com_v, feet_link, feet_on, ground_fn, pelvis_z, head_z, trunk_tilt, L, lead_knee,
+                         lead_hip):
+    """Per-frame quantities for the after-release timeline (feet: 0 = lead / left, 1 = back / right)."""
+    sole = feet_link[..., 2] - 0.08 - ground_fn(feet_link[..., 0])
+    toe_x = feet_link[:, 0, 0] + 0.13
+    h = np.clip(com[:, 2] - ground_fn(com[:, 0]), 0.3, None)
+    cp_x = com[:, 0] + com_v[:, 0] * np.sqrt(h / G)
+    return {
+        "lead planted": feet_on[:, 0].astype(float), "lead sole (cm)": sole[:, 0] * 100,
+        "back planted": feet_on[:, 1].astype(float), "back sole (cm)": sole[:, 1] * 100,
+        "COM ahead of lead foot (m)": com[:, 0] - feet_link[:, 0, 0], "COM vx (m/s)": com_v[:, 0],
+        "COM vz (m/s)": com_v[:, 2], "capture pt past lead toe (m)": cp_x - toe_x,
+        "pelvis z (m)": pelvis_z, "head z (m)": head_z, "trunk tilt (deg)": trunk_tilt,
+        "fwd ang. momentum (kg m2/s)": L[:, 1], "lead knee (deg)": np.degrees(lead_knee),
+        "lead hip pitch (deg)": np.degrees(lead_hip),
+    }
+
+
 def grf_from_com(com_acc, mass):
     """Total ground reaction force (T,3) in body weights from the COM acceleration."""
     return (com_acc + np.array([0.0, 0.0, G])) / G
@@ -174,6 +202,14 @@ def reference_profile(cfg) -> dict:
         chain=chain_series(Rb[:, i_pel], Rb[:, i_tor], qd[:, names.index("r_shoulder_yaw")], qd[:, names.index("r_elbow")],
                            hand_v, dt),
         E=E, arm_rate=rate, arm_flow=flow, grf=grf_from_com(com_acc, m.sum()), ball_speed=np.linalg.norm(ball_v, axis=-1),
+        after=after_release_series(
+            t, com, smooth(com, dt, 0.04, deriv=1),
+            np.stack([Rz.apply(d["key_pos"][:, 2]), Rz.apply(d["key_pos"][:, 3])], 1), cen["contact"],
+            lambda x: mound_z(x, cfg.mound_top_z, cfg.mound_height, cfg.mound_slope, cfg.mound_slope_start_x),
+            pl["pelvis"][:, 2], pl["torso"][:, 2] + Rb[:, i_tor, 2, 2] * 0.62,
+            np.degrees(np.arccos(np.clip(Rb[:, i_tor, 2, 2], -1, 1))),
+            angular_momentum(m, I, Rb, pc, v, w), d["joint_pos"][:, names.index("l_knee")],
+            d["joint_pos"][:, names.index("l_hip_pitch")]),
     )
 
 

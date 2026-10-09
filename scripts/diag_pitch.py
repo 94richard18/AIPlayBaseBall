@@ -25,7 +25,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=2.7, help="simulated time; must cover release + 1.5 s")
-parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7")
+parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8")
 parser.add_argument("--zero", action="store_true", help="what-if: no policy, pure reference PD tracking")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
@@ -340,6 +340,39 @@ def main():
             say(f"    {label:18s} +{med(pos):6.0f} J  {med(neg):+7.0f} J  peak {med(pk):6.0f} W")
 
     # ---------------------------------------------------------------- 7 saturation
+    if 8 in SECTIONS and series:
+        say("\n[8] AFTER THE RELEASE (median over envs; robot | athlete), time from each one's release")
+        from aibaseball.mocap.centroidal import mound_z
+
+        gfn = lambda x: mound_z(x, cfg.mound_top_z, cfg.mound_height, cfg.mound_slope, cfg.mound_slope_start_x)  # noqa: E731
+        feet_on = rec["feet_f"] > cfg.contact_force_n
+        rob_s = {}
+        for i in series:
+            q = rec["q"][:, i]
+            R = Rotation.from_quat(np.concatenate([q[..., 1:], q[..., :1]], -1).reshape(-1, 4)).as_matrix().reshape(T, B, 3, 3)
+            com = (rec["p"][:, i] * mass[None, :, None]).sum(1) / mass.sum()
+            com_v = (rec["v"][:, i] * mass[None, :, None]).sum(1) / mass.sum()
+            Rt = body_rot("torso", i)
+            rob_s[i] = PR.after_release_series(
+                t, com, com_v, rec["lp"][:, i][:, [bid["l_foot"], bid["r_foot"]]], feet_on[:, i], gfn,
+                rec["lp"][:, i, bid["pelvis"], 2], rec["lp"][:, i, bid["torso"], 2] + Rt[:, 2, 2] * 0.62,
+                np.degrees(np.arccos(np.clip(Rt[:, 2, 2], -1, 1))),
+                PR.angular_momentum(mass, inertia, R, rec["p"][:, i], rec["v"][:, i], rec["w"][:, i]),
+                rec["jq"][:, i, jn.index("l_knee")], rec["jq"][:, i, jn.index("l_hip_pitch")])
+        offsets = np.arange(0.0, 0.501, 0.05)
+        keys = list(next(iter(rob_s.values())).keys())
+        for block in (keys[:8], keys[8:]):
+            say("  dt(s) " + "".join(f"| {k[:26]:>26s} " for k in block))
+            for dto in offsets:
+                cells = []
+                for k in block:
+                    rv = med([PR.at(t, s[k], t_rel[i] + dto) for i, s in rob_s.items()])
+                    av = PR.at(ref["t"], ref["after"][k], ref["release"] + dto)
+                    cells.append(f"| {rv:+8.2f} | {av:+8.2f}   ")
+                say(f"  {dto:+.2f} " + "".join(f"{c:>29s}" for c in cells))
+        fall = [t_fall[i] - t_rel[i] for i in series if np.isfinite(t_fall[i])]
+        say(f"  falls (pelvis < {cfg.fallen_pelvis_z} m or head < {cfg.fallen_head_z} m): median {med(fall):+.2f} s after the release")
+
     if 7 in SECTIONS and series:
         say("\n[7] TORQUE AT LIMIT (share of steps, median over envs)")
         groups = {"pivot leg": "r_(hip|knee|ankle)", "lead leg": "l_(hip|knee|ankle)", "waist": "waist_",
