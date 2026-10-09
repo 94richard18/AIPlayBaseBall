@@ -624,7 +624,15 @@ class PitchEnv(DirectRLEnv):
         bw = self.body_mass.sum(-1) * 9.81
         lead_force = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids[0]].norm(dim=-1).max(1).values
         impact = (lead_force / bw - c.impact_limit_bw).clamp_min(0.0)
-        landing = c.w_soft_descent * descent + c.w_lead_stay * lift + c.w_impact * impact
+        # back foot down once the athlete's is (end of the follow-through): it hovered 7-11 cm above the mound
+        back_due = self.released & rcontact[:, 1] & (tr > self.release_ref + 0.2)
+        rf = self.foot_ids[1]
+        rf_x = d.body_link_pos_w[:, rf, 0] - o[:, 0]
+        ground_rf = torch.where(rf_x < c.mound_slope_start_x, torch.full_like(rf_x, c.mound_top_z),
+                                (c.mound_top_z - (rf_x - c.mound_slope_start_x) * c.mound_slope).clamp_min(self.field_z))
+        rf_gap = (d.body_link_pos_w[:, rf, 2] - 0.08 - ground_rf).clamp_min(0.0)
+        back_up = back_due.float() * ((~planted[:, 1]).float() + (rf_gap / 0.05).clamp(max=3.0))
+        landing = c.w_soft_descent * descent + c.w_lead_stay * lift + c.w_impact * impact + c.w_back_down * back_up
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
