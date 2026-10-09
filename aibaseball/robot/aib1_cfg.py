@@ -137,9 +137,13 @@ SEA_PARAMS = {  # group: (spring Nm/rad, joint speed limit rad/s)
     "wrist": (40.0, 80.0),
 }
 SEA_JOINT_EXPR = {"shoulder": ["r_shoulder_.*"], "elbow": ["r_elbow"], "wrist": ["r_wrist_.*"]}
+# trunk rotation / flexion as series elastic actuators: the obliques and fascia are stretched by the hip-shoulder
+# separation and recoil (stretch-shortening cycle). As a plain 200 Nm PD the waist sat at its torque limit 99% of the
+# stride and the trunk carried half the athlete's energy. joint: (spring Nm/rad, joint speed limit rad/s)
+WAIST_SEA_PARAMS = {"waist_yaw": (400.0, 40.0), "waist_pitch": (600.0, 30.0)}
 
 
-def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None) -> dict:
+def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False) -> dict:
     from .sea import SeriesElasticActuatorCfg
 
     acts = _actuators(1.0, HUMAN_ACTUATOR_GROUPS)
@@ -154,9 +158,18 @@ def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None) -> dict:
             spring_stiffness=k_s, stiffness=0.0, damping=0.0, armature=g.armature, friction=0.0,
             effort_limit_sim=1000.0, velocity_limit_sim=joint_vel,
         )
+    if waist_sea:  # appended after the arm: their spring deflections extend the observation at its end
+        g = HUMAN_ACTUATOR_GROUPS["waist"]
+        acts["waist"] = acts["waist"].replace(joint_names_expr=[n for n in ("waist_roll",)])
+        for joint, (k_s, joint_vel) in WAIST_SEA_PARAMS.items():
+            acts[f"{joint}_sea"] = SeriesElasticActuatorCfg(
+                joint_names_expr=[joint], dt=sea_dt, motor_effort=g.effort, motor_velocity=g.velocity,
+                spring_stiffness=k_s, motor_kp=1500.0, motor_kd=40.0, motor_inertia=0.05, stiffness=0.0, damping=0.0,
+                armature=g.armature, friction=0.0, effort_limit_sim=1000.0, velocity_limit_sim=joint_vel,
+            )
     return acts
 
 
-def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None) -> ArticulationCfg:
-    """Human-strength pitcher whose throwing arm has tendon-like series elasticity."""
-    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping))
+def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False) -> ArticulationCfg:
+    """Human-strength pitcher whose throwing arm (and optionally trunk) has tendon-like series elasticity."""
+    return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping, waist_sea))
