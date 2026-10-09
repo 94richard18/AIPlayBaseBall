@@ -263,7 +263,11 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0
-    post_release_residual_gain: float = 2.0
+    # no residual after the release: the follow-through is the reference alone. Any post-release residual drove the
+    # trunk / back leg into a forward pitch that lifted the planted lead foot (falls +0.36 s after the release);
+    # reference-only kept the lead foot planted 82% of the time and delayed falls to +0.89 s. The policy has to arrive
+    # at the release in a state the reference follow-through can stand on.
+    post_release_residual_gain: float = 0.0
     w_lead_plant: float = 1.0
     w_release_time: float = 20.0
     w_com: float = 0.5
