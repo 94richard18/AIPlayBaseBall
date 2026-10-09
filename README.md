@@ -88,7 +88,14 @@ Evaluation and videos:
 & $PY scripts/pitch_showcase.py --headless --elastic --pitches 4            # pitching video
 ```
 
-Diagnostics used during development: `diag_policy.py`, `diag_release.py`, `diag_pitch_sat.py`,
-`diag_batter_balance.py`, `diag_pitcher_balance.py`.
+Pitching diagnostics, all in one simulator run (robot vs the athlete reference):
+
+```powershell
+& $PY scripts/diag_pitch.py --headless --checkpoint <model.pt>   # outcome, footing, foot strike, mechanics,
+                                                                 # kinetic chain, energy flow / joint power, torque limits
+& $PY scripts/analyze_ref_dynamics.py                            # is the reference itself dynamically possible?
+```
+
+Other diagnostics: `diag_policy.py`, `diag_batter_balance.py` (batter), `diag_release.py`, `diag_recovery.py` (pitcher).
 
 `scripts/train.py`, `scripts/play.py` and `scripts/cli_args.py` are adapted from Isaac Lab (BSD-3-Clause).

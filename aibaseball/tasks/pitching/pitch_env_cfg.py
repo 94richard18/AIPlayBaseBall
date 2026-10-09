@@ -161,7 +161,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     support_radius: float = 0.12  # m around a foot centre counts as support
     sigma_support: float = 0.15  # m
     sigma_support_wide: float = 0.60  # m
-    # pitching mechanics (kinetic chain) rewards, 0 = off; see scripts/diag_mechanics.py / diag_kinetic_chain.py
+    # pitching mechanics (kinetic chain) rewards, 0 = off; see scripts/diag_pitch.py (sections 4, 5)
     w_arm_launch: float = 0.0  # throwing hand relative to the shoulder like the athlete's (launch position at foot strike)
     arm_window: tuple = (0.75, 0.98)  # s, reference time
     w_chain: float = 0.0  # pelvis / trunk rotation speeds, shoulder internal rotation and elbow extension speeds
