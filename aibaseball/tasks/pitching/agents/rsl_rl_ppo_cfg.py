@@ -6,7 +6,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 class PitchPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 64  # 0.16 s at 400 Hz
     max_iterations = 3000
-    save_interval = 100
+    save_interval = 50  # a checkpoint every 50 iterations (videos every 150)
     experiment_name = "aib1_pitch"
     empirical_normalization = True
     policy = RslRlPpoActorCriticCfg(
