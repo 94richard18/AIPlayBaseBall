@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
-parser.add_argument("--seconds", type=float, default=1.6)
+parser.add_argument("--seconds", type=float, default=2.7, help="simulated time; must cover release + 1.5 s")
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7")
 parser.add_argument("--zero", action="store_true", help="what-if: no policy, pure reference PD tracking")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
@@ -162,9 +162,14 @@ def main():
         say(f"  release: athlete {ref['release']:.3f} s | robot median {med(t_rel):.3f} s ({int(np.isfinite(t_rel).sum())}/{n} released), "
             f"{med(ball_kmh):.1f} km/h (min {min([b for b in ball_kmh if b] or [0]):.0f}, max {max([b for b in ball_kmh if b] or [0]):.0f}), "
             f"strikes {sum(out_strike)}/{n}")
-        up = [np.isnan(t_fall[i]) or t_fall[i] - t_rel[i] >= 1.5 for i in range(n) if np.isfinite(t_rel[i])]
+        # "up 1.5 s after the release" only counts pitches observed that long (the first version simulated 1.6 s and
+        # counted pitches that had not fallen ~0.5 s after the release as standing)
+        seen = [i for i in range(n) if np.isfinite(t_rel[i]) and t_rel[i] + 1.5 <= t[-1]]
+        up = [np.isnan(t_fall[i]) or t_fall[i] - t_rel[i] >= 1.5 for i in seen]
         after = [t_fall[i] - t_rel[i] for i in range(n) if np.isfinite(t_rel[i]) and np.isfinite(t_fall[i])]
+        short = int(np.isfinite(t_rel).sum()) - len(seen)
         say(f"  falls: {int(np.isfinite(t_fall).sum())}/{n}; still up 1.5 s after the release: {sum(up)}/{len(up)}"
+            + (f" ({short} released too late to be observed 1.5 s - use a longer --seconds)" if short else "")
             + (f"; fall median {med(after):+.2f} s after the release" if after else ""))
         say(f"  tracking lost before the release (training would end the episode): {int(np.isfinite(t_lost).sum())}/{n}"
             + (f", median at {med(t_lost):.2f} s" if np.isfinite(t_lost).any() else ""))
