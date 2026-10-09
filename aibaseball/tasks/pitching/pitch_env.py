@@ -309,6 +309,9 @@ class PitchEnv(DirectRLEnv):
         self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
         self.qd_target[:, self.body_ids] = nxt["joint_vel"] * c.vel_feedforward
         fing = self.hold_q + self.actions[:, 29:] * c.finger_action_scale
+        if c.scripted_release_s is not None:  # fingers open on the reference's schedule (no holding on to the ball)
+            opening = (self._ref_time() >= self.release_ref + c.scripted_release_s).unsqueeze(-1)
+            fing = torch.where(opening, (self.hold_q - c.finger_action_scale).expand_as(fing), fing)
         self.finger_prev = self.q_target[:, self.finger_ids].clone()
         self.finger_next = torch.clamp(fing, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids])
         self.substep = 0

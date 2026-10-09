@@ -144,6 +144,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     late_release_s: float = 0.0  # > 0: no release by the reference release + this ends the episode (penalty w_late_release)
     w_late_release: float = 30.0
     w_lost: float = 0.0  # losing the reference before the release (ends the episode) - else it is a free escape
+    scripted_release_s: float | None = None  # fingers forced open at the reference release + this (None = policy)
     # lead foot planted at the capture's spot from its landing on, and release timing (0 = off)
     w_lead_plant: float = 0.0  # per step x exp(-(lead foot - reference)^2 / sigma^2), from lead_plant_t on
     lead_plant_t: float = 0.83  # s, capture: the lead foot lands at 0.83 s
@@ -270,6 +271,9 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # preferred, release fell to 32% and 11/32 pitches lost tracking before the release
     w_late_release: float = 100.0
     w_lost: float = 100.0
+    # the policy kept holding the ball (full pitches released at 1.27 s / 25 km/h even with a -100 late penalty):
+    # stage 1 is about standing, so the fingers open on the athlete's schedule
+    scripted_release_s: float | None = 0.0
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0
