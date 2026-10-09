@@ -29,6 +29,8 @@ parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7")
 parser.add_argument("--zero", action="store_true", help="what-if: no policy, pure reference PD tracking")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
+parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
+parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -72,6 +74,11 @@ def main():
     if args.leg_scale != 1.0:
         for g in ("hip", "knee", "ankle"):
             cfg.robot.actuators[g].effort_limit_sim *= args.leg_scale
+    if args.leg_stiffness != 1.0:
+        for g in ("hip", "knee", "ankle"):
+            cfg.robot.actuators[g].stiffness *= args.leg_stiffness
+    if args.depen is not None:
+        cfg.robot.spawn.rigid_props.max_depenetration_velocity = args.depen
     env = gym.make("AIB-PitchElastic-v0", cfg=cfg)
     base = env.unwrapped
     orig = base._get_dones
@@ -145,8 +152,8 @@ def main():
     out_strike = [bool(base._release_outcome(torch.tensor([i], device=base.device))["strike"][0]) if i_rel[i] is not None
                   else False for i in range(n)]
     tag = " [what-if: " + ", ".join(k for k in ("zero", "ref_after_release") if getattr(args, k)) + \
-          (f" leg torque x{args.leg_scale}" if args.leg_scale != 1.0 else "") + "]" if (args.zero or args.ref_after_release
-                                                                                       or args.leg_scale != 1.0) else ""
+          (f" leg torque x{args.leg_scale}" if args.leg_scale != 1.0 else "") +           (f" leg stiffness x{args.leg_stiffness}" if args.leg_stiffness != 1.0 else "") +           (f" depenetration {args.depen} m/s" if args.depen is not None else "") + "]"         if (args.zero or args.ref_after_release or args.leg_scale != 1.0 or args.leg_stiffness != 1.0
+            or args.depen is not None) else ""
     say(f"== diag_pitch: {args.checkpoint}{tag} | {n} full pitches, cfg {args.cfg}")
 
     # ---------------------------------------------------------------- 1 outcome
