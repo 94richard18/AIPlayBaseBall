@@ -134,6 +134,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     fallen_head_z: float = 0.45
     fallen_pelvis_z: float = 0.30
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
+    lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3
     recovery_buffer_size: int = 4096
@@ -288,7 +289,8 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_trunk_release: float = 0.5
     # soft landing (the lead foot hit at -2.5 m/s / ~8 BW and bounced up +0.75 m/s; 44% stood after the release)
     w_soft_descent: float = 0.5
-    w_lead_stay: float = 0.5
+    w_lead_stay: float = 2.0  # 0.5 did not stop the learned lead-foot lift after the release
+    lead_leg_post_release_gain: float = 1.0
     w_impact: float = 0.2
 
 

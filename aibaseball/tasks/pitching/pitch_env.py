@@ -111,6 +111,7 @@ class PitchEnv(DirectRLEnv):
         bn = list(self.body_names)
         self.drive_cols = [bn.index(j) for j in ("r_hip_pitch", "r_hip_yaw", "r_knee")]  # pivot-leg drive
         self.chain_cols = [bn.index("r_shoulder_yaw"), bn.index("r_elbow")]
+        self.lead_leg_cols = [i for i, j in enumerate(bn) if j.startswith("l_") and any(k in j for k in ("hip", "knee", "ankle"))]
 
         # buffers
         self.actions = torch.zeros(n, cfg.action_space, device=dev)
@@ -297,7 +298,13 @@ class PitchEnv(DirectRLEnv):
         nxt = self._ref(self._ref_time(1))
         # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets
         # more authority to step / brace and recover its balance
-        scale = torch.where(self.released, c.residual_scale * c.post_release_residual_gain, c.residual_scale).unsqueeze(-1)
+        # per joint: the lead leg can keep its own (smaller) post-release gain - with 2x it learned to lift the planted
+        # lead foot after the release (planted 26% of the time vs 82% with the reference pose alone)
+        post = torch.full((len(self.body_names),), c.post_release_residual_gain, device=self.device)
+        if c.lead_leg_post_release_gain is not None:
+            post[self.lead_leg_cols] = c.lead_leg_post_release_gain
+        scale = torch.where(self.released.unsqueeze(-1), c.residual_scale * post.unsqueeze(0),
+                            torch.full_like(post, c.residual_scale).unsqueeze(0))
         body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale
         self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
         self.qd_target[:, self.body_ids] = nxt["joint_vel"] * c.vel_feedforward
