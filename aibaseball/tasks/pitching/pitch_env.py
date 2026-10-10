@@ -197,7 +197,7 @@ class PitchEnv(DirectRLEnv):
         mat = sim_utils.RigidBodyMaterialCfg(static_friction=c.mound_static_friction, dynamic_friction=c.mound_dynamic_friction,
                                              friction_combine_mode="max")
         look = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.55, 0.38, 0.24))
-        x0, w = c.mound_slope_start_x, 2.4
+        x0, w = c.mound_slope_start_x, c.mound_width
         top = sim_utils.CuboidCfg(size=(x0 + 1.2, w, h), collision_props=sim_utils.CollisionPropertiesCfg(),
                                   physics_material=mat, visual_material=look)
         top.func(f"{env_path}/MoundTop", top, translation=((x0 - 1.2) / 2, 0.0, c.mound_top_z - h / 2))

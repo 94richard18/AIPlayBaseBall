@@ -82,6 +82,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     mound_height: float = 0.254
     mound_slope: float = 1.0 / 12.0
     mound_slope_start_x: float = 0.54
+    # side to side (MLB mound: 18 ft = 5.49 m across). Was 2.4 m, so a foot stepping out sideways dropped off the edge;
+    # neighbouring envs' mounds (4 m apart) overlap with the same surface, so the overlap is seamless.
+    mound_width: float = 5.5
     # baseball spikes dig into the mound clay. The reference's braking at foot strike needs a friction coefficient of
     # ~0.9-1.4; at 1.0 the lead foot slid (~0.9 m/s) and lifted right after landing.
     mound_static_friction: float = 1.8
