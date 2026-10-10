@@ -147,6 +147,11 @@ class PitchEnvCfg(DirectRLEnvCfg):
     recovery_buffer_size: int = 4096
     recovery_min_states: int = 256
     recovery_states_file: str = ""  # load release states from a file (balance skill) instead of collecting them
+    # late recovery starts: also store states from inside the follow-through (each step, per env in the window, with
+    # this probability; they share the buffer with the release states)
+    late_store_prob: float = 0.0
+    late_start_window: tuple = (0.3, 0.7)  # s after the release
+    late_store_min_head_z: float = 1.0  # only states that are still up
     w_action_rate: float = 0.002
     late_release_s: float = 0.0  # > 0: no release by the reference release + this ends the episode (penalty w_late_release)
     w_late_release: float = 30.0
@@ -353,6 +358,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # knee stays reference-only (the lift came through the knee)
     lead_leg_post_release_gain: float = 0.4
     lead_knee_post_release_gain: float | None = 0.0
+    # plan step 3: at 18250 the falls happen +0.6..1.0 s after the release, after the back foot is down (the robot folds
+    # forward into a crouch), but every practice start was the release itself. ~0.01 per step stores about as many
+    # in-follow-through states (+0.3..0.7 s) as release states, so half the recovery starts begin part-way through
+    late_store_prob: float = 0.01
     w_impact: float = 0.2
 
 

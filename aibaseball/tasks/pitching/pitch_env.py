@@ -149,6 +149,7 @@ class PitchEnv(DirectRLEnv):
         self.post_gain = torch.ones(n, device=dev)  # (release speed / target)^p: standing up after a soft toss pays little
         self.rb_sea = None  # (motor_pos, motor_vel) per SEA actuator
         self.rb_speed = torch.zeros(cap, device=dev)  # release speed (m/s)
+        self.rb_since = torch.zeros(cap, dtype=torch.long, device=dev)  # control steps since the release (0 = at it)
         self.rb_count, self.rb_head = 0, 0
         if cfg.recovery_states_file:
             self.load_release_states(cfg.recovery_states_file)
@@ -389,7 +390,7 @@ class PitchEnv(DirectRLEnv):
     def _seas(self):
         return [a for k, a in self.robot.actuators.items() if k.endswith("_sea")]
 
-    def _store_release_states(self, ids):
+    def _store_release_states(self, ids, since=None):
         d = self.robot.data
         cap = self.cfg.recovery_buffer_size
         k = len(ids)
@@ -402,6 +403,7 @@ class PitchEnv(DirectRLEnv):
         self.rb_t[slots] = self._ref_time()[ids]
         self.rb_gain[slots] = self.post_gain[ids]
         self.rb_speed[slots] = self.rel_vel[ids].norm(dim=-1)
+        self.rb_since[slots] = 0 if since is None else since
         seas = self._seas()
         if seas:
             if self.rb_sea is None:
@@ -435,6 +437,7 @@ class PitchEnv(DirectRLEnv):
                 bv = torch.zeros_like(bp)
                 bp[:k], bv[:k] = p[:k].to(dev), v[:k].to(dev)
                 self.rb_sea.append((bp, bv))
+        self.rb_since[:k] = 0
         self.rb_count, self.rb_head = k, 0
         self.rb_frozen = True
 
@@ -458,7 +461,7 @@ class PitchEnv(DirectRLEnv):
         self.finger_prev[env_ids] = open_q
         self.finger_next[env_ids] = open_q
         self.released[env_ids] = True  # the ball is gone: no release reward, follow-through window starts now
-        self.release_step[env_ids] = 0
+        self.release_step[env_ids] = -self.rb_since[idx]  # late starts are already part-way into the follow-through
         far = self.scene.env_origins[env_ids] + torch.tensor([10.0, 0.0, 1.0], device=self.device)
         ball = torch.cat([far, torch.tensor([1.0, 0, 0, 0], device=self.device).expand(n, 4),
                           torch.zeros(n, 6, device=self.device)], -1)
@@ -794,6 +797,16 @@ class PitchEnv(DirectRLEnv):
         # late release: holding the ball past the reference release (+ late_release_s) ends the pitch
         self._late = (~self.released) & (self._ref_time() > self.release_ref + c.late_release_s) if c.late_release_s > 0             else torch.zeros_like(self.released)
         terminated = self.fallen | (self.released & self.dropped) | done_follow | lost | self._late
+        if c.late_store_prob > 0 and not getattr(self, "rb_frozen", False):
+            # late recovery starts: states from inside the follow-through (where the falls happen), not only at the release
+            since = self.episode_length_buf - self.release_step
+            lo, hi = (int(round(x / self.step_dt)) for x in c.late_start_window)
+            ok = (self.released & ~self.dropped & ~terminated & ~time_out & (since >= lo) & (since <= hi)
+                  & (self._head_z() > c.late_store_min_head_z)
+                  & (torch.rand(self.num_envs, device=self.device) < c.late_store_prob))
+            ids = ok.nonzero(as_tuple=False).squeeze(-1)
+            if len(ids) > 0:
+                self._store_release_states(ids, since[ids])
         return terminated, time_out | ref_end
 
     # ------------------------------------------------------------------ reset (reference state initialisation)

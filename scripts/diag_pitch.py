@@ -80,6 +80,7 @@ def main():
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
+    cfg.late_store_prob = 0.0
     if args.leg_scale != 1.0:
         for g in ("hip", "knee", "ankle"):
             cfg.robot.actuators[g].effort_limit_sim *= args.leg_scale
