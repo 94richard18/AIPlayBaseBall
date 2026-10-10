@@ -362,6 +362,11 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # forward into a crouch), but every practice start was the release itself. ~0.01 per step stores about as many
     # in-follow-through states (+0.3..0.7 s) as release states, so half the recovery starts begin part-way through
     late_store_prob: float = 0.01
+    # releases under min_release_speed (base 15 m/s = 54 km/h) count as drops and END the episode at -5, while a fall after
+    # the release costs -60. Stage 1 releases at ~34 km/h (median, 18100-18550), so half the training episodes
+    # (drop_rate 0.50) ended at the release: full pitches never practised the follow-through, and a slow toss was the
+    # safe way out of it. Only real drops (< 18 km/h) end the episode now; slow pitches stand for less (speed_pow 2)
+    min_release_speed: float = 5.0
     w_impact: float = 0.2
 
 
