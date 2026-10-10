@@ -136,6 +136,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
     back_leg_post_release_gain: float | None = None  # own post-release gain for the back (pivot) leg
+    trunk_post_release_gain: float | None = None  # own post-release gain for the waist joints
     # recovery practice: episodes that start from stored real release states (follow-through only)
     recovery_prob: float = 0.3
     recovery_buffer_size: int = 4096
@@ -283,6 +284,9 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     back_leg_post_release_gain: float | None = 1.0
     w_back_down: float = 2.0
     w_capture_step: float = 1.0  # the back foot steps through to catch the forward momentum (second support)
+    # half the trunk authority back after the release: with a reference-only trunk it kept pitching forward
+    # (to ~100-110 deg) in every follow-through variant and the forward rotation was never braked
+    trunk_post_release_gain: float | None = 0.5
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0
