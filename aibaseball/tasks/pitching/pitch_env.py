@@ -646,7 +646,9 @@ class PitchEnv(DirectRLEnv):
         # the robot's lower, more bent body left it level with the lead foot and 11 cm up; the policy held it back further
         place_on = (self.released & (tr > self.release_ref + 0.25)).float()
         place_err = (d.body_link_pos_w[:, self.foot_ids[1]] - r["key_pos"][:, 3]).norm(dim=-1)
-        back_place = place_on * 0.5 * (torch.exp(-((place_err / 0.10) ** 2)) + torch.exp(-((place_err / 0.35) ** 2)))
+        # + a 1 m band: with only the 10 / 35 cm bands a foot left 0.7-1 m behind earned < 0.5% and was never pulled forward
+        back_place = place_on / 3 * (torch.exp(-((place_err / 0.10) ** 2)) + torch.exp(-((place_err / 0.35) ** 2))
+                                     + torch.exp(-((place_err / 1.0) ** 2)))
         # lead leg locked out after the release (a straight post, not a bent knee holding the body up): only a knee bent
         # more than the reference's costs
         knee_on = self.released.float()

@@ -287,7 +287,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     scripted_release_s: float | None = 0.0
     # the back foot hovered 3-7 cm above the mound after the follow-through (reference joint angles alone do not reach the
     # ground from the robot's lower, more tilted body); the robot ended on one leg and fell ~1 s after the release
-    back_leg_post_release_gain: float | None = 2.0  # 1.0 was too little to swing the foot past the lead foot
+    # 2.0 (capture-step finish: 1.0 was too little to swing the foot past the lead foot). With the pro finish the policy
+    # used the 2x authority to kick the back foot ~1 m up (reference 0.4 m) and kept it 0.6-1 m behind: back to 1.0 so
+    # the reference swing (up, then forward beside the lead foot) leads
+    back_leg_post_release_gain: float | None = 1.0
     w_back_place: float = 2.0
     w_back_down: float = 2.0
     # pro finish (the user's reference videos): balance over a straight lead leg, the back leg up behind as a counterweight,
