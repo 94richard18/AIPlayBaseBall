@@ -24,3 +24,4 @@ __pycache__/
 Thumbs.db
 .DS_Store
 assets/**/config.yaml
+ref_videos/
