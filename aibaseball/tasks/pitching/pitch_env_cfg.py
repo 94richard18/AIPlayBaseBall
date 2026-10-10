@@ -320,7 +320,9 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     max_key_err: float = 0.8
     # mid-pitch starts from the end of the stride (0.6 s) to just before the release: the wind-up is learned (strike
     # timing within 1 ms), the follow-through is not. With the ~30% release-state starts, ~28% full pitches remain
-    rsi_prob: float = 0.6
+    # 0.6 (17350-17950): full pitches fell to ~28% of training and the full-pitch standing rate declined (17650 6/16 ->
+    # 17950 0/16) while the training failure rate stayed at 0.29; 0.4 keeps ~42% full pitches
+    rsi_prob: float = 0.4
     rsi_min_s: float = 0.6
     # kinetic chain (two pitching-mechanics articles): arm up at foot strike, proximal-to-distal timing, pivot-leg
     # drive, a braced lead leg (damped, not softened: the knee flipped between +-250 Nm and the foot bounced)
