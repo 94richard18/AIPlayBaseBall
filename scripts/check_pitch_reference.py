@@ -2,15 +2,17 @@
 
 Reference feasibility after the release: COM over the lead foot (heel -0.08 .. toe +0.16 from the foot link along x),
 COM vertical speed / acceleration (> -g means the feet stay loaded), pelvis heading, knee, back foot."""
+import os
 import sys
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-sys.path.insert(0, r"D:\MyProject\AIPlayBaseBall")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 from aibaseball.mocap.centroidal import mound_z, reference_centroidal  # noqa: E402
 
-f = sys.argv[1] if len(sys.argv) > 1 else r"D:MyProjectAIPlayBaseBallssetsmotionspitch_2916-4.npz"
+f = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "assets", "motions", "pitch_2916-4.npz")
 cen = reference_centroidal(f, lambda x: mound_z(x, 0.058, 0.254, 1 / 12, 0.54))
 d = np.load(f, allow_pickle=True)
 t = d["time"]
