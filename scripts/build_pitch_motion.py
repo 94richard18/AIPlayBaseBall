@@ -57,7 +57,7 @@ def main(paths):
         res = retarget(trial, t_before=t_rel, t_after=0.14, rate=120.0, robot=robot, verbose=False,
                        finger_pose=fingers, ball_local=ball_local, smooth=LEG_SMOOTH, max_joint_vel=LEG_MAX_VEL, keep=keep,
                        **FLAT)
-        res = append_follow_through(res, robot, fingers, duration=FOLLOW_THROUGH_S)
+        res = append_follow_through(res, robot, fingers, duration=FOLLOW_THROUGH_S, balance_pitch_deg=35.0, balance_waist=0.2)
         save(res, out)
         d = prepare(out, out, finger_pose=fingers, ball_local=ball_local)
         ball = d["key_pos"][:, -1]
