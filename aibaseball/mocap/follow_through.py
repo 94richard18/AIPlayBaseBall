@@ -33,8 +33,13 @@ def _quintic(p0, v0, p1, T, t):
 
 
 def append_follow_through(res: RetargetResult, robot: Robot, fingers: dict, duration: float = 0.8, rate: float = 120.0,
-                          land_time: float = 0.40, settle_time: float = 0.55, stance_width: float = 0.42,
-                          lift: float = 0.10, pelvis_rise: float = 0.08) -> RetargetResult:
+                          land_time: float = 0.30, settle_time: float = 0.55, stance_width: float = 0.42,
+                          lift: float = 0.08, pelvis_rise: float = -0.05, pelvis_pitch_deg: float = 15.0,
+                          trunk_flex: float = 0.45, back_foot_x: float = -0.10) -> RetargetResult:
+    """Ends in a fielding-ready crouch: pelvis a little lower and pitched forward, trunk flexed ~35-40 deg, back foot
+    down at land_time. (The first version ended upright - trunk 8.5 deg, pelvis risen 8 cm, back foot down at 0.4 s - and
+    the robot, lower and more bent after the release, could neither straighten up nor reach the mound with its back foot.)
+    """
     names = res.joint_names
     lo = np.array([robot.joint(n).lower for n in names])
     hi = np.array([robot.joint(n).upper for n in names])
@@ -62,7 +67,7 @@ def append_follow_through(res: RetargetResult, robot: Robot, fingers: dict, dura
     ground = min(lead["toe"][2], lead["heel"][2])
     # trailing foot lands beside the lead foot (to the throwing-arm side), toes toward the plate (+x)
     lead_c = (lead["toe"] + lead["heel"]) / 2
-    land_c = lead_c + np.array([-0.05, -stance_width, 0.0])
+    land_c = lead_c + np.array([back_foot_x, -stance_width, 0.0])
     half = (KEYPOINTS["r_toe"][1][0] - KEYPOINTS["r_heel"][1][0]) / 2
     land_c[2] = ground
     land = {"toe": land_c + [half, 0, 0], "heel": land_c - [half, 0, 0]}
@@ -72,10 +77,12 @@ def append_follow_through(res: RetargetResult, robot: Robot, fingers: dict, dura
     feet_mid = (lead_c + land_c) / 2
     p_goal = np.array([feet_mid[0] - 0.05, feet_mid[1], x_end[2] + pelvis_rise])
     R_end = Rotation.from_rotvec(x_end[3:6])
-    R_goal = Rotation.from_euler("z", 0.0)
+    R_goal = Rotation.from_euler("y", math.radians(pelvis_pitch_deg))  # facing the plate, pitched forward
     slerp = Slerp([0.0, 1.0], Rotation.concatenate([R_end, R_goal]))
     upper = np.array([not any(k in n for k in LEGS) for n in names])
     q_goal = np.where(upper, res.joint_pos[0], x_end[6:])
+    if "waist_pitch" in names:  # trunk flexed forward (positive waist pitch = forward)
+        q_goal[names.index("waist_pitch")] = trunk_flex
 
     T = int(round(duration * rate))
     frames, kp_err = [], []

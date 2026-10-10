@@ -16,7 +16,7 @@ parser.add_argument("--pitches", type=int, default=3)
 parser.add_argument("--slow", type=float, default=4.0, help="slow-motion factor")
 parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first",
                     help="env config the policy was trained with")
-parser.add_argument("--seconds", type=float, default=1.8, help="simulated time per pitch")
+parser.add_argument("--seconds", type=float, default=2.6, help="simulated time per pitch (falls come ~1 s after the release)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.enable_cameras = True
