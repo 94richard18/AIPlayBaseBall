@@ -130,6 +130,7 @@ def after_release_series(t, com, com_v, feet_link, feet_on, ground_fn, pelvis_z,
     h = np.clip(com[:, 2] - ground_fn(com[:, 0]), 0.3, None)
     cp_x = com[:, 0] + com_v[:, 0] * np.sqrt(h / G)
     return {
+        "back foot ahead of lead (m)": feet_link[:, 1, 0] - feet_link[:, 0, 0],
         "lead planted": feet_on[:, 0].astype(float), "lead sole (cm)": sole[:, 0] * 100,
         "back planted": feet_on[:, 1].astype(float), "back sole (cm)": sole[:, 1] * 100,
         "COM ahead of lead foot (m)": com[:, 0] - feet_link[:, 0, 0], "COM vx (m/s)": com_v[:, 0],

@@ -189,6 +189,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_back_down: float = 0.0  # back foot off the mound (+ its height / 5 cm) once the athlete's is down after the release
     w_capture_step: float = 0.0  # back foot planted after the release near the capture point (catch the forward momentum)
     sigma_capture_step: float = 0.25  # m
+    w_back_place: float = 0.0  # back foot at the reference back-foot position after the release (task space, wide + narrow)
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -281,7 +282,8 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     scripted_release_s: float | None = 0.0
     # the back foot hovered 3-7 cm above the mound after the follow-through (reference joint angles alone do not reach the
     # ground from the robot's lower, more tilted body); the robot ended on one leg and fell ~1 s after the release
-    back_leg_post_release_gain: float | None = 1.0
+    back_leg_post_release_gain: float | None = 2.0  # 1.0 was too little to swing the foot past the lead foot
+    w_back_place: float = 2.0
     w_back_down: float = 2.0
     w_capture_step: float = 1.0  # the back foot steps through to catch the forward momentum (second support)
     # half the trunk authority back after the release: with a reference-only trunk it kept pitching forward
