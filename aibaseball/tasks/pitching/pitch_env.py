@@ -155,7 +155,7 @@ class PitchEnv(DirectRLEnv):
         self.stats = {k: torch.zeros((), device=dev) for k in (
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
-            "capture_out_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
+            "capture_out_m", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
@@ -633,10 +633,14 @@ class PitchEnv(DirectRLEnv):
         rf_gap = (d.body_link_pos_w[:, rf, 2] - 0.08 - ground_rf).clamp_min(0.0)
         back_up = back_due.float() * ((~planted[:, 1]).float() + (rf_gap / 0.05).clamp(max=3.0))
         landing = c.w_soft_descent * descent + c.w_lead_stay * lift + c.w_impact * impact + c.w_back_down * back_up
+        # capture step: the back foot, once down after the release, where the forward momentum can be caught
+        step_on = self.released & planted[:, 1] & (tr > self.release_ref + 0.25) & (tr < self.release_ref + 1.0)
+        step_err = (feet_xy[:, 1] - cp).norm(dim=-1)
+        capture_step = step_on.float() * torch.exp(-((step_err / c.sigma_capture_step) ** 2))
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
-               - landing
+               - landing + c.w_capture_step * capture_step
                + c.w_balance * self.released.float() * self.post_gain * balance
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
@@ -653,7 +657,7 @@ class PitchEnv(DirectRLEnv):
         for k, val in (("com_err_m", com_err.mean()), ("contact_match", contact_match.mean()),
                        ("foot_slip_mps", slip.mean())):
             self.stats[k] = (1 - a) * self.stats[k] + a * val
-        for k, val, on in (("lead_descent_mps", -lf_vz, approach.float()), ("lead_lift_share", (~planted[:, 0]).float(),
+        for k, val, on in (("capture_step_err_m", step_err, step_on.float()), ("lead_descent_mps", -lf_vz, approach.float()), ("lead_lift_share", (~planted[:, 0]).float(),
                             lead_down.float()), ("lead_impact_bw", lead_force / bw, planted[:, 0].float()),
                            ("arm_launch_err_m", arm_err, arm_on), ("trunk_err_deg", trunk_err * 57.3, trunk_on),
                            ("com_drop_mps", drop, brace_on), ("drive_err_rad", drive_err.sqrt(), drive_on)):

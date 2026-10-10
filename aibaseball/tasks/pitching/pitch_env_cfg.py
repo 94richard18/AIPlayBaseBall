@@ -186,6 +186,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_impact: float = 0.0  # x (lead-foot contact force above impact_limit_bw) in body weights
     impact_limit_bw: float = 3.0
     w_back_down: float = 0.0  # back foot off the mound (+ its height / 5 cm) once the athlete's is down after the release
+    w_capture_step: float = 0.0  # back foot planted after the release near the capture point (catch the forward momentum)
+    sigma_capture_step: float = 0.25  # m
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -280,6 +282,7 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # ground from the robot's lower, more tilted body); the robot ended on one leg and fell ~1 s after the release
     back_leg_post_release_gain: float | None = 1.0
     w_back_down: float = 2.0
+    w_capture_step: float = 1.0  # the back foot steps through to catch the forward momentum (second support)
     w_post_release_track: float = 1.0
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0

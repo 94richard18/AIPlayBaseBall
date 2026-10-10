@@ -33,12 +33,14 @@ def _quintic(p0, v0, p1, T, t):
 
 
 def append_follow_through(res: RetargetResult, robot: Robot, fingers: dict, duration: float = 0.8, rate: float = 120.0,
-                          land_time: float = 0.30, settle_time: float = 0.55, stance_width: float = 0.42,
-                          lift: float = 0.08, pelvis_rise: float = -0.05, pelvis_pitch_deg: float = 15.0,
-                          trunk_flex: float = 0.45, back_foot_x: float = -0.10) -> RetargetResult:
-    """Ends in a fielding-ready crouch: pelvis a little lower and pitched forward, trunk flexed ~35-40 deg, back foot
-    down at land_time. (The first version ended upright - trunk 8.5 deg, pelvis risen 8 cm, back foot down at 0.4 s - and
-    the robot, lower and more bent after the release, could neither straighten up nor reach the mound with its back foot.)
+                          land_time: float = 0.35, settle_time: float = 0.55, stance_width: float = 0.42,
+                          lift: float = 0.08, pelvis_rise: float = 0.0, pelvis_pitch_deg: float = 5.0,
+                          trunk_flex: float = 0.2, back_foot_x: float = 0.30) -> RetargetResult:
+    """Capture step: the body still carries forward momentum after the release; the lead foot is the first support
+    and the back foot swings through and lands AHEAD of it (back_foot_x in front of the lead foot) as the second
+    support, where the forward momentum can be caught. The pelvis settles between the two feet, trunk mildly flexed.
+    (Earlier versions put the back foot beside / behind the lead foot: upright -> fell ~1 s after the release on one leg;
+    crouched -> fell sooner, trunk overshot to 110 deg.)
     """
     names = res.joint_names
     lo = np.array([robot.joint(n).lower for n in names])
