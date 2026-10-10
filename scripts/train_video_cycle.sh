@@ -37,6 +37,6 @@ echo "[cycle] checkpoint $NEW"
 grep -E "pitch/(release_rate|release_kmh|post_release_fail|release_time_err|lead_foot_err_m|arm_launch_err_m|chain_score|drive_err_rad|com_drop_mps|trunk_err_deg)" \
     logs_pitch_stand.txt | tail -10
 # report and video in one simulator launch (one Isaac Sim start-up instead of two)
-$PY -u scripts/diag_pitch.py --headless --checkpoint "$NEW" --sections 1,2,4,5,6,8 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \
+$PY -u scripts/diag_pitch.py --headless --envs 64 --checkpoint "$NEW" --sections 1,2,4,5,6,8 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \
     | sed -n '/^== diag_pitch/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/diag_iter_$STOP.txt"
 echo "[cycle] next: $NEW"

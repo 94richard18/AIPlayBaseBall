@@ -24,7 +24,7 @@ from isaaclab.envs import DirectRLEnv
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import ContactSensor, ContactSensorCfg
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
-from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_rotate_inverse
+from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_rotate_inverse, yaw_quat
 
 from aibaseball.mocap.centroidal import mound_z, reference_centroidal
 from aibaseball.mocap.motion import PITCH_KEY_BODIES, MotionRef
@@ -507,8 +507,27 @@ class PitchEnv(DirectRLEnv):
             quat_rotate_inverse(d.root_link_quat_w, nxt["root_pos"] - d.root_link_pos_w),
             quat_rotate_inverse(d.root_link_quat_w, nxt["key_pos"][:, -1] - self.ball.data.root_pos_w),
             self.actions,
-        ] + self._sea_obs(), -1)
+        ] + self._sea_obs() + self._balance_obs(), -1)
         return {"policy": torch.nan_to_num(obs)}
+
+    def _balance_obs(self) -> list:
+        """Balance state in the pelvis heading frame: foot contacts (2), feet - pelvis (6), COM - lead foot (3),
+        COM velocity (3), capture point - lead foot (2)."""
+        if not self.cfg.balance_obs:
+            return []
+        d = self.robot.data
+        qy = yaw_quat(d.root_link_quat_w)
+        loc = lambda v: quat_rotate_inverse(qy, v)  # noqa: E731
+        forces = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids].norm(dim=-1).max(1).values
+        planted = (forces > self.cfg.contact_force_n).float()
+        feet = d.body_link_pos_w[:, self.foot_ids]
+        pel = d.root_link_pos_w
+        com, com_v = self._com()
+        lead = feet[:, 0]
+        h = (com[:, 2] - lead[:, 2] + 0.06).clamp_min(0.3)
+        cp = com + com_v * torch.sqrt(h / 9.81).unsqueeze(-1)
+        return [planted, loc(feet[:, 0] - pel), loc(feet[:, 1] - pel), loc(com - lead) * 2.0, loc(com_v) * 0.5,
+                loc(cp - lead)[:, :2] * 2.0]
 
     def _sea_obs(self) -> list:
         """Elastic-arm variant: stretched tendon state (spring deflection, rad) of the throwing arm."""

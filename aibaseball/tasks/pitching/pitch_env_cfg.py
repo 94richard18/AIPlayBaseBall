@@ -165,6 +165,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     sigma_com_vel: float = 0.6  # m/s
     w_contact: float = 0.0  # per step x share of feet whose ground contact matches the athlete's
     contact_force_n: float = 30.0  # N on a foot = planted
+    # balance state in the observation (+16): foot contacts, feet relative to the pelvis, COM position / velocity and
+    # capture point relative to the lead foot, all in the pelvis heading frame (the policy and critic saw none of it)
+    balance_obs: bool = False
     contact_bodies: str = ".*_foot"  # contact-sensor bodies (regex)
     contact_history: int = 16  # physics steps (20 ms) a foot counts as planted after a contact
     w_slip: float = 0.0  # per step x speed (m/s) of planted feet
@@ -331,7 +334,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 150.0, "knee": 150.0,
                                                                                    "ankle": 60.0}, waist_sea=True,
                                                       leg_stiffness={"hip": 1200.0, "knee": 1200.0, "ankle": 600.0})
-    observation_space = 200
+    # 200 + 16 balance inputs (2026-10-10 plan step 1: push-recovery work feeds COM / capture point to the networks;
+    # without them the policy cannot tell how far the COM has run past the lead foot)
+    balance_obs: bool = True
+    observation_space = 216
     w_arm_launch: float = 1.0
     w_chain: float = 1.0
     w_drive: float = 0.5
