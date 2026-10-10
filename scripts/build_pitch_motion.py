@@ -32,7 +32,7 @@ LEG_MAX_VEL = {k: HUMAN_ACTUATOR_GROUPS[k].velocity for k in ("hip", "knee", "an
 # pivot foot rolled 28 deg onto its edge, so the robot stood on the sole's edge and chattered
 FLAT = dict(flat_weight=8.0, flat_both=True)
 KEEP_UNTIL_S = 0.96  # the first IK flip (waist / lead hip) is at the release frame, 0.98 s
-FOLLOW_THROUGH_S = 0.8
+FOLLOW_THROUGH_S = 1.1
 
 
 def main(paths):

@@ -193,6 +193,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_capture_step: float = 0.0  # back foot planted after the release near the capture point (catch the forward momentum)
     sigma_capture_step: float = 0.25  # m
     w_back_place: float = 0.0  # back foot at the reference back-foot position after the release (task space, wide + narrow)
+    w_lead_knee: float = 0.0  # lead knee no more bent than the reference after the release (straight post)
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
@@ -288,7 +289,11 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     back_leg_post_release_gain: float | None = 2.0  # 1.0 was too little to swing the foot past the lead foot
     w_back_place: float = 2.0
     w_back_down: float = 2.0
-    w_capture_step: float = 1.0  # the back foot steps through to catch the forward momentum (second support)
+    # pro finish (the user's reference videos): balance over a straight lead leg, the back leg up behind as a counterweight,
+    # then down beside the lead foot. The capture step (back foot straight through, planted near the capture point) is off:
+    # the back foot is meant to stay up until ~0.7 s after the release now
+    w_capture_step: float = 0.0
+    w_lead_knee: float = 1.0
     # half the trunk authority back after the release: with a reference-only trunk it kept pitching forward
     # (to ~100-110 deg) in every follow-through variant and the forward rotation was never braked
     trunk_post_release_gain: float | None = 0.5
