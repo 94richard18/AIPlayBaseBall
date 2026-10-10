@@ -32,8 +32,15 @@ parser.add_argument("--after_s", type=float, default=0.5, help="section 8: timel
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
 parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
+parser.add_argument("--video", type=str, default=None,
+                    help="also film env 0 afterwards (side view, slow motion) into this .mp4, same launch")
+parser.add_argument("--video_pitches", type=int, default=3)
+parser.add_argument("--video_seconds", type=float, default=2.6, help="simulated time per filmed pitch")
+parser.add_argument("--slow", type=float, default=4.0, help="video slow-motion factor")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+if args.video:
+    args.enable_cameras = True
 app = AppLauncher(args).app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -80,7 +87,9 @@ def main():
             cfg.robot.actuators[g].stiffness *= args.leg_stiffness
     if args.depen is not None:
         cfg.robot.spawn.rigid_props.max_depenetration_velocity = args.depen
-    env = gym.make("AIB-PitchElastic-v0", cfg=cfg)
+    if args.video:
+        cfg.viewer.resolution = (1280, 720)
+    env = gym.make("AIB-PitchElastic-v0", cfg=cfg, render_mode="rgb_array" if args.video else None)
     base = env.unwrapped
     orig = base._get_dones
 
@@ -394,6 +403,75 @@ def main():
                         vals.append((np.abs(rec["tau"][m, i][:, ix]) >= 0.98 * effort[ix]).mean())
                 row.append(med(vals))
             say(f"  {label:18s}" + "".join(f"{v * 100:17.0f}%" for v in row))
+
+    if args.video:
+        film(w, base, pol, name=os.path.basename(os.path.dirname(args.checkpoint)) + "/" + os.path.basename(args.checkpoint))
+
+
+def film(w, base, pol, name, fps=30):
+    """Side-view slow-motion video of env 0 (the other envs hidden), one pitch after another, after the diagnostics
+    in the same simulator launch (saves a second Isaac Sim start-up per training cycle)."""
+    import cv2
+    import imageio
+    import omni.usd
+    from pxr import UsdGeom
+
+    stage = omni.usd.get_context().get_stage()
+    for i in range(1, base.num_envs):
+        UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/envs/env_{i}")).MakeInvisible()
+    sim = base.sim
+
+    def grab():
+        for _ in range(6):
+            img = base.render()
+            if img is not None and img.size and img[..., :3].max() > 0:
+                return np.ascontiguousarray(img[..., :3])
+        return None
+
+    def put(img, lines):
+        for i, (t, col) in enumerate(lines):
+            y = 36 + 32 * i
+            cv2.putText(img, t, (18, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 5, cv2.LINE_AA)
+            cv2.putText(img, t, (18, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, col, 2, cv2.LINE_AA)
+        return img
+
+    every = max(1, int(round(1.0 / (fps * args.slow * base.step_dt))))
+    frames = []
+    for p in range(args.video_pitches):
+        with torch.inference_mode():
+            obs, _ = w.reset()
+        t_rel, kmh, fell_at = None, None, None
+        for k in range(int(args.video_seconds / base.step_dt)):
+            with torch.inference_mode():
+                obs, _, _, _ = w.step(pol(obs))
+                obs = obs.clone()
+            t = (k + 1) * base.step_dt
+            if t_rel is None and bool(base.released[0]):
+                t_rel, kmh = t, float(base.rel_vel[0].norm()) * 3.6
+            if fell_at is None and bool(base.fallen[0]):
+                fell_at = t
+            if k % every:
+                continue
+            o = base.scene.env_origins[0].cpu().numpy()
+            pel = base.robot.data.root_link_pos_w[0].cpu().numpy() - o
+            cx = float(np.clip(pel[0], 0.3, 1.8))
+            sim.set_camera_view(eye=(o + [cx, -4.2, 0.9]).tolist(), target=(o + [cx, 0.0, 0.6]).tolist())
+            img = grab()
+            if img is None:
+                continue
+            lines = [(f"pitch {p + 1}/{args.video_pitches}   t = {t:.2f} s   ({args.slow:.0f}x slow motion)   {name}",
+                      (255, 255, 255)), ("athlete: lead foot down 0.88 s, release 0.98 s", (200, 200, 200))]
+            if t_rel is not None:
+                lines.append((f"released at {t_rel:.2f} s, {kmh:.0f} km/h", (120, 255, 120)))
+            if fell_at is not None:
+                lines.append((f"FELL at {fell_at:.2f} s", (255, 90, 90)))
+            frames.append(put(img.copy(), lines))
+        say(f"[side] pitch {p + 1}: release {t_rel}, {kmh} km/h, fell at {fell_at}")
+        if frames:
+            frames += [frames[-1]] * fps  # hold the last frame 1 s
+    os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
+    imageio.mimwrite(args.video, frames, fps=fps, quality=8, macro_block_size=1)
+    say(f"[side] wrote {args.video} ({len(frames)} frames)")
 
 
 if __name__ == "__main__":

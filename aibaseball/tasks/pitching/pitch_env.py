@@ -672,38 +672,36 @@ class PitchEnv(DirectRLEnv):
         for k, val in (("com_err_m", com_err.mean()), ("contact_match", contact_match.mean()),
                        ("foot_slip_mps", slip.mean())):
             self.stats[k] = (1 - a) * self.stats[k] + a * val
-        for k, val, on in (("back_place_err_m", place_err, place_on), ("lead_knee_err_deg", knee_err * 57.3, knee_on),("capture_step_err_m", step_err, step_on.float()), ("lead_descent_mps", -lf_vz, approach.float()), ("lead_lift_share", (~planted[:, 0]).float(),
-                            lead_down.float()), ("lead_impact_bw", lead_force / bw, planted[:, 0].float()),
+        # masked running means without "if mask.any()" (each was a GPU -> CPU sync, ~15 per control step)
+        for k, val, on in (("back_place_err_m", place_err, place_on), ("lead_knee_err_deg", knee_err * 57.3, knee_on),
+                           ("capture_step_err_m", step_err, step_on), ("lead_descent_mps", -lf_vz, approach),
+                           ("lead_lift_share", (~planted[:, 0]).float(), lead_down),
+                           ("lead_impact_bw", lead_force / bw, planted[:, 0]),
                            ("arm_launch_err_m", arm_err, arm_on), ("trunk_err_deg", trunk_err * 57.3, trunk_on),
-                           ("com_drop_mps", drop, brace_on), ("drive_err_rad", drive_err.sqrt(), drive_on)):
-            if on.any():
-                self.stats[k] = (1 - a) * self.stats[k] + a * val[on > 0].mean()
-        for k, val in (("chain_score", (chain / chain_on.clamp_min(1e-6))[chain_on > 0].mean() if chain_on.any()
-                        else self.stats["chain_score"]),):
-            self.stats[k] = (1 - a) * self.stats[k] + a * val
-        if support_on.any():
-            self.stats["capture_out_m"] = (1 - a) * self.stats["capture_out_m"] + a * d_sup[support_on].mean()
-        if plant_on.any():
-            self.stats["lead_foot_err_m"] = (1 - a) * self.stats["lead_foot_err_m"] + a * lead_err[plant_on].mean()
-        held = ~self.released
-        if held.any():
-            self.stats["hold_gap_mm"] = (1 - a) * self.stats["hold_gap_mm"] + a * gap[held].mean() * 1000
+                           ("com_drop_mps", drop, brace_on), ("drive_err_rad", drive_err.sqrt(), drive_on),
+                           ("chain_score", chain / chain_on.clamp_min(1e-6), chain_on),
+                           ("capture_out_m", d_sup, support_on), ("lead_foot_err_m", lead_err, plant_on)):
+            self._ema(k, val, on, a)
+        self._ema("hold_gap_mm", gap * 1000, ~self.released, a)
         done = self.reset_terminated | self.reset_time_outs
-        if done.any():
-            b = 0.02
-            self.stats["release_rate"] = (1 - b) * self.stats["release_rate"] + b * (self.released & ~self.dropped)[done].float().mean()
-            self.stats["drop_rate"] = (1 - b) * self.stats["drop_rate"] + b * self.dropped[done].float().mean()
-            self.stats["fall_rate"] = (1 - b) * self.stats["fall_rate"] + b * self.fallen[done].float().mean()
-            # honest follow-through metric: episodes that ended by falling OR losing the reference after release
-            fail = (self.released & self.fallen)[done].float().mean()
-            rec = done & self.recovery_ep
-            if rec.any():
-                self.stats["recovery_fall"] = (1 - b) * self.stats["recovery_fall"] + b * self.fallen[rec].float().mean()
-            self.stats["recovery_share"] = (1 - b) * self.stats["recovery_share"] + b * self.recovery_ep[done].float().mean()
-            self.stats["post_release_fail"] = (1 - b) * self.stats["post_release_fail"] + b * fail
-        self.stats["speed"] = torch.tensor(self.speed, device=self.device)
+        b = 0.02
+        self._ema("release_rate", (self.released & ~self.dropped).float(), done, b)
+        self._ema("drop_rate", self.dropped.float(), done, b)
+        self._ema("fall_rate", self.fallen.float(), done, b)
+        self._ema("recovery_fall", self.fallen.float(), done & self.recovery_ep, b)
+        self._ema("recovery_share", self.recovery_ep.float(), done, b)
+        # honest follow-through metric: episodes that ended by falling OR losing the reference after release
+        self._ema("post_release_fail", (self.released & self.fallen).float(), done, b)
+        self.stats["speed"].fill_(self.speed)
         self.extras["log"] = {f"pitch/{k}": v.clone() for k, v in self.stats.items()}
         return rew
+
+    def _ema(self, key, val, mask, a):
+        """Running mean of val over the envs in mask; unchanged when mask is empty (no host sync)."""
+        m = mask.float()
+        n = m.sum()
+        mean = (val * m).sum() / n.clamp_min(1.0)
+        self.stats[key] = torch.where(n > 0, (1 - a) * self.stats[key] + a * mean, self.stats[key])
 
     # ------------------------------------------------------------------ dones
     def _get_dones(self):
@@ -782,8 +780,9 @@ class PitchEnv(DirectRLEnv):
         super()._reset_idx(env_ids)
         n, dev, c = len(env_ids), self.device, self.cfg
         rsi = torch.rand(n, device=dev) < c.rsi_prob
-        t_max = max(0.0, self.release_ref - c.rsi_margin_before_release)
-        self.t0[env_ids] = torch.where(rsi, torch.rand(n, device=dev) * t_max, torch.zeros(n, device=dev))
+        t_max = max(c.rsi_min_s, self.release_ref - c.rsi_margin_before_release)
+        self.t0[env_ids] = torch.where(rsi, c.rsi_min_s + torch.rand(n, device=dev) * (t_max - c.rsi_min_s),
+                                       torch.zeros(n, device=dev))
         r = self.ref.sample(self.t0[env_ids])
         o = self.scene.env_origins[env_ids]
         root = torch.cat([r["root_pos"] + o, r["root_quat"], r["root_lin_vel"] * self.speed, r["root_ang_vel"] * self.speed], -1)

@@ -65,6 +65,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     speed_ramp_steps: int = 0
     rsi_prob: float = 0.2  # mostly full pitches from the set position (what is evaluated)
     rsi_margin_before_release: float = 0.12
+    rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
     vel_feedforward: float = 1.0
     action_scale: dict = {"hip": 0.5, "knee": 0.5, "ankle": 0.4, "waist": 1.0, "shoulder": 1.5, "elbow": 1.5, "wrist": 1.2}
@@ -314,7 +315,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # the new flat-foot reference: every full pitch lost tracking at 0.84-0.95 s (lead foot not yet down) and ended just
     # before the release, so landing, release and follow-through were never experienced
     max_key_err: float = 0.8
-    rsi_prob: float = 0.4
+    # mid-pitch starts from the end of the stride (0.6 s) to just before the release: the wind-up is learned (strike
+    # timing within 1 ms), the follow-through is not. With the ~30% release-state starts, ~28% full pitches remain
+    rsi_prob: float = 0.6
+    rsi_min_s: float = 0.6
     # kinetic chain (two pitching-mechanics articles): arm up at foot strike, proximal-to-distal timing, pivot-leg
     # drive, a braced lead leg (damped, not softened: the knee flipped between +-250 Nm and the foot bounced)
     # + elastic trunk (waist yaw / pitch SEAs): obs += 2 spring deflections
