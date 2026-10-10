@@ -139,6 +139,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     fallen_pelvis_z: float = 0.30
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
+    lead_knee_post_release_gain: float | None = None  # own post-release gain for the lead knee (None = the lead leg's)
     back_leg_post_release_gain: float | None = None  # own post-release gain for the back (pivot) leg
     trunk_post_release_gain: float | None = None  # own post-release gain for the waist joints
     # recovery practice: episodes that start from stored real release states (follow-through only)
@@ -346,7 +347,12 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # soft landing (the lead foot hit at -2.5 m/s / ~8 BW and bounced up +0.75 m/s; 44% stood after the release)
     w_soft_descent: float = 0.5
     w_lead_stay: float = 2.0  # 0.5 did not stop the learned lead-foot lift after the release
-    lead_leg_post_release_gain: float = 0.0  # the lead leg only tracks the reference after the release: with any residual the policy lifted the planted foot (COM then ran past it); reference-only kept it planted and delayed falls from +0.38 to +0.88 s
+    # the lead leg only tracked the reference after the release (0.0): with full residual authority the policy lifted the
+    # planted foot (COM then ran past it). Plan step 2 (balance obs in place): hip + ankle get 0.4 back for ankle /
+    # hip strategy (at 17950 the lead foot rocked onto its heel, toe 15-20 deg up, with no way to press it down); the
+    # knee stays reference-only (the lift came through the knee)
+    lead_leg_post_release_gain: float = 0.4
+    lead_knee_post_release_gain: float | None = 0.0
     w_impact: float = 0.2
 
 

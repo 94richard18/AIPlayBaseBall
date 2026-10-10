@@ -307,6 +307,8 @@ class PitchEnv(DirectRLEnv):
         post = torch.full((len(self.body_names),), c.post_release_residual_gain, device=self.device)
         if c.lead_leg_post_release_gain is not None:
             post[self.lead_leg_cols] = c.lead_leg_post_release_gain
+        if c.lead_knee_post_release_gain is not None:
+            post[self.lead_knee_col] = c.lead_knee_post_release_gain
         if c.back_leg_post_release_gain is not None:
             post[self.back_leg_cols] = c.back_leg_post_release_gain
         if c.trunk_post_release_gain is not None:
