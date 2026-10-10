@@ -32,6 +32,7 @@ parser.add_argument("--after_s", type=float, default=0.5, help="section 8: timel
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
 parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
+parser.add_argument("--dump", type=str, default=None, help="save the raw per-step recording (.npz) for ad-hoc analysis")
 parser.add_argument("--video", type=str, default=None,
                     help="also film env 0 afterwards (side view, slow motion) into this .mp4, same launch")
 parser.add_argument("--video_pitches", type=int, default=3)
@@ -149,6 +150,8 @@ def main():
             rec["ref_t"][k], rec["ref_contact"][k] = tr.cpu().numpy(), rcon.cpu().numpy()
             rec["com_err"][k] = (com - rc).norm(dim=-1).cpu().numpy()
     t = (np.arange(T) + 1) * dt
+    if args.dump:
+        np.savez_compressed(args.dump, body_names=np.array(names), joint_names=np.array(jn), mass=mass, dt=dt, **rec)
     ref = PR.reference_profile(cfg)
     bid = {nm: i for i, nm in enumerate(names)}
     first = lambda mask: np.where(mask.any(0), t[np.argmax(mask, 0)], np.nan)  # noqa: E731
