@@ -31,6 +31,8 @@ parser.add_argument("--ref_after_release", action="store_true", help="what-if: z
 parser.add_argument("--after_s", type=float, default=0.5, help="section 8: timeline length after the release")
 parser.add_argument("--post_gain", type=float, default=None,
                     help="what-if: one post-release residual gain for every body joint (lead knee, trunk, legs included)")
+parser.add_argument("--start_s", type=float, default=None,
+                    help="what-if: every env starts from the reference state at this reference time (e.g. the release)")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
 parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
@@ -83,6 +85,8 @@ def main():
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
     cfg.late_store_prob = 0.0
+    if args.start_s is not None:
+        cfg.rsi_prob, cfg.rsi_min_s, cfg.rsi_margin_before_release = 1.0, args.start_s, 10.0
     if args.post_gain is not None:
         for k in ("post_release_residual_gain", "lead_leg_post_release_gain", "lead_knee_post_release_gain",
                   "back_leg_post_release_gain", "trunk_post_release_gain"):
