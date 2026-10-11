@@ -79,6 +79,16 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_stand_feet: float = 0.0
     w_stand_still: float = 0.0
     w_stand_pivot: float = 0.0
+    # lead-foot placement SIDEWAYS (across the pitching line, env y) and the COM in line with the lead foot (0 = off).
+    # The distance-only w_lead_plant band let the foot land ~0.38 m toward the throwing-arm side; the COM then sat 0.22 m
+    # outside the lead foot and no ground force could stop the body after the release (centroidal LP, 2/16 states)
+    w_lead_lateral: float = 0.0  # per step x exp(-(lateral error / sigma)^2) inside lead_lateral_window
+    sigma_lead_lateral: float = 0.10  # m
+    lead_lateral_window: tuple = (0.6, 0.3)  # s: from this reference time to reference release + this
+    w_lead_land: float = 0.0  # once, at the lead foot's first touchdown x exp(-(lateral error / sigma)^2)
+    sigma_lead_land: float = 0.08  # m
+    w_com_lateral: float = 0.0  # strike -> release: (COM - lead foot) sideways like the athlete's (~0)
+    sigma_com_lateral: float = 0.06  # m
     action_scale: dict = {"hip": 0.5, "knee": 0.5, "ankle": 0.4, "waist": 1.0, "shoulder": 1.5, "elbow": 1.5, "wrist": 1.2}
     finger_action_scale: float = 0.4  # rad around the squeezed four-seam grip pose
     grip_squeeze: float = 0.15  # default finger targets this far past contact = grip force (0.3 ejected the ball)
@@ -385,6 +395,10 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_stand_upright: float = 1.0
     w_stand_feet: float = 1.0
     w_stand_still: float = 0.5
+    # lead foot sideways on the athlete's line, COM over it (approved 2026-10-11): standing must be possible at the release
+    w_lead_lateral: float = 2.0
+    w_lead_land: float = 10.0
+    w_com_lateral: float = 1.0
     w_stand_pivot: float = 0.3  # the user's pivot idea, as a light guide (pelvis heading toward the finish heading)
     # releases under min_release_speed (base 15 m/s = 54 km/h) count as drops and END the episode at -5, while a fall after
     # the release costs -60. Stage 1 releases at ~34 km/h (median, 18100-18550), so half the training episodes

@@ -9,6 +9,9 @@ One pass of full pitches records every body / joint / contact / ball state, then
   6. energy       segment energies (legs+pelvis, trunk, arm, ball), energy flow into the arm, joint powers,
                   ground reaction force from the COM (braking / vertical, body weights)
   7. saturation   share of time joints sit at their torque limit (stride, strike -> release, after release)
+  8. after the release  timeline robot vs athlete (feet, COM, capture point, trunk, spin, lead leg)
+  9. stoppable    lead foot / COM sideways vs the athlete at the release, and whether a centroidal LP can bring each
+                  release state to rest (aibaseball.mocap.stopping)
 
     python scripts/diag_pitch.py --headless --checkpoint <pitch model.pt> [--envs 16] [--sections 1,4,6]
     what-ifs: --zero (no policy, reference PD only), --ref_after_release, --leg_scale 2.0
@@ -25,7 +28,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
-parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8")
+parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8,9")
 parser.add_argument("--zero", action="store_true", help="what-if: no policy, pure reference PD tracking")
 parser.add_argument("--ref_after_release", action="store_true", help="what-if: zero residual actions after the release")
 parser.add_argument("--after_s", type=float, default=0.5, help="section 8: timeline length after the release")
@@ -133,7 +136,8 @@ def main():
                jq=np.zeros((T, n, J), f32), jv=np.zeros((T, n, J), f32), tau=np.zeros((T, n, J), f32),
                ball_p=np.zeros((T, n, 3), f32), ball_v=np.zeros((T, n, 3), f32), feet_f=np.zeros((T, n, 2), f32),
                rel=np.zeros((T, n), bool), fallen=np.zeros((T, n), bool), lost=np.zeros((T, n), bool),
-               ref_t=np.zeros((T, n), f32), ref_contact=np.zeros((T, n, 2), bool), com_err=np.zeros((T, n), f32))
+               ref_t=np.zeros((T, n), f32), ref_contact=np.zeros((T, n, 2), bool), com_err=np.zeros((T, n), f32),
+               ref_lead=np.zeros((T, n, 3), f32), ref_com=np.zeros((T, n, 3), f32))
     effort = rob.root_physx_view.get_dof_max_forces().cpu().numpy()[0]
     mass = rob.root_physx_view.get_masses().cpu().numpy()[0]
     inertia = rob.root_physx_view.get_inertias().cpu().numpy()[0].reshape(B, 3, 3)
@@ -169,6 +173,8 @@ def main():
             com, _ = base._com()
             rec["ref_t"][k], rec["ref_contact"][k] = tr.cpu().numpy(), rcon.cpu().numpy()
             rec["com_err"][k] = (com - rc).norm(dim=-1).cpu().numpy()
+            rec["ref_lead"][k] = (base._ref(tr)["key_pos"][:, 2] - o).cpu().numpy()
+            rec["ref_com"][k] = (rc - o).cpu().numpy()
     t = (np.arange(T) + 1) * dt
     if args.dump:
         np.savez_compressed(args.dump, body_names=np.array(names), joint_names=np.array(jn), mass=mass, dt=dt, **rec)
@@ -405,6 +411,42 @@ def main():
                 say(f"  {dto:+.2f} " + "".join(f"{c:>29s}" for c in cells))
         fall = [t_fall[i] - t_rel[i] for i in series if np.isfinite(t_fall[i])]
         say(f"  falls (pelvis < {cfg.fallen_pelvis_z} m or head < {cfg.fallen_head_z} m): median {med(fall):+.2f} s after the release")
+
+    if 9 in SECTIONS:
+        # ---------------------------------------------------------------- 9 stoppable at the release
+
+        from aibaseball.mocap import stopping as ST
+        lf, rf = bid["l_foot"], bid["r_foot"]
+        lat, com_lat, ok_lead, ok_split = [], [], [], []
+        for i in range(n):
+            if not np.isfinite(t_rel[i]):
+                continue
+            k = int(np.argmax(rec["rel"][:, i]))
+            q = rec["q"][k, i]
+            Rb = Rotation.from_quat(np.concatenate([q[:, 1:], q[:, :1]], -1)).as_matrix()
+            Cm, V, L, Ic = ST.state_from_links(mass, rec["p"][k, i].astype(float), rec["v"][k, i].astype(float), Rb,
+                                              rec["w"][k, i].astype(float), inertia)
+            lq = rec["lq"][k, i]
+            Rf = [Rotation.from_quat([lq[j, 1], lq[j, 2], lq[j, 3], lq[j, 0]]).as_matrix() for j in (lf, rf)]
+            Pl = ST.sole_xy(Rf[0], rec["lp"][k, i, lf])
+            Pr = ST.sole_xy(Rf[1], rec["lp"][k, i, rf])
+            h = Cm[2] - (rec["lp"][k, i, lf] + Rf[0] @ np.array([0, 0, -0.08]))[2]
+            Iv = np.array([Ic[0, 0], Ic[1, 1]])
+            lead_y = rec["lp"][k, i, lf, 1]
+            lat.append(lead_y - rec["ref_lead"][k, i, 1])
+            com_lat.append((Cm[1] - lead_y) - (rec["ref_com"][k, i, 1] - rec["ref_lead"][k, i, 1]))
+            ok_lead.append(ST.solve(Cm, V, L, h, mass.sum(), Iv, [(0.0, ST.hull(Pl))], theta_max=np.radians(30))[0])
+            ok_split.append(ST.solve(Cm, V, L, h, mass.sum(), Iv, [(0.0, ST.hull(np.vstack([Pl, Pr])))],
+                                     theta_max=np.radians(30))[0])
+        say("[9] STOPPABLE AT THE RELEASE (+ = toward the glove side; athlete: COM in line with the lead foot)")
+        if lat:
+            lat, com_lat = np.array(lat), np.array(com_lat)
+            say(f"  lead foot sideways vs athlete: median {np.median(lat):+.2f} m, |err| median {np.median(abs(lat)):.2f} m "
+                f"(goal < 0.10), within 0.10 m: {int((abs(lat) < 0.10).sum())}/{len(lat)}")
+            say(f"  COM - lead foot sideways vs athlete: median {np.median(com_lat):+.2f} m, |err| median "
+                f"{np.median(abs(com_lat)):.2f} m")
+            say(f"  stoppable (centroidal LP, tip <= 30 deg): lead foot alone {sum(ok_lead)}/{len(lat)} | "
+                f"both feet where they are {sum(ok_split)}/{len(lat)}")
 
     if 7 in SECTIONS and series:
         say("\n[7] TORQUE AT LIMIT (share of steps, median over envs)")

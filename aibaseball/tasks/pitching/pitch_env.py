@@ -135,6 +135,8 @@ class PitchEnv(DirectRLEnv):
         self.rel_omega = torch.zeros(n, 3, device=dev)
         self.rel_pos = torch.zeros(n, 3, device=dev)
         self.release_reward = torch.zeros(n, device=dev)
+        self.lead_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # lead foot's first touchdown already scored
+        self.lead_prev_planted = torch.ones(n, dtype=torch.bool, device=dev)  # (True at reset: a start on the ground is no touchdown)
         self.crossed = torch.zeros(n, dtype=torch.bool, device=dev)
         self.fallen = torch.zeros(n, dtype=torch.bool, device=dev)
         self._lost = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -160,7 +162,8 @@ class PitchEnv(DirectRLEnv):
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
-            "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet")}
+            "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
+            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -681,10 +684,24 @@ class PitchEnv(DirectRLEnv):
         knee_on = self.released.float()
         knee_err = (d.joint_pos[:, self.lead_knee_id] - r["joint_pos"][:, self.lead_knee_col]).clamp_min(0.0)
         lead_knee = knee_on * torch.exp(-((knee_err / 0.25) ** 2))
+        # lead foot on the athlete's line (sideways, env y) and the COM in line with it: with the foot ~0.38 m toward the
+        # throwing-arm side the COM sat outside the support at the release and the body could not be stopped
+        lead_y = d.body_link_pos_w[:, self.key_ids[2], 1]
+        lat_err = lead_y - r["key_pos"][:, 2, 1]
+        lat_on = ((tr >= c.lead_lateral_window[0]) & (tr <= self.release_ref + c.lead_lateral_window[1])).float()
+        lead_lateral = lat_on * torch.exp(-((lat_err / c.sigma_lead_lateral) ** 2))
+        touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_lateral_window[0])
+        self.lead_landed |= touch
+        self.lead_prev_planted[:] = planted[:, 0]
+        lead_land = touch.float() * torch.exp(-((lat_err / c.sigma_lead_land) ** 2))
+        com_lat_err = (com[:, 1] - lead_y) - (rc[:, 1] - r["key_pos"][:, 2, 1])
+        com_lat_on = ((tr >= self.ref_lead_strike) & (tr <= self.release_ref)).float()
+        com_lateral = com_lat_on * torch.exp(-((com_lat_err / c.sigma_com_lateral) ** 2))
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         stand = self._stand_reward(com, com_v, planted, d_sup, tr, up) if c.post_release_balance             else torch.zeros_like(track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
+               + c.w_lead_lateral * lead_lateral + c.w_lead_land * lead_land + c.w_com_lateral * com_lateral
                - landing + c.w_capture_step * capture_step + c.w_back_place * back_place + c.w_lead_knee * lead_knee
                + c.w_balance * self.released.float() * self.post_gain * balance
                + self.released.float() * self.post_gain * stand
@@ -711,7 +728,9 @@ class PitchEnv(DirectRLEnv):
                            ("arm_launch_err_m", arm_err, arm_on), ("trunk_err_deg", trunk_err * 57.3, trunk_on),
                            ("com_drop_mps", drop, brace_on), ("drive_err_rad", drive_err.sqrt(), drive_on),
                            ("chain_score", chain / chain_on.clamp_min(1e-6), chain_on),
-                           ("capture_out_m", d_sup, support_on), ("lead_foot_err_m", lead_err, plant_on)):
+                           ("capture_out_m", d_sup, support_on), ("lead_foot_err_m", lead_err, plant_on),
+                           ("lead_lat_err_m", lat_err.abs(), lat_on), ("lead_land_lat_m", lat_err.abs(), touch),
+                           ("com_lat_err_m", com_lat_err.abs(), com_lat_on)):
             self._ema(k, val, on, a)
         self._ema("hold_gap_mm", gap * 1000, ~self.released, a)
         done = self.reset_terminated | self.reset_time_outs
@@ -874,8 +893,9 @@ class PitchEnv(DirectRLEnv):
         self.ball.write_root_state_to_sim(ball, env_ids)
         self.actions[env_ids] = 0.0
         self.prev_actions[env_ids] = 0.0
-        for buf in (self.released, self.new_release, self.dropped, self.crossed):
+        for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed):
             buf[env_ids] = False
+        self.lead_prev_planted[env_ids] = True
         self.release_step[env_ids] = 0
         self.recovery_ep[env_ids] = False
         if not c.play_mode and self.rb_count >= c.recovery_min_states and c.recovery_prob > 0:

@@ -33,23 +33,28 @@ now = dt.datetime.now()
 
 rows, t = [], now
 for k in range(a.cycles):
-    stop = a.start + (k + 1) * a.step
-    rep = os.path.join(ROOT, "logs", f"cycle_{a.run}_{stop}.txt")
+    stop_it = a.start + (k + 1) * a.step
+    rep = os.path.join(ROOT, "logs", f"cycle_{a.run}_{stop_it}.txt")
     up = fall = None
+    lat = stop = "-"
     if os.path.exists(rep):
         txt = open(rep, encoding="utf-8", errors="ignore").read()
         m = re.search(r"still up 1.5 s after the release: (\d+)/(\d+); fall median ([+\-\d.]+) s", txt)
         if m:
             up, fall = f"{m.group(1)}/{m.group(2)}", m.group(3)
+        m = re.search(r"lead foot sideways vs athlete: .*\|err\| median ([\d.]+) m", txt)
+        lat = m.group(1) if m else "-"
+        m = re.search(r"stoppable .*lead foot alone (\d+)/(\d+) \| both feet where they are (\d+)/", txt)
+        stop = f"{m.group(1)} / {m.group(3)} of {m.group(2)}" if m else "-"
     if up is not None:
-        rows.append((k + 1, stop, "done", "-", up, fall))
+        rows.append((k + 1, stop_it, "done", "-", up, fall, lat, stop))
         continue
-    left_it = max(0, stop - max(it, stop - a.step))
+    left_it = max(0, stop_it - max(it, stop_it - a.step))
     t = t + dt.timedelta(seconds=left_it * sec_it + a.eval_min * 60)
-    state = "training" if it >= stop - a.step else "waiting"
-    if it >= stop:
+    state = "training" if it >= stop_it - a.step else "waiting"
+    if it >= stop_it:
         state = "report / video"
-    rows.append((k + 1, stop, state, t.strftime("%H:%M"), "-", "-"))
+    rows.append((k + 1, stop_it, state, t.strftime("%H:%M"), "-", "-", "-", "-"))
 
 left = t - now
 done_it = max(0, it - a.start)
@@ -58,9 +63,10 @@ out = [f"# Training progress: {a.run} ({now:%Y-%m-%d %H:%M})", "",
        f"- speed: {sps[-1] if sps else '?'} steps/s, {sec_it:.1f} s per iteration (last 20)",
        f"- time left: **{int(left.total_seconds() // 3600)} h {int(left.total_seconds() % 3600 // 60)} min**, "
        f"finish around **{t:%H:%M}** (report + video {a.eval_min:.0f} min per cycle included)", "",
-       "| cycle | to iteration | state | expected | still up 1.5 s | fall median (s) |",
-       "|---|---|---|---|---|---|"]
-out += [f"| {c} | {s} | {st} | {e} | {u} | {fm} |" for c, s, st, e, u, fm in rows]
+       "| cycle | to iteration | state | expected | still up 1.5 s | fall median (s) | lead foot sideways err (m, goal < 0.10) "
+       "| stoppable at release (lead foot / both feet) |",
+       "|---|---|---|---|---|---|---|---|"]
+out += [f"| {c} | {s} | {st} | {e} | {u} | {fm} | {la} | {sp} |" for c, s, st, e, u, fm, la, sp in rows]
 text = "\n".join(out) + "\n"
 print(text)
 with open(os.path.join(ROOT, "logs", f"progress_{a.run}.md"), "w", encoding="utf-8") as f:
