@@ -811,23 +811,33 @@ class PitchEnv(DirectRLEnv):
             self.effort_lim = lim[self.body_ids].clamp_min(1.0)
         torque = ((d.applied_torque[:, self.body_ids] / self.effort_lim) ** 2).mean(-1)
         slip = (planted.float() * foot_v).sum(-1)
+        # survival shaping: staying up after the release earns w_alive_v2 over follow_through_s; an earlier fall costs more
+        alive = (self.released & ~self.fallen).float() * (c.w_alive_v2 / follow)
+        fall_w = torch.full_like(rel, c.w_fall_v2)
+        if c.fall_graded:
+            left = (1.0 - since.float() / follow).clamp(0.0, 1.0)
+            fall_w = torch.where(self.released, c.w_fall_v2 * (0.5 + 0.5 * left), fall_w)
+        fall = fall_w * self.fallen.float()
+        pen = 1.0 - (1.0 - c.post_release_pen_scale) * rel
+        rate = pen * c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
+        torque = pen * c.w_torque * torque
+        impact = pen * c.w_impact * impact
+        slip = pen * c.w_slip_v2 * slip
         # per-term rewards of this step (diag_pitch sums them per episode to check the magnitudes)
         self.v2_terms = {"throw": self.release_reward.clone(), "stand": c.w_stand_v2 * stand,
                          "style": c.w_style * style, "hold": c.w_hold_v2 * hold, "cp": c.w_cp_v2 * g_cp,
-                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "fall": -c.w_fall_v2 * self.fallen.float(),
+                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "fall": -fall,
                          "drop": -c.w_drop * (self.new_release & self.dropped).float(),
                          "late": -c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float(),
-                         "rate": -c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1),
-                         "torque": -c.w_torque * torque, "impact": -c.w_impact * impact, "slip": -c.w_slip_v2 * slip}
+                         "rate": -rate, "torque": -torque, "impact": -impact, "slip": -slip}
         rew = (self.release_reward + c.w_stand_v2 * stand
                + c.w_style * style + c.w_hold_v2 * hold
-               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up
-               - c.w_fall_v2 * self.fallen.float()
+               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up + alive
+               - fall
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
                - c.w_lost * self._lost.float()
-               - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
-               - c.w_torque * torque - c.w_impact * impact - c.w_slip_v2 * slip)
+               - rate - torque - impact - slip)
         a = 0.01
         self._ema("stand_ok", ok.float(), check, 0.05)
         self._ema("cp_out_m", d_sup, cp_on > 0, a)

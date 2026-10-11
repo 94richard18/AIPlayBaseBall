@@ -117,6 +117,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_up_v2: float = 0.05  # per step after the release: head above 1 m
     w_torque: float = 0.001  # per step x mean (torque / limit)^2
     w_slip_v2: float = 0.1  # per step x horizontal speed of the planted feet (m/s)
+    # survival shaping (plan A, 2026-10-12): a fall that every pitch gets carries no advantage signal
+    w_alive_v2: float = 0.0  # total over follow_through_s for staying up after the release (spread per step)
+    fall_graded: bool = False  # a fall after the release costs w_fall_v2 x (0.5 + 0.5 x share of follow-through left)
+    post_release_pen_scale: float = 1.0  # action rate / torque / impact / slip after the release x this
     w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
     sigma_lead_hip_roll: float = 0.15  # rad
     lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
@@ -482,3 +486,16 @@ class PitchStand2EnvCfg(PitchStandFirstEnvCfg):
     w_action_rate: float = 0.0005
     w_impact: float = 0.05
     w_slip_v2: float = 0.025
+
+
+@configclass
+class PitchStand3EnvCfg(PitchStand2EnvCfg):
+    """Stage 1, reward v2 + survival shaping (plan A, approved 2026-10-12). After 300 iterations of v2 every pitch still
+    fell (falls moved earlier, +0.57 -> +0.40 s): the -200 fall was the same for every pitch (no advantage), the +200
+    stand was never sampled, and the per-step penalties after the release made falling early cheaper. Now: +100 spread
+    over 1.5 s for staying up after the release, a fall costs more the earlier it comes (200 at the release, 100 at the
+    end), post-release penalties halved."""
+
+    w_alive_v2: float = 100.0
+    fall_graded: bool = True
+    post_release_pen_scale: float = 0.5

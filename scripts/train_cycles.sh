@@ -11,6 +11,7 @@ RUN=$4
 STEP=${5:-150}
 GOAL=${6:-60}
 IT=$(basename "$CKPT" .pt | sed 's/model_//')
+[ "$CKPT" = none ] && IT=0  # from scratch
 echo "$TASK $RUN $IT $N $STEP" > logs/current_chain.txt  # read by train_progress.py --auto (status-line mod)
 for _ in $(seq "$N"); do
     STOP=$((IT + STEP))

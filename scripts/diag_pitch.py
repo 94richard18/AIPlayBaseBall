@@ -25,7 +25,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
-parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "speed"], default="stand_first")
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8,9")
@@ -86,7 +86,7 @@ def med(x):
 
 def main():
     cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg,
-           "stand2": C.PitchStand2EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+           "stand2": C.PitchStand2EnvCfg, "stand3": C.PitchStand3EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0

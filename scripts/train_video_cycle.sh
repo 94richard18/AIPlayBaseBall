@@ -11,12 +11,16 @@ STOP=$3
 RUN=$4
 ENVS=${5:-4096}
 PY=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
-LOAD_RUN=$(basename "$(dirname "$CKPT")")
-LOAD_CKPT=$(basename "$CKPT")
-EXP_DIR=$(dirname "$(dirname "$CKPT")")
+if [ "$CKPT" = none ]; then  # from scratch
+    EXP_DIR=logs/rsl_rl/aib1_pitch
+    RESUME=()
+else
+    EXP_DIR=$(dirname "$(dirname "$CKPT")")
+    RESUME=(--resume True --load_run "$(basename "$(dirname "$CKPT")")" --checkpoint "$(basename "$CKPT")")
+fi
 
 $PY -u scripts/train.py --task "$TASK" --headless --num_envs "$ENVS" --max_iterations 5000 --run_name "$RUN" \
-    --resume True --load_run "$LOAD_RUN" --checkpoint "$LOAD_CKPT" >> logs_pitch_stand.txt 2>&1 &
+    "${RESUME[@]}" >> logs_pitch_stand.txt 2>&1 &
 PID=$!
 NEW=""
 while kill -0 $PID 2>/dev/null; do
@@ -37,7 +41,7 @@ echo "[cycle] checkpoint $NEW"
 grep -E "pitch/(release_rate|release_kmh|post_release_fail|release_time_err|lead_foot_err_m|arm_launch_err_m|chain_score|drive_err_rad|com_drop_mps|trunk_err_deg)" \
     logs_pitch_stand.txt | tail -10
 # report and video in one simulator launch (one Isaac Sim start-up instead of two)
-CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; esac
+CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; *Stand3*) CFG=stand3;; esac
 $PY -u scripts/diag_pitch.py --headless --envs 64 --cfg "$CFG" --checkpoint "$NEW" --sections 1,2,4,5,6,8,9 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \
     | sed -n '/^== diag_pitch/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/diag_iter_$STOP.txt"
 echo "[cycle] next: $NEW"
