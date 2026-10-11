@@ -87,8 +87,12 @@ class PitchEnvCfg(DirectRLEnvCfg):
     lead_lateral_window: tuple = (0.6, 0.3)  # s: from this reference time to reference release + this
     w_lead_land: float = 0.0  # once, at the lead foot's first touchdown x exp(-(lateral error / sigma)^2)
     sigma_lead_land: float = 0.08  # m
+    lead_touch_after_s: float = 0.6  # s, reference time: first lead-foot touchdown counted from here (not the leg lift)
     w_com_lateral: float = 0.0  # strike -> release: (COM - lead foot) sideways like the athlete's (~0)
     sigma_com_lateral: float = 0.06  # m
+    w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
+    sigma_lead_hip_roll: float = 0.15  # rad
+    lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
     action_scale: dict = {"hip": 0.5, "knee": 0.5, "ankle": 0.4, "waist": 1.0, "shoulder": 1.5, "elbow": 1.5, "wrist": 1.2}
     finger_action_scale: float = 0.4  # rad around the squeezed four-seam grip pose
     grip_squeeze: float = 0.15  # default finger targets this far past contact = grip force (0.3 ejected the ball)
@@ -352,7 +356,9 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # timing within 1 ms), the follow-through is not. With the ~30% release-state starts, ~28% full pitches remain
     # 0.6 (17350-17950): full pitches fell to ~28% of training and the full-pitch standing rate declined (17650 6/16 ->
     # 17950 0/16) while the training failure rate stayed at 0.29; 0.4 keeps ~42% full pitches
-    rsi_prob: float = 0.4
+    # 0.1 (20050): the late-stride reference starts landed the lead foot on the athlete's line (training touchdown error
+    # ~0.10 m) and hid that full pitches kept it 0.24 m off; full pitches ~63% of training now
+    rsi_prob: float = 0.1
     rsi_min_s: float = 0.6
     # kinetic chain (two pitching-mechanics articles): arm up at foot strike, proximal-to-distal timing, pivot-leg
     # drive, a braced lead leg (damped, not softened: the knee flipped between +-250 Nm and the foot bounced)
@@ -399,6 +405,11 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_lead_lateral: float = 2.0
     w_lead_land: float = 10.0
     w_com_lateral: float = 1.0
+    # 20050: no progress (0.24 m). The foot is off BEFORE touchdown: the lead hip roll swings 15-23 deg past the athlete's
+    # at 0.6-0.7 s (low torque: chosen), then 300 Nm (the limit) cannot bring it back by 0.8 s. Track the foot's sideways
+    # path through the swing (out to -0.84 m at 0.6 s, back to -0.51 m) and the lead hip roll itself
+    lead_lateral_window: tuple = (0.3, 0.3)
+    w_lead_hip_roll: float = 1.0
     w_stand_pivot: float = 0.3  # the user's pivot idea, as a light guide (pelvis heading toward the finish heading)
     # releases under min_release_speed (base 15 m/s = 54 km/h) count as drops and END the episode at -5, while a fall after
     # the release costs -60. Stage 1 releases at ~34 km/h (median, 18100-18550), so half the training episodes

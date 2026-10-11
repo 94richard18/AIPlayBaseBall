@@ -116,6 +116,8 @@ class PitchEnv(DirectRLEnv):
         self.trunk_cols = [i for i, j in enumerate(bn) if j.startswith("waist_")]
         self.lead_knee_col = bn.index("l_knee")
         self.lead_knee_id = int(self.body_ids[self.lead_knee_col])
+        self.lead_roll_col = bn.index("l_hip_roll")
+        self.lead_roll_id = int(self.body_ids[self.lead_roll_col])
 
         # buffers
         self.actions = torch.zeros(n, cfg.action_space, device=dev)
@@ -163,7 +165,7 @@ class PitchEnv(DirectRLEnv):
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
-            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m")}
+            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -690,18 +692,22 @@ class PitchEnv(DirectRLEnv):
         lat_err = lead_y - r["key_pos"][:, 2, 1]
         lat_on = ((tr >= c.lead_lateral_window[0]) & (tr <= self.release_ref + c.lead_lateral_window[1])).float()
         lead_lateral = lat_on * torch.exp(-((lat_err / c.sigma_lead_lateral) ** 2))
-        touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_lateral_window[0])
+        touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_touch_after_s)
         self.lead_landed |= touch
         self.lead_prev_planted[:] = planted[:, 0]
         lead_land = touch.float() * torch.exp(-((lat_err / c.sigma_lead_land) ** 2))
         com_lat_err = (com[:, 1] - lead_y) - (rc[:, 1] - r["key_pos"][:, 2, 1])
         com_lat_on = ((tr >= self.ref_lead_strike) & (tr <= self.release_ref)).float()
         com_lateral = com_lat_on * torch.exp(-((com_lat_err / c.sigma_com_lateral) ** 2))
+        roll_err = d.joint_pos[:, self.lead_roll_id] - r["joint_pos"][:, self.lead_roll_col]
+        roll_on = ((tr >= c.lead_hip_roll_window[0]) & (tr <= c.lead_hip_roll_window[1])).float()
+        lead_roll = roll_on * torch.exp(-((roll_err / c.sigma_lead_hip_roll) ** 2))
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         stand = self._stand_reward(com, com_v, planted, d_sup, tr, up) if c.post_release_balance             else torch.zeros_like(track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
                + c.w_lead_lateral * lead_lateral + c.w_lead_land * lead_land + c.w_com_lateral * com_lateral
+               + c.w_lead_hip_roll * lead_roll
                - landing + c.w_capture_step * capture_step + c.w_back_place * back_place + c.w_lead_knee * lead_knee
                + c.w_balance * self.released.float() * self.post_gain * balance
                + self.released.float() * self.post_gain * stand
@@ -730,7 +736,8 @@ class PitchEnv(DirectRLEnv):
                            ("chain_score", chain / chain_on.clamp_min(1e-6), chain_on),
                            ("capture_out_m", d_sup, support_on), ("lead_foot_err_m", lead_err, plant_on),
                            ("lead_lat_err_m", lat_err.abs(), lat_on), ("lead_land_lat_m", lat_err.abs(), touch),
-                           ("com_lat_err_m", com_lat_err.abs(), com_lat_on)):
+                           ("com_lat_err_m", com_lat_err.abs(), com_lat_on),
+                           ("lead_roll_err_deg", roll_err.abs() * 57.3, roll_on)):
             self._ema(k, val, on, a)
         self._ema("hold_gap_mm", gap * 1000, ~self.released, a)
         done = self.reset_terminated | self.reset_time_outs
