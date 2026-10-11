@@ -160,7 +160,7 @@ class PitchEnv(DirectRLEnv):
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
-            "post_release_fail", "recovery_fall", "recovery_share")}
+            "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -318,7 +318,8 @@ class PitchEnv(DirectRLEnv):
                             torch.full_like(post, c.residual_scale).unsqueeze(0))
         body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale
         self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
-        self.qd_target[:, self.body_ids] = nxt["joint_vel"] * c.vel_feedforward
+        ff = (1.0 + (c.post_release_feedforward - 1.0) * self.released.float()) * c.vel_feedforward
+        self.qd_target[:, self.body_ids] = nxt["joint_vel"] * ff.unsqueeze(-1)
         fing = self.hold_q + self.actions[:, 29:] * c.finger_action_scale
         if c.scripted_release_s is not None:  # fingers open on the reference's schedule (no holding on to the ball)
             opening = (self._ref_time() >= self.release_ref + c.scripted_release_s).unsqueeze(-1)
@@ -606,7 +607,9 @@ class PitchEnv(DirectRLEnv):
         support_on = self._ref_time() >= c.lead_plant_t
         support = support_on.float() * 0.5 * (torch.exp(-((d_sup / c.sigma_support) ** 2))
                                                + torch.exp(-((d_sup / c.sigma_support_wide) ** 2)))
-        footing = c.w_com * com_rew + c.w_contact * contact_match + c.w_support * support - c.w_slip * slip
+        ref_foot = torch.where(self.released, torch.zeros_like(com_rew), torch.ones_like(com_rew))             if c.post_release_balance else torch.ones_like(com_rew)
+        footing = (ref_foot * (c.w_com * com_rew + c.w_contact * contact_match) + c.w_support * support
+                   - c.w_slip * slip)
 
         # pitching mechanics (kinetic chain): arm in the launch position at foot strike, pelvis / trunk / arm speeds on
         # the athlete's timeline, pivot-leg drive, lead-leg brace (COM not dropping), trunk not diving at the release
@@ -680,9 +683,11 @@ class PitchEnv(DirectRLEnv):
         lead_knee = knee_on * torch.exp(-((knee_err / 0.25) ** 2))
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
+        stand = self._stand_reward(com, com_v, planted, d_sup, tr, up) if c.post_release_balance             else torch.zeros_like(track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
                - landing + c.w_capture_step * capture_step + c.w_back_place * back_place + c.w_lead_knee * lead_knee
                + c.w_balance * self.released.float() * self.post_gain * balance
+               + self.released.float() * self.post_gain * stand
                - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_fall * self.fallen.float()
@@ -721,6 +726,32 @@ class PitchEnv(DirectRLEnv):
         self.stats["speed"].fill_(self.speed)
         self.extras["log"] = {f"pitch/{k}": v.clone() for k, v in self.stats.items()}
         return rew
+
+    def _stand_reward(self, com, com_v, planted, d_sup, tr, up):
+        """After the release, balance instead of imitation (the synthesized follow-through fell even under pure PD from
+        the reference's own release state): capture point over the feet, spin damped, trunk back up, both feet down,
+        come to rest; the pivot (pelvis turning on toward the reference's finish heading) is only a light guide."""
+        c, d = self.cfg, self.robot.data
+        since = tr - self.release_ref  # reference time since the release (s)
+        ramp = lambda t0, t1: ((since - t0) / (t1 - t0)).clamp(0.0, 1.0)  # noqa: E731
+        sup = torch.exp(-((d_sup / 0.10) ** 2))
+        # centroidal angular momentum about the COM, horizontal part (the forward spin that tipped the PD-only robot)
+        m = self.body_mass.unsqueeze(-1)
+        L = (m * torch.cross(d.body_com_pos_w - com.unsqueeze(1), d.body_com_lin_vel_w - com_v.unsqueeze(1),
+                             dim=-1)).sum(1)
+        spin = torch.exp(-((L[:, :2].norm(dim=-1) / c.sigma_stand_spin) ** 2))
+        upright = ramp(0.3, 0.8) * torch.exp(-(((1.0 - up[:, 2]).clamp_min(0.0) / 0.12) ** 2))
+        both = ramp(0.4, 0.7) * planted.all(-1).float()
+        still = ramp(0.7, 1.0) * torch.exp(-((com_v.norm(dim=-1) / 0.3) ** 2))
+        r = self._ref(tr)
+        yaw = lambda q: torch.atan2(2 * (q[:, 0] * q[:, 3] + q[:, 1] * q[:, 2]), 1 - 2 * (q[:, 2] ** 2 + q[:, 3] ** 2))  # noqa: E731
+        dyaw = torch.remainder(yaw(d.root_link_quat_w) - yaw(r["root_quat"]) + math.pi, 2 * math.pi) - math.pi
+        pivot = torch.exp(-((dyaw / 0.6) ** 2))
+        for k, val in (("stand_spin", L[:, :2].norm(dim=-1)), ("stand_up_z", up[:, 2]),
+                       ("stand_both_feet", planted.all(-1).float())):
+            self._ema(k, val, self.released & (since > 0.5), 0.01)
+        return (c.w_stand_support * sup + c.w_stand_spin * spin + c.w_stand_upright * upright
+                + c.w_stand_feet * both + c.w_stand_still * still + c.w_stand_pivot * pivot)
 
     def _ema(self, key, val, mask, a):
         """Running mean of val over the envs in mask; unchanged when mask is empty (no host sync)."""

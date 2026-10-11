@@ -68,6 +68,17 @@ class PitchEnvCfg(DirectRLEnvCfg):
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
     vel_feedforward: float = 1.0
+    post_release_feedforward: float = 1.0  # velocity feed-forward scale after the release
+    # balance mode after the release: the reference stays the PD base pose, but nothing rewards following it
+    # (_stand_reward); the reference COM / contact terms switch off
+    post_release_balance: bool = False
+    w_stand_support: float = 0.0
+    w_stand_spin: float = 0.0
+    sigma_stand_spin: float = 15.0  # kg m^2/s (PD-only from the reference release: ~31-37 when tipping over)
+    w_stand_upright: float = 0.0
+    w_stand_feet: float = 0.0
+    w_stand_still: float = 0.0
+    w_stand_pivot: float = 0.0
     action_scale: dict = {"hip": 0.5, "knee": 0.5, "ankle": 0.4, "waist": 1.0, "shoulder": 1.5, "elbow": 1.5, "wrist": 1.2}
     finger_action_scale: float = 0.4  # rad around the squeezed four-seam grip pose
     grip_squeeze: float = 0.15  # default finger targets this far past contact = grip force (0.3 ejected the ball)
@@ -300,24 +311,24 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # used the 2x authority to kick the back foot ~1 m up (reference 0.4 m) and kept it 0.6-1 m behind: back to 1.0 so
     # the reference swing (up, then forward beside the lead foot) leads
     back_leg_post_release_gain: float | None = 1.0
-    w_back_place: float = 2.0
+    w_back_place: float = 0.5  # 2.0 under imitation; a light guide in balance mode
     w_back_down: float = 2.0
     # pro finish (the user's reference videos): balance over a straight lead leg, the back leg up behind as a counterweight,
     # then down beside the lead foot. The capture step (back foot straight through, planted near the capture point) is off:
     # the back foot is meant to stay up until ~0.7 s after the release now
     w_capture_step: float = 0.0
-    w_lead_knee: float = 1.0
+    w_lead_knee: float = 0.0  # 1.0 under imitation (no knee bent past the reference); the knee is free in balance mode
     # half the trunk authority back after the release: with a reference-only trunk it kept pitching forward
     # (to ~100-110 deg) in every follow-through variant and the forward rotation was never braked
-    trunk_post_release_gain: float | None = 0.5
-    w_post_release_track: float = 1.0
+    trunk_post_release_gain: float | None = 1.0  # 0.5 under imitation
+    w_post_release_track: float = 0.2  # 1.0 under imitation: now only a weak pose prior
     w_balance: float = 1.0
     w_fall_after_release: float = 60.0
     # no residual after the release: the follow-through is the reference alone. Any post-release residual drove the
     # trunk / back leg into a forward pitch that lifted the planted lead foot (falls +0.36 s after the release);
     # reference-only kept the lead foot planted 82% of the time and delayed falls to +0.89 s. The policy has to arrive
     # at the release in a state the reference follow-through can stand on.
-    post_release_residual_gain: float = 0.0
+    post_release_residual_gain: float = 1.0  # 0.0 under imitation (balance mode: every joint can act)
     w_lead_plant: float = 1.0
     w_release_time: float = 20.0
     w_com: float = 0.5
@@ -356,12 +367,25 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # planted foot (COM then ran past it). Plan step 2 (balance obs in place): hip + ankle get 0.4 back for ankle /
     # hip strategy (at 17950 the lead foot rocked onto its heel, toe 15-20 deg up, with no way to press it down); the
     # knee stays reference-only (the lift came through the knee)
-    lead_leg_post_release_gain: float = 0.4
-    lead_knee_post_release_gain: float | None = 0.0
+    lead_leg_post_release_gain: float = 1.0  # 0.4 hip/ankle, 0.0 knee under imitation
+    lead_knee_post_release_gain: float | None = 1.0
     # plan step 3: at 18250 the falls happen +0.6..1.0 s after the release, after the back foot is down (the robot folds
     # forward into a crouch), but every practice start was the release itself. ~0.01 per step stores about as many
     # in-follow-through states (+0.3..0.7 s) as release states, so half the recovery starts begin part-way through
     late_store_prob: float = 0.01
+    # 2026-10-11: balance after the release instead of imitation. With the robot started from the reference's own state
+    # at 0.95 s and pure PD on the reference, 0/64 stood (trunk dove to 72 deg, the lead foot lifted, forward spin
+    # 31-37 kg m^2/s vs ~4 in the reference, fell +1.36 s): the synthesized follow-through is not dynamically feasible,
+    # and imitating it pinned the policy to a falling motion. Full residual authority, no velocity feed-forward, the
+    # reference pose is only the PD base and a weak prior
+    post_release_balance: bool = True
+    post_release_feedforward: float = 0.0
+    w_stand_support: float = 1.0
+    w_stand_spin: float = 1.0
+    w_stand_upright: float = 1.0
+    w_stand_feet: float = 1.0
+    w_stand_still: float = 0.5
+    w_stand_pivot: float = 0.3  # the user's pivot idea, as a light guide (pelvis heading toward the finish heading)
     # releases under min_release_speed (base 15 m/s = 54 km/h) count as drops and END the episode at -5, while a fall after
     # the release costs -60. Stage 1 releases at ~34 km/h (median, 18100-18550), so half the training episodes
     # (drop_rate 0.50) ended at the release: full pitches never practised the follow-through, and a slow toss was the
