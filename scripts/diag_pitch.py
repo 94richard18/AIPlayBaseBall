@@ -25,7 +25,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
-parser.add_argument("--cfg", choices=["elastic", "stand_first", "speed"], default="stand_first")
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8,9")
@@ -85,7 +85,8 @@ def med(x):
 
 
 def main():
-    cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+    cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg,
+           "stand2": C.PitchStand2EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
@@ -137,11 +138,12 @@ def main():
                ball_p=np.zeros((T, n, 3), f32), ball_v=np.zeros((T, n, 3), f32), feet_f=np.zeros((T, n, 2), f32),
                rel=np.zeros((T, n), bool), fallen=np.zeros((T, n), bool), lost=np.zeros((T, n), bool),
                ref_t=np.zeros((T, n), f32), ref_contact=np.zeros((T, n, 2), bool), com_err=np.zeros((T, n), f32),
-               ref_lead=np.zeros((T, n, 3), f32), ref_com=np.zeros((T, n, 3), f32))
+               ref_lead=np.zeros((T, n, 3), f32), ref_com=np.zeros((T, n, 3), f32), throw=np.zeros((T, n), f32))
     effort = rob.root_physx_view.get_dof_max_forces().cpu().numpy()[0]
     mass = rob.root_physx_view.get_masses().cpu().numpy()[0]
     inertia = rob.root_physx_view.get_inertias().cpu().numpy()[0].reshape(B, 3, 3)
     o = base.scene.env_origins
+    v2_sum, v2_end = {}, np.zeros(n, bool)  # reward v2: per-term totals per episode (until it would have ended)
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
@@ -175,6 +177,14 @@ def main():
             rec["com_err"][k] = (com - rc).norm(dim=-1).cpu().numpy()
             rec["ref_lead"][k] = (base._ref(tr)["key_pos"][:, 2] - o).cpu().numpy()
             rec["ref_com"][k] = (rc - o).cpu().numpy()
+            rec["throw"][k] = base.throw_score.cpu().numpy()
+            if getattr(base, "v2_terms", None) is not None:
+                live = ~v2_end
+                for key, val in base.v2_terms.items():
+                    v2_sum[key] = v2_sum.get(key, np.zeros(n)) + val.cpu().numpy() * live
+                since = (base.episode_length_buf - base.release_step).cpu().numpy()
+                v2_end |= (rec["fallen"][k] | (rec["rel"][k] & (since >= int(round(cfg.follow_through_s / dt))))
+                           | base._late.cpu().numpy())
     t = (np.arange(T) + 1) * dt
     if args.dump:
         np.savez_compressed(args.dump, body_names=np.array(names), joint_names=np.array(jn), mass=mass, dt=dt, **rec)
@@ -210,6 +220,36 @@ def main():
         say(f"  falls: {int(np.isfinite(t_fall).sum())}/{n}; still up 1.5 s after the release: {sum(up)}/{len(up)}"
             + (f" ({short} released too late to be observed 1.5 s - use a longer --seconds)" if short else "")
             + (f"; fall median {med(after):+.2f} s after the release" if after else ""))
+        # stage 1 v2 standing criteria (docs/reward_redesign_stage1.md) at release + follow_through_s
+        tid, M = bid["torso"], mass.sum()
+        vz = rec["v"][:, :, tid, 2].astype(float)
+        az = np.zeros_like(vz)
+        for k in range(1, T):
+            az[k] = 0.9 * az[k - 1] + 0.1 * (vz[k] - vz[k - 1]) / dt
+        rest, why = [], {"fell first": 0, "feet": 0, "COM speed": 0, "trunk tilt": 0, "head": 0, "sinking": 0}
+        for i in seen:
+            k = int(np.argmax(rec["rel"][:, i])) + int(round(cfg.follow_through_s / dt))
+            if k >= T or (np.isfinite(t_fall[i]) and t[k] >= t_fall[i]):
+                why["fell first"] += 1
+                rest.append(False)
+                continue
+            q = rec["lq"][k, i, tid]
+            Rt = Rotation.from_quat([q[1], q[2], q[3], q[0]]).as_matrix()
+            com_v = (mass[:, None] * rec["v"][k, i]).sum(0) / M
+            head = rec["lp"][k, i, tid, 2] + (Rt @ np.array([0.0, 0.0, 0.62]))[2]
+            checks = {"feet": (rec["feet_f"][k, i] > cfg.contact_force_n).all(),
+                      "COM speed": np.linalg.norm(com_v) < cfg.stand_max_com_v,
+                      "trunk tilt": Rt[2, 2] > np.cos(np.radians(cfg.stand_max_tilt_deg)),
+                      "head": head > cfg.stand_min_head_z, "sinking": az[k, i] > -cfg.stand_max_sink_acc}
+            for kk, v in checks.items():
+                why[kk] += int(not v)
+            rest.append(all(checks.values()))
+        prog = [rec["throw"][-1, i] for i in range(n) if np.isfinite(t_rel[i])]
+        say(f"  at rest standing (feet down, COM < {cfg.stand_max_com_v} m/s, trunk < {cfg.stand_max_tilt_deg:.0f} deg, "
+            f"head > {cfg.stand_min_head_z} m, not sinking) {cfg.follow_through_s} s after the release: "
+            f"{sum(rest)}/{len(rest)} (failed: " + ", ".join(f"{k} {v}" for k, v in why.items()) + ")")
+        if cfg.reward_v2:
+            say(f"  ball progress toward the plate (score 0..1, full at {cfg.throw_full_m} m): median {med(prog):.2f}")
         say(f"  tracking lost before the release (training would end the episode): {int(np.isfinite(t_lost).sum())}/{n}"
             + (f", median at {med(t_lost):.2f} s" if np.isfinite(t_lost).any() else ""))
 
@@ -411,6 +451,13 @@ def main():
                 say(f"  {dto:+.2f} " + "".join(f"{c:>29s}" for c in cells))
         fall = [t_fall[i] - t_rel[i] for i in series if np.isfinite(t_fall[i])]
         say(f"  falls (pelvis < {cfg.fallen_pelvis_z} m or head < {cfg.fallen_head_z} m): median {med(fall):+.2f} s after the release")
+
+    if v2_sum:
+        say("\n[R] REWARD v2 PER EPISODE (mean over pitches | min .. max; until the episode would have ended)")
+        tot = sum(v2_sum.values())
+        for key, val in v2_sum.items():
+            say(f"  {key:7s} {val.mean():+8.1f} | {val.min():+8.1f} .. {val.max():+8.1f}")
+        say(f"  total   {tot.mean():+8.1f} | {tot.min():+8.1f} .. {tot.max():+8.1f}")
 
     if 9 in SECTIONS:
         # ---------------------------------------------------------------- 9 stoppable at the release

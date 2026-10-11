@@ -97,6 +97,26 @@ class PitchEnvCfg(DirectRLEnvCfg):
     sigma_cp_lateral_wide: float = 0.30  # m: 20050 sat at 0.43 m, where the 6 / 8 cm bands alone give no gradient
     w_land_cp: float = 0.0  # once, at the lead foot's first touchdown
     sigma_land_cp: float = 0.08  # m
+    # ---- reward v2 (docs/reward_redesign_stage1.md): outcome first, physics guidance on the robot's own feet
+    reward_v2: bool = False
+    free_after_s: float = 0.5  # s, reference time: imitation (style) only before this; legs get free_leg_gain after it
+    free_leg_gain: float = 1.0  # residual gain of both legs from free_after_s to the release
+    freeze_pd_after_release: bool = False  # PD base = the reference pose at the release (not the follow-through)
+    w_throw: float = 100.0  # once at the release x clamp((ball-to-plate distance decrease) / throw_full_m, 0, 1)
+    throw_full_m: float = 5.0
+    w_stand_v2: float = 200.0  # once at release + follow_through_s if standing, x (0.5 + 0.5 x throw score)
+    stand_max_com_v: float = 0.2  # m/s
+    stand_max_tilt_deg: float = 35.0  # trunk from vertical
+    stand_min_head_z: float = 1.3  # m
+    stand_max_sink_acc: float = 0.5  # m/s^2: trunk not accelerating downward (upward is fine; both feet must be down)
+    w_fall_v2: float = 200.0  # once, at a fall (the episode ends)
+    w_style: float = 0.1  # per step before free_after_s x normalized reference tracking
+    w_hold_v2: float = 0.05  # per step before the release: ball in the grip
+    w_cp_v2: float = 0.1  # per step from the robot's own lead-foot touchdown: capture point inside the support
+    w_spin_v2: float = 0.05  # per step after the release: horizontal centroidal angular momentum small
+    w_up_v2: float = 0.05  # per step after the release: head above 1 m
+    w_torque: float = 0.001  # per step x mean (torque / limit)^2
+    w_slip_v2: float = 0.1  # per step x horizontal speed of the planted feet (m/s)
     w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
     sigma_lead_hip_roll: float = 0.15  # rad
     lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
@@ -435,3 +455,30 @@ class PitchSpeedEnvCfg(PitchStandFirstEnvCfg):
     """Stage 2: the pitcher stays up (stage 1); now the speed reward saturates at 120 km/h again."""
 
     target_speed: float = 120.0 * KMH
+
+
+@configclass
+class PitchStand2EnvCfg(PitchStandFirstEnvCfg):
+    """Stage 1, reward v2 (docs/reward_redesign_stage1.md, approved 2026-10-11): any motion that throws the ball toward
+    the plate and comes to rest standing is a good motion. Outcome rewards (ball progress toward the plate, standing at
+    release + 1.5 s, falls), physics guidance on the robot's own feet (capture point in the support, spin, height) and
+    imitation only before 0.5 s. Three attempts on the old 30+-term reward could not move the lead foot (always
+    ~0.25 m toward the throwing-arm side, 2-3/64 release states stoppable); per-step imitation (hundreds of points)
+    outweighed the fall penalty (60)."""
+
+    reward_v2: bool = True
+    free_leg_gain: float = 2.0
+    freeze_pd_after_release: bool = True
+    # escapes must cost at least as much as a fall: not releasing, dropping the ball
+    late_release_s: float = 0.3
+    w_late_release: float = 200.0
+    w_drop: float = 200.0
+    min_release_speed: float = 2.0  # only a ball that slips out counts as a drop (speed is not rewarded in stage 1)
+    max_key_err: float = 99.0  # no tracking-loss termination: the motion is free after 0.5 s
+    rsi_prob: float = 0.0  # mid-pitch reference starts put the feet where the athlete's were
+    recovery_prob: float = 0.3
+    # quality penalties scaled to <= ~10 per episode (measured on 20200: action rate -36, impact -42, slip -38, i.e. as
+    # large as the throw reward): x 1/4
+    w_action_rate: float = 0.0005
+    w_impact: float = 0.05
+    w_slip_v2: float = 0.025

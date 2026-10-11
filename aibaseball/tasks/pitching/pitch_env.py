@@ -137,6 +137,11 @@ class PitchEnv(DirectRLEnv):
         self.rel_omega = torch.zeros(n, 3, device=dev)
         self.rel_pos = torch.zeros(n, 3, device=dev)
         self.release_reward = torch.zeros(n, device=dev)
+        self.rel_ref_t = torch.zeros(n, device=dev)  # reference time at the release (PD base after it, reward v2)
+        self.throw_score = torch.zeros(n, device=dev)  # reward v2: ball progress toward the plate, 0..1
+        self.torso_vz_prev = torch.zeros(n, device=dev)
+        self.torso_az = torch.zeros(n, device=dev)  # smoothed vertical acceleration of the trunk (m/s^2)
+        self.effort_lim = None
         self.lead_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # lead foot's first touchdown already scored
         self.lead_prev_planted = torch.ones(n, dtype=torch.bool, device=dev)  # (True at reset: a start on the ground is no touchdown)
         self.crossed = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -165,7 +170,8 @@ class PitchEnv(DirectRLEnv):
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
-            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg", "cp_lat_m", "land_cp_lat_m")}
+            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg", "cp_lat_m", "land_cp_lat_m",
+            "throw_score", "throw_progress_m", "stand_ok", "cp_out_m", "sink_acc")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -305,7 +311,10 @@ class PitchEnv(DirectRLEnv):
             self.speed = c.speed + (c.speed_end - c.speed) * min(1.0, self.common_step_counter / c.speed_ramp_steps)
         self.prev_actions[:] = self.actions
         self.actions = actions.clamp(-2.0, 2.0)
-        nxt = self._ref(self._ref_time(1))
+        t_pd = self._ref_time(1)
+        if c.freeze_pd_after_release:  # reward v2: no synthesized follow-through, the release pose is the PD base
+            t_pd = torch.where(self.released, self.rel_ref_t, t_pd)
+        nxt = self._ref(t_pd)
         # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets
         # more authority to step / brace and recover its balance
         # per joint: the lead leg can keep its own (smaller) post-release gain - with 2x it learned to lift the planted
@@ -319,8 +328,12 @@ class PitchEnv(DirectRLEnv):
             post[self.back_leg_cols] = c.back_leg_post_release_gain
         if c.trunk_post_release_gain is not None:
             post[self.trunk_cols] = c.trunk_post_release_gain
-        scale = torch.where(self.released.unsqueeze(-1), c.residual_scale * post.unsqueeze(0),
-                            torch.full_like(post, c.residual_scale).unsqueeze(0))
+        pre = torch.full_like(post, c.residual_scale).unsqueeze(0)
+        if c.free_leg_gain != 1.0:  # reward v2: the legs choose the stride after free_after_s
+            legs = torch.ones_like(post)
+            legs[self.lead_leg_cols + self.back_leg_cols] = c.free_leg_gain
+            pre = torch.where((self._ref_time() >= c.free_after_s).unsqueeze(-1), pre * legs.unsqueeze(0), pre)
+        scale = torch.where(self.released.unsqueeze(-1), c.residual_scale * post.unsqueeze(0), pre)
         body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale
         self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
         ff = (1.0 + (c.post_release_feedforward - 1.0) * self.released.float()) * c.vel_feedforward
@@ -381,6 +394,7 @@ class PitchEnv(DirectRLEnv):
             self.released[ids] = True
             self.new_release[ids] = True
             self.release_step[ids] = self.episode_length_buf[ids]
+            self.rel_ref_t[ids] = self._ref_time()[ids]
             self.rel_vel[ids] = v
             self.rel_omega[ids] = self.ball.data.root_ang_vel_w[ids]
             self.rel_pos[ids] = self.ball.data.root_pos_w[ids]
@@ -468,6 +482,8 @@ class PitchEnv(DirectRLEnv):
         self.finger_next[env_ids] = open_q
         self.released[env_ids] = True  # the ball is gone: no release reward, follow-through window starts now
         self.release_step[env_ids] = -self.rb_since[idx]  # late starts are already part-way into the follow-through
+        self.rel_ref_t[env_ids] = self.rb_t[idx] - self.rb_since[idx].float() * self.step_dt * self.speed
+        self.throw_score[env_ids] = 1.0  # practising the finish only (the stored throws were real ones)
         far = self.scene.env_origins[env_ids] + torch.tensor([10.0, 0.0, 1.0], device=self.device)
         ball = torch.cat([far, torch.tensor([1.0, 0, 0, 0], device=self.device).expand(n, 4),
                           torch.zeros(n, 6, device=self.device)], -1)
@@ -710,6 +726,8 @@ class PitchEnv(DirectRLEnv):
 
         track = torch.where(self.released, c.w_post_release_track * self.post_gain * track, track)
         stand = self._stand_reward(com, com_v, planted, d_sup, tr, up) if c.post_release_balance             else torch.zeros_like(track)
+        if c.reward_v2:
+            return self._reward_v2(track, hold, d_sup, planted, com, com_v, up, impact, tr, foot_v)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
                + c.w_lead_lateral * lead_lateral + c.w_lead_land * lead_land + c.w_com_lateral * com_lateral
                + c.w_lead_hip_roll * lead_roll + c.w_cp_lateral * cp_lateral + c.w_land_cp * land_cp
@@ -756,6 +774,74 @@ class PitchEnv(DirectRLEnv):
         # honest follow-through metric: episodes that ended by falling OR losing the reference after release
         self._ema("post_release_fail", (self.released & self.fallen).float(), done, b)
         self.stats["speed"].fill_(self.speed)
+        self.extras["log"] = {f"pitch/{k}": v.clone() for k, v in self.stats.items()}
+        return rew
+
+    def _reward_v2(self, track, hold, d_sup, planted, com, com_v, up, impact, tr, foot_v):
+        """Stage 1 reward v2 (docs/reward_redesign_stage1.md): outcomes (ball progress toward the plate at the release,
+        standing at rest at release + follow_through_s, falls, escapes), physics guidance on the robot's own feet and
+        a weak style prior before free_after_s. Per-episode totals: outcomes 100 / 200 / -200, guidance <= ~130."""
+        c, d = self.cfg, self.robot.data
+        since = self.episode_length_buf - self.release_step
+        follow = int(round(c.follow_through_s / self.step_dt))
+        rel = self.released.float()
+        style = (tr < c.free_after_s).float() * track / max(c.w_pose + c.w_vel + c.w_key + c.w_root, 1e-6)
+        # capture point inside the support (feet on the ground), from the robot's own lead-foot touchdown on
+        cp_on = (self.released | self.lead_landed).float()
+        g_cp = cp_on * 0.5 * (torch.exp(-((d_sup / 0.05) ** 2)) + torch.exp(-((d_sup / 0.30) ** 2)))
+        m = self.body_mass.unsqueeze(-1)
+        L = (m * torch.cross(d.body_com_pos_w - com.unsqueeze(1), d.body_com_lin_vel_w - com_v.unsqueeze(1),
+                             dim=-1)).sum(1)
+        l_xy = L[:, :2].norm(dim=-1)
+        g_spin = rel * torch.exp(-((l_xy / 15.0) ** 2))
+        head_z = self._head_z()
+        g_up = rel * (head_z > 1.0).float()
+        # trunk vertical acceleration, smoothed (~25 ms): standing = not sinking (upward is fine, feet stay down)
+        vz = d.body_link_lin_vel_w[:, self.torso_id, 2]
+        self.torso_az = 0.9 * self.torso_az + 0.1 * (vz - self.torso_vz_prev) / self.step_dt
+        self.torso_vz_prev = vz
+        both = planted.all(-1)
+        ok = (both & (com_v.norm(dim=-1) < c.stand_max_com_v)
+              & (up[:, 2] > math.cos(math.radians(c.stand_max_tilt_deg)))
+              & (head_z > c.stand_min_head_z) & (self.torso_az > -c.stand_max_sink_acc))
+        check = self.released & ~self.dropped & ~self.fallen & (since == follow)
+        stand = (check & ok).float() * (0.5 + 0.5 * self.throw_score)
+        if self.effort_lim is None:
+            lim = self.robot.root_physx_view.get_dof_max_forces().to(self.device)[0]
+            self.effort_lim = lim[self.body_ids].clamp_min(1.0)
+        torque = ((d.applied_torque[:, self.body_ids] / self.effort_lim) ** 2).mean(-1)
+        slip = (planted.float() * foot_v).sum(-1)
+        # per-term rewards of this step (diag_pitch sums them per episode to check the magnitudes)
+        self.v2_terms = {"throw": self.release_reward.clone(), "stand": c.w_stand_v2 * stand,
+                         "style": c.w_style * style, "hold": c.w_hold_v2 * hold, "cp": c.w_cp_v2 * g_cp,
+                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "fall": -c.w_fall_v2 * self.fallen.float(),
+                         "drop": -c.w_drop * (self.new_release & self.dropped).float(),
+                         "late": -c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float(),
+                         "rate": -c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1),
+                         "torque": -c.w_torque * torque, "impact": -c.w_impact * impact, "slip": -c.w_slip_v2 * slip}
+        rew = (self.release_reward + c.w_stand_v2 * stand
+               + c.w_style * style + c.w_hold_v2 * hold
+               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up
+               - c.w_fall_v2 * self.fallen.float()
+               - c.w_drop * (self.new_release & self.dropped).float()
+               - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
+               - c.w_lost * self._lost.float()
+               - c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
+               - c.w_torque * torque - c.w_impact * impact - c.w_slip_v2 * slip)
+        a = 0.01
+        self._ema("stand_ok", ok.float(), check, 0.05)
+        self._ema("cp_out_m", d_sup, cp_on > 0, a)
+        self._ema("sink_acc", (-self.torso_az).clamp_min(0.0), self.released & both, a)
+        self._ema("stand_spin", l_xy, self.released, a)
+        self._ema("stand_up_z", up[:, 2], self.released, a)
+        self._ema("stand_both_feet", both.float(), self.released, a)
+        done = self.reset_terminated | self.reset_time_outs
+        b = 0.02
+        self._ema("release_rate", (self.released & ~self.dropped).float(), done, b)
+        self._ema("drop_rate", self.dropped.float(), done, b)
+        self._ema("fall_rate", self.fallen.float(), done, b)
+        self._ema("recovery_fall", self.fallen.float(), done & self.recovery_ep, b)
+        self._ema("post_release_fail", (self.released & self.fallen).float(), done, b)
         self.extras["log"] = {f"pitch/{k}": v.clone() for k, v in self.stats.items()}
         return rew
 
@@ -811,6 +897,18 @@ class PitchEnv(DirectRLEnv):
                  + c.w_both * (fast & out["strike"]).float())
             t_rel = self.t0[ids] + self.speed * self.release_step[ids].float() * self.step_dt
             r = r + c.w_release_time * torch.exp(-(((t_rel - self.release_ref) / c.sigma_release_time) ** 2))
+            if c.reward_v2:  # stage 1 v2: only the ball's progress toward the plate counts (no speed, no zone)
+                o = self.scene.env_origins[ids]
+                tgt = torch.tensor([c.plate_distance, float(self.zone_center[0]), float(self.zone_center[1])],
+                                   device=self.device)
+                d0 = (self.rel_pos[ids] - o - tgt).norm(dim=-1)
+                d_end = (out["cross"] - tgt).norm(dim=-1)
+                prog = d0 - d_end
+                score = (prog / c.throw_full_m).clamp(0.0, 1.0)
+                self.throw_score[ids] = score
+                r = c.w_throw * score
+                self.stats["throw_score"] = 0.98 * self.stats["throw_score"] + 0.02 * score.mean()
+                self.stats["throw_progress_m"] = 0.98 * self.stats["throw_progress_m"] + 0.02 * prog.mean()
             self.release_reward[ids] = r
             w = self.rel_omega[ids]
             v = self.rel_vel[ids]
@@ -909,6 +1007,9 @@ class PitchEnv(DirectRLEnv):
         for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed):
             buf[env_ids] = False
         self.lead_prev_planted[env_ids] = True
+        self.throw_score[env_ids] = 0.0
+        self.torso_vz_prev[env_ids] = 0.0
+        self.torso_az[env_ids] = 0.0
         self.release_step[env_ids] = 0
         self.recovery_ep[env_ids] = False
         if not c.play_mode and self.rb_count >= c.recovery_min_states and c.recovery_prob > 0:
