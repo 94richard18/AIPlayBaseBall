@@ -1,8 +1,9 @@
 """Progress and time left of a train_cycles.sh chain, from the training log and the cycle reports.
 
     python scripts/train_progress.py --run balance --start 19300 --cycles 4 [--step 150] [--eval_min 8]
+    python scripts/train_progress.py --auto --oneline   # the chain train_cycles.sh started last, one line
 
-Prints a Markdown summary and writes it to logs/progress_<run>.md.
+Prints a Markdown summary and writes it to logs/progress_<run>.md (--oneline: one status line, nothing written).
 """
 import argparse
 import datetime as dt
@@ -12,13 +13,22 @@ import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 p = argparse.ArgumentParser()
-p.add_argument("--run", required=True)
-p.add_argument("--start", type=int, required=True)
-p.add_argument("--cycles", type=int, required=True)
+p.add_argument("--run")
+p.add_argument("--start", type=int)
+p.add_argument("--cycles", type=int)
 p.add_argument("--step", type=int, default=150)
+p.add_argument("--auto", action="store_true", help="run / start / cycles / step from logs/current_chain.txt")
+p.add_argument("--oneline", action="store_true", help="one status line (for the status-line mod)")
 p.add_argument("--eval_min", type=float, default=8.0, help="report + video per cycle (min)")
 p.add_argument("--log", default=os.path.join(ROOT, "logs_pitch_stand.txt"))
 a = p.parse_args()
+if a.auto:
+    try:
+        _, a.run, start, cycles, step = open(os.path.join(ROOT, "logs", "current_chain.txt")).read().split()
+        a.start, a.cycles, a.step = int(start), int(cycles), int(step)
+    except (OSError, ValueError):
+        print("沒有訓練記錄" if a.oneline else "no logs/current_chain.txt")
+        raise SystemExit(0)
 
 with open(a.log, encoding="utf-8", errors="ignore") as f:
     tail = f.readlines()[-6000:]
@@ -57,6 +67,19 @@ for k in range(a.cycles):
     rows.append((k + 1, stop_it, state, t.strftime("%H:%M"), "-", "-", "-", "-"))
 
 left = t - now
+if a.oneline:
+    done_all = all(r[2] == "done" for r in rows)
+    idle = (now - dt.datetime.fromtimestamp(os.path.getmtime(a.log))).total_seconds() > 300
+    nxt = next((r for r in rows if r[2] != "done"), None)
+    last = next((r for r in reversed(rows) if r[2] == "done"), None)
+    res = f" | 上一份 {last[1]}：站穩 {last[4]}" if last else ""
+    if done_all or (idle and nxt is not None and nxt[2] != "report / video"):
+        print(f"訓練 {a.run}：{'已完成' if done_all else '沒有在跑'}（{it}）{res}")
+    else:
+        pct = 100 * max(0, it - a.start) / (end - a.start)
+        what = "評估錄影中" if nxt[2] == "report / video" else f"{it}/{nxt[1]}"
+        print(f"訓練 {a.run}：{what}（全程 {pct:.0f}%）| 下一份報告 {nxt[1]} 約 {nxt[3]} | 全部完成約 {t:%H:%M}{res}")
+    raise SystemExit(0)
 done_it = max(0, it - a.start)
 out = [f"# Training progress: {a.run} ({now:%Y-%m-%d %H:%M})", "",
        f"- iteration **{it}** of {a.start} -> {end} ({done_it}/{end - a.start}, {100 * done_it / (end - a.start):.0f}%)",
