@@ -33,6 +33,8 @@ parser.add_argument("--post_gain", type=float, default=None,
                     help="what-if: one post-release residual gain for every body joint (lead knee, trunk, legs included)")
 parser.add_argument("--start_s", type=float, default=None,
                     help="what-if: every env starts from the reference state at this reference time (e.g. the release)")
+parser.add_argument("--hold_s", type=float, default=None,
+                    help="what-if: after each env's release the reference stops at its pose this long after the release")
 parser.add_argument("--leg_scale", type=float, default=1.0, help="what-if: scale hip/knee/ankle torque limits")
 parser.add_argument("--leg_stiffness", type=float, default=1.0, help="what-if: scale hip/knee/ankle PD stiffness")
 parser.add_argument("--depen", type=float, default=None, help="what-if: PhysX max depenetration velocity (m/s, robot)")
@@ -109,6 +111,10 @@ def main():
         orig()
         return torch.zeros_like(base.released), base.episode_length_buf >= base.max_episode_length - 1
     base._get_dones = keep_running
+    if args.hold_s is not None:  # freeze the reference (PD target) at release + hold_s, per env
+        hold_t = torch.full((base.num_envs,), float("inf"), device=base.device)
+        ref_time = base._ref_time
+        base._ref_time = lambda extra=0: torch.minimum(ref_time(extra), hold_t)
     w = RslRlVecEnvWrapper(env)
     ag = PitchPPORunnerCfg()
     r = OnPolicyRunner(w, ag.to_dict(), log_dir=None, device=ag.device)
@@ -141,6 +147,9 @@ def main():
             elif args.ref_after_release:
                 act = torch.where(base.released.unsqueeze(-1), torch.zeros_like(act), act)
             obs, _, _, _ = w.step(act)
+            if args.hold_s is not None:
+                new = base.released & torch.isinf(hold_t)
+                hold_t[new] = ref_time()[new] + args.hold_s
             d = rob.data
             rec["p"][k] = (d.body_com_pos_w - o.unsqueeze(1)).cpu().numpy()
             rec["q"][k] = d.body_com_quat_w.cpu().numpy()
@@ -176,7 +185,7 @@ def main():
     out_strike = [bool(base._release_outcome(torch.tensor([i], device=base.device))["strike"][0]) if i_rel[i] is not None
                   else False for i in range(n)]
     tag = " [what-if: " + ", ".join(k for k in ("zero", "ref_after_release") if getattr(args, k)) + \
-          (f" leg torque x{args.leg_scale}" if args.leg_scale != 1.0 else "") + (f" post-release gain {args.post_gain}" if args.post_gain is not None else "") +           (f" leg stiffness x{args.leg_stiffness}" if args.leg_stiffness != 1.0 else "") +           (f" depenetration {args.depen} m/s" if args.depen is not None else "") + "]"         if (args.zero or args.ref_after_release or args.post_gain is not None or args.leg_scale != 1.0 or args.leg_stiffness != 1.0
+          (f" leg torque x{args.leg_scale}" if args.leg_scale != 1.0 else "") + (f" post-release gain {args.post_gain}" if args.post_gain is not None else "") +           (f" leg stiffness x{args.leg_stiffness}" if args.leg_stiffness != 1.0 else "") +           (f" depenetration {args.depen} m/s" if args.depen is not None else "") +           (f" hold pose release+{args.hold_s} s" if args.hold_s is not None else "") + "]"         if (args.zero or args.ref_after_release or args.post_gain is not None or args.leg_scale != 1.0 or args.hold_s is not None or args.leg_stiffness != 1.0
             or args.depen is not None) else ""
     say(f"== diag_pitch: {args.checkpoint}{tag} | {n} full pitches, cfg {args.cfg}")
 
