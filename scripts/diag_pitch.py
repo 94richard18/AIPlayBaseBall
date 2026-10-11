@@ -417,7 +417,7 @@ def main():
 
         from aibaseball.mocap import stopping as ST
         lf, rf = bid["l_foot"], bid["r_foot"]
-        lat, com_lat, ok_lead, ok_split = [], [], [], []
+        lat, com_lat, cp_lat, ok_lead, ok_split = [], [], [], [], []
         for i in range(n):
             if not np.isfinite(t_rel[i]):
                 continue
@@ -434,15 +434,17 @@ def main():
             Iv = np.array([Ic[0, 0], Ic[1, 1]])
             lead_y = rec["lp"][k, i, lf, 1]
             lat.append(lead_y - rec["ref_lead"][k, i, 1])
+            cp_lat.append(Cm[1] + V[1] * np.sqrt(max(h, 0.3) / 9.81) - Pl[:, 1].mean())
             com_lat.append((Cm[1] - lead_y) - (rec["ref_com"][k, i, 1] - rec["ref_lead"][k, i, 1]))
             ok_lead.append(ST.solve(Cm, V, L, h, mass.sum(), Iv, [(0.0, ST.hull(Pl))], theta_max=np.radians(30))[0])
             ok_split.append(ST.solve(Cm, V, L, h, mass.sum(), Iv, [(0.0, ST.hull(np.vstack([Pl, Pr])))],
                                      theta_max=np.radians(30))[0])
-        say("[9] STOPPABLE AT THE RELEASE (+ = toward the glove side; athlete: COM in line with the lead foot)")
+        say("[9] STOPPABLE AT THE RELEASE (+ = toward the glove side)")
         if lat:
-            lat, com_lat = np.array(lat), np.array(com_lat)
-            say(f"  lead foot sideways vs athlete: median {np.median(lat):+.2f} m, |err| median {np.median(abs(lat)):.2f} m "
-                f"(goal < 0.10), within 0.10 m: {int((abs(lat) < 0.10).sum())}/{len(lat)}")
+            lat, com_lat, cp_lat = np.array(lat), np.array(com_lat), np.array(cp_lat)
+            say(f"  capture point sideways from the robot's own lead foot: |offset| median {np.median(abs(cp_lat)):.2f} m "
+                f"(median {np.median(cp_lat):+.2f}), within 0.06 m: {int((abs(cp_lat) < 0.06).sum())}/{len(cp_lat)}")
+            say(f"  (for reference, not a goal) lead foot sideways vs athlete: median {np.median(lat):+.2f} m, |err| median {np.median(abs(lat)):.2f} m, within 0.10 m: {int((abs(lat) < 0.10).sum())}/{len(lat)}")
             say(f"  COM - lead foot sideways vs athlete: median {np.median(com_lat):+.2f} m, |err| median "
                 f"{np.median(abs(com_lat)):.2f} m")
             say(f"  stoppable (centroidal LP, tip <= 30 deg): lead foot alone {sum(ok_lead)}/{len(lat)} | "

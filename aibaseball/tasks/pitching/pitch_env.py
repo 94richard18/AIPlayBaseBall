@@ -165,7 +165,7 @@ class PitchEnv(DirectRLEnv):
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
-            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg")}
+            "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg", "cp_lat_m", "land_cp_lat_m")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -699,6 +699,11 @@ class PitchEnv(DirectRLEnv):
         com_lat_err = (com[:, 1] - lead_y) - (rc[:, 1] - r["key_pos"][:, 2, 1])
         com_lat_on = ((tr >= self.ref_lead_strike) & (tr <= self.release_ref)).float()
         com_lateral = com_lat_on * torch.exp(-((com_lat_err / c.sigma_com_lateral) ** 2))
+        cp_lat = cp[:, 1] - feet_xy[:, 0, 1]  # capture point sideways from the robot's own lead foot
+        cp_on = (planted[:, 0] & (tr >= c.lead_touch_after_s) & (tr <= self.release_ref + 0.3)).float()
+        cp_wide = torch.exp(-((cp_lat / c.sigma_cp_lateral_wide) ** 2))
+        cp_lateral = cp_on * 0.5 * (torch.exp(-((cp_lat / c.sigma_cp_lateral) ** 2)) + cp_wide)
+        land_cp = touch.float() * 0.5 * (torch.exp(-((cp_lat / c.sigma_land_cp) ** 2)) + cp_wide)
         roll_err = d.joint_pos[:, self.lead_roll_id] - r["joint_pos"][:, self.lead_roll_col]
         roll_on = ((tr >= c.lead_hip_roll_window[0]) & (tr <= c.lead_hip_roll_window[1])).float()
         lead_roll = roll_on * torch.exp(-((roll_err / c.sigma_lead_hip_roll) ** 2))
@@ -707,7 +712,7 @@ class PitchEnv(DirectRLEnv):
         stand = self._stand_reward(com, com_v, planted, d_sup, tr, up) if c.post_release_balance             else torch.zeros_like(track)
         rew = (c.w_track * track + c.w_hold * hold + self.release_reward + c.w_lead_plant * plant + footing + mech
                + c.w_lead_lateral * lead_lateral + c.w_lead_land * lead_land + c.w_com_lateral * com_lateral
-               + c.w_lead_hip_roll * lead_roll
+               + c.w_lead_hip_roll * lead_roll + c.w_cp_lateral * cp_lateral + c.w_land_cp * land_cp
                - landing + c.w_capture_step * capture_step + c.w_back_place * back_place + c.w_lead_knee * lead_knee
                + c.w_balance * self.released.float() * self.post_gain * balance
                + self.released.float() * self.post_gain * stand
@@ -737,7 +742,8 @@ class PitchEnv(DirectRLEnv):
                            ("capture_out_m", d_sup, support_on), ("lead_foot_err_m", lead_err, plant_on),
                            ("lead_lat_err_m", lat_err.abs(), lat_on), ("lead_land_lat_m", lat_err.abs(), touch),
                            ("com_lat_err_m", com_lat_err.abs(), com_lat_on),
-                           ("lead_roll_err_deg", roll_err.abs() * 57.3, roll_on)):
+                           ("lead_roll_err_deg", roll_err.abs() * 57.3, roll_on),
+                           ("cp_lat_m", cp_lat.abs(), cp_on), ("land_cp_lat_m", cp_lat.abs(), touch)):
             self._ema(k, val, on, a)
         self._ema("hold_gap_mm", gap * 1000, ~self.released, a)
         done = self.reset_terminated | self.reset_time_outs

@@ -42,7 +42,7 @@ for k in range(a.cycles):
         m = re.search(r"still up 1.5 s after the release: (\d+)/(\d+); fall median ([+\-\d.]+) s", txt)
         if m:
             up, fall = f"{m.group(1)}/{m.group(2)}", m.group(3)
-        m = re.search(r"lead foot sideways vs athlete: .*\|err\| median ([\d.]+) m", txt)
+        m = re.search(r"capture point sideways from the robot's own lead foot: \|offset\| median ([\d.]+) m", txt)
         lat = m.group(1) if m else "-"
         m = re.search(r"stoppable .*lead foot alone (\d+)/(\d+) \| both feet where they are (\d+)/", txt)
         stop = f"{m.group(1)} / {m.group(3)} of {m.group(2)}" if m else "-"
@@ -63,7 +63,7 @@ out = [f"# Training progress: {a.run} ({now:%Y-%m-%d %H:%M})", "",
        f"- speed: {sps[-1] if sps else '?'} steps/s, {sec_it:.1f} s per iteration (last 20)",
        f"- time left: **{int(left.total_seconds() // 3600)} h {int(left.total_seconds() % 3600 // 60)} min**, "
        f"finish around **{t:%H:%M}** (report + video {a.eval_min:.0f} min per cycle included)", "",
-       "| cycle | to iteration | state | expected | still up 1.5 s | fall median (s) | lead foot sideways err (m, goal < 0.10) "
+       "| cycle | to iteration | state | expected | still up 1.5 s | fall median (s) | capture point sideways from lead foot (m) "
        "| stoppable at release (lead foot / both feet) |",
        "|---|---|---|---|---|---|---|---|"]
 out += [f"| {c} | {s} | {st} | {e} | {u} | {fm} | {la} | {sp} |" for c, s, st, e, u, fm, la, sp in rows]

@@ -90,6 +90,13 @@ class PitchEnvCfg(DirectRLEnvCfg):
     lead_touch_after_s: float = 0.6  # s, reference time: first lead-foot touchdown counted from here (not the leg lift)
     w_com_lateral: float = 0.0  # strike -> release: (COM - lead foot) sideways like the athlete's (~0)
     sigma_com_lateral: float = 0.06  # m
+    # physics instead of the athlete's spot: capture point (COM + COM velocity x sqrt(h / g)) sideways over the planted
+    # lead foot, wherever the robot puts that foot
+    w_cp_lateral: float = 0.0  # lead foot planted, lead_touch_after_s -> reference release + 0.3 s
+    sigma_cp_lateral: float = 0.06  # m
+    sigma_cp_lateral_wide: float = 0.30  # m: 20050 sat at 0.43 m, where the 6 / 8 cm bands alone give no gradient
+    w_land_cp: float = 0.0  # once, at the lead foot's first touchdown
+    sigma_land_cp: float = 0.08  # m
     w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
     sigma_lead_hip_roll: float = 0.15  # rad
     lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
@@ -343,7 +350,7 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     # reference-only kept the lead foot planted 82% of the time and delayed falls to +0.89 s. The policy has to arrive
     # at the release in a state the reference follow-through can stand on.
     post_release_residual_gain: float = 1.0  # 0.0 under imitation (balance mode: every joint can act)
-    w_lead_plant: float = 1.0
+    w_lead_plant: float = 0.0  # 1.0 (athlete's spot); the user, 2026-10-11: the lead foot need not land where the athlete's did
     w_release_time: float = 20.0
     w_com: float = 0.5
     w_contact: float = 0.5
@@ -401,15 +408,19 @@ class PitchStandFirstEnvCfg(PitchElasticEnvCfg):
     w_stand_upright: float = 1.0
     w_stand_feet: float = 1.0
     w_stand_still: float = 0.5
-    # lead foot sideways on the athlete's line, COM over it (approved 2026-10-11): standing must be possible at the release
-    w_lead_lateral: float = 2.0
-    w_lead_land: float = 10.0
-    w_com_lateral: float = 1.0
+    # lead foot sideways on the athlete's line, COM over it (approved 2026-10-11): standing must be possible at the release.
+    # The user, 2026-10-11: the lead foot need not follow the athlete -> athlete-relative terms off (were 2.0 / 10.0 /
+    # 1.0 / hip roll 1.0); the capture point over the robot's own lead foot instead
+    w_lead_lateral: float = 0.0
+    w_lead_land: float = 0.0
+    w_com_lateral: float = 0.0
+    w_cp_lateral: float = 2.0
+    w_land_cp: float = 10.0
     # 20050: no progress (0.24 m). The foot is off BEFORE touchdown: the lead hip roll swings 15-23 deg past the athlete's
     # at 0.6-0.7 s (low torque: chosen), then 300 Nm (the limit) cannot bring it back by 0.8 s. Track the foot's sideways
     # path through the swing (out to -0.84 m at 0.6 s, back to -0.51 m) and the lead hip roll itself
     lead_lateral_window: tuple = (0.3, 0.3)
-    w_lead_hip_roll: float = 1.0
+    w_lead_hip_roll: float = 0.0
     w_stand_pivot: float = 0.3  # the user's pivot idea, as a light guide (pelvis heading toward the finish heading)
     # releases under min_release_speed (base 15 m/s = 54 km/h) count as drops and END the episode at -5, while a fall after
     # the release costs -60. Stage 1 releases at ~34 km/h (median, 18100-18550), so half the training episodes
