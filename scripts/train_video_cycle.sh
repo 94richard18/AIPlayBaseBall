@@ -41,7 +41,7 @@ echo "[cycle] checkpoint $NEW"
 grep -E "pitch/(release_rate|release_kmh|post_release_fail|release_time_err|lead_foot_err_m|arm_launch_err_m|chain_score|drive_err_rad|com_drop_mps|trunk_err_deg)" \
     logs_pitch_stand.txt | tail -10
 # report and video in one simulator launch (one Isaac Sim start-up instead of two)
-CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; *Stand3*) CFG=stand3;; esac
+CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; *Stand3*) CFG=stand3;; *Stand4*) CFG=stand4;; esac
 $PY -u scripts/diag_pitch.py --headless --envs 64 --cfg "$CFG" --checkpoint "$NEW" --sections 1,2,4,5,6,8,9 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \
     | sed -n '/^== diag_pitch/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/diag_iter_$STOP.txt"
 # the same pitches with the training action noise: a gap to the noise-free run = the mean action is not trained

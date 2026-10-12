@@ -125,6 +125,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # position at 0.07 s and walked through the reference without the ball): ends the episode, costs w_early_release
     release_after_lead_strike: bool = False
     w_early_release: float = 0.0
+    # settling (2026-10-13): from settle_after_s after the release, per step toward each standing criterion (soft), so the
+    # one-shot stand bonus at follow_through_s gets found. Total over the window ~ w_settle_v2
+    w_settle_v2: float = 0.0
+    settle_after_s: float = 0.5
     w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
     sigma_lead_hip_roll: float = 0.15  # rad
     lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
@@ -505,3 +509,13 @@ class PitchStand3EnvCfg(PitchStand2EnvCfg):
     post_release_pen_scale: float = 0.5
     release_after_lead_strike: bool = True  # added 2026-10-12 after the from-scratch run released at 0.07 s
     w_early_release: float = 200.0
+
+
+@configclass
+class PitchStand4EnvCfg(PitchStand3EnvCfg):
+    """Stage 1, + settling shaping (2026-10-13). At 1050 (noise capped) 59/64 pitches were still up 1.5 s after the
+    release but 0/64 at rest: trunk tilt > 35 deg 59/64, COM still moving 54/64. The stand bonus is checked once, at
+    1.5 s, and was never sampled; per step from 0.5 s after the release: trunk upright, COM still, both feet down, head
+    up (each 0..1, averaged)."""
+
+    w_settle_v2: float = 100.0

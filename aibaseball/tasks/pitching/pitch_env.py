@@ -821,6 +821,16 @@ class PitchEnv(DirectRLEnv):
             left = (1.0 - since.float() / follow).clamp(0.0, 1.0)
             fall_w = torch.where(self.released, c.w_fall_v2 * (0.5 + 0.5 * left), fall_w)
         fall = fall_w * self.fallen.float()
+        # settling: soft versions of the standing criteria, from settle_after_s after the release
+        settle = torch.zeros_like(rel)
+        if c.w_settle_v2 > 0:
+            lo = int(round(c.settle_after_s / self.step_dt))
+            on = (self.released & ~self.fallen & ~self._early & (since >= lo)).float()
+            tilt = torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0)))
+            upright = torch.exp(-(((tilt - 0.8 * c.stand_max_tilt_deg).clamp_min(0.0) / 15.0) ** 2))
+            still = torch.exp(-((com_v.norm(dim=-1) / (2.0 * c.stand_max_com_v)) ** 2))
+            tall = ((head_z - 1.0) / (c.stand_min_head_z + 0.05 - 1.0)).clamp(0.0, 1.0)
+            settle = on * (upright + still + both.float() + tall) / 4.0 * (c.w_settle_v2 / max(follow - lo, 1))
         pen = 1.0 - (1.0 - c.post_release_pen_scale) * rel
         rate = pen * c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
         torque = pen * c.w_torque * torque
@@ -829,14 +839,14 @@ class PitchEnv(DirectRLEnv):
         # per-term rewards of this step (diag_pitch sums them per episode to check the magnitudes)
         self.v2_terms = {"throw": self.release_reward.clone(), "stand": c.w_stand_v2 * stand,
                          "style": c.w_style * style, "hold": c.w_hold_v2 * hold, "cp": c.w_cp_v2 * g_cp,
-                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "fall": -fall,
+                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "settle": settle, "fall": -fall,
                          "drop": -c.w_drop * (self.new_release & self.dropped).float(),
                          "late": -c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float(),
                          "early": -c.w_early_release * (self.new_release & self._early).float(),
                          "rate": -rate, "torque": -torque, "impact": -impact, "slip": -slip}
         rew = (self.release_reward + c.w_stand_v2 * stand
                + c.w_style * style + c.w_hold_v2 * hold
-               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up + alive
+               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up + alive + settle
                - fall
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
