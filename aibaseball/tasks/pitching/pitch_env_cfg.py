@@ -121,6 +121,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_alive_v2: float = 0.0  # total over follow_through_s for staying up after the release (spread per step)
     fall_graded: bool = False  # a fall after the release costs w_fall_v2 x (0.5 + 0.5 x share of follow-through left)
     post_release_pen_scale: float = 1.0  # action rate / torque / impact / slip after the release x this
+    # a release before the robot's own lead-foot touchdown is no pitch (from scratch the policy threw from the set
+    # position at 0.07 s and walked through the reference without the ball): ends the episode, costs w_early_release
+    release_after_lead_strike: bool = False
+    w_early_release: float = 0.0
     w_lead_hip_roll: float = 0.0  # lead hip roll like the reference inside lead_hip_roll_window (0 = off)
     sigma_lead_hip_roll: float = 0.15  # rad
     lead_hip_roll_window: tuple = (0.5, 0.85)  # s, reference time
@@ -499,3 +503,5 @@ class PitchStand3EnvCfg(PitchStand2EnvCfg):
     w_alive_v2: float = 100.0
     fall_graded: bool = True
     post_release_pen_scale: float = 0.5
+    release_after_lead_strike: bool = True  # added 2026-10-12 after the from-scratch run released at 0.07 s
+    w_early_release: float = 200.0

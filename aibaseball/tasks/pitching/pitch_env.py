@@ -147,6 +147,7 @@ class PitchEnv(DirectRLEnv):
         self.crossed = torch.zeros(n, dtype=torch.bool, device=dev)
         self.fallen = torch.zeros(n, dtype=torch.bool, device=dev)
         self._lost = torch.zeros(n, dtype=torch.bool, device=dev)
+        self._early = torch.zeros(n, dtype=torch.bool, device=dev)  # released before the lead-foot touchdown
         # release-state buffer: states captured right after real releases, used to start "recovery" episodes
         # that only practise the follow-through (one release per pitch is too few balance-recovery samples)
         cap, nj = cfg.recovery_buffer_size, self.robot.num_joints
@@ -401,8 +402,10 @@ class PitchEnv(DirectRLEnv):
             self.post_gain[ids] = (v.norm(dim=-1) / self.cfg.target_speed).clamp(max=1.0) ** self.cfg.post_release_speed_pow
             slow = v.norm(dim=-1) < self.cfg.min_release_speed
             self.dropped[ids] = slow | (v[:, 0] <= 0)
+            if self.cfg.release_after_lead_strike:
+                self._early[ids] = ~self.lead_landed[ids] & ~self.recovery_ep[ids]
             if not self.cfg.play_mode and not getattr(self, "rb_frozen", False):
-                good = ids[~self.dropped[ids] & ~self.recovery_ep[ids]]
+                good = ids[~self.dropped[ids] & ~self.recovery_ep[ids] & ~self._early[ids]]
                 if len(good) > 0:
                     self._store_release_states(good)
         return gap
@@ -812,7 +815,7 @@ class PitchEnv(DirectRLEnv):
         torque = ((d.applied_torque[:, self.body_ids] / self.effort_lim) ** 2).mean(-1)
         slip = (planted.float() * foot_v).sum(-1)
         # survival shaping: staying up after the release earns w_alive_v2 over follow_through_s; an earlier fall costs more
-        alive = (self.released & ~self.fallen).float() * (c.w_alive_v2 / follow)
+        alive = (self.released & ~self.fallen & ~self._early).float() * (c.w_alive_v2 / follow)
         fall_w = torch.full_like(rel, c.w_fall_v2)
         if c.fall_graded:
             left = (1.0 - since.float() / follow).clamp(0.0, 1.0)
@@ -829,6 +832,7 @@ class PitchEnv(DirectRLEnv):
                          "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "fall": -fall,
                          "drop": -c.w_drop * (self.new_release & self.dropped).float(),
                          "late": -c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float(),
+                         "early": -c.w_early_release * (self.new_release & self._early).float(),
                          "rate": -rate, "torque": -torque, "impact": -impact, "slip": -slip}
         rew = (self.release_reward + c.w_stand_v2 * stand
                + c.w_style * style + c.w_hold_v2 * hold
@@ -837,6 +841,7 @@ class PitchEnv(DirectRLEnv):
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
                - c.w_lost * self._lost.float()
+               - c.w_early_release * (self.new_release & self._early).float()
                - rate - torque - impact - slip)
         a = 0.01
         self._ema("stand_ok", ok.float(), check, 0.05)
@@ -892,7 +897,7 @@ class PitchEnv(DirectRLEnv):
     def _get_dones(self):
         c = self.cfg
         self._check_release()
-        good = self.new_release & ~self.dropped
+        good = self.new_release & ~self.dropped & ~self._early
         if good.any():
             ids = good.nonzero(as_tuple=False).squeeze(-1)
             out = self._release_outcome(ids)
@@ -967,7 +972,7 @@ class PitchEnv(DirectRLEnv):
         ref_end = self._ref_time(1) >= self.ref.duration + c.follow_through_s
         # late release: holding the ball past the reference release (+ late_release_s) ends the pitch
         self._late = (~self.released) & (self._ref_time() > self.release_ref + c.late_release_s) if c.late_release_s > 0             else torch.zeros_like(self.released)
-        terminated = self.fallen | (self.released & self.dropped) | done_follow | lost | self._late
+        terminated = self.fallen | (self.released & self.dropped) | done_follow | lost | self._late | self._early
         if c.late_store_prob > 0 and not getattr(self, "rb_frozen", False):
             # late recovery starts: states from inside the follow-through (where the falls happen), not only at the release
             since = self.episode_length_buf - self.release_step
@@ -1014,7 +1019,7 @@ class PitchEnv(DirectRLEnv):
         self.ball.write_root_state_to_sim(ball, env_ids)
         self.actions[env_ids] = 0.0
         self.prev_actions[env_ids] = 0.0
-        for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed):
+        for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed, self._early):
             buf[env_ids] = False
         self.lead_prev_planted[env_ids] = True
         self.throw_score[env_ids] = 0.0

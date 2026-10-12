@@ -184,7 +184,7 @@ def main():
                     v2_sum[key] = v2_sum.get(key, np.zeros(n)) + val.cpu().numpy() * live
                 since = (base.episode_length_buf - base.release_step).cpu().numpy()
                 v2_end |= (rec["fallen"][k] | (rec["rel"][k] & (since >= int(round(cfg.follow_through_s / dt))))
-                           | base._late.cpu().numpy())
+                           | base._late.cpu().numpy() | base._early.cpu().numpy())
     t = (np.arange(T) + 1) * dt
     if args.dump:
         np.savez_compressed(args.dump, body_names=np.array(names), joint_names=np.array(jn), mass=mass, dt=dt, **rec)
