@@ -140,6 +140,22 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+    # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
+    max_std = getattr(agent_cfg, "max_noise_std", None)
+    if max_std:
+        ac = runner.alg.actor_critic
+        update = runner.alg.update
+
+        def update_capped(*a, **k):
+            out = update(*a, **k)
+            with torch.no_grad():
+                ac.std.clamp_(max=max_std)
+            return out
+
+        runner.alg.update = update_capped
+        with torch.no_grad():
+            ac.std.clamp_(max=max_std)
+        print(f"[INFO] action noise std capped at {max_std}")
 
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)

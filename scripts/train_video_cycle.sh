@@ -44,4 +44,7 @@ grep -E "pitch/(release_rate|release_kmh|post_release_fail|release_time_err|lead
 CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; *Stand3*) CFG=stand3;; esac
 $PY -u scripts/diag_pitch.py --headless --envs 64 --cfg "$CFG" --checkpoint "$NEW" --sections 1,2,4,5,6,8,9 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \
     | sed -n '/^== diag_pitch/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/diag_iter_$STOP.txt"
+# the same pitches with the training action noise: a gap to the noise-free run = the mean action is not trained
+echo "[cycle] with training action noise:"
+$PY -u scripts/diag_pitch.py --headless --envs 64 --cfg "$CFG" --checkpoint "$NEW" --sections 1 --stochastic 2>&1     | sed -n '/^\[1\] OUTCOME/,$p' | grep -E "release:|falls:|at rest|ball progress" | sed 's/^/  noisy /'
 echo "[cycle] next: $NEW"

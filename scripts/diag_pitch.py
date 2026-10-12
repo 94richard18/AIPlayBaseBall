@@ -25,6 +25,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
+parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
@@ -125,6 +126,8 @@ def main():
     r.load(args.checkpoint)
     r.eval_mode()
     pol = r.get_inference_policy(device=base.device)
+    if args.stochastic:  # sample the action noise as in training (default: the noise-free mean action)
+        pol = lambda x: r.alg.actor_critic.act(r.obs_normalizer(x))  # noqa: E731 (empirical_normalization)
     rob = base.robot
     names = list(rob.body_names)
     jn = list(rob.joint_names)

@@ -32,5 +32,17 @@ class PitchPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 @configclass
+class PitchStand3PPORunnerCfg(PitchPPORunnerCfg):
+    """No entropy bonus, action noise capped (2026-10-12): from scratch the noise std grew 0.35 -> 2.23 (45 actions at
+    400 Hz: the PD and the inertia average the noise out, so the bonus cost nothing). Training still threw (1% drops),
+    the noise-free policy dropped 60/64 - its mean action was never trained."""
+
+    max_noise_std = 0.5  # scripts/train.py clamps the policy std after every update (and at load)
+
+    def __post_init__(self):
+        self.algorithm.entropy_coef = 0.0
+
+
+@configclass
 class PitchBalancePPORunnerCfg(PitchPPORunnerCfg):
     experiment_name = "aib1_pitch_balance"
