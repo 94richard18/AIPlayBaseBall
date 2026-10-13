@@ -103,6 +103,8 @@ class PitchEnv(DirectRLEnv):
         self.torso_id = self.robot.find_bodies("torso")[0][0]
         self.key_ids = [self.robot.find_bodies(b)[0][0] for b in PITCH_KEY_BODIES]
         self.foot_ids = [self.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
+        # fallen_touch: every body but the feet and ankles (hands, fingers, knees, elbows, trunk) must stay off the ground
+        self.touch_ids = [i for i, nm in enumerate(self.robot.body_names) if not re.search(r"foot|ankle", nm)]
         self.foot_sensor_ids = [self.feet.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
         self.body_mass = self.robot.root_physx_view.get_masses().to(dev)  # (n, bodies)
         self.sh_id = self.robot.find_bodies("r_shoulder_pitch_link")[0][0]
@@ -1001,6 +1003,14 @@ class PitchEnv(DirectRLEnv):
         d = self.robot.data
         # fallen = pelvis or head near the ground (the old "pelvis tilt > 60 deg" fired on the reference posture)
         self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < self.cfg.fallen_pelvis_z) | (self._head_z() < self.cfg.fallen_head_z)
+        if self.cfg.fallen_touch_z > 0:  # a hand, knee or elbow on the ground = fallen (it held itself up on a hand)
+            c0 = self.cfg
+            p = d.body_link_pos_w[:, self.touch_ids]
+            x = p[..., 0] - self.scene.env_origins[:, 0:1]
+            ground = torch.where(x < c0.mound_slope_start_x, torch.full_like(x, c0.mound_top_z),
+                                 (c0.mound_top_z - (x - c0.mound_slope_start_x) * c0.mound_slope).clamp_min(self.field_z))
+            self.touched = ((p[..., 2] - ground) < c0.fallen_touch_z).any(-1)
+            self.fallen |= self.touched
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         follow = int(round(c.follow_through_s / self.step_dt))
         if c.play_mode:

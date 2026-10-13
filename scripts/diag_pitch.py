@@ -26,7 +26,7 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
-parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "stand4", "stand5", "stand6", "stand7", "stand8", "speed"], default="stand_first")
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "stand4", "stand5", "stand6", "stand7", "stand8", "stand9", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8,9")
@@ -87,7 +87,7 @@ def med(x):
 
 def main():
     cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg,
-           "stand2": C.PitchStand2EnvCfg, "stand3": C.PitchStand3EnvCfg, "stand4": C.PitchStand4EnvCfg, "stand5": C.PitchStand5EnvCfg, "stand6": C.PitchStand6EnvCfg, "stand7": C.PitchStand7EnvCfg, "stand8": C.PitchStand8EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+           "stand2": C.PitchStand2EnvCfg, "stand3": C.PitchStand3EnvCfg, "stand4": C.PitchStand4EnvCfg, "stand5": C.PitchStand5EnvCfg, "stand6": C.PitchStand6EnvCfg, "stand7": C.PitchStand7EnvCfg, "stand8": C.PitchStand8EnvCfg, "stand9": C.PitchStand9EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
@@ -456,7 +456,8 @@ def main():
                     cells.append(f"| {rv:+8.2f} | {av:+8.2f}   ")
                 say(f"  {dto:+.2f} " + "".join(f"{c:>29s}" for c in cells))
         fall = [t_fall[i] - t_rel[i] for i in series if np.isfinite(t_fall[i])]
-        say(f"  falls (pelvis < {cfg.fallen_pelvis_z} m or head < {cfg.fallen_head_z} m): median {med(fall):+.2f} s after the release")
+        touch = " or a hand / knee / elbow on the ground" if cfg.fallen_touch_z > 0 else ""
+        say(f"  falls (pelvis < {cfg.fallen_pelvis_z} m, head < {cfg.fallen_head_z} m{touch}): median {med(fall):+.2f} s after the release")
 
     if v2_sum:
         say("\n[R] REWARD v2 PER EPISODE (mean over pitches | min .. max; until the episode would have ended)")

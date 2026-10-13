@@ -223,6 +223,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # ended deep but recoverable follow-through bends before the policy could learn to recover from them.
     fallen_head_z: float = 0.45
     fallen_pelvis_z: float = 0.30
+    fallen_touch_z: float = 0.0  # > 0: any body but the feet / ankles (link origin) this close to the ground = fallen
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
     lead_knee_post_release_gain: float | None = None  # own post-release gain for the lead knee (None = the lead leg's)
@@ -580,3 +581,12 @@ class PitchStand8EnvCfg(PitchStand7EnvCfg):
 
     w_brake_v2: float = 100.0
     w_brake_release: float = 50.0
+
+
+@configclass
+class PitchStand9EnvCfg(PitchStand8EnvCfg):
+    """Stage 1, a hand / knee / elbow on the ground is a fall (2026-10-13). The user saw in the v12 2400 video that the
+    pitches "still up 1.5 s after the release" (29/64) held themselves up on a hand; the fall check only looked at
+    the pelvis (< 0.3 m) and the head (< 0.45 m)."""
+
+    fallen_touch_z: float = 0.06
