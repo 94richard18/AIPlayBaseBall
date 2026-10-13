@@ -224,6 +224,11 @@ class PitchEnvCfg(DirectRLEnvCfg):
     fallen_head_z: float = 0.45
     fallen_pelvis_z: float = 0.30
     fallen_touch_z: float = 0.0  # > 0: any body but the feet / ankles (link origin) this close to the ground = fallen
+    # > 0: reset the robot (and the ball) this much higher. Teleported back onto the mound with the feet still touching
+    # it, PhysX kept the previous episode's friction anchors: after a 3 s standing episode (feet slid a little) the
+    # lead leg was pulled toward the old foot spot (hip torque at its 300 limit) and Stage 1a fell at 0.36 s, every
+    # episode after a time-out. A short drop breaks the contacts.
+    reset_lift_m: float = 0.0
     post_release_residual_gain: float = 2.0  # residual authority after the release (6.0 did not stop the falls)
     lead_leg_post_release_gain: float | None = None  # own post-release gain for the lead leg (None = the same)
     lead_knee_post_release_gain: float | None = None  # own post-release gain for the lead knee (None = the lead leg's)
@@ -608,3 +613,4 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_quality: float = 100.0
     w_stage_fall: float = 200.0
     w_stage_rate: float = 0.0005
+    reset_lift_m: float = 0.03

@@ -1056,7 +1056,7 @@ class PitchEnv(DirectRLEnv):
         self.t0[env_ids] = torch.where(rsi, c.rsi_min_s + torch.rand(n, device=dev) * (t_max - c.rsi_min_s),
                                        torch.zeros(n, device=dev))
         r = self.ref.sample(self.t0[env_ids])
-        o = self.scene.env_origins[env_ids]
+        o = self.scene.env_origins[env_ids] + torch.tensor([0.0, 0.0, c.reset_lift_m], device=dev)
         root = torch.cat([r["root_pos"] + o, r["root_quat"], r["root_lin_vel"] * self.speed, r["root_ang_vel"] * self.speed], -1)
         self.robot.write_root_state_to_sim(root, env_ids)
         jp = self.robot.data.default_joint_pos[env_ids].clone()

@@ -156,7 +156,8 @@ def film(w, base, pol, T, fps=30):
                 kf.append(cv2.resize(img, (640, 360)))
             if k % every == 0:
                 frames.append(img)
-        say(f"[video] episode {e + 1}: fell at {fell}")
+        rel = f"released at {float(base.release_step[0]) * base.step_dt:.3f} s" if bool(base.released[0]) else "ball held"
+        say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
     os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
     imageio.mimwrite(args.video, frames, fps=fps, quality=8, macro_block_size=1)
     if kf:
