@@ -317,6 +317,16 @@ class PitchEnv(DirectRLEnv):
         if c.freeze_pd_after_release:  # reward v2: no synthesized follow-through, the release pose is the PD base
             t_pd = torch.where(self.released, self.rel_ref_t, t_pd)
         nxt = self._ref(t_pd)
+        if c.stand_pd_blend_s > 0:  # after the release the PD base moves from the release pose to a standing one
+            if not hasattr(self, "_stand_q"):
+                z = torch.zeros(self.num_envs, device=self.device)
+                self._stand_q = self._ref(z)["joint_pos"].clone()  # upper body: the set position (upright)
+                legs = self.lead_leg_cols + self.back_leg_cols  # legs: the athlete's stride at the release
+                self._stand_q[:, legs] = self._ref(z + self.release_ref)["joint_pos"][:, legs]
+            since = (self.episode_length_buf - self.release_step).float() * self.step_dt
+            w = (self.released.float() * (since / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
+            nxt["joint_pos"] = nxt["joint_pos"] + w * (self._stand_q - nxt["joint_pos"])
+            nxt["joint_vel"] = nxt["joint_vel"] * (1.0 - w)
         # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets
         # more authority to step / brace and recover its balance
         # per joint: the lead leg can keep its own (smaller) post-release gain - with 2x it learned to lift the planted

@@ -26,7 +26,7 @@ from isaaclab.app import AppLauncher
 parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
-parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "stand4", "stand5", "speed"], default="stand_first")
+parser.add_argument("--cfg", choices=["elastic", "stand_first", "stand2", "stand3", "stand4", "stand5", "stand6", "speed"], default="stand_first")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--seconds", type=float, default=3.0, help="simulated time; must cover release + 1.5 s")
 parser.add_argument("--sections", type=str, default="1,2,3,4,5,6,7,8,9")
@@ -87,7 +87,7 @@ def med(x):
 
 def main():
     cfg = {"elastic": C.PitchElasticEnvCfg, "stand_first": C.PitchStandFirstEnvCfg,
-           "stand2": C.PitchStand2EnvCfg, "stand3": C.PitchStand3EnvCfg, "stand4": C.PitchStand4EnvCfg, "stand5": C.PitchStand5EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
+           "stand2": C.PitchStand2EnvCfg, "stand3": C.PitchStand3EnvCfg, "stand4": C.PitchStand4EnvCfg, "stand5": C.PitchStand5EnvCfg, "stand6": C.PitchStand6EnvCfg, "speed": C.PitchSpeedEnvCfg}[args.cfg]()
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.recovery_prob = 0.0
@@ -198,7 +198,10 @@ def main():
     t_fall = first(rec["fallen"])
     t_lost = first(rec["lost"] & ~rec["rel"])
     lead_on = rec["feet_f"][:, :, 0] > cfg.contact_force_n
-    t_strike = first(lead_on & (t[:, None] > 0.6))
+    # the robot's own stride: first lead-foot contact after the foot was off the ground after 0.1 s (was: the first
+    # contact after 0.6 s, which reported 0.603 s for a lead foot that never left the ground)
+    lifted = np.maximum.accumulate(~lead_on & (t[:, None] > 0.1), axis=0)
+    t_strike = first(lead_on & lifted)
     i_rel = [int(np.argmax(rec["rel"][:, i])) if rec["rel"][:, i].any() else None for i in range(n)]
     ball_kmh = [float(np.linalg.norm(base.rel_vel[i].cpu().numpy())) * 3.6 if i_rel[i] is not None else None for i in range(n)]
     out_strike = [bool(base._release_outcome(torch.tensor([i], device=base.device))["strike"][0]) if i_rel[i] is not None

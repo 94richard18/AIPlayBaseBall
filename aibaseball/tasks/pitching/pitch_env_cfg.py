@@ -111,6 +111,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     free_after_s: float = 0.5  # s, reference time: imitation (style) only before this; legs get free_leg_gain after it
     free_leg_gain: float = 1.0  # residual gain of both legs from free_after_s to the release
     freeze_pd_after_release: bool = False  # PD base = the reference pose at the release (not the follow-through)
+    # > 0: after the release the PD base blends over this time from the release pose to a standing pose (upper body:
+    # the set position; legs: the athlete's stride at its release)
+    stand_pd_blend_s: float = 0.0
     w_throw: float = 100.0  # once at the release x clamp((ball-to-plate distance decrease) / throw_full_m, 0, 1)
     throw_full_m: float = 5.0
     w_stand_v2: float = 200.0  # once at release + follow_through_s if standing, x (0.5 + 0.5 x throw score)
@@ -538,3 +541,13 @@ class PitchStand5EnvCfg(PitchStand4EnvCfg):
     from 40/64 (1350) to 2/64."""
 
     lead_stride_min_m: float = 0.5
+
+
+@configclass
+class PitchStand6EnvCfg(PitchStand5EnvCfg):
+    """Stage 1, + a standing PD base after the release (2026-10-13). With freeze_pd_after_release the PD base stayed
+    at the reference pose of the robot's own release time - at 0.45-0.56 s that is the athlete's leg lift (lead knee
+    76 deg, trunk 27-35 deg forward). The trunk came up to 5 deg at +0.35 s and was pulled back to 33-50 deg by +0.5 s
+    in every report since 1050; v8 1500: 0/64 still up, falls +1.06 s after the release."""
+
+    stand_pd_blend_s: float = 0.4
