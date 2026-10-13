@@ -44,5 +44,14 @@ class PitchStand3PPORunnerCfg(PitchPPORunnerCfg):
 
 
 @configclass
+class PitchStand6PPORunnerCfg(PitchStand3PPORunnerCfg):
+    """Noise cap 0.5 -> 0.3 (2026-10-13). v9 1650: with the training noise 17/64 still up and the release at 0.454 s,
+    the noise-free policy released at 0.253 s, before its stride (64/64 no pitch); the mean action again drifted away
+    from what the noisy rollouts train."""
+
+    max_noise_std = 0.3
+
+
+@configclass
 class PitchBalancePPORunnerCfg(PitchPPORunnerCfg):
     experiment_name = "aib1_pitch_balance"
