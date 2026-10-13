@@ -149,6 +149,8 @@ class PitchEnv(DirectRLEnv):
         self.fallen = torch.zeros(n, dtype=torch.bool, device=dev)
         self._lost = torch.zeros(n, dtype=torch.bool, device=dev)
         self._early = torch.zeros(n, dtype=torch.bool, device=dev)  # released before the lead-foot touchdown
+        self._rel_q_set = torch.zeros(n, dtype=torch.bool, device=dev)  # stand_pd_legs "hold": leg pose captured
+        self._rel_q = torch.zeros(n, len(self.body_ids), device=dev)
         # release-state buffer: states captured right after real releases, used to start "recovery" episodes
         # that only practise the follow-through (one release per pitch is too few balance-recovery samples)
         cap, nj = cfg.recovery_buffer_size, self.robot.num_joints
@@ -323,9 +325,18 @@ class PitchEnv(DirectRLEnv):
                 self._stand_q = self._ref(z)["joint_pos"].clone()  # upper body: the set position (upright)
                 legs = self.lead_leg_cols + self.back_leg_cols  # legs: the athlete's stride at the release
                 self._stand_q[:, legs] = self._ref(z + self.release_ref)["joint_pos"][:, legs]
+            if c.stand_pd_legs == "hold":  # legs: the robot's own joint angles at the release (feet stay put)
+                cap = self.released & ~self._rel_q_set
+                self._rel_q[cap] = self.robot.data.joint_pos[cap][:, self.body_ids]
+                self._rel_q_set |= cap
             since = (self.episode_length_buf - self.release_step).float() * self.step_dt
             w = (self.released.float() * (since / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
-            nxt["joint_pos"] = nxt["joint_pos"] + w * (self._stand_q - nxt["joint_pos"])
+            stand = self._stand_q
+            if c.stand_pd_legs == "hold":
+                legs = self.lead_leg_cols + self.back_leg_cols
+                stand = stand.clone()
+                stand[:, legs] = self._rel_q[:, legs]
+            nxt["joint_pos"] = nxt["joint_pos"] + w * (stand - nxt["joint_pos"])
             nxt["joint_vel"] = nxt["joint_vel"] * (1.0 - w)
         # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets
         # more authority to step / brace and recover its balance
@@ -1048,7 +1059,7 @@ class PitchEnv(DirectRLEnv):
         self.actions[env_ids] = 0.0
         self.prev_actions[env_ids] = 0.0
         for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed, self._early,
-                    self.lead_lifted):
+                    self.lead_lifted, self._rel_q_set):
             buf[env_ids] = False
         self.lead_prev_planted[env_ids] = True
         self.throw_score[env_ids] = 0.0

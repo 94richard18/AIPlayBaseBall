@@ -114,6 +114,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # > 0: after the release the PD base blends over this time from the release pose to a standing pose (upper body:
     # the set position; legs: the athlete's stride at its release)
     stand_pd_blend_s: float = 0.0
+    # legs of that standing pose: "ref_release" = the athlete's at its release (lead hip flexed ~90 deg: with the
+    # robot's shorter stride it lifted the planted lead foot), "hold" = the robot's own leg angles at its release
+    stand_pd_legs: str = "ref_release"
     w_throw: float = 100.0  # once at the release x clamp((ball-to-plate distance decrease) / throw_full_m, 0, 1)
     throw_full_m: float = 5.0
     w_stand_v2: float = 200.0  # once at release + follow_through_s if standing, x (0.5 + 0.5 x throw score)
@@ -551,3 +554,12 @@ class PitchStand6EnvCfg(PitchStand5EnvCfg):
     in every report since 1050; v8 1500: 0/64 still up, falls +1.06 s after the release."""
 
     stand_pd_blend_s: float = 0.4
+
+
+@configclass
+class PitchStand7EnvCfg(PitchStand6EnvCfg):
+    """Stage 1, standing PD base with the robot's own leg angles (2026-10-13). v10 1800 with zero residual after the
+    release (PD base alone): the athlete's release legs (lead hip -91 deg) lifted the lead foot 50 cm in 0.5 s and
+    the trunk went 29 -> 57 deg, falls at +0.66 s."""
+
+    stand_pd_legs: str = "hold"
