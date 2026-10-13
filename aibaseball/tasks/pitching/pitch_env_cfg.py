@@ -590,3 +590,21 @@ class PitchStand9EnvCfg(PitchStand8EnvCfg):
     the pelvis (< 0.3 m) and the head (< 0.45 m)."""
 
     fallen_touch_z: float = 0.06
+
+
+@configclass
+class Stage1aEnvCfg(PitchStand9EnvCfg):
+    """Stage 1a (2026-10-13, stage 1 rebuilt as small steps, stage_env.StageEnv): stand still on the mound in the set
+    position for 3 s. Reward: alive (+100 over the episode), standing quality (+100: trunk upright, COM still, both
+    feet down, head up), fall -200 (pelvis / head low, or a hand / knee / elbow on the ground), action rate."""
+
+    stage: str = "1a"
+    episode_length_s = 3.0
+    rsi_prob: float = 0.0
+    recovery_prob: float = 0.0
+    late_store_prob: float = 0.0
+    push_vel: float = 0.0  # m/s, random horizontal root velocity at the start
+    w_stage_alive: float = 100.0
+    w_stage_quality: float = 100.0
+    w_stage_fall: float = 200.0
+    w_stage_rate: float = 0.0005

@@ -20,6 +20,8 @@ for _ in $(seq "$N"); do
     UP=$(sed -n 's/.*still up 1.5 s after the release: \([0-9]*\)\/.*/\1/p' "logs/cycle_${RUN}_$STOP.txt" | head -1)
     REST=$(sed -n 's/.*s after the release: \([0-9]*\)\/[0-9]* (failed:.*/\1/p' "logs/cycle_${RUN}_$STOP.txt" | head -1)
     [ -n "$REST" ] && UP=$REST  # stand2: at rest standing (stricter than "still up")
+    GOALN=$(grep -o '^\[goal\] [0-9]*' "logs/cycle_${RUN}_$STOP.txt" | head -1 | cut -d' ' -f2)
+    [ -n "$GOALN" ] && UP=$GOALN  # stage 1 steps (eval_stage.py)
     echo "[cycles] $STOP: $UP up ($CKPT)"
     [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ] && { echo "[cycles] goal reached"; exit 0; }
     IT=$STOP

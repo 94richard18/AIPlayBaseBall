@@ -13,6 +13,7 @@ ENVS=${5:-4096}
 PY=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 if [ "$CKPT" = none ]; then  # from scratch
     EXP_DIR=logs/rsl_rl/aib1_pitch
+    case "$TASK" in *Stage*) EXP_DIR=logs/rsl_rl/aib1_stage;; esac
     RESUME=()
 else
     EXP_DIR=$(dirname "$(dirname "$CKPT")")
@@ -40,6 +41,14 @@ fi
 echo "[cycle] checkpoint $NEW"
 grep -E "pitch/(release_rate|release_com_vx|release_kmh|post_release_fail|release_time_err|lead_foot_err_m|arm_launch_err_m|chain_score|drive_err_rad|com_drop_mps|trunk_err_deg)" \
     logs_pitch_stand.txt | tail -10
+if [[ "$TASK" == *Stage* ]]; then  # stage 1 step by step: short report, key frames to look at, video
+    grep -E "stage/" logs_pitch_stand.txt | tail -6
+    $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --video "videos/${RUN}_iter_$STOP.mp4" 2>&1         | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" | tee "logs/eval_${RUN}_$STOP.txt"
+    echo "[cycle] with training action noise:"
+    $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --stochastic 2>&1         | grep -E "falls:|at rest" | sed 's/^/  noisy /'
+    echo "[cycle] next: $NEW"
+    exit 0
+fi
 # report and video in one simulator launch (one Isaac Sim start-up instead of two)
 CFG=stand_first; case "$TASK" in *Stand2*) CFG=stand2;; *Stand3*) CFG=stand3;; *Stand4*) CFG=stand4;; *Stand5*) CFG=stand5;; *Stand6*) CFG=stand6;; *Stand7*) CFG=stand7;; *Stand8*) CFG=stand8;; *Stand9*) CFG=stand9;; esac
 $PY -u scripts/diag_pitch.py --headless --envs 64 --cfg "$CFG" --checkpoint "$NEW" --sections 1,2,4,5,6,8,9 --video "videos/pitch_iter_$STOP.mp4" 2>&1 \

@@ -57,3 +57,12 @@ class PitchStand6PPORunnerCfg(PitchStand3PPORunnerCfg):
 @configclass
 class PitchBalancePPORunnerCfg(PitchPPORunnerCfg):
     experiment_name = "aib1_pitch_balance"
+
+
+@configclass
+class StagePPORunnerCfg(PitchStand6PPORunnerCfg):
+    """Stage 1 step by step (1a, 1b, 1c): own experiment folder, same PPO settings (no entropy, noise std <= 0.3)."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.experiment_name = "aib1_stage"
