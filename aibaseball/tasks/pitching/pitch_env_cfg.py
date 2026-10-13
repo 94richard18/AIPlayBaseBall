@@ -117,6 +117,13 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # legs of that standing pose: "ref_release" = the athlete's at its release (lead hip flexed ~90 deg: with the
     # robot's shorter stride it lifted the planted lead foot), "hold" = the robot's own leg angles at its release
     stand_pd_legs: str = "ref_release"
+    # braking guidance: forward COM speed low from the lead-foot touchdown to brake_after_release_s after the release
+    # (per step, ~w_brake_v2 over brake_window_s) and once at the release (w_brake_release); each x 0.5 (exp(-(v/0.3)^2)
+    # + exp(-(v/1.0)^2))
+    w_brake_v2: float = 0.0
+    w_brake_release: float = 0.0
+    brake_after_release_s: float = 0.3
+    brake_window_s: float = 0.45
     w_throw: float = 100.0  # once at the release x clamp((ball-to-plate distance decrease) / throw_full_m, 0, 1)
     throw_full_m: float = 5.0
     w_stand_v2: float = 200.0  # once at release + follow_through_s if standing, x (0.5 + 0.5 x throw score)
@@ -563,3 +570,13 @@ class PitchStand7EnvCfg(PitchStand6EnvCfg):
     the trunk went 29 -> 57 deg, falls at +0.66 s."""
 
     stand_pd_legs: str = "hold"
+
+
+@configclass
+class PitchStand8EnvCfg(PitchStand7EnvCfg):
+    """Stage 1, + braking guidance (2026-10-13). The athlete brakes on the lead leg after the strike (1.62 BW toward
+    the rubber) and releases at ~0 forward COM speed growth; the robot releases 0.4 s into the pitch still moving
+    0.5-0.9 m/s toward the plate with no braking (-0.5 BW) and falls 1-1.3 s later (v11 2250: 0/64 still up)."""
+
+    w_brake_v2: float = 100.0
+    w_brake_release: float = 50.0

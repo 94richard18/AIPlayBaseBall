@@ -173,7 +173,7 @@ class PitchEnv(DirectRLEnv):
             "release_rate", "drop_rate", "fall_rate", "release_kmh", "strike_rate", "zone_dist_m", "success_rate",
             "spin_rpm", "backspin_rpm", "release_time_err", "lead_foot_err_m", "com_err_m", "contact_match", "foot_slip_mps",
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
-            "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
+            "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet", "release_com_vx",
             "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg", "cp_lat_m", "land_cp_lat_m",
             "throw_score", "throw_progress_m", "stand_ok", "cp_out_m", "sink_acc", "early_rate")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
@@ -859,6 +859,16 @@ class PitchEnv(DirectRLEnv):
             still = torch.exp(-((com_v.norm(dim=-1) / (2.0 * c.stand_max_com_v)) ** 2))
             tall = ((head_z - 1.0) / (c.stand_min_head_z + 0.05 - 1.0)).clamp(0.0, 1.0)
             settle = on * (upright + still + both.float() + tall) / 4.0 * (c.w_settle_v2 / max(follow - lo, 1))
+        # braking: from the robot's own lead-foot touchdown to brake_after_release_s after the release, forward COM
+        # speed (toward the plate) low, and once at the release
+        brake = torch.zeros_like(rel)
+        vx = com_v[:, 0].clamp_min(0.0)
+        g_vx = 0.5 * (torch.exp(-((vx / 0.3) ** 2)) + torch.exp(-((vx / 1.0) ** 2)))
+        if c.w_brake_v2 > 0 or c.w_brake_release > 0:
+            after = int(round(c.brake_after_release_s / self.step_dt))
+            on = (self.lead_landed & ~self.fallen & ~self._early & (~self.released | (since <= after))).float()
+            brake = on * g_vx * (c.w_brake_v2 / max(int(round(c.brake_window_s / self.step_dt)), 1))
+            brake = brake + c.w_brake_release * (self.new_release & ~self._early & ~self.dropped).float() * g_vx
         pen = 1.0 - (1.0 - c.post_release_pen_scale) * rel
         rate = pen * c.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1)
         torque = pen * c.w_torque * torque
@@ -867,14 +877,14 @@ class PitchEnv(DirectRLEnv):
         # per-term rewards of this step (diag_pitch sums them per episode to check the magnitudes)
         self.v2_terms = {"throw": self.release_reward.clone(), "stand": c.w_stand_v2 * stand,
                          "style": c.w_style * style, "hold": c.w_hold_v2 * hold, "cp": c.w_cp_v2 * g_cp,
-                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "settle": settle, "fall": -fall,
+                         "spin": c.w_spin_v2 * g_spin, "up": c.w_up_v2 * g_up, "alive": alive, "settle": settle, "brake": brake, "fall": -fall,
                          "drop": -c.w_drop * (self.new_release & self.dropped).float(),
                          "late": -c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float(),
                          "early": -c.w_early_release * (self.new_release & self._early).float(),
                          "rate": -rate, "torque": -torque, "impact": -impact, "slip": -slip}
         rew = (self.release_reward + c.w_stand_v2 * stand
                + c.w_style * style + c.w_hold_v2 * hold
-               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up + alive + settle
+               + c.w_cp_v2 * g_cp + c.w_spin_v2 * g_spin + c.w_up_v2 * g_up + alive + settle + brake
                - fall
                - c.w_drop * (self.new_release & self.dropped).float()
                - c.w_late_release * getattr(self, "_late", torch.zeros_like(self.released)).float()
@@ -888,6 +898,7 @@ class PitchEnv(DirectRLEnv):
         self._ema("stand_spin", l_xy, self.released, a)
         self._ema("stand_up_z", up[:, 2], self.released, a)
         self._ema("stand_both_feet", both.float(), self.released, a)
+        self._ema("release_com_vx", com_v[:, 0], self.new_release, 0.05)
         done = self.reset_terminated | self.reset_time_outs
         b = 0.02
         self._ema("release_rate", (self.released & ~self.dropped).float(), done, b)
