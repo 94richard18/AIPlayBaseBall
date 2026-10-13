@@ -31,6 +31,14 @@ class StageEnv(PitchEnv):
             return torch.zeros_like(self.t0)
         return super()._ref_time(extra)
 
+    def _ref(self, t):
+        r = super()._ref(t)
+        if self.cfg.stage == "1a":  # a still pose: the athlete's first-frame velocities (the leg lift starting) would
+            # be a constant PD velocity target - with zero actions it lifted the lead foot 16 cm and the robot fell
+            for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
+                r[k] = torch.zeros_like(r[k])
+        return r
+
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
@@ -88,9 +96,14 @@ class StageEnv(PitchEnv):
         super()._reset_idx(env_ids)
         if env_ids is None:
             env_ids = self.robot._ALL_INDICES
+        if self.cfg.stage == "1a":  # start at rest (the reset wrote the reference's first-frame velocities)
+            jp = self.robot.data.joint_pos[env_ids].clone()
+            self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)
+            self.qd_target[env_ids] = 0.0
+            self.robot.write_root_velocity_to_sim(torch.zeros(len(env_ids), 6, device=self.device), env_ids)
         if self.cfg.stage == "1a" and self.cfg.push_vel > 0:  # a small random shove at the start (robustness)
             n = len(env_ids)
-            v = self.robot.data.root_com_vel_w[env_ids].clone()
+            v = torch.zeros(n, 6, device=self.device)
             ang = torch.rand(n, device=self.device) * 2 * math.pi
             mag = torch.rand(n, device=self.device) * self.cfg.push_vel
             v[:, 0] = mag * torch.cos(ang)

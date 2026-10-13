@@ -19,6 +19,8 @@ parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
+parser.add_argument("--zero", action="store_true", help="what-if: zero actions (PD on the set position only)")
+parser.add_argument("--trace", action="store_true", help="print env 0 every 0.1 s (feet, pelvis, trunk)")
 parser.add_argument("--slow", type=float, default=2.0, help="video slow-motion factor")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -70,8 +72,22 @@ def main():
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
-            obs, _, _, _ = w.step(pol(obs))
+            act = pol(obs)
+            if args.zero:
+                act = torch.zeros_like(act)
+            obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
+            if args.trace and k % 40 == 0:
+                dd = base.robot.data
+                o = base.scene.env_origins[0]
+                fz = base.feet.data.net_forces_w_history[0, :, base.foot_sensor_ids].norm(dim=-1).max(0).values
+                fp = dd.body_link_pos_w[0, base.foot_ids] - o
+                pel = dd.root_link_pos_w[0] - o
+                b, sp, tl, hz, _ = base._stand_state()
+                qerr = (dd.joint_pos[0, base.body_ids] - base.q_target[0, base.body_ids]).abs()
+                say(f"t {(k + 1) * base.step_dt:.2f} feet N {fz[0]:.0f}/{fz[1]:.0f} z {fp[0, 2]:.3f}/{fp[1, 2]:.3f} "
+                    f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
+                    f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
         both, speed, tilt, head_z, ok = (x.cpu().numpy() for x in base._stand_state())
     fell = ~np.isnan(fell_at)
