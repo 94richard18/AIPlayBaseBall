@@ -1,7 +1,7 @@
 """Evaluate a stage-1 step policy (stage_env.StageEnv): N full episodes, falls, standing at the end, key frames to
 look at and a side-view video, in one simulator launch.
 
-    python scripts/eval_stage.py --headless --task AIB-Stage1a-v0 --checkpoint <model.pt> [--envs 64]
+    python scripts/eval_stage.py --headless --task AIB-Stage1a-v0 (or 1b) --checkpoint <model.pt> [--envs 64]
         [--video videos/stage1a_iter_150.mp4] [--stochastic]
 Prints "[goal] k/N" = episodes standing at rest at the end (read by train_cycles.sh).
 """
@@ -90,6 +90,10 @@ def main():
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
         both, speed, tilt, head_z, ok = (x.cpu().numpy() for x in base._stand_state())
+        stride_stage = cfg.stage == "1b"
+        if stride_stage:  # success also needs the stride (the robot's lead foot landed >= lead_stride_min_m ahead)
+            landed = base.s_landed.cpu().numpy()
+            ok = ok & landed
     fell = ~np.isnan(fell_at)
     ok = ok & ~fell
     mode = "with training action noise" if args.stochastic else "noise-free"
@@ -100,6 +104,9 @@ def main():
         f"deg, head > {cfg.stand_min_head_z} m): {ok.sum()}/{n} (failed: fell {fell.sum()}, feet {(up & ~both).sum()}, "
         f"COM speed {(up & (speed >= cfg.stand_max_com_v)).sum()}, trunk tilt {(up & (tilt >= cfg.stand_max_tilt_deg)).sum()}, "
         f"head {(up & (head_z <= cfg.stand_min_head_z)).sum()})")
+    if stride_stage:
+        say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
+            f"{(up & ~landed).sum()}")
     if up.any():
         say(f"  not fallen, at the end (median): trunk tilt {np.median(tilt[up]):.1f} deg, COM speed {np.median(speed[up]):.3f} "
             f"m/s, head {np.median(head_z[up]):.2f} m, both feet down {both[up].mean() * 100:.0f}%")
@@ -156,7 +163,9 @@ def film(w, base, pol, T, fps=30):
                 kf.append(cv2.resize(img, (640, 360)))
             if k % every == 0:
                 frames.append(img)
-        rel = f"released at {float(base.release_step[0]) * base.step_dt:.3f} s" if bool(base.released[0]) else "ball held"
+        # StageEnv never runs the release check (_get_dones is its own): measure the ball's distance to the grip
+        gap = float((base.ball.data.root_pos_w[0] - base._grip_point()[0]).norm())
+        rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
         say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
     os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
     imageio.mimwrite(args.video, frames, fps=fps, quality=8, macro_block_size=1)

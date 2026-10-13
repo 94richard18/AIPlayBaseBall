@@ -613,4 +613,17 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_quality: float = 100.0
     w_stage_fall: float = 200.0
     w_stage_rate: float = 0.0005
+    w_stage_stride: float = 0.0  # 1b: one-off bonus at the robot's lead-foot touchdown after a real stride
     reset_lift_m: float = 0.03
+
+
+@configclass
+class Stage1bEnvCfg(Stage1aEnvCfg):
+    """Stage 1b (2026-10-14, after 1a: 64/64 at rest at 550 and 700, also with the training noise): no ball - leg lift,
+    stride, land and stop standing. The legs' PD base follows the athlete until the robot's own lead foot lands
+    >= 0.5 m ahead of the back foot, then holds the robot's stance at that touchdown; arms and trunk stay in the set
+    position (the ball stays in the glove, not scored). Reward: alive (+100), standing quality after the touchdown
+    (+100), stride +100 once, fall -200, action rate. Success = at rest standing at 3 s after a real stride."""
+
+    stage: str = "1b"
+    w_stage_stride: float = 100.0
