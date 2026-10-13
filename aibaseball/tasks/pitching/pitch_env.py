@@ -715,6 +715,8 @@ class PitchEnv(DirectRLEnv):
         if c.lead_land_after_lift:
             self.lead_lifted |= ~planted[:, 0] & (tr >= c.lead_lift_after_s)
             touch = planted[:, 0] & self.lead_lifted & ~self.lead_landed
+            # a real stride: the lead foot ahead of the back foot toward the plate (a tap in place does not count)
+            touch &= (feet_xy[:, 0, 0] - feet_xy[:, 1, 0]) >= c.lead_stride_min_m
         else:
             touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_touch_after_s)
         self.lead_landed |= touch

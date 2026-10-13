@@ -17,8 +17,8 @@ for _ in $(seq "$N"); do
     STOP=$((IT + STEP))
     bash scripts/train_video_cycle.sh "$TASK" "$CKPT" "$STOP" "$RUN" > "logs/cycle_${RUN}_$STOP.txt" 2>&1 || exit 1
     CKPT=$(sed -n 's/^\[cycle\] next: //p' "logs/cycle_${RUN}_$STOP.txt")
-    UP=$(sed -n 's/.*still up 1.5 s after the release: \([0-9]*\)\/.*/\1/p' "logs/cycle_${RUN}_$STOP.txt")
-    REST=$(sed -n 's/.*s after the release: \([0-9]*\)\/[0-9]* (failed:.*/\1/p' "logs/cycle_${RUN}_$STOP.txt")
+    UP=$(sed -n 's/.*still up 1.5 s after the release: \([0-9]*\)\/.*/\1/p' "logs/cycle_${RUN}_$STOP.txt" | head -1)
+    REST=$(sed -n 's/.*s after the release: \([0-9]*\)\/[0-9]* (failed:.*/\1/p' "logs/cycle_${RUN}_$STOP.txt" | head -1)
     [ -n "$REST" ] && UP=$REST  # stand2: at rest standing (stricter than "still up")
     echo "[cycles] $STOP: $UP up ($CKPT)"
     [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ] && { echo "[cycles] goal reached"; exit 0; }

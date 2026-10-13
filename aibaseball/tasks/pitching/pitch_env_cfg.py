@@ -93,6 +93,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # touchdown at 0.59 s never counted and every later release was judged early (1200: 63/64)
     lead_land_after_lift: bool = False
     lead_lift_after_s: float = 0.1
+    # (lead_land_after_lift) the touchdown counts only with the lead foot this far ahead of the back foot toward the
+    # plate. Reference: 0.10 m in the set position, 0.83 m at 0.6 s, 1.33 m at the strike. At 1500 the policy lifted the
+    # lead foot, put it straight back down and released at 0.485 s (its real stride lands at 0.603 s)
+    lead_stride_min_m: float = 0.0
     w_com_lateral: float = 0.0  # strike -> release: (COM - lead foot) sideways like the athlete's (~0)
     sigma_com_lateral: float = 0.06  # m
     # physics instead of the athlete's spot: capture point (COM + COM velocity x sqrt(h / g)) sideways over the planted
@@ -525,3 +529,12 @@ class PitchStand4EnvCfg(PitchStand3EnvCfg):
 
     w_settle_v2: float = 100.0
     lead_land_after_lift: bool = True
+
+
+@configclass
+class PitchStand5EnvCfg(PitchStand4EnvCfg):
+    """Stage 1, + a release counts only after a real stride (2026-10-13). At 1500 the policy tapped the lead foot down
+    in place and released at 0.485 s, before its own stride landed (0.603 s); still up 1.5 s after the release fell
+    from 40/64 (1350) to 2/64."""
+
+    lead_stride_min_m: float = 0.5
