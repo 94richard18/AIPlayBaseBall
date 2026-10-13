@@ -49,7 +49,9 @@ class PitchStand6PPORunnerCfg(PitchStand3PPORunnerCfg):
     the noise-free policy released at 0.253 s, before its stride (64/64 no pitch); the mean action again drifted away
     from what the noisy rollouts train."""
 
-    max_noise_std = 0.3
+    def __post_init__(self):
+        super().__post_init__()
+        self.max_noise_std = 0.3  # (a plain class attribute was not picked up by the configclass subclass: 0.5 stayed)
 
 
 @configclass
