@@ -142,6 +142,7 @@ class PitchEnv(DirectRLEnv):
         self.torso_vz_prev = torch.zeros(n, device=dev)
         self.torso_az = torch.zeros(n, device=dev)  # smoothed vertical acceleration of the trunk (m/s^2)
         self.effort_lim = None
+        self.lead_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # lead foot off the ground since the start
         self.lead_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # lead foot's first touchdown already scored
         self.lead_prev_planted = torch.ones(n, dtype=torch.bool, device=dev)  # (True at reset: a start on the ground is no touchdown)
         self.crossed = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -172,7 +173,7 @@ class PitchEnv(DirectRLEnv):
             "capture_out_m", "back_place_err_m", "lead_knee_err_deg", "capture_step_err_m", "lead_descent_mps", "lead_lift_share", "lead_impact_bw", "arm_launch_err_m", "trunk_err_deg", "com_drop_mps", "drive_err_rad", "chain_score", "track_reward", "key_err_m", "hold_gap_mm",
             "post_release_fail", "recovery_fall", "recovery_share", "stand_spin", "stand_up_z", "stand_both_feet",
             "lead_lat_err_m", "lead_land_lat_m", "com_lat_err_m", "lead_roll_err_deg", "cp_lat_m", "land_cp_lat_m",
-            "throw_score", "throw_progress_m", "stand_ok", "cp_out_m", "sink_acc")}
+            "throw_score", "throw_progress_m", "stand_ok", "cp_out_m", "sink_acc", "early_rate")}
         self.stats["speed"] = torch.tensor(self.speed, device=dev)
         self.stats["eject_excess"] = torch.zeros((), device=dev)
         self.raw_speed = torch.zeros(n, device=dev)
@@ -711,7 +712,11 @@ class PitchEnv(DirectRLEnv):
         lat_err = lead_y - r["key_pos"][:, 2, 1]
         lat_on = ((tr >= c.lead_lateral_window[0]) & (tr <= self.release_ref + c.lead_lateral_window[1])).float()
         lead_lateral = lat_on * torch.exp(-((lat_err / c.sigma_lead_lateral) ** 2))
-        touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_touch_after_s)
+        if c.lead_land_after_lift:
+            self.lead_lifted |= ~planted[:, 0] & (tr >= c.lead_lift_after_s)
+            touch = planted[:, 0] & self.lead_lifted & ~self.lead_landed
+        else:
+            touch = planted[:, 0] & ~self.lead_prev_planted & ~self.lead_landed & (tr >= c.lead_touch_after_s)
         self.lead_landed |= touch
         self.lead_prev_planted[:] = planted[:, 0]
         lead_land = touch.float() * torch.exp(-((lat_err / c.sigma_lead_land) ** 2))
@@ -864,6 +869,7 @@ class PitchEnv(DirectRLEnv):
         b = 0.02
         self._ema("release_rate", (self.released & ~self.dropped).float(), done, b)
         self._ema("drop_rate", self.dropped.float(), done, b)
+        self._ema("early_rate", self._early.float(), done & ~self.recovery_ep, b)
         self._ema("fall_rate", self.fallen.float(), done, b)
         self._ema("recovery_fall", self.fallen.float(), done & self.recovery_ep, b)
         self._ema("post_release_fail", (self.released & self.fallen).float(), done, b)
@@ -1029,7 +1035,8 @@ class PitchEnv(DirectRLEnv):
         self.ball.write_root_state_to_sim(ball, env_ids)
         self.actions[env_ids] = 0.0
         self.prev_actions[env_ids] = 0.0
-        for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed, self._early):
+        for buf in (self.released, self.new_release, self.dropped, self.crossed, self.lead_landed, self._early,
+                    self.lead_lifted):
             buf[env_ids] = False
         self.lead_prev_planted[env_ids] = True
         self.throw_score[env_ids] = 0.0

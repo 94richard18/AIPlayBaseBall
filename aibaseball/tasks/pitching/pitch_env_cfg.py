@@ -88,6 +88,11 @@ class PitchEnvCfg(DirectRLEnvCfg):
     w_lead_land: float = 0.0  # once, at the lead foot's first touchdown x exp(-(lateral error / sigma)^2)
     sigma_lead_land: float = 0.08  # m
     lead_touch_after_s: float = 0.6  # s, reference time: first lead-foot touchdown counted from here (not the leg lift)
+    # True: the lead-foot touchdown = the first contact after the lead foot was off the ground (any time after
+    # lead_lift_after_s), not "a new contact after lead_touch_after_s". The policy's own stride lands at ~0.60 s: a
+    # touchdown at 0.59 s never counted and every later release was judged early (1200: 63/64)
+    lead_land_after_lift: bool = False
+    lead_lift_after_s: float = 0.1
     w_com_lateral: float = 0.0  # strike -> release: (COM - lead foot) sideways like the athlete's (~0)
     sigma_com_lateral: float = 0.06  # m
     # physics instead of the athlete's spot: capture point (COM + COM velocity x sqrt(h / g)) sideways over the planted
@@ -519,3 +524,4 @@ class PitchStand4EnvCfg(PitchStand3EnvCfg):
     up (each 0..1, averaged)."""
 
     w_settle_v2: float = 100.0
+    lead_land_after_lift: bool = True
