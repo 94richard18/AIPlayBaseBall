@@ -31,6 +31,7 @@ class StageEnv(PitchEnv):
         self.s_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot off the ground since 0.1 s
         self.s_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot down after a real stride
         self.s_prev_planted = torch.ones(n, dtype=torch.bool, device=dev)
+        self.s_air = torch.zeros(n, device=dev)  # s with both feet off the ground before the stride lands
         self.s_land_t = torch.zeros(n, device=dev)  # reference time at the robot's touchdown
         self.s_land_step = torch.zeros(n, dtype=torch.long, device=dev)
         self.s_hold = torch.zeros(n, len(self.body_ids), device=dev)  # robot's joint angles at the touchdown
@@ -54,7 +55,10 @@ class StageEnv(PitchEnv):
             rl = super()._ref(t_leg)
             since = (self.episode_length_buf - self.s_land_step).float() * self.step_dt
             w = (self.s_landed.float() * (since / self.cfg.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
-            q[:, legs] = rl["joint_pos"][:, legs] + w * (self.s_hold[:, legs] - rl["joint_pos"][:, legs])
+            # finish "hold": the robot's stance at the touchdown; "set": the set position's standing legs (the back
+            # leg comes through, as the athlete's does - nobody holds a 1.3 m lunge still)
+            fin = self.s_hold[:, legs] if self.cfg.stage_finish == "hold" else q[:, legs]
+            q[:, legs] = rl["joint_pos"][:, legs] + w * (fin - rl["joint_pos"][:, legs])
             qd = torch.zeros_like(r["joint_vel"])
             moving = (~self.s_landed & (t < self.release_ref)).float().unsqueeze(-1)
             qd[:, legs] = rl["joint_vel"][:, legs] * moving
@@ -147,6 +151,11 @@ class StageEnv(PitchEnv):
             ground = torch.where(x < c.mound_slope_start_x, torch.full_like(x, c.mound_top_z),
                                  (c.mound_top_z - (x - c.mound_slope_start_x) * c.mound_slope).clamp_min(self.field_z))
             self.fallen |= ((p[..., 2] - ground) < c.fallen_touch_z).any(-1)
+        if c.stage == "1b" and c.max_flight_s > 0:  # no flight phase before the touchdown (1b at 1300 leapt 0.3 s)
+            forces = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids].norm(dim=-1).max(1).values
+            air = (forces <= c.contact_force_n).all(-1) & ~self.s_landed
+            self.s_air = torch.where(air, self.s_air + self.step_dt, torch.zeros_like(self.s_air))
+            self.fallen |= self.s_air > c.max_flight_s
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         return self.fallen.clone(), time_out
 
@@ -157,6 +166,7 @@ class StageEnv(PitchEnv):
         self.s_lifted[env_ids] = False
         self.s_landed[env_ids] = False
         self.s_prev_planted[env_ids] = True
+        self.s_air[env_ids] = 0.0
         self.s_land_step[env_ids] = 0
         if self.cfg.stage == "1a":  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()

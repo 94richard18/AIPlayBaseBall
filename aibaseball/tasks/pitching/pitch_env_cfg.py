@@ -614,6 +614,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_fall: float = 200.0
     w_stage_rate: float = 0.0005
     w_stage_stride: float = 0.0  # 1b: one-off bonus at the robot's lead-foot touchdown after a real stride
+    stage_finish: str = "hold"  # 1b legs after the touchdown: "hold" the touchdown stance / "set" the set position's
+    max_flight_s: float = 0.0  # 1b: > 0: both feet off the ground longer than this before the touchdown = fallen
     reset_lift_m: float = 0.03
 
 
@@ -627,3 +629,17 @@ class Stage1bEnvCfg(Stage1aEnvCfg):
 
     stage: str = "1b"
     w_stage_stride: float = 100.0
+
+
+@configclass
+class Stage1b2EnvCfg(Stage1bEnvCfg):
+    """Stage 1b, second design (2026-10-14). 1b 850-1300: 64/64 strides, 64/64 falls at ~1.25 s, 0/64 standing. Trace
+    (1300): both feet off the ground 0.4-0.65 s (a leap, COM 2.2 m/s), lands 1.23 m apart, then the pelvis sinks
+    0.68 -> 0.2 m into a split with the legs held at the touchdown. The athlete's own stride is 1.33 m (pelvis 0.77 m)
+    and nobody holds that lunge still: the back leg comes through. Now after the touchdown the legs' PD base blends
+    over 0.6 s to the set position's standing legs, and both feet off the ground > 0.1 s before the touchdown is a
+    fall."""
+
+    stage_finish: str = "set"
+    stand_pd_blend_s: float = 0.6
+    max_flight_s: float = 0.1
