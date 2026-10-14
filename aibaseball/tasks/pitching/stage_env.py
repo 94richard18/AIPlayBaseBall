@@ -217,7 +217,9 @@ class StageEnv(PitchEnv):
         root[:, 7:] = 0.0
         self.robot.write_root_state_to_sim(root, ids)
         jp = jps[k].clone()
-        jp[:, self.finger_ids] = self.grip_q
+        # fingers already at their closed target: with no ball in the hand they slammed shut from the grip pose and
+        # the finger velocities (still all 1a ever saw) came out 30-70 normalized units -> leg actions up to 4
+        jp[:, self.finger_ids] = self.hold_q
         self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=ids)
         for a in self._seas():
             a.motor_pos[ids] = jp[:, a.joint_indices]

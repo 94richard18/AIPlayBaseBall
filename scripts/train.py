@@ -25,6 +25,8 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--reset_normalizer", action="store_true", default=False,
+                    help="refit the observation normalizers from the new task's data (starting a new stage)")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -140,6 +142,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+        if args_cli.reset_normalizer and agent_cfg.empirical_normalization:
+            # rsl_rl stops updating the normalizers after 1e8 samples: a checkpoint from an earlier stage keeps that
+            # stage's statistics (1a: phase always 0, fingers still -> in 1b the phase came in at 88 and the finger
+            # velocities at 30-70 normalized units). count 0: the next batch replaces them, then they keep learning
+            for nm in (runner.obs_normalizer, runner.critic_obs_normalizer):
+                nm.count.zero_()
+            print("[INFO]: observation normalizers reset (refit on this task)")
     # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
     max_std = getattr(agent_cfg, "max_noise_std", None)
     if max_std:

@@ -21,7 +21,7 @@ else
 fi
 
 $PY -u scripts/train.py --task "$TASK" --headless --num_envs "$ENVS" --max_iterations 5000 --run_name "$RUN" \
-    "${RESUME[@]}" >> logs_pitch_stand.txt 2>&1 &
+    "${RESUME[@]}" ${RESET_NORM:+--reset_normalizer} >> logs_pitch_stand.txt 2>&1 &
 PID=$!
 NEW=""
 while kill -0 $PID 2>/dev/null; do
