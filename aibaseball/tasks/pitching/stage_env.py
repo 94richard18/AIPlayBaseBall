@@ -45,6 +45,7 @@ class StageEnv(PitchEnv):
         self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
         self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
+        self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -84,6 +85,20 @@ class StageEnv(PitchEnv):
             q[:, legs] = q[:, legs] + k * (r["joint_pos"][:, legs] - q[:, legs])
             qd = torch.zeros_like(r["joint_vel"])
             qd[:, legs] = r["joint_vel"][:, legs] * k * sgn.unsqueeze(-1)
+            if self.cfg.lift_shift_roll or self.cfg.lift_shift_pitch:
+                # weight onto the back leg, ramped in over the set-position wait: both hip rolls / pitches + x, ankle
+                # rolls / pitches - x (a parallel shift of the pelvis over the feet). Zero-action scan of 121
+                # (roll, pitch) pairs: 0.45 / 0.20 keeps the COM 4 cm from the back foot through the lift, stays up 3 s
+                c = self.cfg
+                w = (t / max(c.lift_delay_s, 1e-3)).clamp(0.0, 1.0)
+                # ... and out again while the lead foot comes down (held, the lead foot never reached the ground)
+                t_dn = c.lift_delay_s + c.lift_peak_s + c.lift_hold_s
+                w = w * (1.0 - ((t - t_dn) / (c.lift_peak_s + c.lift_shift_out_extra_s)).clamp(0.0, 1.0))
+                for side in ("l", "r"):
+                    for j, v in (("hip_roll", 1.0), ("ankle_roll", -1.0)):
+                        q[:, self._jcol[f"{side}_{j}"]] += v * self.cfg.lift_shift_roll * w
+                    for j, v in (("hip_pitch", 1.0), ("ankle_pitch", -1.0)):
+                        q[:, self._jcol[f"{side}_{j}"]] += v * self.cfg.lift_shift_pitch * w
             r["joint_pos"], r["joint_vel"] = q, qd
             for key in ("root_pos", "key_pos"):
                 r[key] = r0[key] + k * (r[key] - r0[key])

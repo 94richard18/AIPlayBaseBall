@@ -629,6 +629,9 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_delay_s: float = 0.0  # 1b1: set position held this long before the lift starts
     lift_balance_shaping: bool = False  # 1b1: standing quality all episode, "feet down" = COM over the back foot
     lift_balance_lead_s: float = 0.3  # ... from this long before the lift starts until the lead foot is due down
+    lift_shift_roll: float = 0.0  # 1b1: weight shift onto the back leg: hip rolls +, ankle rolls - this (rad)
+    lift_shift_pitch: float = 0.0  # 1b1: ... hip pitches +, ankle pitches - this (rad)
+    lift_shift_out_extra_s: float = 0.3  # 1b1: the shift ramps out over the lead foot's way down + this
     lift_back_leg_athlete: bool = True  # 1b1: the back leg's reference follows the athlete's lift too
     lift_balance_sigma_m: float = 0.08  # ... exp(-(COM-to-back-foot horizontal distance / this)^2)
     lead_advance_min_m: float = -10.0  # 1b: the lead foot's own move toward the plate (+x) at the touchdown, at least
@@ -745,3 +748,15 @@ class Stage1b1bEnvCfg(Stage1b1EnvCfg):
     lift_balance_shaping: bool = True
     lift_back_leg_athlete: bool = False
     leg_ref_scale: float = 1.0  # lead leg only: the athlete's whole lift (0.7 x lifted the robot's foot only 0.13 m)
+
+
+@configclass
+class Stage1b1cEnvCfg(Stage1b1bEnvCfg):
+    """Stage 1b-1, third design (2026-10-15): 1b1b + the weight shift in the legs' PD reference. 1b1b 850 (from 1a
+    700): lifted 64/64 (0.63 s), fell 64/64 at 1.3 s - now backward (pelvis -0.58 m), reward falling. A zero-action scan
+    of 121 weight shifts (both hip rolls +a / ankle rolls -a, hip pitches +b / ankle pitches -b over the 0.5 s wait):
+    a = 0.45, b = 0.20 keeps the COM 4 cm from the back foot during the lift and stands the whole 3 s (no shift: falls
+    at 1.56 s, COM 0.43 m off)."""
+
+    lift_shift_roll: float = 0.45
+    lift_shift_pitch: float = 0.20
