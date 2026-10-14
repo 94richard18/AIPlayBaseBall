@@ -62,7 +62,8 @@ class StageEnv(PitchEnv):
         reversed), then the set position (0); and the velocity sign (+1 up, -1 down, 0 held / set)."""
         c = self.cfg
         tp, h = c.lift_peak_s, c.lift_hold_s
-        up, hold, down = t < tp, (t >= tp) & (t < tp + h), (t >= tp + h) & (t < 2 * tp + h)
+        t = t - c.lift_delay_s  # set position held lift_delay_s first (time to put the weight on the back leg)
+        up, hold, down = (t >= 0) & (t < tp), (t >= tp) & (t < tp + h), (t >= tp + h) & (t < 2 * tp + h)
         tm = torch.where(up, t, torch.where(hold, torch.full_like(t, tp), torch.where(down, 2 * tp + h - t,
                                                                                          torch.zeros_like(t))))
         sgn = up.float() - down.float()
@@ -76,6 +77,9 @@ class StageEnv(PitchEnv):
             tm, sgn = self._lift_clock(t)
             r = super()._ref(tm)
             k, legs = self.cfg.leg_ref_scale, self.lead_leg_cols + self.back_leg_cols
+            if not self.cfg.lift_back_leg_athlete:  # back leg stays at the set position (the athlete's back leg
+                legs = self.lead_leg_cols  # already drifts toward the plate during the lift: with zero actions the
+                # pelvis ran +0.2 m toward the plate by the peak)
             q = r0["joint_pos"].clone()
             q[:, legs] = q[:, legs] + k * (r["joint_pos"][:, legs] - q[:, legs])
             qd = torch.zeros_like(r["joint_vel"])
@@ -218,7 +222,18 @@ class StageEnv(PitchEnv):
         upright = torch.exp(-(((tilt - 0.8 * c.stand_max_tilt_deg).clamp_min(0.0) / 15.0) ** 2))
         still = torch.exp(-((speed / (2.0 * c.stand_max_com_v)) ** 2))
         tall = ((head_z - 1.0) / (c.stand_min_head_z + 0.05 - 1.0)).clamp(0.0, 1.0)
-        quality = (upright + still + both.float() + tall) / 4.0
+        support = both.float()
+        if c.stage == "1b1" and c.lift_balance_shaping:
+            # from lift_balance_lead_s before the lift until the lead foot is due down again: COM over the back foot
+            # (1b1 850-1000: never put the weight on the back leg, the COM 0.18 m off it ran away at 1.6 m/s)
+            tr = self._ref_time() - c.lift_delay_s
+            win = (tr >= -c.lift_balance_lead_s) & (tr < 2 * c.lift_peak_s + c.lift_hold_s)
+            com, _ = self._com()
+            back = self.robot.data.body_link_pos_w[:, self.foot_ids[1], :2]
+            over = torch.exp(-(((com[:, :2] - back).norm(dim=-1) / c.lift_balance_sigma_m) ** 2))
+            support = torch.where(win, over, support)
+            q_on = torch.ones_like(speed)  # standing quality all episode (balance before the lift is the point)
+        quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
         rew = (up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * self.fallen.float() - c.w_stage_rate * rate)

@@ -626,6 +626,11 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_hold_min_s: float = 0.3  # 1b1: lifted with the back foot alone planted this long = the lift is done
     back_slide_max_m: float = 0.1  # 1b1: back foot moved more than this from its start = no success
     lead_home_max_m: float = 0.15  # 1b1: lead foot back within this of its start at the end
+    lift_delay_s: float = 0.0  # 1b1: set position held this long before the lift starts
+    lift_balance_shaping: bool = False  # 1b1: standing quality all episode, "feet down" = COM over the back foot
+    lift_balance_lead_s: float = 0.3  # ... from this long before the lift starts until the lead foot is due down
+    lift_back_leg_athlete: bool = True  # 1b1: the back leg's reference follows the athlete's lift too
+    lift_balance_sigma_m: float = 0.08  # ... exp(-(COM-to-back-foot horizontal distance / this)^2)
     lead_advance_min_m: float = -10.0  # 1b: the lead foot's own move toward the plate (+x) at the touchdown, at least
     back_retreat_max_m: float = 10.0  # 1b: the back foot may be at most this far behind its start at the touchdown
 
@@ -726,3 +731,17 @@ class Stage1bFwd75EnvCfg(Stage1bFwd50EnvCfg):
 class Stage1bFwd100EnvCfg(Stage1bFwd50EnvCfg):
     leg_ref_scale: float = 1.0
     lead_advance_min_m: float = 0.9
+
+
+@configclass
+class Stage1b1bEnvCfg(Stage1b1EnvCfg):
+    """Stage 1b-1, second design (2026-10-14). 1b1 850-1000 (from 1a 700): lifted 64/64, fell 64/64 at 1.2 s - the
+    set-position COM is 0.18 m from the back foot ((0.11, -0.13) vs (0.01, -0.28)); as the lead foot left the ground
+    the pelvis ran toward the plate and the lead side at up to 1.6 m/s. Now: 0.5 s in the set position before the
+    lift (time to shift the weight), and the standing quality counts all episode with its "feet down" part replaced,
+    from 0.3 s before the lift until the lead foot is due down, by COM over the back foot (exp(-(d / 0.08 m)^2))."""
+
+    lift_delay_s: float = 0.5
+    lift_balance_shaping: bool = True
+    lift_back_leg_athlete: bool = False
+    leg_ref_scale: float = 1.0  # lead leg only: the athlete's whole lift (0.7 x lifted the robot's foot only 0.13 m)
