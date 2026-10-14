@@ -775,3 +775,13 @@ class Stage1b1dEnvCfg(Stage1b1cEnvCfg):
     with NOISE=0.1 (action noise std cap)."""
 
     freeze_arms: bool = True
+
+
+@configclass
+class Stage1b1eEnvCfg(Stage1b1dEnvCfg):
+    """Fallback for 1b1d (2026-10-15, one-month plan: PD reference leads, RL only corrects). Zero actions on 1b1c/d
+    stand 64/64 through the lift; the policies so far fell 64/64. Residual 0.5 -> 0.2: hip / knee actions move the PD
+    target at most 0.1 rad, ankle 0.08 rad, so the policy can nudge the balance but not undo the weight shift.
+    Pass: falls <= zero actions' and lift >= 60/64. Use if 1b1d 1300 does not pass."""
+
+    residual_scale: float = 0.2
