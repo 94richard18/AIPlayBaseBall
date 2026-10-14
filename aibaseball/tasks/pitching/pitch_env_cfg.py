@@ -626,6 +626,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_hold_min_s: float = 0.3  # 1b1: lifted with the back foot alone planted this long = the lift is done
     back_slide_max_m: float = 0.1  # 1b1: back foot moved more than this from its start = no success
     lead_home_max_m: float = 0.15  # 1b1: lead foot back within this of its start at the end
+    lead_advance_min_m: float = -10.0  # 1b: the lead foot's own move toward the plate (+x) at the touchdown, at least
+    back_retreat_max_m: float = 10.0  # 1b: the back foot may be at most this far behind its start at the touchdown
 
 
 @configclass
@@ -700,3 +702,27 @@ class Stage1b1EnvCfg(Stage1aEnvCfg):
     stage: str = "1b1"
     w_stage_stride: float = 100.0
     leg_ref_scale: float = 0.7
+
+
+@configclass
+class Stage1bFwd50EnvCfg(Stage1b3EnvCfg):
+    """Stage 1b-2 (2026-10-14): the stride TOWARD THE PLATE, 0.5 x the athlete's leg motion, after 1b-1 (leg lift). The
+    touchdown counts only when the lead foot itself moved >= 0.4 m toward the plate (+x) from its start (athlete
+    1.41 m, 0.5 x ~ 0.7 m) and the back foot is not more than 0.1 m behind its start. 1b3 / 1b4 counted lead - back
+    foot only and 1b4 1750 stepped the back foot 0.8 m away from the plate. No landed starts (none recorded going
+    forward yet)."""
+
+    lead_advance_min_m: float = 0.4
+    back_retreat_max_m: float = 0.1
+
+
+@configclass
+class Stage1bFwd75EnvCfg(Stage1bFwd50EnvCfg):
+    leg_ref_scale: float = 0.75
+    lead_advance_min_m: float = 0.6
+
+
+@configclass
+class Stage1bFwd100EnvCfg(Stage1bFwd50EnvCfg):
+    leg_ref_scale: float = 1.0
+    lead_advance_min_m: float = 0.9

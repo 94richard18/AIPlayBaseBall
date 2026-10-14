@@ -156,7 +156,12 @@ class StageEnv(PitchEnv):
         self.s_lifted |= ~planted[:, 0] & (tr >= c.lead_lift_after_s)
         down = planted[:, 0] & ~self.s_prev_planted
         self.s_prev_planted = planted[:, 0].clone()
-        new = down & self.s_lifted & ~self.s_landed & (stride >= c.lead_stride_min_m) & ~self.fallen
+        # toward the plate: the lead foot itself moved >= lead_advance_min_m forward of its start, and the back foot
+        # did not step back (1b4 1750 "strode" 0.73 m by putting the BACK foot 0.8 m away from the plate)
+        ahead = (feet[:, 0, 0] - self.s_feet0[:, 0, 0]) >= c.lead_advance_min_m
+        kept = (feet[:, 1, 0] - self.s_feet0[:, 1, 0]) >= -c.back_retreat_max_m
+        new = (down & self.s_lifted & ~self.s_landed & (stride >= c.lead_stride_min_m) & ahead & kept
+               & ~self.fallen)
         self.s_landed |= new
         self.s_land_t = torch.where(new, tr, self.s_land_t)
         self.s_land_step = torch.where(new, self.episode_length_buf, self.s_land_step)
