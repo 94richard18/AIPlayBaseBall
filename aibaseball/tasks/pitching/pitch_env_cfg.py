@@ -617,6 +617,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     stage_finish: str = "hold"  # 1b legs after the touchdown: "hold" the touchdown stance / "set" the set position's
     max_flight_s: float = 0.0  # 1b: > 0: both feet off the ground longer than this before the touchdown = fallen
     leg_ref_scale: float = 1.0  # 1b: legs' reference = set position + this x (athlete - set position)
+    landed_start_prob: float = 0.0  # 1b: this share of the episodes starts at rest in a recorded landed stance
+    landed_states_path: str = "logs/stage_states/s1b3_landed.pt"  # scripts/capture_stage_states.py
     reset_lift_m: float = 0.03
 
 
@@ -657,3 +659,14 @@ class Stage1b3EnvCfg(Stage1b2EnvCfg):
 
     leg_ref_scale: float = 0.5
     stage_finish: str = "hold"
+
+
+@configclass
+class Stage1b4EnvCfg(Stage1b3EnvCfg):
+    """Stage 1b3 + half the episodes start at rest in a landed stance (2026-10-14, reverse curriculum). 1b3 1150 trace:
+    at 0.6 s both feet down 0.8 m apart, COM 0.24 m/s, pelvis 0.94 m - nearly stopped - then the back foot lifted,
+    the pelvis slid 1 m sideways and it fell; 1300 went back to 1 m strides, 0/64 standing. That stance was reached
+    every episode but practised only for the few steps before each fall. Stances recorded from 1b3 1150 (with its
+    action noise). The evaluation still starts every episode from the set position."""
+
+    landed_start_prob: float = 0.5

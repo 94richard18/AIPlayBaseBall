@@ -35,6 +35,11 @@ class StageEnv(PitchEnv):
         self.s_land_t = torch.zeros(n, device=dev)  # reference time at the robot's touchdown
         self.s_land_step = torch.zeros(n, dtype=torch.long, device=dev)
         self.s_hold = torch.zeros(n, len(self.body_ids), device=dev)  # robot's joint angles at the touchdown
+        self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
+        if cfg.landed_start_prob > 0:
+            d = torch.load(cfg.landed_states_path, map_location=dev)
+            self._ls = (d["root"].to(dev), d["joint_pos"].to(dev))
+            print(f"[StageEnv] {len(d['root'])} landed stances from {cfg.landed_states_path}", flush=True)
 
     # 1a: the reference (PD base, observations) stays at its first frame, the set position
     def _ref_time(self, extra: int = 0) -> torch.Tensor:
@@ -179,6 +184,8 @@ class StageEnv(PitchEnv):
             self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)
             self.qd_target[env_ids] = 0.0
             self.robot.write_root_velocity_to_sim(torch.zeros(len(env_ids), 6, device=self.device), env_ids)
+        if self._ls is not None and self.cfg.landed_start_prob > 0:
+            self._landed_start(env_ids[torch.rand(len(env_ids), device=self.device) < self.cfg.landed_start_prob])
         if self.cfg.stage == "1a" and self.cfg.push_vel > 0:  # a small random shove at the start (robustness)
             n = len(env_ids)
             v = torch.zeros(n, 6, device=self.device)
@@ -187,3 +194,36 @@ class StageEnv(PitchEnv):
             v[:, 0] = mag * torch.cos(ang)
             v[:, 1] = mag * torch.sin(ang)
             self.robot.write_root_velocity_to_sim(v, env_ids)
+
+    def _landed_start(self, ids):
+        """Start these envs at rest in a recorded landed stance: stride done, legs holding that stance (reverse
+        curriculum - the stance after the touchdown was reached every episode but never practised)."""
+        if len(ids) == 0:
+            return
+        roots, jps = self._ls
+        k = torch.randint(0, len(roots), (len(ids),), device=self.device)
+        root = roots[k].clone()
+        root[:, :3] += self.scene.env_origins[ids]
+        root[:, 2] += self.cfg.reset_lift_m
+        root[:, 7:] = 0.0
+        self.robot.write_root_state_to_sim(root, ids)
+        jp = jps[k].clone()
+        jp[:, self.finger_ids] = self.grip_q
+        self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=ids)
+        for a in self._seas():
+            a.motor_pos[ids] = jp[:, a.joint_indices]
+            a.motor_vel[ids] = 0.0
+            a.needs_sync[ids] = False
+        self.q_target[ids] = jp
+        self.q_target[ids.unsqueeze(-1), self.finger_ids] = self.hold_q
+        self.qd_target[ids] = 0.0
+        ball = torch.zeros(len(ids), 13, device=self.device)  # the ball out of the way (not scored in 1b)
+        ball[:, :3] = self.scene.env_origins[ids] + torch.tensor([-1.5, 1.5, 0.05], device=self.device)
+        ball[:, 3] = 1.0
+        self.ball.write_root_state_to_sim(ball, ids)
+        self.t0[ids] = self.release_ref
+        self.s_lifted[ids] = True
+        self.s_landed[ids] = True
+        self.s_land_t[ids] = self.release_ref
+        self.s_land_step[ids] = -100000  # PD base already fully on the held stance
+        self.s_hold[ids] = jp[:, self.body_ids]

@@ -47,6 +47,8 @@ def say(*a):
 def main():
     cfg = load_cfg_from_registry(args.task, "env_cfg_entry_point")
     cfg.scene.num_envs = args.envs
+    if hasattr(cfg, "landed_start_prob"):
+        cfg.landed_start_prob = 0.0  # evaluate whole episodes from the set position
     if args.video:
         cfg.viewer.resolution = (1280, 720)
     env = gym.make(args.task, cfg=cfg, render_mode="rgb_array" if args.video else None)
