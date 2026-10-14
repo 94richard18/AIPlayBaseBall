@@ -53,6 +53,12 @@ class StageEnv(PitchEnv):
             q = super()._ref(z)["joint_pos"].clone()
             t_leg = torch.where(self.s_landed, self.s_land_t, t.clamp(max=self.release_ref))
             rl = super()._ref(t_leg)
+            k = self.cfg.leg_ref_scale
+            if k != 1.0:  # a smaller version of the athlete's leg lift and stride: q0 + k (q - q0), root likewise
+                rl["joint_pos"] = q + k * (rl["joint_pos"] - q)
+                rl["joint_vel"] = rl["joint_vel"] * k
+                r0 = super()._ref(z)["root_pos"]
+                r["root_pos"] = r0 + k * (r["root_pos"] - r0)
             since = (self.episode_length_buf - self.s_land_step).float() * self.step_dt
             w = (self.s_landed.float() * (since / self.cfg.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
             # finish "hold": the robot's stance at the touchdown; "set": the set position's standing legs (the back

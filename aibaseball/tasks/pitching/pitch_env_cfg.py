@@ -616,6 +616,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_stride: float = 0.0  # 1b: one-off bonus at the robot's lead-foot touchdown after a real stride
     stage_finish: str = "hold"  # 1b legs after the touchdown: "hold" the touchdown stance / "set" the set position's
     max_flight_s: float = 0.0  # 1b: > 0: both feet off the ground longer than this before the touchdown = fallen
+    leg_ref_scale: float = 1.0  # 1b: legs' reference = set position + this x (athlete - set position)
     reset_lift_m: float = 0.03
 
 
@@ -643,3 +644,16 @@ class Stage1b2EnvCfg(Stage1bEnvCfg):
     stage_finish: str = "set"
     stand_pd_blend_s: float = 0.6
     max_flight_s: float = 0.1
+
+
+@configclass
+class Stage1b3EnvCfg(Stage1b2EnvCfg):
+    """Stage 1b, third design (2026-10-14): half the athlete's leg motion. 1b2 850-1300 (from 1a 700): 0/64 standing,
+    falls at 1.0-1.45 s; the stride grew to 1.2-1.47 m (athlete 1.33 m) and the back leg never came through - one
+    step out of a 1.3 m lunge was too much at once. Now the legs' reference is the set position + 0.5 x (athlete -
+    set position): a smaller leg lift and stride. A 0.5-0.8 m stance can be held standing (a 1.3 m one cannot), so
+    after the touchdown the legs hold the robot's stance again ("hold"). Zero actions: lead foot up 5 cm, down in place
+    at 0.5 s (0.2 m) - the stride has to come from the policy. Next steps raise the scale."""
+
+    leg_ref_scale: float = 0.5
+    stage_finish: str = "hold"
