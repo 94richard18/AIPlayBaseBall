@@ -670,3 +670,13 @@ class Stage1b4EnvCfg(Stage1b3EnvCfg):
     action noise). The evaluation still starts every episode from the set position."""
 
     landed_start_prob: float = 0.5
+
+
+@configclass
+class Stage1b5EnvCfg(Stage1b4EnvCfg):
+    """Stage 1b4 with 0.75 x the athlete's leg motion (2026-10-14). 1b4 passed at 1750 (from 1a 700): 62/64 standing
+    noise-free (0 falls, trunk 18.7 deg, COM 0.025 m/s), 50/64 with action noise. Landed starts re-recorded from
+    1b4 1750 (499 stances, a 0.5-scale stride: standing practice, the 0.75 stance comes from the policy)."""
+
+    leg_ref_scale: float = 0.75
+    landed_states_path: str = "logs/stage_states/s1b4_1750_landed.pt"
