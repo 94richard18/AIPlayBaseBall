@@ -44,6 +44,7 @@ class StageEnv(PitchEnv):
         self.s_slid = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b1: back foot left its spot
         self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
+        self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -237,11 +238,15 @@ class StageEnv(PitchEnv):
 
     def _get_dones(self):
         c, d = self.cfg, self.robot.data
-        first = self.episode_length_buf == 1  # start positions (the reset's writes show up after the first step)
+        # start positions, read on the first step after a reset (the reset's writes show up then). Not "episode
+        # step 1": rsl_rl starts training at random episode lengths, and the first episodes kept zeros (world
+        # origin) - lifted, back foot "slid" ~100 m
+        first = self.s_need0
         if first.any():
             f = first.unsqueeze(-1)
             self.s_feet0 = torch.where(f.unsqueeze(-1), d.body_link_pos_w[:, self.foot_ids], self.s_feet0)
             self.s_pelvis0 = torch.where(f, d.root_link_pos_w, self.s_pelvis0)
+            self.s_need0[:] = False
         self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < c.fallen_pelvis_z) | (self._head_z() < c.fallen_head_z)
         if c.fallen_touch_z > 0:
             p = d.body_link_pos_w[:, self.touch_ids]
@@ -267,6 +272,7 @@ class StageEnv(PitchEnv):
         self.s_air[env_ids] = 0.0
         self.s_land_step[env_ids] = 0
         self.s_lift_t[env_ids] = 0.0
+        self.s_need0[env_ids] = True
         self.s_slid[env_ids] = False
         if self.cfg.stage in ("1a", "1b1"):  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()
