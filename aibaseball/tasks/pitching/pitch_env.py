@@ -40,12 +40,28 @@ SQUEEZE_JOINTS = ("index_mcp", "index_pip", "middle_mcp", "middle_pip", "ring_mc
                   "thumb_mcp")
 
 
+def _cache_body_coms(art: Articulation):
+    """Isaac Lab 2.0.2 reads every body's centre of mass from PhysX (a CPU copy) on each com_pos_b / com_quat_b access -
+    4 per step here (COM, link velocities), 96 of 153 ms per 4096-env step. Nothing changes the masses: read once."""
+    coms = art.root_physx_view.get_coms().to(art.data.device).clone()
+    base = type(art.data)
+
+    class _Data(base):
+        com_pos_b = property(lambda self: self._coms_cache[..., :3])
+        com_quat_b = property(lambda self: self._coms_cache_wxyz)
+
+    art.data._coms_cache = coms
+    art.data._coms_cache_wxyz = torch.cat([coms[..., 6:7], coms[..., 3:6]], -1)  # xyzw -> wxyz
+    art.data.__class__ = _Data
+
+
 class PitchEnv(DirectRLEnv):
     cfg: PitchEnvCfg
 
     def __init__(self, cfg: PitchEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
         dev, n = self.device, self.num_envs
+        _cache_body_coms(self.robot)
         self.phys = PhysicsSpec()
         self.ref = MotionRef(cfg.motion_file, dev)
         self.ref.rotate_z(math.radians(cfg.ref_yaw_deg))
