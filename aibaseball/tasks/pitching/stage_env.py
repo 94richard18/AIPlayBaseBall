@@ -35,6 +35,7 @@ class StageEnv(PitchEnv):
         self.s_land_t = torch.zeros(n, device=dev)  # reference time at the robot's touchdown
         self.s_land_step = torch.zeros(n, dtype=torch.long, device=dev)
         self.s_hold = torch.zeros(n, len(self.body_ids), device=dev)  # robot's joint angles at the touchdown
+        self.s_root_land = torch.zeros(n, 3, device=dev)  # robot's root at the touchdown (world)
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -58,12 +59,19 @@ class StageEnv(PitchEnv):
             q = super()._ref(z)["joint_pos"].clone()
             t_leg = torch.where(self.s_landed, self.s_land_t, t.clamp(max=self.release_ref))
             rl = super()._ref(t_leg)
+            # root / key point targets (observations) on the legs' clock: frozen at the release time before a
+            # touchdown, the robot's own root after it. They ran on with the athlete's follow-through (pelvis 0.5 m
+            # toward -y and forward) and the 1b3 policy chased them after landing: pelvis slid 1 m sideways, fell
+            r["root_pos"], r["key_pos"] = rl["root_pos"], rl["key_pos"]
+            r["root_lin_vel"] = rl["root_lin_vel"] * (~self.s_landed).float().unsqueeze(-1)
+            r["root_ang_vel"] = rl["root_ang_vel"] * (~self.s_landed).float().unsqueeze(-1)
             k = self.cfg.leg_ref_scale
             if k != 1.0:  # a smaller version of the athlete's leg lift and stride: q0 + k (q - q0), root likewise
                 rl["joint_pos"] = q + k * (rl["joint_pos"] - q)
                 rl["joint_vel"] = rl["joint_vel"] * k
                 r0 = super()._ref(z)["root_pos"]
                 r["root_pos"] = r0 + k * (r["root_pos"] - r0)
+            r["root_pos"] = torch.where(self.s_landed.unsqueeze(-1), self.s_root_land, r["root_pos"])
             since = (self.episode_length_buf - self.s_land_step).float() * self.step_dt
             w = (self.s_landed.float() * (since / self.cfg.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
             # finish "hold": the robot's stance at the touchdown; "set": the set position's standing legs (the back
@@ -116,6 +124,7 @@ class StageEnv(PitchEnv):
         self.s_land_t = torch.where(new, tr, self.s_land_t)
         self.s_land_step = torch.where(new, self.episode_length_buf, self.s_land_step)
         self.s_hold = torch.where(new.unsqueeze(-1), d.joint_pos[:, self.body_ids], self.s_hold)
+        self.s_root_land = torch.where(new.unsqueeze(-1), d.root_link_pos_w, self.s_root_land)
         return new, stride
 
     def stage_success(self):
@@ -227,3 +236,4 @@ class StageEnv(PitchEnv):
         self.s_land_t[ids] = self.release_ref
         self.s_land_step[ids] = -100000  # PD base already fully on the held stance
         self.s_hold[ids] = jp[:, self.body_ids]
+        self.s_root_land[ids] = root[:, :3]
