@@ -629,6 +629,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_delay_s: float = 0.0  # 1b1: set position held this long before the lift starts
     lift_balance_shaping: bool = False  # 1b1: standing quality all episode, "feet down" = COM over the back foot
     lift_balance_lead_s: float = 0.3  # ... from this long before the lift starts until the lead foot is due down
+    freeze_arms: bool = False  # stage 1: arm actions zeroed (arms on the set position's PD reference)
     lift_shift_roll: float = 0.0  # 1b1: weight shift onto the back leg: hip rolls +, ankle rolls - this (rad)
     lift_shift_pitch: float = 0.0  # 1b1: ... hip pitches +, ankle pitches - this (rad)
     lift_shift_out_extra_s: float = 0.3  # 1b1: the shift ramps out over the lead foot's way down + this
@@ -763,3 +764,14 @@ class Stage1b1cEnvCfg(Stage1b1bEnvCfg):
     lift_shift_roll: float = 0.50
     lift_shift_pitch: float = 0.20
     lift_shift_out_extra_s: float = 0.0
+
+
+@configclass
+class Stage1b1dEnvCfg(Stage1b1cEnvCfg):
+    """Stage 1b1c with the arms frozen on the set position (2026-10-15). s1b1y 850 (ZERO_HEAD from 1a 700): 64/64
+    falls at 1.8 s where zero actions fall 0/64; in training 81-100% of the episodes fell from the start - action noise
+    std 0.2 x arm action scale 1.5 = 0.3 rad shoulder / elbow jitter every step knocks the robot off one leg, and PPO
+    almost never saw a lift that ended standing. The arms take no part in 1b (they stay in the set position); train
+    with NOISE=0.1 (action noise std cap)."""
+
+    freeze_arms: bool = True

@@ -27,6 +27,8 @@ parser.add_argument("--seed", type=int, default=None, help="Seed used for the en
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--reset_normalizer", action="store_true", default=False,
                     help="refit the observation normalizers from the new task's data (starting a new stage)")
+parser.add_argument("--max_noise_std", type=float, default=None,
+                    help="cap the action noise std at this (overrides the agent cfg's max_noise_std)")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
 # append RSL-RL cli arguments
@@ -159,7 +161,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             torch.nn.init.zeros_(head.bias)
             print("[INFO]: actor output layer zeroed (starts as zero actions)")
     # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
-    max_std = getattr(agent_cfg, "max_noise_std", None)
+    max_std = args_cli.max_noise_std or getattr(agent_cfg, "max_noise_std", None)
     if max_std:
         ac = runner.alg.actor_critic
         update = runner.alg.update

@@ -46,6 +46,7 @@ class StageEnv(PitchEnv):
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
         self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
+        self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -148,6 +149,8 @@ class StageEnv(PitchEnv):
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
+        if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise
+            actions[:, self._arm_cols] = 0.0
         super()._pre_physics_step(actions)
 
     def _stand_state(self):
