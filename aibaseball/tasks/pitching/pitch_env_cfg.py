@@ -756,7 +756,10 @@ class Stage1b1cEnvCfg(Stage1b1bEnvCfg):
     700): lifted 64/64 (0.63 s), fell 64/64 at 1.3 s - now backward (pelvis -0.58 m), reward falling. A zero-action scan
     of 121 weight shifts (both hip rolls +a / ankle rolls -a, hip pitches +b / ankle pitches -b over the 0.5 s wait):
     a = 0.45, b = 0.20 keeps the COM 4 cm from the back foot during the lift and stands the whole 3 s (no shift: falls
-    at 1.56 s, COM 0.43 m off)."""
+    at 1.56 s, COM 0.43 m off). Ramp-out scan (81 settings, zero actions): roll 0.50 / pitch 0.20, out over the lead
+    foot's 0.33 s way down: no fall, lead foot 5 cm from its start, COM 0.59 m/s at 3 s (0.45 / 0.20, out over 0.63 s:
+    COM 1.86 m/s at 3 s). The 1a policy fought the shift (1b1c 850: 64/64 falls backward): train with ZERO_HEAD=1."""
 
-    lift_shift_roll: float = 0.45
+    lift_shift_roll: float = 0.50
     lift_shift_pitch: float = 0.20
+    lift_shift_out_extra_s: float = 0.0
