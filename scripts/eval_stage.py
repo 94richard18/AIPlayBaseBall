@@ -92,6 +92,16 @@ def main():
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
         both, speed, tilt, head_z, ok = (x.cpu().numpy() for x in base._stand_state())
+        dd = base.robot.data  # movement toward the plate (+x) since the first step: lead foot, back foot, pelvis
+        dx = torch.cat([dd.body_link_pos_w[:, base.foot_ids, 0] - base.s_feet0[..., 0],
+                        (dd.root_link_pos_w[:, 0] - base.s_pelvis0[:, 0]).unsqueeze(-1)], -1).cpu().numpy()
+        lift_stage = cfg.stage == "1b1"
+        if lift_stage:
+            lifted = (base.s_lift_t >= cfg.lift_hold_min_s).cpu().numpy()
+            slid = base.s_slid.cpu().numpy()
+            done_lift = base.lift_done().cpu().numpy()
+            lift_t = base.s_lift_t.cpu().numpy()
+            ok = ok & done_lift
         stride_stage = cfg.stage == "1b"
         if stride_stage:  # success also needs the stride (the robot's lead foot landed >= lead_stride_min_m ahead)
             landed = base.s_landed.cpu().numpy()
@@ -109,6 +119,12 @@ def main():
     if stride_stage:
         say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
             f"{(up & ~landed).sum()}")
+    if lift_stage:
+        say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
+            f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
+            f"{slid.sum()}/{n}; lift done with the feet back home: {done_lift.sum()}/{n}")
+    say(f"  toward the plate (+x) since the start (median): lead foot {np.median(dx[:, 0]):+.2f} m, back foot "
+        f"{np.median(dx[:, 1]):+.2f} m, pelvis {np.median(dx[:, 2]):+.2f} m (min pelvis {dx[:, 2].min():+.2f} m)")
     if up.any():
         say(f"  not fallen, at the end (median): trunk tilt {np.median(tilt[up]):.1f} deg, COM speed {np.median(speed[up]):.3f} "
             f"m/s, head {np.median(head_z[up]):.2f} m, both feet down {both[up].mean() * 100:.0f}%")

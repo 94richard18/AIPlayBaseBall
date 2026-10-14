@@ -4,6 +4,10 @@
   1b  no ball: leg lift, stride, land and stop standing (the legs follow the athlete until the robot's own lead
       foot lands >= lead_stride_min_m ahead of the back foot, then hold that stance; arms / trunk stay in the set
       position, the ball stays in the glove and is not scored)
+  1b1 (2026-10-14, the pitch split into set / leg lift / stride / rotation / throw) leg lift only: the athlete's
+      lift up to its peak, held there on the back leg, back down to the set position, stand still. The 1b policies
+      (stride and stop) passed at 1750 by stepping the BACK foot 0.8 m away from the plate (pelvis -0.37 m): the
+      balance point on the back leg was never learned on its own
   1c  (later) 1b + the throwing arm, ball scored by its progress toward the plate
 
 Same robot, PD-residual actions and observations as PitchEnv; a short reward (alive, standing quality, fall,
@@ -26,7 +30,7 @@ class StageEnv(PitchEnv):
         super().__init__(cfg, render_mode, **kwargs)
         self.stage_stats = {k: torch.zeros((), device=self.device)
                             for k in ("fall_rate", "stand_ok", "tilt_deg", "com_speed", "head_z", "both_feet",
-                                      "landed", "stride_m")}
+                                      "landed", "stride_m", "lift_s", "back_slide_m")}
         n, dev = self.num_envs, self.device
         self.s_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot off the ground since 0.1 s
         self.s_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot down after a real stride
@@ -36,6 +40,10 @@ class StageEnv(PitchEnv):
         self.s_land_step = torch.zeros(n, dtype=torch.long, device=dev)
         self.s_hold = torch.zeros(n, len(self.body_ids), device=dev)  # robot's joint angles at the touchdown
         self.s_root_land = torch.zeros(n, 3, device=dev)  # robot's root at the touchdown (world)
+        self.s_lift_t = torch.zeros(n, device=dev)  # 1b1: s on the back leg alone with the lead foot lifted
+        self.s_slid = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b1: back foot left its spot
+        self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
+        self.s_pelvis0 = torch.zeros(n, 3, device=dev)
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -48,7 +56,36 @@ class StageEnv(PitchEnv):
             return torch.zeros_like(self.t0)
         return super()._ref_time(extra)
 
+    def _lift_clock(self, t):
+        """1b1: reference time on the athlete's leg lift - up to lift_peak_s, held lift_hold_s, back down (time
+        reversed), then the set position (0); and the velocity sign (+1 up, -1 down, 0 held / set)."""
+        c = self.cfg
+        tp, h = c.lift_peak_s, c.lift_hold_s
+        up, hold, down = t < tp, (t >= tp) & (t < tp + h), (t >= tp + h) & (t < 2 * tp + h)
+        tm = torch.where(up, t, torch.where(hold, torch.full_like(t, tp), torch.where(down, 2 * tp + h - t,
+                                                                                         torch.zeros_like(t))))
+        sgn = up.float() - down.float()
+        return tm, sgn
+
     def _ref(self, t):
+        if self.cfg.stage == "1b1" and t.shape[0] == self.num_envs:
+            # legs (and root / key targets) on the lift clock, scaled by leg_ref_scale; upper body at the set position
+            z = torch.zeros_like(t)
+            r0 = super()._ref(z)
+            tm, sgn = self._lift_clock(t)
+            r = super()._ref(tm)
+            k, legs = self.cfg.leg_ref_scale, self.lead_leg_cols + self.back_leg_cols
+            q = r0["joint_pos"].clone()
+            q[:, legs] = q[:, legs] + k * (r["joint_pos"][:, legs] - q[:, legs])
+            qd = torch.zeros_like(r["joint_vel"])
+            qd[:, legs] = r["joint_vel"][:, legs] * k * sgn.unsqueeze(-1)
+            r["joint_pos"], r["joint_vel"] = q, qd
+            for key in ("root_pos", "key_pos"):
+                r[key] = r0[key] + k * (r[key] - r0[key])
+            r["root_quat"] = r0["root_quat"]
+            r["root_lin_vel"] = r["root_lin_vel"] * k * sgn.unsqueeze(-1)
+            r["root_ang_vel"] = torch.zeros_like(r["root_ang_vel"])
+            return r
         r = super()._ref(t)
         if self.cfg.stage == "1b" and t.shape[0] == self.num_envs:
             # PD base / targets: upper body at the set position; legs on the athlete's stride (frozen at the release
@@ -127,9 +164,33 @@ class StageEnv(PitchEnv):
         self.s_root_land = torch.where(new.unsqueeze(-1), d.root_link_pos_w, self.s_root_land)
         return new, stride
 
+    def _update_lift(self):
+        """1b1: time on the back leg alone with the lead foot >= lift_min_m above its start (back foot planted), and
+        whether the back foot ever left its spot (> back_slide_max_m horizontally). Returns (lift done now, slide)."""
+        c, d = self.cfg, self.robot.data
+        forces = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids].norm(dim=-1).max(1).values
+        planted = forces > c.contact_force_n
+        feet = d.body_link_pos_w[:, self.foot_ids]
+        high = (feet[:, 0, 2] - self.s_feet0[:, 0, 2]) >= c.lift_min_m
+        on_back = high & ~planted[:, 0] & planted[:, 1] & ~self.fallen
+        before = self.s_lift_t >= c.lift_hold_min_s
+        self.s_lift_t += on_back.float() * self.step_dt
+        new = ~before & (self.s_lift_t >= c.lift_hold_min_s)
+        slide = (feet[:, 1, :2] - self.s_feet0[:, 1, :2]).norm(dim=-1)
+        self.s_slid |= slide > c.back_slide_max_m
+        return new, slide
+
+    def lift_done(self):
+        """1b1: held the lift on the back leg long enough, back foot never slid, lead foot back near its start."""
+        c = self.cfg
+        home = (self.robot.data.body_link_pos_w[:, self.foot_ids[0], :2] - self.s_feet0[:, 0, :2]).norm(dim=-1)
+        return (self.s_lift_t >= c.lift_hold_min_s) & ~self.s_slid & (home < c.lead_home_max_m)
+
     def stage_success(self):
-        """At rest standing now (and, 1b, after a real stride)."""
+        """At rest standing now (and, 1b, after a real stride; 1b1, after the lift, feet back in place)."""
         ok = self._stand_state()[-1]
+        if self.cfg.stage == "1b1":
+            return ok & self.lift_done()
         return ok & self.s_landed if self.cfg.stage == "1b" else ok
 
     def _get_rewards(self) -> torch.Tensor:
@@ -137,7 +198,12 @@ class StageEnv(PitchEnv):
         both, speed, tilt, head_z, ok = self._stand_state()
         new = torch.zeros_like(self.fallen)
         q_on = torch.ones_like(speed)
-        if c.stage == "1b":  # standing quality counts once the stride has landed; + a one-off stride bonus
+        if c.stage == "1b1":  # standing quality counts once the lift is done (feet back home); + a one-off lift bonus
+            new, slide = self._update_lift()
+            done_lift = self.lift_done()
+            q_on = done_lift.float()
+            ok = ok & done_lift
+        elif c.stage == "1b":  # standing quality counts once the stride has landed; + a one-off stride bonus
             new, stride = self._update_stride()
             q_on = self.s_landed.float()
             ok = ok & self.s_landed
@@ -155,7 +221,9 @@ class StageEnv(PitchEnv):
         for k, v, m in (("fall_rate", self.fallen.float(), done), ("stand_ok", ok.float(), self.reset_time_outs),
                         ("tilt_deg", tilt, up), ("com_speed", speed, up), ("head_z", head_z, up),
                         ("both_feet", both.float(), up), ("landed", self.s_landed.float(), self.reset_time_outs),
-                        ("stride_m", stride if c.stage == "1b" else speed, new)):
+                        ("stride_m", stride if c.stage == "1b" else speed, new),
+                        ("lift_s", self.s_lift_t, self.reset_time_outs),
+                        ("back_slide_m", slide if c.stage == "1b1" else speed, self.reset_time_outs)):
             n = m.float().sum()
             mean = (v * m.float()).sum() / n.clamp_min(1.0)
             self.stage_stats[k] = torch.where(n > 0, (1 - a) * self.stage_stats[k] + a * mean, self.stage_stats[k])
@@ -164,6 +232,11 @@ class StageEnv(PitchEnv):
 
     def _get_dones(self):
         c, d = self.cfg, self.robot.data
+        first = self.episode_length_buf == 1  # start positions (the reset's writes show up after the first step)
+        if first.any():
+            f = first.unsqueeze(-1)
+            self.s_feet0 = torch.where(f.unsqueeze(-1), d.body_link_pos_w[:, self.foot_ids], self.s_feet0)
+            self.s_pelvis0 = torch.where(f, d.root_link_pos_w, self.s_pelvis0)
         self.fallen = (d.body_link_pos_w[:, self.pelvis_id, 2] < c.fallen_pelvis_z) | (self._head_z() < c.fallen_head_z)
         if c.fallen_touch_z > 0:
             p = d.body_link_pos_w[:, self.touch_ids]
@@ -188,7 +261,9 @@ class StageEnv(PitchEnv):
         self.s_prev_planted[env_ids] = True
         self.s_air[env_ids] = 0.0
         self.s_land_step[env_ids] = 0
-        if self.cfg.stage == "1a":  # start at rest (the reset wrote the reference's first-frame velocities)
+        self.s_lift_t[env_ids] = 0.0
+        self.s_slid[env_ids] = False
+        if self.cfg.stage in ("1a", "1b1"):  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()
             self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)
             self.qd_target[env_ids] = 0.0

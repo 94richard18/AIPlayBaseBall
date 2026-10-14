@@ -620,6 +620,12 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     landed_start_prob: float = 0.0  # 1b: this share of the episodes starts at rest in a recorded landed stance
     landed_states_path: str = "logs/stage_states/s1b3_landed.pt"  # scripts/capture_stage_states.py
     reset_lift_m: float = 0.03
+    lift_peak_s: float = 0.33  # 1b1: the athlete's leg lift peaks at 0.33 s (lead foot 0.44 m up)
+    lift_hold_s: float = 0.4  # 1b1: reference held at the peak this long, then back down the same way
+    lift_min_m: float = 0.15  # 1b1: lead foot this far above its start = lifted
+    lift_hold_min_s: float = 0.3  # 1b1: lifted with the back foot alone planted this long = the lift is done
+    back_slide_max_m: float = 0.1  # 1b1: back foot moved more than this from its start = no success
+    lead_home_max_m: float = 0.15  # 1b1: lead foot back within this of its start at the end
 
 
 @configclass
@@ -680,3 +686,17 @@ class Stage1b5EnvCfg(Stage1b4EnvCfg):
 
     leg_ref_scale: float = 0.75
     landed_states_path: str = "logs/stage_states/s1b4_1750_landed.pt"
+
+
+@configclass
+class Stage1b1EnvCfg(Stage1aEnvCfg):
+    """Stage 1b-1 (2026-10-14, the pitch split into 1 set / 2 leg lift / 3 stride / 4 rotation / 5 throw): the leg
+    lift alone. The 1b policies "passed" at 1750 by stepping the back foot 0.8 m away from the plate. Reference legs:
+    the athlete's lift (0.7 x) up to its 0.33 s peak, held 0.4 s, back down, then the set position; upper body at the
+    set position. Reward: alive (+100), lift +100 once (lead foot >= 0.15 m up on the back leg alone for 0.3 s),
+    standing quality after the lift with the feet back home (+100), fall -200, action rate. Success = at rest
+    standing at 3 s after the lift, back foot never moved > 0.1 m, lead foot back within 0.15 m of its start."""
+
+    stage: str = "1b1"
+    w_stage_stride: float = 100.0
+    leg_ref_scale: float = 0.7
