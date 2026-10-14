@@ -152,7 +152,9 @@ def film(w, base, pol, T, fps=30):
                 fell = t
             if k % every and not (e == 0 and k in keys):
                 continue
-            o = base.scene.env_origins[0].cpu().numpy()
+            o = base.scene.env_origins[0].cpu().numpy()  # follow the pelvis along the ground (1b walks off the view)
+            pel = base.robot.data.root_link_pos_w[0].cpu().numpy()
+            o = o + [pel[0] - o[0] - 0.3, pel[1] - o[1], 0.0]
             base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
             img = grab()
             if img is None:
