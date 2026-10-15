@@ -16,7 +16,7 @@ echo "$TASK $RUN $IT $N $STEP" > logs/current_chain.txt  # read by train_progres
 for _ in $(seq "$N"); do
     STOP=$((IT + STEP))
     bash scripts/train_video_cycle.sh "$TASK" "$CKPT" "$STOP" "$RUN" > "logs/cycle_${RUN}_$STOP.txt" 2>&1 || exit 1
-    unset RESET_NORM ZERO_HEAD WARMUP  # (ZERO_HEAD=1: zero the actor's output layer, first cycle only)
+    unset RESET_NORM ZERO_HEAD WARMUP ZERO_ARMS  # (ZERO_HEAD=1: zero the actor's output layer, first cycle only)
     # (RESET_NORM=1: refit the observation normalizers in the first cycle only - a new stage)
     CKPT=$(sed -n 's/^\[cycle\] next: //p' "logs/cycle_${RUN}_$STOP.txt")
     UP=$(sed -n 's/.*still up 1.5 s after the release: \([0-9]*\)\/.*/\1/p' "logs/cycle_${RUN}_$STOP.txt" | head -1)

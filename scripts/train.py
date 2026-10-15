@@ -31,6 +31,8 @@ parser.add_argument("--max_noise_std", type=float, default=None,
                     help="cap the action noise std at this (overrides the agent cfg's max_noise_std)")
 parser.add_argument("--critic_warmup", type=int, default=0,
                     help="first N PPO updates train the critic only (actor and noise frozen)")
+parser.add_argument("--zero_arm_actions", action="store_true", default=False,
+                    help="zero the actor's output rows of the arm joints (arms were frozen in the previous stage)")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
 # append RSL-RL cli arguments
@@ -162,6 +164,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             torch.nn.init.zeros_(head.weight)
             torch.nn.init.zeros_(head.bias)
             print("[INFO]: actor output layer zeroed (starts as zero actions)")
+    if args_cli.zero_arm_actions:
+        # the previous stage froze the arm actions, so its arm outputs were never trained (model_2200 + free arms:
+        # the ball left backwards). Start the arms at zero actions (their PD reference), keep the legs' outputs.
+        head = [m for m in runner.alg.actor_critic.actor if isinstance(m, torch.nn.Linear)][-1]
+        rows = env.unwrapped._arm_cols
+        with torch.no_grad():
+            head.weight[rows] = 0.0
+            head.bias[rows] = 0.0
+        print(f"[INFO]: actor output rows of {len(rows)} arm joints zeroed", flush=True)
     if os.environ.get("ASSIST_START") and hasattr(env.unwrapped, "assist_steps0"):
         # assist-force curriculum across cycles: decay from the iteration the assist training started
         done_it = max(0, runner.current_learning_iteration - int(os.environ["ASSIST_START"]))

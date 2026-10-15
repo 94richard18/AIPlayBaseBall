@@ -640,6 +640,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
+    w_stage_zone: float = 0.0  # ... + this if it crossed the plate in the zone
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
@@ -919,3 +921,16 @@ class Stage1dEnvCfg(Stage1bFwd100rf2EnvCfg):
 
     throw_upper: bool = True
     scripted_release_s: float | None = 0.0
+
+
+@configclass
+class Stage1d2EnvCfg(Stage1dEnvCfg):
+    """Arm + ball, second design (2026-10-15): the arms take policy actions (they can balance the throw and speed up the
+    ball) and the ball is scored once when its flight ends - progress toward the plate x 100 + 100 in the zone; the
+    stride bonus is off (5 terms: alive, standing quality, ball, fall, action rate). s1d (PD arms, from model_2200)
+    2350 / 2500: falls 64/64 at 1.9 / 1.4 s, ball 14.9 / 8.8 m/s reaching 10.7 / 0.4 m."""
+
+    freeze_arms: bool = False
+    w_stage_stride: float = 0.0
+    w_stage_ball: float = 100.0
+    w_stage_zone: float = 100.0

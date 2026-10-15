@@ -48,6 +48,8 @@ class StageEnv(PitchEnv):
         self.s_crossed = torch.zeros(n, dtype=torch.bool, device=dev)  # ball crossed the plate (arm + ball step)
         self.s_cross_yz = torch.zeros(n, 2, device=dev)
         self.s_ball_maxx = torch.zeros(n, device=dev)
+        self.s_ball_done = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.s_ball_end = torch.zeros(n, dtype=torch.bool, device=dev)
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
         self.assist_steps0 = 0  # assist-force curriculum: env steps already done in earlier training cycles
@@ -341,7 +343,13 @@ class StageEnv(PitchEnv):
             q_on = torch.ones_like(speed)  # standing quality all episode (balance before the lift is the point)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
-        rew = (up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
+        if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate
+            # (farthest x / plate distance) + a zone bonus - the 4th term (the stride bonus is off in this step)
+            prog = (self.s_ball_maxx / c.plate_distance).clamp(0.0, 1.0)
+            rew_ball = self.s_ball_end.float() * (c.w_stage_ball * prog + c.w_stage_zone * self.in_zone().float())
+        else:
+            rew_ball = torch.zeros_like(speed)
+        rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * self.fallen.float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs
         a = 0.02
@@ -366,6 +374,14 @@ class StageEnv(PitchEnv):
         new = self.released & ~self.s_crossed & (b[:, 0] >= self.cfg.plate_distance)
         self.s_cross_yz = torch.where(new.unsqueeze(-1), torch.stack([b[:, 1], b[:, 2] - self.field_z], -1), self.s_cross_yz)
         self.s_crossed |= new
+        # the flight ends at the plate or on the ground (mound / field): one-off ball outcome reward then
+        c = self.cfg
+        ground = torch.where(b[:, 0] < c.mound_slope_start_x, torch.full_like(b[:, 0], c.mound_top_z),
+                             (c.mound_top_z - (b[:, 0] - c.mound_slope_start_x) * c.mound_slope).clamp_min(self.field_z))
+        since = (self.episode_length_buf - self.release_step).float() * self.step_dt
+        down = self.released & (since > 0.05) & (b[:, 2] - ground < 0.06)
+        self.s_ball_end = self.released & ~self.s_ball_done & (self.s_crossed | down)
+        self.s_ball_done |= self.s_ball_end
 
     def in_zone(self):
         c, yz = self.cfg, self.s_cross_yz
@@ -414,6 +430,8 @@ class StageEnv(PitchEnv):
         self.s_slid[env_ids] = False
         self.s_crossed[env_ids] = False
         self.s_ball_maxx[env_ids] = 0.0
+        self.s_ball_done[env_ids] = False
+        self.s_ball_end[env_ids] = False
         if self.cfg.stage == "1b" and self.cfg.rsi_prob > 0:
             # reference-state starts mid-stride (PitchEnv wrote the athlete's pose and velocities at t0): the lead foot
             # has already lifted, and the stride is measured from the athlete's set-position feet, not the start
