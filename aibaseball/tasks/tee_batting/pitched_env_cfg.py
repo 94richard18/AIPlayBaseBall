@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from isaaclab.assets import ArticulationCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
+
+from aibaseball.robot.aib1_cfg import make_aib1_cfg
 
 from .mimic_env_cfg import TeeBattingPerceptionEnvCfg
 
@@ -31,6 +34,30 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
 
 @configclass
 class PitchedBattingPlayEnvCfg(PitchedBattingEnvCfg):
+    play_mode: bool = True
+    pitch_ramp_steps: int = 0
+    episode_length_s = 9.0
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)
+
+
+@configclass
+class PitchedBattingHumanEnvCfg(PitchedBattingEnvCfg):
+    """One-month plan W2: the human-strength batter (TeeBattingHumanEnvCfg, same limits as the pitcher) against
+    pitched fastballs at the game's speeds - the human-strength pitcher throws ~115 km/h, so the curriculum ends at
+    100-125 km/h instead of 100-150. Start from the human tee batter grown to this task's inputs / tempo action:
+    scripts/expand_checkpoint.py <human model_9396.pt> <out.pt> --obs 152 --act 30 --new_std 0.3 --obs_insert 110:1"""
+
+    robot: ArticulationCfg = make_aib1_cfg(human_strength=True)
+    speed: float = 1.0
+    speed_end: float = 1.0
+    speed_ramp_steps: int = 0
+    w_spray: float = 10.0
+    pitch_speed_range_start: tuple = (90.0, 100.0)
+    pitch_speed_range_final: tuple = (100.0, 125.0)
+
+
+@configclass
+class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
     episode_length_s = 9.0
