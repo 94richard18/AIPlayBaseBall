@@ -635,6 +635,10 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_end_roll: float = 0.0  # 1b1: the shift ramps out to this roll offset (hip +, ankle -), not to 0
     lift_end_pitch: float = 0.0  # 1b1: ... and this pitch offset
     lift_shift_out_extra_s: float = 0.3  # 1b1: the shift ramps out over the lead foot's way down + this
+    stride_speed: float = 1.0  # 1c: athlete clock rate
+    stride_trunk: bool = True  # 1c: waist joints follow the athlete too (hip-shoulder rotation)
+    stride_shift_out_t0: float = 0.33  # 1c: the weight shift ramps out between these athlete times (lift peak ...
+    stride_shift_out_t1: float = 0.83  # ... lead foot strike)
     lift_back_leg_athlete: bool = True  # 1b1: the back leg's reference follows the athlete's lift too
     lift_balance_sigma_m: float = 0.08  # ... exp(-(COM-to-back-foot horizontal distance / this)^2)
     lead_advance_min_m: float = -10.0  # 1b: the lead foot's own move toward the plate (+x) at the touchdown, at least
@@ -806,3 +810,35 @@ class Stage1b1gEnvCfg(Stage1b1fEnvCfg):
     1b1e) to bring the last 14 to rest. Train with ZERO_HEAD=1 NOISE=0.1 (2026-10-15)."""
 
     residual_scale: float = 0.2
+
+
+@configclass
+class Stage1cEnvCfg(Stage1aEnvCfg):
+    """Stage 1c (2026-10-15, one-month plan W1 sub-step 2): stride toward the plate + hip / trunk rotation, finishing
+    standing - the athlete's whole lower body and trunk (StageEnv._ref_stride) after a 0.5 s weight shift onto the
+    back leg, arms frozen at the set position. Success: at rest standing at the end, lead foot >= 0.9 x leg scale m
+    toward the plate from its start, back foot <= 0.1 m behind its start. 1b-1 kept as the 1b1f PD reference (zero
+    actions 0 falls, lift 64/64, 50/64 at rest; RL runs 1b1d-h never beat it)."""
+
+    stage: str = "1c"
+    episode_length_s = 3.5
+    freeze_arms: bool = True
+    lift_delay_s: float = 0.5
+    lift_shift_roll: float = 0.50
+    lift_shift_pitch: float = 0.20
+    leg_ref_scale: float = 1.0
+    lead_advance_min_m: float = 0.9
+    back_retreat_max_m: float = 0.1
+    residual_scale: float = 0.2
+
+
+@configclass
+class Stage1bFwd50bEnvCfg(Stage1bFwd50EnvCfg):
+    """1b-2 forward stride with today's training fixes (2026-10-15): arms frozen, long-horizon PPO (gamma 0.999),
+    critic warm-up / zeroed actor head / noise cap from train_cycles.sh. A zero-action scan of the athlete's whole
+    lower body + trunk (1c, 72 settings: leg scale, clock speed, weight-shift release) never strode forward: the
+    lead foot came down behind its start and every setting fell at ~2 s - joint tracking alone does not carry the
+    pelvis the athlete's 0.7 m toward the plate. The drive has to be learned; the touchdown counts only with the lead
+    foot itself >= 0.4 m toward the plate and the back foot not stepping back."""
+
+    freeze_arms: bool = True

@@ -112,6 +112,8 @@ class StageEnv(PitchEnv):
             r["root_lin_vel"] = r["root_lin_vel"] * k * sgn.unsqueeze(-1)
             r["root_ang_vel"] = torch.zeros_like(r["root_ang_vel"])
             return r
+        if self.cfg.stage == "1c" and t.shape[0] == self.num_envs:
+            return self._ref_stride(t)
         r = super()._ref(t)
         if self.cfg.stage == "1b" and t.shape[0] == self.num_envs:
             # PD base / targets: upper body at the set position; legs on the athlete's stride (frozen at the release
@@ -150,6 +152,47 @@ class StageEnv(PitchEnv):
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = torch.zeros_like(r[k])
         return r
+
+    def _ref_stride(self, t):
+        """1c (stride + rotation, one-month plan W1): the athlete's whole lower body and trunk - lift, stride toward
+        the plate, hip / trunk rotation, follow-through to the finishing stance - on a clock that starts after
+        lift_delay_s in the set position, scaled by leg_ref_scale around the set position, played at stride_speed,
+        held at its last frame. A weight shift onto the back leg (hip rolls / pitches +, ankle rolls / pitches -)
+        ramps in over the wait and out between stride_shift_out_t0 and _t1 (athlete time). Arms stay at the set
+        position (freeze_arms); the ball comes in the next step."""
+        c = self.cfg
+        z = torch.zeros_like(t)
+        r0 = super()._ref(z)
+        te = ((t - c.lift_delay_s) * c.stride_speed).clamp(0.0, self.ref.duration)
+        r = super()._ref(te)
+        k = c.leg_ref_scale
+        cols = self.lead_leg_cols + self.back_leg_cols + (self.trunk_cols if c.stride_trunk else [])
+        q = r0["joint_pos"].clone()
+        q[:, cols] = q[:, cols] + k * (r["joint_pos"][:, cols] - q[:, cols])
+        moving = ((t > c.lift_delay_s) & (te < self.ref.duration)).float().unsqueeze(-1)
+        qd = torch.zeros_like(r["joint_vel"])
+        qd[:, cols] = r["joint_vel"][:, cols] * k * c.stride_speed * moving
+        w = (t / max(c.lift_delay_s, 1e-3)).clamp(0.0, 1.0)
+        w = w * (1.0 - ((te - c.stride_shift_out_t0) / max(c.stride_shift_out_t1 - c.stride_shift_out_t0, 1e-3))
+                 .clamp(0.0, 1.0))
+        for side in ("l", "r"):
+            for j, v in (("hip_roll", 1.0), ("ankle_roll", -1.0)):
+                q[:, self._jcol[f"{side}_{j}"]] += v * c.lift_shift_roll * w
+            for j, v in (("hip_pitch", 1.0), ("ankle_pitch", -1.0)):
+                q[:, self._jcol[f"{side}_{j}"]] += v * c.lift_shift_pitch * w
+        r["joint_pos"], r["joint_vel"] = q, qd
+        for key in ("root_pos", "key_pos"):
+            r[key] = r0[key] + k * (r[key] - r0[key])
+        r["root_lin_vel"] = r["root_lin_vel"] * k * c.stride_speed * moving
+        r["root_ang_vel"] = r["root_ang_vel"] * c.stride_speed * moving
+        return r
+
+    def stride_ok(self):
+        """1c: lead foot moved >= lead_advance_min_m toward the plate (+x) from its start, back foot not more than
+        back_retreat_max_m behind its start (the 1b4 1750 'stride' stepped the back foot away from the plate)."""
+        c, feet = self.cfg, self.robot.data.body_link_pos_w[:, self.foot_ids]
+        return (((feet[:, 0, 0] - self.s_feet0[:, 0, 0]) >= c.lead_advance_min_m)
+                & ((feet[:, 1, 0] - self.s_feet0[:, 1, 0]) >= -c.back_retreat_max_m))
 
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
@@ -224,6 +267,8 @@ class StageEnv(PitchEnv):
         ok = self._stand_state()[-1]
         if self.cfg.stage == "1b1":
             return ok & self.lift_done()
+        if self.cfg.stage == "1c":
+            return ok & self.stride_ok()
         return ok & self.s_landed if self.cfg.stage == "1b" else ok
 
     def _get_rewards(self) -> torch.Tensor:

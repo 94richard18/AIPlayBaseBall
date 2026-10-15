@@ -102,6 +102,8 @@ def main():
             done_lift = base.lift_done().cpu().numpy()
             lift_t = base.s_lift_t.cpu().numpy()
             ok = ok & done_lift
+        if cfg.stage == "1c":
+            ok = ok & base.stride_ok().cpu().numpy()
         stride_stage = cfg.stage == "1b"
         if stride_stage:  # success also needs the stride (the robot's lead foot landed >= lead_stride_min_m ahead)
             landed = base.s_landed.cpu().numpy()
