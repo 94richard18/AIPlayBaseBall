@@ -145,12 +145,10 @@ def main():
         if args.pitch_csv:  # release speed; y + toward third base (the pitcher's left, facing +x), z above the plate ground
             os.makedirs(os.path.dirname(os.path.abspath(args.pitch_csv)), exist_ok=True)
             with open(args.pitch_csv, "w", encoding="utf-8") as f:
-                f.write("speed_mps,plate_y,plate_z,crossed
-")
+                f.write("speed_mps,plate_y,plate_z,crossed" + chr(10))
                 for i in range(n):
                     if rel[i]:
-                        f.write(f"{v[i]:.3f},{yz[i, 0] - cfg.zone_center_y:.4f},{yz[i, 1]:.4f},{int(cr[i])}
-")
+                        f.write(f"{v[i]:.3f},{yz[i, 0] - cfg.zone_center_y:.4f},{yz[i, 1]:.4f},{int(cr[i])}" + chr(10))
             say(f"  pitch table: {args.pitch_csv} ({int(rel.sum())} rows)")
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
