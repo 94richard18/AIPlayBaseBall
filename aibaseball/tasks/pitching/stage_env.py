@@ -376,6 +376,16 @@ class StageEnv(PitchEnv):
         self.s_lift_t[env_ids] = 0.0
         self.s_need0[env_ids] = True
         self.s_slid[env_ids] = False
+        if self.cfg.stage == "1b" and self.cfg.rsi_prob > 0:
+            # reference-state starts mid-stride (PitchEnv wrote the athlete's pose and velocities at t0): the lead foot
+            # has already lifted, and the stride is measured from the athlete's set-position feet, not the start
+            mid = env_ids[self.t0[env_ids] > 0]
+            if len(mid):
+                self.s_lifted[mid] = True
+                kp = self.ref.sample(torch.zeros(len(mid), device=self.device))["key_pos"]  # l/r hand, l/r foot, ...
+                self.s_feet0[mid] = kp[:, 2:4] + self.scene.env_origins[mid].unsqueeze(1)
+                self.s_pelvis0[mid] = self.ref.root_pos[0] + self.scene.env_origins[mid]
+                self.s_need0[mid] = False
         if self.cfg.stage in ("1a", "1b1"):  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()
             self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)

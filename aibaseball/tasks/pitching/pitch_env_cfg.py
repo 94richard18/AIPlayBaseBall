@@ -855,3 +855,17 @@ class Stage1bFwd50aEnvCfg(Stage1bFwd50bEnvCfg):
     drive) from 0.3 s until the robot's touchdown (at most 0.85 s), decayed to 0 over 600 iterations."""
 
     assist_force_n: float = 180.0
+
+
+@configclass
+class Stage1bFwd100rEnvCfg(Stage1bFwd100EnvCfg):
+    """Forward stride, the athlete's whole leg motion, with reference-state initialisation (2026-10-15, DeepMimic RSI):
+    half the episodes start at a random athlete time in 0.3-0.83 s (lift peak to lead foot strike) in the athlete's
+    pose and velocities, so PPO sees strides that land. From the set position neither Fwd50b (fall rate 1.00, reward
+    flat at -146) nor the 180 N assist (Fwd50a, 0 strides landed) ever landed a forward stride to learn from. Arms
+    frozen; long-horizon PPO."""
+
+    freeze_arms: bool = True
+    rsi_prob: float = 0.5
+    rsi_min_s: float = 0.3
+    rsi_margin_before_release: float = 0.15
