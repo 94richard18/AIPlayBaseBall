@@ -45,6 +45,9 @@ class StageEnv(PitchEnv):
         self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
         self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
+        self.s_crossed = torch.zeros(n, dtype=torch.bool, device=dev)  # ball crossed the plate (arm + ball step)
+        self.s_cross_yz = torch.zeros(n, 2, device=dev)
+        self.s_ball_maxx = torch.zeros(n, device=dev)
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
         self.assist_steps0 = 0  # assist-force curriculum: env steps already done in earlier training cycles
@@ -159,6 +162,10 @@ class StageEnv(PitchEnv):
             if self.cfg.stage_finish == "athlete":
                 moving = (t < self.ref.duration).float().unsqueeze(-1)
             qd[:, legs] = rl["joint_vel"][:, legs] * moving
+            if self.cfg.throw_upper:  # arm + ball step: trunk and arms on the athlete's clock (the throw)
+                up_cols = [i for i in range(q.shape[1]) if i not in set(legs)]
+                q[:, up_cols] = r["joint_pos"][:, up_cols]
+                qd[:, up_cols] = r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
             r["joint_pos"], r["joint_vel"] = q, qd
         if self.cfg.stage == "1a":  # a still pose: the athlete's first-frame velocities (the leg lift starting) would
             # be a constant PD velocity target - with zero actions it lifted the lead foot 16 cm and the robot fell
@@ -350,8 +357,25 @@ class StageEnv(PitchEnv):
         self.extras["log"] = {f"stage/{k}": v.clone() for k, v in self.stage_stats.items()}
         return rew
 
+    def _track_ball(self):
+        """Arm + ball step: release detection (PitchEnv._check_release) and the ball at the plate - first crossing of
+        x = plate_distance (y, z above the plate-level ground), else the farthest x it reached."""
+        self._check_release()
+        b = self.ball.data.root_pos_w - self.scene.env_origins
+        self.s_ball_maxx = torch.maximum(self.s_ball_maxx, torch.where(self.released, b[:, 0], self.s_ball_maxx))
+        new = self.released & ~self.s_crossed & (b[:, 0] >= self.cfg.plate_distance)
+        self.s_cross_yz = torch.where(new.unsqueeze(-1), torch.stack([b[:, 1], b[:, 2] - self.field_z], -1), self.s_cross_yz)
+        self.s_crossed |= new
+
+    def in_zone(self):
+        c, yz = self.cfg, self.s_cross_yz
+        return (self.s_crossed & ((yz[:, 0] - c.zone_center_y).abs() <= c.zone_width / 2)
+                & (yz[:, 1] >= c.zone_bottom) & (yz[:, 1] <= c.zone_bottom + c.zone_height))
+
     def _get_dones(self):
         c, d = self.cfg, self.robot.data
+        if c.throw_upper:
+            self._track_ball()
         # start positions, read on the first step after a reset (the reset's writes show up then). Not "episode
         # step 1": rsl_rl starts training at random episode lengths, and the first episodes kept zeros (world
         # origin) - lifted, back foot "slid" ~100 m
@@ -388,6 +412,8 @@ class StageEnv(PitchEnv):
         self.s_lift_t[env_ids] = 0.0
         self.s_need0[env_ids] = True
         self.s_slid[env_ids] = False
+        self.s_crossed[env_ids] = False
+        self.s_ball_maxx[env_ids] = 0.0
         if self.cfg.stage == "1b" and self.cfg.rsi_prob > 0:
             # reference-state starts mid-stride (PitchEnv wrote the athlete's pose and velocities at t0): the lead foot
             # has already lifted, and the stride is measured from the athlete's set-position feet, not the start

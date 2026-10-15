@@ -640,6 +640,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
@@ -908,3 +909,13 @@ class Stage1bFwd100rf3EnvCfg(Stage1bFwd100rf2EnvCfg):
 
     upright_start_frac: float = 0.6
     upright_width_deg: float = 10.0
+
+
+@configclass
+class Stage1dEnvCfg(Stage1bFwd100rf2EnvCfg):
+    """W1 sub-step 3, arm + ball (2026-10-15): the stride + finish task (model_2200 64/64) with the trunk and arms on
+    the athlete's clock and the fingers opening at the athlete's release time (scripted). Arms still take no policy
+    action (PD on the athlete's throw); the ball's flight to the plate is tracked (release, crossing, zone)."""
+
+    throw_upper: bool = True
+    scripted_release_s: float | None = 0.0

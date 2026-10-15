@@ -134,6 +134,12 @@ def main():
     if stride_stage:
         say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
             f"{(up & ~landed).sum()}")
+    if getattr(cfg, "throw_upper", False):
+        rel = base.released.cpu().numpy(); cr = base.s_crossed.cpu().numpy(); zone = base.in_zone().cpu().numpy()
+        v = base.rel_vel.norm(dim=-1).cpu().numpy(); mx = base.s_ball_maxx.cpu().numpy(); yz = base.s_cross_yz.cpu().numpy()
+        say(f"  ball: released {rel.sum()}/{n}, release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s; "
+            f"crossed the plate {cr.sum()}/{n}, in the zone {zone.sum()}/{n}; farthest x median {np.median(mx):.1f} m"
+            + (f"; at the plate median y {np.median(yz[cr, 0]):+.2f} m, z {np.median(yz[cr, 1]):.2f} m" if cr.any() else ""))
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
