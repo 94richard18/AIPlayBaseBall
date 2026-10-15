@@ -318,7 +318,7 @@ class StageEnv(PitchEnv):
             ok = ok & self.s_landed
         steps = max(int(round(c.episode_length_s / self.step_dt)), 1)
         up = ~self.fallen
-        upright = torch.exp(-(((tilt - 0.8 * c.stand_max_tilt_deg).clamp_min(0.0) / 15.0) ** 2))
+        upright = torch.exp(-(((tilt - c.upright_start_frac * c.stand_max_tilt_deg).clamp_min(0.0) / c.upright_width_deg) ** 2))
         still = torch.exp(-((speed / (2.0 * c.stand_max_com_v)) ** 2))
         tall = ((head_z - 1.0) / (c.stand_min_head_z + 0.05 - 1.0)).clamp(0.0, 1.0)
         support = both.float()

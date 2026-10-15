@@ -640,6 +640,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
+    upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
     finish_trunk_athlete: bool = False  # 1b "athlete" finish: the waist joints follow the athlete too
     stride_trunk: bool = True  # 1c: waist joints follow the athlete too (hip-shoulder rotation)
@@ -892,3 +894,13 @@ class Stage1bFwd100rf2EnvCfg(Stage1bFwd100rfEnvCfg):
     that could stop (2026-10-15)."""
 
     rsi_margin_before_release: float = -0.92  # t_max = 0.98 + 0.92 = 1.9 s
+
+
+@configclass
+class Stage1bFwd100rf3EnvCfg(Stage1bFwd100rf2EnvCfg):
+    """Fwd100rf2 with a stricter "upright" term (full below 21 deg instead of 28, width 10 deg instead of 15). sfwdrf2
+    2200-2800 (no falls from 2050 on): at rest 31 / 0 / 18 / 18 / 2 of 64, the failures mostly trunk tilt (median
+    35-57 deg vs the 35 limit) - the policy learned to stop by bending forward (2026-10-15)."""
+
+    upright_start_frac: float = 0.6
+    upright_width_deg: float = 10.0
