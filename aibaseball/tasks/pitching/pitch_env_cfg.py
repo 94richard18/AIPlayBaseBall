@@ -894,6 +894,10 @@ class Stage1bFwd100rf2EnvCfg(Stage1bFwd100rfEnvCfg):
     that could stop (2026-10-15)."""
 
     rsi_margin_before_release: float = -0.92  # t_max = 0.98 + 0.92 = 1.9 s
+    # user decision 2026-10-15 (relayed by the planning session): the pitch follow-through finishes leaning forward -
+    # trunk limit 45 deg for this finish, the rest of the standing criteria unchanged. model_2200 re-judged: 64/64
+    # noise-free (0 falls, trunk 35.2 deg median), 41/64 with the training action noise (5 falls)
+    stand_max_tilt_deg: float = 45.0
 
 
 @configclass
