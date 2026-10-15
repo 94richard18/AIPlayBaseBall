@@ -66,3 +66,16 @@ class StagePPORunnerCfg(PitchStand6PPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
         self.experiment_name = "aib1_stage"
+
+
+@configclass
+class StageLongPPORunnerCfg(StagePPORunnerCfg):
+    """Stage runner with a whole-episode horizon (2026-10-15): gamma 0.995 at 400 Hz looks ~0.5 s ahead, but the 1b-1
+    falls come 1.5-2.5 s after the policy starts to drift. s1b1w (1b1g, critic warm-up): the true return fell from
+    zero actions' 286 to 48 by 850 while PPO kept 'improving' - the fall was beyond its horizon. gamma 0.999 (~2.5 s),
+    lam 0.98."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.gamma = 0.999
+        self.algorithm.lam = 0.98
