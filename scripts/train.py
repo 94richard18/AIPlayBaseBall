@@ -29,6 +29,8 @@ parser.add_argument("--reset_normalizer", action="store_true", default=False,
                     help="refit the observation normalizers from the new task's data (starting a new stage)")
 parser.add_argument("--max_noise_std", type=float, default=None,
                     help="cap the action noise std at this (overrides the agent cfg's max_noise_std)")
+parser.add_argument("--critic_warmup", type=int, default=0,
+                    help="first N PPO updates train the critic only (actor and noise frozen)")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
 # append RSL-RL cli arguments
@@ -160,6 +162,32 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             torch.nn.init.zeros_(head.weight)
             torch.nn.init.zeros_(head.bias)
             print("[INFO]: actor output layer zeroed (starts as zero actions)")
+    if args_cli.critic_warmup > 0:
+        # a new stage's critic (carried over from the last one) has no idea of the new returns: its first advantages
+        # are noise, and the first PPO steps took the zero-action policy (1b1g: return 286 vs 37 after training) from
+        # 0% to 85% falls in 11 iterations. Train the critic alone first.
+        ac0 = runner.alg.actor_critic
+        actor_params = list(ac0.actor.parameters()) + [ac0.std]
+        update0 = runner.alg.update
+        lr0 = runner.alg.learning_rate
+        n_done = [0]
+
+        def update_warm(*a, **k):
+            frozen = n_done[0] < args_cli.critic_warmup
+            for prm in actor_params:
+                prm.requires_grad_(not frozen)
+            out = update0(*a, **k)
+            n_done[0] += 1
+            if frozen:  # the adaptive schedule reads KL 0 while frozen and would raise the learning rate to 1e-2
+                runner.alg.learning_rate = lr0
+                for g in runner.alg.optimizer.param_groups:
+                    g["lr"] = lr0
+            if n_done[0] == args_cli.critic_warmup:
+                print(f"[INFO]: critic warm-up done ({args_cli.critic_warmup} updates), actor training", flush=True)
+            return out
+
+        runner.alg.update = update_warm
+        print(f"[INFO]: critic warm-up: actor frozen for {args_cli.critic_warmup} updates", flush=True)
     # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
     max_std = args_cli.max_noise_std or getattr(agent_cfg, "max_noise_std", None)
     if max_std:
