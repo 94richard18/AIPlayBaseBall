@@ -970,3 +970,13 @@ class Stage1d5EnvCfg(Stage1d4EnvCfg):
     # wider aim (4 m): s1d3 2650 with this trigger crosses 3.6 m wide and 4.7 m high - exp(-(5.3 / 1.5)^2) ~ 0 gave no
     # gradient (s1d4 2800 went back to 11 m wide)
     ball_aim_sigma_m: float = 4.0
+
+
+@configclass
+class Stage1d6EnvCfg(Stage1d3EnvCfg):
+    """Stage1d3 (hand 0.2 m ahead of the pelvis releases) + an aimed ball reward wide enough to have a gradient from
+    10 m off (sigma 4 m). To run 600 iterations without design changes (2026-10-16). s1d3 2350-2650: falls 64 -> 62 ->
+    26/64, 18-21 m/s, ball 2.6 -> 9.9 m wide; s1d4 (sigma 1.5) 2800 and s1d5 (velocity trigger) 2800 both collapsed
+    (falls 64/64; s1d5 dropped the ball at 0.13 s, stride 0/64) - switching every 150 iterations was too fast."""
+
+    ball_aim_sigma_m: float = 4.0
