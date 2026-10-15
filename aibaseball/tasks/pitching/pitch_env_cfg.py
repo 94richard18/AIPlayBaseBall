@@ -798,3 +798,11 @@ class Stage1b1fEnvCfg(Stage1b1dEnvCfg):
 
     lift_end_roll: float = -0.05
     lift_end_pitch: float = 0.0
+
+
+@configclass
+class Stage1b1gEnvCfg(Stage1b1fEnvCfg):
+    """1b1f (PD reference: zero actions 50/64 at rest, 0 falls, lift / home 64/64) + a small RL residual (0.2, as
+    1b1e) to bring the last 14 to rest. Train with ZERO_HEAD=1 NOISE=0.1 (2026-10-15)."""
+
+    residual_scale: float = 0.2
