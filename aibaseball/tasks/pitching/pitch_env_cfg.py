@@ -647,6 +647,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
     w_stage_zone: float = 0.0  # ... + this if it crossed the plate in the zone
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
+    release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
+    throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
@@ -980,3 +982,40 @@ class Stage1d6EnvCfg(Stage1d3EnvCfg):
     (falls 64/64; s1d5 dropped the ball at 0.13 s, stride 0/64) - switching every 150 iterations was too fast."""
 
     ball_aim_sigma_m: float = 4.0
+
+
+@configclass
+class Stage1dFEnvCfg(Stage1dEnvCfg):
+    """Arm + ball, fall fix first (user choice (b), 2026-10-16): the stride + finish task (model_2200) with the athlete's
+    throw on the PD arms, scaled in by throw_upper_scale (0.25 -> 0.5 -> 0.75 -> 1.0), the ball released at the
+    athlete's time; the legs learn to stand through the throw, ball not scored. model_2200 in Stage1d fell 64/64 even
+    at scale 0 (no throw), and stands 64/64 in its own task: the release switched the legs' feed-forward off (post-release
+    0.0) and the ball's flight showed up in the observation - release_neutral keeps both as before the release."""
+
+    release_neutral: bool = True
+    post_release_residual_gain: float = 1.0
+    lead_leg_post_release_gain: float | None = None
+    lead_knee_post_release_gain: float | None = None
+    back_leg_post_release_gain: float | None = None
+    trunk_post_release_gain: float | None = None
+    post_release_feedforward: float = 1.0
+    w_stage_ball: float = 0.0
+    w_stage_zone: float = 0.0
+
+
+@configclass
+class Stage1dF25EnvCfg(Stage1dFEnvCfg):
+    """Stage1dF at a quarter of the throw. Zero-shot model_2200 once the release was neutral (2026-10-16): scale 0
+    falls 0/64, at rest 60/64; scale 0.5 / 1.0 falls 64/64 at 1.7 s."""
+
+    throw_upper_scale: float = 0.25
+
+
+@configclass
+class Stage1dF50EnvCfg(Stage1dFEnvCfg):
+    throw_upper_scale: float = 0.5
+
+
+@configclass
+class Stage1dF75EnvCfg(Stage1dFEnvCfg):
+    throw_upper_scale: float = 0.75

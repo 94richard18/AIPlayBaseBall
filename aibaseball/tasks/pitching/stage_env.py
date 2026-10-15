@@ -167,8 +167,9 @@ class StageEnv(PitchEnv):
             qd[:, legs] = rl["joint_vel"][:, legs] * moving
             if self.cfg.throw_upper:  # arm + ball step: trunk and arms on the athlete's clock (the throw)
                 up_cols = [i for i in range(q.shape[1]) if i not in set(legs)]
-                q[:, up_cols] = r["joint_pos"][:, up_cols]
-                qd[:, up_cols] = r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
+                k = self.cfg.throw_upper_scale  # fall-fix curriculum: 0 = the stride task's upper body, 1 = the throw
+                q[:, up_cols] = q[:, up_cols] + k * (r["joint_pos"][:, up_cols] - q[:, up_cols])
+                qd[:, up_cols] = k * r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
             r["joint_pos"], r["joint_vel"] = q, qd
         if self.cfg.stage == "1a":  # a still pose: the athlete's first-frame velocities (the leg lift starting) would
             # be a constant PD velocity target - with zero actions it lifted the lead foot 16 cm and the robot fell
@@ -240,7 +241,13 @@ class StageEnv(PitchEnv):
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
         if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise
             actions[:, self._arm_cols] = 0.0
-        super()._pre_physics_step(actions)
+        if self.cfg.release_neutral:  # PitchEnv's release-keyed PD (stand blend, frozen base pose, gains, feed-forward)
+            # was built for the old whole-pitch task; here the legs follow the same reference before and after
+            rel, self.released = self.released, torch.zeros_like(self.released)
+            super()._pre_physics_step(actions)
+            self.released = rel
+        else:
+            super()._pre_physics_step(actions)
         c = self.cfg
         if c.release_ahead_m is not None:
             # release when the throwing hand passes release_ahead_m in front of the pelvis (toward the plate), not at
@@ -444,6 +451,20 @@ class StageEnv(PitchEnv):
             self.fallen |= self.s_air > c.max_flight_s
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         return self.fallen.clone(), time_out
+
+    def _get_observations(self) -> dict:
+        obs = super()._get_observations()
+        if self.cfg.release_neutral:  # the policy keeps seeing the ball in the hand: once it flies off, ball_rel x 10
+            # and ball_vrel x 0.1 reach the hundreds (a stander trained without a release fell 64/64 at the release)
+            pol = obs["policy"]
+            nb, nf = len(self.body_ids), len(self.finger_ids)
+            i0 = 2 * nb + 2 * nf + 10  # after joints, fingers, gravity, root velocities, height: ball rel / vrel / ang, released
+            if not hasattr(self, "_ball_obs"):
+                self._ball_obs = pol[:, i0:i0 + 10].clone()
+            held = ~self.released
+            self._ball_obs[held] = pol[held, i0:i0 + 10]
+            pol[:, i0:i0 + 10] = self._ball_obs
+        return obs
 
     def _reset_idx(self, env_ids):
         super()._reset_idx(env_ids)

@@ -57,7 +57,14 @@ def main():
     for kv in args.set:
         k, v = kv.split("=", 1)
         old = getattr(cfg, k)
-        setattr(cfg, k, type(old)(v) if not isinstance(old, bool) else v.lower() in ("1", "true"))
+        if isinstance(old, bool):
+            v = v.lower() in ("1", "true")
+        elif old is None or v == "None":
+            import ast
+            v = None if v == "None" else ast.literal_eval(v)
+        else:
+            v = type(old)(v)
+        setattr(cfg, k, v)
     if args.rsi is not None:
         cfg.rsi_prob, cfg.rsi_min_s, cfg.rsi_margin_before_release = 1.0, args.rsi, 10.0  # what-if: start at this time
     elif hasattr(cfg, "rsi_prob"):
@@ -236,5 +243,9 @@ def film(w, base, pol, T, fps=30):
 if __name__ == "__main__":
     try:
         main()
+    except BaseException:
+        import traceback
+        say(traceback.format_exc())  # app.close() ends the process first and Kit holds stderr - the error was silent
+        raise
     finally:
         app.close()
