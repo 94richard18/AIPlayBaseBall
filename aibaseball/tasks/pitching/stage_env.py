@@ -47,6 +47,7 @@ class StageEnv(PitchEnv):
         self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
+        self.assist_steps0 = 0  # assist-force curriculum: env steps already done in earlier training cycles
         self._ls = None  # landed stances (scripts/capture_stage_states.py) for landed_start_prob
         if cfg.landed_start_prob > 0:
             d = torch.load(cfg.landed_states_path, map_location=dev)
@@ -200,7 +201,9 @@ class StageEnv(PitchEnv):
             # athlete's drive phase, before the robot's own touchdown, decayed to 0 over assist_decay_steps env steps
             # - PPO gets forward strides that land to learn from, and the final policy runs on full physics alone
             c = self.cfg
-            decay = max(0.0, 1.0 - self.common_step_counter / max(c.assist_decay_steps, 1))
+            # (assist_steps0: env steps of earlier cycles - train.py sets it from ASSIST_START, each 150-iteration
+            # cycle is a new process whose step counter starts at 0)
+            decay = max(0.0, 1.0 - (self.assist_steps0 + self.common_step_counter) / max(c.assist_decay_steps, 1))
             tr = self._ref_time()
             on = ((tr >= c.assist_t0) & (tr < c.assist_t1) & ~self.s_landed & ~self.fallen).float()
             f_w = torch.zeros(self.num_envs, 3, device=self.device)

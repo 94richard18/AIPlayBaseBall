@@ -162,6 +162,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             torch.nn.init.zeros_(head.weight)
             torch.nn.init.zeros_(head.bias)
             print("[INFO]: actor output layer zeroed (starts as zero actions)")
+    if os.environ.get("ASSIST_START") and hasattr(env.unwrapped, "assist_steps0"):
+        # assist-force curriculum across cycles: decay from the iteration the assist training started
+        done_it = max(0, runner.current_learning_iteration - int(os.environ["ASSIST_START"]))
+        env.unwrapped.assist_steps0 = done_it * agent_cfg.num_steps_per_env
+        print(f"[INFO]: assist curriculum: {done_it} iterations done since {os.environ['ASSIST_START']}", flush=True)
     if args_cli.critic_warmup > 0:
         # a new stage's critic (carried over from the last one) has no idea of the new returns: its first advantages
         # are noise, and the first PPO steps took the zero-action policy (1b1g: return 286 vs 37 after training) from
