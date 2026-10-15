@@ -19,6 +19,8 @@ parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
+parser.add_argument("--pitch_csv", type=str, default=None,
+                    help="arm + ball step: one row per episode 'speed_mps,plate_y,plate_z,crossed' for the game engine")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
@@ -140,6 +142,16 @@ def main():
         say(f"  ball: released {rel.sum()}/{n}, release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s; "
             f"crossed the plate {cr.sum()}/{n}, in the zone {zone.sum()}/{n}; farthest x median {np.median(mx):.1f} m"
             + (f"; at the plate median y {np.median(yz[cr, 0]):+.2f} m, z {np.median(yz[cr, 1]):.2f} m" if cr.any() else ""))
+        if args.pitch_csv:  # release speed; y + toward third base (the pitcher's left, facing +x), z above the plate ground
+            os.makedirs(os.path.dirname(os.path.abspath(args.pitch_csv)), exist_ok=True)
+            with open(args.pitch_csv, "w", encoding="utf-8") as f:
+                f.write("speed_mps,plate_y,plate_z,crossed
+")
+                for i in range(n):
+                    if rel[i]:
+                        f.write(f"{v[i]:.3f},{yz[i, 0] - cfg.zone_center_y:.4f},{yz[i, 1]:.4f},{int(cr[i])}
+")
+            say(f"  pitch table: {args.pitch_csv} ({int(rel.sum())} rows)")
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
