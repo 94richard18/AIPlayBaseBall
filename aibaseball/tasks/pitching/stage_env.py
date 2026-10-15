@@ -121,6 +121,9 @@ class StageEnv(PitchEnv):
             # time if the robot has not landed by then), after the robot's touchdown blending over stand_pd_blend_s
             # to its own leg angles at the touchdown (hold the stance, stop)
             legs = self.lead_leg_cols + self.back_leg_cols
+            if self.cfg.stage_finish == "athlete" and self.cfg.finish_trunk_athlete:
+                legs = legs + self.trunk_cols  # trunk rotation / flexion with the athlete (zero actions from 0.7 s:
+                # falls at 1.15 s vs 1.40 s without - not used yet)
             z = torch.zeros_like(t)
             q = super()._ref(z)["joint_pos"].clone()
             if self.cfg.stage_finish == "athlete":  # the legs keep the athlete's clock through the follow-through

@@ -640,6 +640,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    finish_trunk_athlete: bool = False  # 1b "athlete" finish: the waist joints follow the athlete too
     stride_trunk: bool = True  # 1c: waist joints follow the athlete too (hip-shoulder rotation)
     stride_shift_out_t0: float = 0.33  # 1c: the weight shift ramps out between these athlete times (lift peak ...
     stride_shift_out_t1: float = 0.83  # ... lead foot strike)
