@@ -641,6 +641,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
     release_ahead_m: float | None = None  # stage: fingers open when the hand is this far ahead of the pelvis (x) ...
+    release_vy_frac: float | None = None  # stage: ... and the hand's velocity y >= this x its horizontal speed
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
@@ -956,3 +957,16 @@ class Stage1d4EnvCfg(Stage1d3EnvCfg):
     base and on the ground, 0 in the zone - the x-only progress paid for any direction."""
 
     ball_aim_sigma_m: float = 1.5
+
+
+@configclass
+class Stage1d5EnvCfg(Stage1d4EnvCfg):
+    """Stage1d4 with the release when the hand is at most 0.3 m behind the pelvis and its velocity
+    points at the plate (y >= 0.05 x horizontal speed, x > 5 m/s) - the hand-ahead trigger released in the swing
+    toward third base (2026-10-16)."""
+
+    release_ahead_m: float | None = -0.3
+    release_vy_frac: float | None = 0.05
+    # wider aim (4 m): s1d3 2650 with this trigger crosses 3.6 m wide and 4.7 m high - exp(-(5.3 / 1.5)^2) ~ 0 gave no
+    # gradient (s1d4 2800 went back to 11 m wide)
+    ball_aim_sigma_m: float = 4.0

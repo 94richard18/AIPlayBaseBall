@@ -248,6 +248,12 @@ class StageEnv(PitchEnv):
             # pelvis and the ball left sideways at (-0.5, -11.5, +4.6) m/s; the athlete's hand is 0.37 m ahead)
             d, tr = self.robot.data, self._ref_time()
             ahead = (d.body_link_pos_w[:, self.hand_id, 0] - d.root_link_pos_w[:, 0]) >= c.release_ahead_m
+            if c.release_vy_frac is not None:
+                # ... and when the hand's path points at the plate: its sideways velocity turns from the first-base
+                # side to + release_vy_frac x speed (the athlete's hand moves straight at the plate just before the
+                # release and swings 10 m/s toward third base 0.02 s later; s1d3 / s1d4 balls crossed 5-11 m wide)
+                hv = d.body_link_lin_vel_w[:, self.hand_id]
+                ahead = ahead & (hv[:, 0] > 5.0) & (hv[:, 1] >= c.release_vy_frac * hv[:, :2].norm(dim=-1))
             self.s_open |= (ahead & (tr >= c.release_window[0])) | (tr >= c.release_window[1])
             opened = (self.hold_q - c.finger_action_scale).expand(self.num_envs, -1)
             self.finger_next = torch.where(self.s_open.unsqueeze(-1),
