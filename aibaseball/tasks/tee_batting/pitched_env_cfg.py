@@ -57,6 +57,17 @@ class PitchedBattingHumanEnvCfg(PitchedBattingEnvCfg):
 
 
 @configclass
+class PitchedBattingHuman2EnvCfg(PitchedBattingHumanEnvCfg):
+    """Human v0 traded hitting for tracking: from ~iteration 85 the tempo action ran to its limit (|tempo| 0.24 -> 0.99),
+    the swing lost the ball (hit rate 0.20 -> 0, closest bat-ball 0.19 -> 1.35 m) while the tracking reward rose
+    0.72 -> 0.87 - a hit at ~21 m/s exit speed was worth less than the tracking it cost. Make a miss expensive and the
+    tempo a small correction. Start from v0 model_9400 (before the drift)."""
+
+    w_miss: float = 20.0
+    w_tempo: float = 0.3
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
