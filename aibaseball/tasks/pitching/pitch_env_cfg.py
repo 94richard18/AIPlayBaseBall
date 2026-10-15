@@ -640,6 +640,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
     finish_trunk_athlete: bool = False  # 1b "athlete" finish: the waist joints follow the athlete too
     stride_trunk: bool = True  # 1c: waist joints follow the athlete too (hip-shoulder rotation)
     stride_shift_out_t0: float = 0.33  # 1c: the weight shift ramps out between these athlete times (lift peak ...
@@ -881,3 +882,13 @@ class Stage1bFwd100rfEnvCfg(Stage1bFwd100rEnvCfg):
     falls at 1.40 s."""
 
     stage_finish: str = "athlete"
+
+
+@configclass
+class Stage1bFwd100rf2EnvCfg(Stage1bFwd100rfEnvCfg):
+    """Fwd100rf with the reference-state starts reaching into the follow-through: athlete time 0.3-1.9 s (was 0.3-0.83),
+    starts after the strike count as landed. sfwdrf 1150-1600 from the set position: stride landed 64/64, but
+    falls 52-64/64 at 1.9-2.6 s, training falls 0.99 - stopping after the stride was never practised from a state
+    that could stop (2026-10-15)."""
+
+    rsi_margin_before_release: float = -0.92  # t_max = 0.98 + 0.92 = 1.9 s

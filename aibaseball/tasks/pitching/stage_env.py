@@ -397,6 +397,13 @@ class StageEnv(PitchEnv):
                 kp = self.ref.sample(torch.zeros(len(mid), device=self.device))["key_pos"]  # l/r hand, l/r foot, ...
                 self.s_feet0[mid] = kp[:, 2:4] + self.scene.env_origins[mid].unsqueeze(1)
                 self.s_pelvis0[mid] = self.ref.root_pos[0] + self.scene.env_origins[mid]
+                # starts after the athlete's lead foot strike (follow-through): the stride has already landed
+                late = mid[self.t0[mid] >= self.cfg.rsi_landed_after_s]
+                if len(late):
+                    self.s_landed[late] = True
+                    self.s_land_t[late] = self.t0[late]
+                    self.s_land_step[late] = -100000
+                    self.s_root_land[late] = self.robot.data.root_link_pos_w[late]
                 self.s_need0[mid] = False
         if self.cfg.stage in ("1a", "1b1"):  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()
