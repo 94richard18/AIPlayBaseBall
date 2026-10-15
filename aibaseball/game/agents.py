@@ -66,6 +66,28 @@ class StatPitcher:
 
 
 @dataclass
+class TablePitcher:
+    """Replays the RL pitcher's evaluated pitches: rows of a CSV with columns speed_mps, plate_y, plate_z, crossed
+    (crossed = 0: the ball never reached the plate - a ball for the count, placed far outside the zone)."""
+
+    rows: list
+
+    @classmethod
+    def from_csv(cls, path: str) -> "TablePitcher":
+        import csv
+
+        with open(path, newline="") as f:
+            rows = [(float(r["speed_mps"]), float(r["plate_y"]), float(r["plate_z"]), int(float(r.get("crossed", 1))))
+                    for r in csv.DictReader(f)]
+        assert rows, f"no pitches in {path}"
+        return cls(rows)
+
+    def pitch(self, state: GameState, rng: random.Random) -> Pitch:
+        speed, y, z, crossed = rng.choice(self.rows)
+        return Pitch(speed, y, z) if crossed else Pitch(speed, 2.0, 0.0)
+
+
+@dataclass
 class StatBatter:
     """Swing / contact rates and batted-ball spread loosely after MLB averages."""
 
@@ -81,6 +103,8 @@ class StatBatter:
 
     def swing(self, state: GameState, pitch: Pitch, zone: StrikeZone, rng: random.Random) -> Swing:
         in_zone = zone.contains(pitch.plate_y, pitch.plate_z)
+        if abs(pitch.plate_y) > 1.0:  # nowhere near the plate
+            return Swing("take")
         if rng.random() >= (self.swing_in_zone if in_zone else self.swing_out_zone):
             return Swing("take")
         if rng.random() >= (self.contact_in_zone if in_zone else self.contact_out_zone):

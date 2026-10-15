@@ -1,6 +1,6 @@
 """Play whole games with the game engine (CPU, stand-in pitcher / batter) and print the line score and outcomes.
 
-    python scripts/sim_game.py [--games 1] [--seed 0]
+    python scripts/sim_game.py [--games 1] [--seed 0] [--pitches pitches.csv]
 """
 
 import argparse
@@ -11,16 +11,17 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aibaseball.game import Game, line_score  # noqa: E402
+from aibaseball.game import Game, TablePitcher, line_score  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--games", type=int, default=1)
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--pitches", default=None, help="CSV of the RL pitcher's evaluated pitches (speed_mps, plate_y, plate_z, crossed)")
 args = parser.parse_args()
 
 outcomes, runs, t0 = collections.Counter(), [], time.time()
 for i in range(args.games):
-    g = Game(seed=args.seed + i)
+    g = Game(seed=args.seed + i, **({"pitcher": TablePitcher.from_csv(args.pitches)} if args.pitches else {}))
     s = g.play()
     runs += s.score
     outcomes.update(e["result"] for e in g.log)
