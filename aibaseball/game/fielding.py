@@ -1,7 +1,7 @@
 """Batted-ball resolution with scripted fielders (one-month plan, W3).
 
-The ball flies on the physics flight model (drag + Magnus), then bounces and rolls on a placeholder grass model
-(the W2 ball-on-grass model replaces GrassSpec). Every fielder runs straight at the ball after a reaction time;
+The ball flies on the physics flight model (drag + Magnus), then bounces, slides and rolls on the grass model
+(physics/grass.py: friction and spin at each bounce). Every fielder runs straight at the ball after a reaction time;
 the first one who can reach it fields it - in the air it is a catch. Base running compares each runner's time to a
 base with the throw's time there. No errors, double plays or tag-ups other than a sacrifice fly from third.
 """
@@ -14,20 +14,11 @@ from dataclasses import dataclass, field
 import torch
 
 from ..physics import PhysicsSpec, aero_acceleration, launch_state
+from ..physics.grass import GrassSpec, ground_path
 from .agents import BattedBall
 from .field import ALIGNMENT, BASE_PATH, BASES, OUTFIELD, FieldSpec, spray_deg
 
 T = torch.float64
-
-
-@dataclass(frozen=True)
-class GrassSpec:
-    """Placeholder ball-on-grass model (W2 replaces it)."""
-
-    bounce_cor: float = 0.45  # vertical speed kept per bounce
-    bounce_keep: float = 0.75  # horizontal speed kept per bounce
-    roll_below_mps: float = 1.0  # vertical speed under which the ball rolls
-    roll_decel: float = 3.0  # m/s^2 rolling resistance
 
 
 @dataclass(frozen=True)
@@ -95,32 +86,12 @@ def ball_path(ball: BattedBall, fld: FieldSpec, grass: GrassSpec, fs: FieldingSp
             break
         out.append((t, x, y, z, True))
         pos = new
-    vx, vy, vz = vel[0].tolist()
-    vh = math.hypot(vx, vy)
-    ux, uy = (vx / vh, vy / vh) if vh > 1e-6 else (1.0, 0.0)
 
     def at_wall(px, py):
         return fld.is_fair(px, py) and math.hypot(px, py) >= fld.fence_distance(spray_deg(px, py)) - 0.5
 
-    vz_b, vh = grass.bounce_cor * abs(vz), vh * grass.bounce_keep
-    while vz_b > grass.roll_below_mps:  # bounces
-        tb = 2.0 * vz_b / phys.gravity
-        for k in range(1, max(1, int(tb / dt)) + 1):
-            tt = min(k * dt, tb)
-            px, py = x + ux * vh * tt, y + uy * vh * tt
-            out.append((t + tt, px, py, max(0.0, vz_b * tt - 0.5 * phys.gravity * tt * tt), False))
-            if at_wall(px, py):
-                return out, "landed"
-        x, y, t = x + ux * vh * tb, y + uy * vh * tb, t + tb
-        vz_b, vh = vz_b * grass.bounce_cor, vh * grass.bounce_keep
-    while vh > 0.0:  # roll
-        nv = max(0.0, vh - grass.roll_decel * dt)
-        x, y, t = x + ux * 0.5 * (vh + nv) * dt, y + uy * 0.5 * (vh + nv) * dt, t + dt
-        vh = nv
-        out.append((t, x, y, 0.0, False))
-        if at_wall(x, y):
-            break
-    return out, "landed"
+    rest = ground_path(t, x, y, tuple(vel[0].tolist()), tuple(omega[0].tolist()), grass, phys.ball, phys.gravity, dt, at_wall)
+    return out + [(*s, False) for s in rest], "landed"
 
 
 def _run_time(fs: FieldingSpec, pos: str, d: float) -> float:
