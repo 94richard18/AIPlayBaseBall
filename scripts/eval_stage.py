@@ -19,6 +19,7 @@ parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
+parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
 parser.add_argument("--zero", action="store_true", help="what-if: zero actions (PD on the set position only)")
 parser.add_argument("--trace", action="store_true", help="print env 0 every 0.1 s (feet, pelvis, trunk)")
 parser.add_argument("--slow", type=float, default=2.0, help="video slow-motion factor")
@@ -49,6 +50,8 @@ def main():
     cfg.scene.num_envs = args.envs
     if hasattr(cfg, "landed_start_prob"):
         cfg.landed_start_prob = 0.0  # evaluate whole episodes from the set position
+    if hasattr(cfg, "assist_force_n") and not args.assist:
+        cfg.assist_force_n = 0.0  # judged on full physics (the training assist starts at full strength in a new env)
     if args.video:
         cfg.viewer.resolution = (1280, 720)
     env = gym.make(args.task, cfg=cfg, render_mode="rgb_array" if args.video else None)

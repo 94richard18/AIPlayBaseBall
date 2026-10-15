@@ -20,7 +20,7 @@ import math
 
 import torch
 
-from isaaclab.utils.math import quat_apply
+from isaaclab.utils.math import quat_apply, quat_rotate_inverse
 
 from .pitch_env import PitchEnv
 
@@ -193,6 +193,22 @@ class StageEnv(PitchEnv):
         c, feet = self.cfg, self.robot.data.body_link_pos_w[:, self.foot_ids]
         return (((feet[:, 0, 0] - self.s_feet0[:, 0, 0]) >= c.lead_advance_min_m)
                 & ((feet[:, 1, 0] - self.s_feet0[:, 1, 0]) >= -c.back_retreat_max_m))
+
+    def _apply_action(self):
+        if self.cfg.assist_force_n > 0:
+            # assist-force curriculum (1b-2 forward stride): a horizontal push on the pelvis toward the plate during the
+            # athlete's drive phase, before the robot's own touchdown, decayed to 0 over assist_decay_steps env steps
+            # - PPO gets forward strides that land to learn from, and the final policy runs on full physics alone
+            c = self.cfg
+            decay = max(0.0, 1.0 - self.common_step_counter / max(c.assist_decay_steps, 1))
+            tr = self._ref_time()
+            on = ((tr >= c.assist_t0) & (tr < c.assist_t1) & ~self.s_landed & ~self.fallen).float()
+            f_w = torch.zeros(self.num_envs, 3, device=self.device)
+            f_w[:, 0] = c.assist_force_n * decay * on
+            f_b = quat_rotate_inverse(self.robot.data.root_link_quat_w, f_w)  # the API takes the body frame
+            self.robot.set_external_force_and_torque(f_b.unsqueeze(1), torch.zeros_like(f_b).unsqueeze(1),
+                                                     body_ids=[self.pelvis_id])
+        super()._apply_action()
 
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()

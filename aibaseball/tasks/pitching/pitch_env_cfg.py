@@ -635,6 +635,10 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lift_end_roll: float = 0.0  # 1b1: the shift ramps out to this roll offset (hip +, ankle -), not to 0
     lift_end_pitch: float = 0.0  # 1b1: ... and this pitch offset
     lift_shift_out_extra_s: float = 0.3  # 1b1: the shift ramps out over the lead foot's way down + this
+    assist_force_n: float = 0.0  # 1b: horizontal push on the pelvis toward the plate (N) in the drive phase ...
+    assist_t0: float = 0.3  # ... from this reference time (lift peak 0.33 s) ...
+    assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
+    assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
     stride_trunk: bool = True  # 1c: waist joints follow the athlete too (hip-shoulder rotation)
     stride_shift_out_t0: float = 0.33  # 1c: the weight shift ramps out between these athlete times (lift peak ...
@@ -842,3 +846,12 @@ class Stage1bFwd50bEnvCfg(Stage1bFwd50EnvCfg):
     foot itself >= 0.4 m toward the plate and the back foot not stepping back."""
 
     freeze_arms: bool = True
+
+
+@configclass
+class Stage1bFwd50aEnvCfg(Stage1bFwd50bEnvCfg):
+    """Fallback for the forward stride (2026-10-15, suggested by the planning session): Fwd50b + an assist-force
+    curriculum - 180 N toward the plate on the pelvis (88 kg x ~2 m/s^2, the athlete's pelvis acceleration in the
+    drive) from 0.3 s until the robot's touchdown (at most 0.85 s), decayed to 0 over 600 iterations."""
+
+    assist_force_n: float = 180.0
