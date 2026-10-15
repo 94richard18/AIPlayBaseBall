@@ -359,6 +359,16 @@ class StageEnv(PitchEnv):
         if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate
             # (farthest x / plate distance) + a zone bonus - the 4th term (the stride bonus is off in this step)
             prog = (self.s_ball_maxx / c.plate_distance).clamp(0.0, 1.0)
+            if c.ball_aim_sigma_m > 0:
+                # graded aim: x progress counts only toward the zone - progress x exp(-(distance from the zone centre
+                # in the plate plane (or, short of the plate, sideways from the plate line) / sigma)^2); a ball that
+                # crossed 10 m wide scored full progress before (s1d3 2650: plate y +9.9 m, 0 in the zone)
+                b = self.ball.data.root_pos_w - self.scene.env_origins
+                yz = torch.where(self.s_crossed.unsqueeze(-1), self.s_cross_yz,
+                                 torch.stack([b[:, 1], b[:, 2] - self.field_z], -1))
+                zc = c.zone_bottom + 0.5 * c.zone_height
+                dist = torch.sqrt((yz[:, 0] - c.zone_center_y) ** 2 + (self.s_crossed.float() * (yz[:, 1] - zc)) ** 2)
+                prog = prog * torch.exp(-((dist / c.ball_aim_sigma_m) ** 2))
             rew_ball = self.s_ball_end.float() * (c.w_stage_ball * prog + c.w_stage_zone * self.in_zone().float())
         else:
             rew_ball = torch.zeros_like(speed)

@@ -643,6 +643,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_ahead_m: float | None = None  # stage: fingers open when the hand is this far ahead of the pelvis (x) ...
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
+    ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
     w_stage_zone: float = 0.0  # ... + this if it crossed the plate in the zone
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -946,3 +947,12 @@ class Stage1d3EnvCfg(Stage1d2EnvCfg):
 
     scripted_release_s: float | None = None
     release_ahead_m: float | None = 0.2  # PD-arm scan: -0.3 / -0.1 / 0.1 / 0.3 m -> release velocity y -11 / -8 / -4 / +2 m/s, z +4.5 / -2.5 / -6 / -9.5
+
+
+@configclass
+class Stage1d4EnvCfg(Stage1d3EnvCfg):
+    """Stage1d3 with an aimed ball reward: progress x exp(-(distance from the zone centre at the plate / 1.5 m)^2)
+    (2026-10-16). s1d3 2350-2650: ball 18-21 m/s, crossing the plate 60-64/64 but 2.6 -> 5.5 -> 9.9 m toward third
+    base and on the ground, 0 in the zone - the x-only progress paid for any direction."""
+
+    ball_aim_sigma_m: float = 1.5
