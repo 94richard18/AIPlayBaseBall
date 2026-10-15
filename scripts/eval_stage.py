@@ -142,6 +142,11 @@ def main():
         say(f"  ball: released {rel.sum()}/{n}, release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s; "
             f"crossed the plate {cr.sum()}/{n}, in the zone {zone.sum()}/{n}; farthest x median {np.median(mx):.1f} m"
             + (f"; at the plate median y {np.median(yz[cr, 0]):+.2f} m, z {np.median(yz[cr, 1]):.2f} m" if cr.any() else ""))
+        if rel.any():
+            vv = base.rel_vel.cpu().numpy()[rel]; rp = (base.rel_pos - base.scene.env_origins).cpu().numpy()[rel]
+            say(f"  ball at release (median): velocity ({np.median(vv[:, 0]):+.1f}, {np.median(vv[:, 1]):+.1f}, "
+                f"{np.median(vv[:, 2]):+.1f}) m/s, position ({np.median(rp[:, 0]):+.2f}, {np.median(rp[:, 1]):+.2f}, "
+                f"{np.median(rp[:, 2]):.2f}) m, at {np.median(base.rel_ref_t.cpu().numpy()[rel]):.2f} s")
         if args.pitch_csv:  # release speed; y + toward third base (the pitcher's left, facing +x), z above the plate ground
             os.makedirs(os.path.dirname(os.path.abspath(args.pitch_csv)), exist_ok=True)
             with open(args.pitch_csv, "w", encoding="utf-8") as f:

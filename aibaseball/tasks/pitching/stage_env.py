@@ -49,6 +49,7 @@ class StageEnv(PitchEnv):
         self.s_cross_yz = torch.zeros(n, 2, device=dev)
         self.s_ball_maxx = torch.zeros(n, device=dev)
         self.s_ball_done = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.s_open = torch.zeros(n, dtype=torch.bool, device=dev)  # fingers opened (release_ahead_m trigger)
         self.s_ball_end = torch.zeros(n, dtype=torch.bool, device=dev)
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
@@ -240,6 +241,18 @@ class StageEnv(PitchEnv):
         if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise
             actions[:, self._arm_cols] = 0.0
         super()._pre_physics_step(actions)
+        c = self.cfg
+        if c.release_ahead_m is not None:
+            # release when the throwing hand passes release_ahead_m in front of the pelvis (toward the plate), not at
+            # the athlete's release time: the robot's arm lags (s1d2 2350: at 0.98 s the hand was ~1 m behind the
+            # pelvis and the ball left sideways at (-0.5, -11.5, +4.6) m/s; the athlete's hand is 0.37 m ahead)
+            d, tr = self.robot.data, self._ref_time()
+            ahead = (d.body_link_pos_w[:, self.hand_id, 0] - d.root_link_pos_w[:, 0]) >= c.release_ahead_m
+            self.s_open |= (ahead & (tr >= c.release_window[0])) | (tr >= c.release_window[1])
+            opened = (self.hold_q - c.finger_action_scale).expand(self.num_envs, -1)
+            self.finger_next = torch.where(self.s_open.unsqueeze(-1),
+                                           torch.clamp(opened, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids]),
+                                           self.finger_next)
 
     def _stand_state(self):
         c, d = self.cfg, self.robot.data
@@ -431,6 +444,7 @@ class StageEnv(PitchEnv):
         self.s_crossed[env_ids] = False
         self.s_ball_maxx[env_ids] = 0.0
         self.s_ball_done[env_ids] = False
+        self.s_open[env_ids] = False
         self.s_ball_end[env_ids] = False
         if self.cfg.stage == "1b" and self.cfg.rsi_prob > 0:
             # reference-state starts mid-stride (PitchEnv wrote the athlete's pose and velocities at t0): the lead foot

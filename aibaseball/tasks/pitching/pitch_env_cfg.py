@@ -640,6 +640,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     assist_t1: float = 0.85  # ... to this (lead foot strike 0.83 s), before the robot's own touchdown ...
     assist_decay_steps: int = 600 * 64  # ... decayed linearly to 0 over this many env steps (600 iterations)
     stride_speed: float = 1.0  # 1c: athlete clock rate
+    release_ahead_m: float | None = None  # stage: fingers open when the hand is this far ahead of the pelvis (x) ...
+    release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     w_stage_zone: float = 0.0  # ... + this if it crossed the plate in the zone
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
@@ -934,3 +936,13 @@ class Stage1d2EnvCfg(Stage1dEnvCfg):
     w_stage_stride: float = 0.0
     w_stage_ball: float = 100.0
     w_stage_zone: float = 100.0
+
+
+@configclass
+class Stage1d3EnvCfg(Stage1d2EnvCfg):
+    """Stage1d2 with the release triggered by the hand passing 0.3 m ahead of the pelvis (from athlete time 0.85 s,
+    forced at 1.3 s) instead of the athlete's release time - the robot's arm lags and the timed release threw the ball
+    sideways (2026-10-15)."""
+
+    scripted_release_s: float | None = None
+    release_ahead_m: float | None = 0.2  # PD-arm scan: -0.3 / -0.1 / 0.1 / 0.3 m -> release velocity y -11 / -8 / -4 / +2 m/s, z +4.5 / -2.5 / -6 / -9.5
