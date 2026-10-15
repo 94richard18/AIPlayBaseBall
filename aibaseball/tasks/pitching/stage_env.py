@@ -500,6 +500,19 @@ class StageEnv(PitchEnv):
                     self.s_land_step[late] = -100000
                     self.s_root_land[late] = self.robot.data.root_link_pos_w[late]
                 self.s_need0[mid] = False
+                if self.cfg.rsi_upper_ref:  # the upper body starts on this task's reference (the scaled throw), not
+                    # the athlete's full swing: fx F25 trained from mid-throw starts whose arms snapped from the
+                    # athlete's pose to the 0.25 blend - training falls 0.996 vs 21/64 from the set position
+                    r = self._ref(self._ref_time())
+                    legs = set(self.lead_leg_cols + self.back_leg_cols)
+                    up = [i for i in range(len(self.body_ids)) if i not in legs]
+                    jcols = self.body_ids[up] if torch.is_tensor(self.body_ids) else torch.tensor(
+                        [self.body_ids[i] for i in up], device=self.device)
+                    jp = self.robot.data.joint_pos[mid].clone()
+                    jv = self.robot.data.joint_vel[mid].clone()
+                    jp[:, jcols] = r["joint_pos"][mid][:, up]
+                    jv[:, jcols] = r["joint_vel"][mid][:, up]
+                    self.robot.write_joint_state_to_sim(jp, jv, env_ids=mid)
         if self.cfg.stage in ("1a", "1b1"):  # start at rest (the reset wrote the reference's first-frame velocities)
             jp = self.robot.data.joint_pos[env_ids].clone()
             self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)

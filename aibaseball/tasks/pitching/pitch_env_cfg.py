@@ -647,6 +647,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
     w_stage_zone: float = 0.0  # ... + this if it crossed the plate in the zone
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
+    rsi_upper_ref: bool = False  # 1b RSI: the upper body starts on the task's own reference (not the athlete's pose)
     release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
     throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -993,6 +994,7 @@ class Stage1dFEnvCfg(Stage1dEnvCfg):
     0.0) and the ball's flight showed up in the observation - release_neutral keeps both as before the release."""
 
     release_neutral: bool = True
+    rsi_upper_ref: bool = True  # mid-throw starts on the scaled throw (see Stage1dF25r)
     post_release_residual_gain: float = 1.0
     lead_leg_post_release_gain: float | None = None
     lead_knee_post_release_gain: float | None = None
@@ -1009,6 +1011,7 @@ class Stage1dF25EnvCfg(Stage1dFEnvCfg):
     falls 0/64, at rest 60/64; scale 0.5 / 1.0 falls 64/64 at 1.7 s."""
 
     throw_upper_scale: float = 0.25
+    rsi_upper_ref: bool = False  # as run (fx_1df25); Stage1dF25r has the fix
 
 
 @configclass
@@ -1019,3 +1022,12 @@ class Stage1dF50EnvCfg(Stage1dFEnvCfg):
 @configclass
 class Stage1dF75EnvCfg(Stage1dFEnvCfg):
     throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dF25rEnvCfg(Stage1dF25EnvCfg):
+    """F25 with the mid-throw starts' upper body on the 0.25-scaled reference (2026-10-16). fx F25 2350 / 2500 / 2650:
+    at rest 25 / 0 / 0 of 64 (falls 1 / 64 / 64), training falls 0.996 with the noise at 0.09 - set-position starts with
+    noise fell only 21/64, the RSI starts (half the episodes) began with the arms on the athlete's full swing."""
+
+    rsi_upper_ref: bool = True
