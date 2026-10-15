@@ -632,6 +632,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     freeze_arms: bool = False  # stage 1: arm actions zeroed (arms on the set position's PD reference)
     lift_shift_roll: float = 0.0  # 1b1: weight shift onto the back leg: hip rolls +, ankle rolls - this (rad)
     lift_shift_pitch: float = 0.0  # 1b1: ... hip pitches +, ankle pitches - this (rad)
+    lift_end_roll: float = 0.0  # 1b1: the shift ramps out to this roll offset (hip +, ankle -), not to 0
+    lift_end_pitch: float = 0.0  # 1b1: ... and this pitch offset
     lift_shift_out_extra_s: float = 0.3  # 1b1: the shift ramps out over the lead foot's way down + this
     lift_back_leg_athlete: bool = True  # 1b1: the back leg's reference follows the athlete's lift too
     lift_balance_sigma_m: float = 0.08  # ... exp(-(COM-to-back-foot horizontal distance / this)^2)
@@ -785,3 +787,14 @@ class Stage1b1eEnvCfg(Stage1b1dEnvCfg):
     Pass: falls <= zero actions' and lift >= 60/64. Use if 1b1d 1300 does not pass."""
 
     residual_scale: float = 0.2
+
+
+@configclass
+class Stage1b1fEnvCfg(Stage1b1dEnvCfg):
+    """Stage 1b-1 PD-reference fallback (2026-10-15, one-month plan: the PD reference leads, RL only corrects). Zero
+    actions on 1b1d: lift 64/64, home 64/64, no falls, but at 3 s still moving (0.64 m/s): settled to 0.12 m/s at
+    2.3 s, then tipped back from the bare set position. The shift ramps out to roll -0.05 / pitch 0 instead (scan of
+    40 end offsets with zero actions: COM 0.10 m/s, trunk 10 deg, lead foot 6 cm from home)."""
+
+    lift_end_roll: float = -0.05
+    lift_end_pitch: float = 0.0

@@ -130,8 +130,8 @@ def main():
             f"m/s, head {np.median(head_z[up]):.2f} m, both feet down {both[up].mean() * 100:.0f}%")
     if not args.stochastic:
         say(f"[goal] {ok.sum()}/{n}")
-    if args.video:
-        film(w, base, pol, T)
+    if args.video:  # (--zero: the video too - it filmed the loaded policy, a fall the statistics never had)
+        film(w, base, (lambda x: torch.zeros(x.shape[0], cfg.action_space, device=x.device)) if args.zero else pol, T)
 
 
 def film(w, base, pol, T, fps=30):

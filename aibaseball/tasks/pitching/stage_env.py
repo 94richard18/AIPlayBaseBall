@@ -94,12 +94,17 @@ class StageEnv(PitchEnv):
                 w = (t / max(c.lift_delay_s, 1e-3)).clamp(0.0, 1.0)
                 # ... and out again while the lead foot comes down (held, the lead foot never reached the ground)
                 t_dn = c.lift_delay_s + c.lift_peak_s + c.lift_hold_s
-                w = w * (1.0 - ((t - t_dn) / (c.lift_peak_s + c.lift_shift_out_extra_s)).clamp(0.0, 1.0))
+                out = ((t - t_dn) / (c.lift_peak_s + c.lift_shift_out_extra_s)).clamp(0.0, 1.0)
+                w = w * (1.0 - out)
+                # ... to a small end offset instead of the bare set position (zero actions settled to 0.12 m/s at
+                # 2.3 s, then tipped back: 0.64 m/s at 3 s; scan of 40 end offsets: roll -0.05 / pitch 0 at rest)
+                roll = c.lift_shift_roll * w + c.lift_end_roll * out
+                pitch = c.lift_shift_pitch * w + c.lift_end_pitch * out
                 for side in ("l", "r"):
                     for j, v in (("hip_roll", 1.0), ("ankle_roll", -1.0)):
-                        q[:, self._jcol[f"{side}_{j}"]] += v * self.cfg.lift_shift_roll * w
+                        q[:, self._jcol[f"{side}_{j}"]] += v * roll
                     for j, v in (("hip_pitch", 1.0), ("ankle_pitch", -1.0)):
-                        q[:, self._jcol[f"{side}_{j}"]] += v * self.cfg.lift_shift_pitch * w
+                        q[:, self._jcol[f"{side}_{j}"]] += v * pitch
             r["joint_pos"], r["joint_vel"] = q, qd
             for key in ("root_pos", "key_pos"):
                 r[key] = r0[key] + k * (r[key] - r0[key])
