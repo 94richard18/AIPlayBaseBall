@@ -68,7 +68,9 @@ class StatPitcher:
 @dataclass
 class TablePitcher:
     """Replays the RL pitcher's evaluated pitches: rows of a CSV with columns speed_mps, plate_y, plate_z, crossed
-    (crossed = 0: the ball never reached the plate - a ball for the count, placed far outside the zone)."""
+    (crossed = 0: the ball never reached the plate - a ball for the count, placed far outside the zone).
+    The pitching env's frame has the pitcher facing +x, so its +y is the pitcher's left = the first-base side;
+    the engine's plate_y is + toward third base, hence the sign flip."""
 
     rows: list
 
@@ -77,7 +79,7 @@ class TablePitcher:
         import csv
 
         with open(path, newline="") as f:
-            rows = [(float(r["speed_mps"]), float(r["plate_y"]), float(r["plate_z"]), int(float(r.get("crossed", 1))))
+            rows = [(float(r["speed_mps"]), -float(r["plate_y"]), float(r["plate_z"]), int(float(r.get("crossed", 1))))
                     for r in csv.DictReader(f)]
         assert rows, f"no pitches in {path}"
         return cls(rows)
