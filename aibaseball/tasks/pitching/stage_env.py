@@ -123,7 +123,11 @@ class StageEnv(PitchEnv):
             legs = self.lead_leg_cols + self.back_leg_cols
             z = torch.zeros_like(t)
             q = super()._ref(z)["joint_pos"].clone()
-            t_leg = torch.where(self.s_landed, self.s_land_t, t.clamp(max=self.release_ref))
+            if self.cfg.stage_finish == "athlete":  # the legs keep the athlete's clock through the follow-through
+                # (back leg comes through to the finishing stance at ~1.6 s) instead of freezing the touchdown lunge
+                t_leg = t.clamp(max=self.ref.duration)
+            else:
+                t_leg = torch.where(self.s_landed, self.s_land_t, t.clamp(max=self.release_ref))
             rl = super()._ref(t_leg)
             # root / key point targets (observations) on the legs' clock: frozen at the release time before a
             # touchdown, the robot's own root after it. They ran on with the athlete's follow-through (pelvis 0.5 m
@@ -137,15 +141,20 @@ class StageEnv(PitchEnv):
                 rl["joint_vel"] = rl["joint_vel"] * k
                 r0 = super()._ref(z)["root_pos"]
                 r["root_pos"] = r0 + k * (r["root_pos"] - r0)
-            r["root_pos"] = torch.where(self.s_landed.unsqueeze(-1), self.s_root_land, r["root_pos"])
+            if self.cfg.stage_finish != "athlete":
+                r["root_pos"] = torch.where(self.s_landed.unsqueeze(-1), self.s_root_land, r["root_pos"])
             since = (self.episode_length_buf - self.s_land_step).float() * self.step_dt
             w = (self.s_landed.float() * (since / self.cfg.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
             # finish "hold": the robot's stance at the touchdown; "set": the set position's standing legs (the back
             # leg comes through, as the athlete's does - nobody holds a 1.3 m lunge still)
             fin = self.s_hold[:, legs] if self.cfg.stage_finish == "hold" else q[:, legs]
+            if self.cfg.stage_finish == "athlete":
+                w = torch.zeros_like(w)
             q[:, legs] = rl["joint_pos"][:, legs] + w * (fin - rl["joint_pos"][:, legs])
             qd = torch.zeros_like(r["joint_vel"])
             moving = (~self.s_landed & (t < self.release_ref)).float().unsqueeze(-1)
+            if self.cfg.stage_finish == "athlete":
+                moving = (t < self.ref.duration).float().unsqueeze(-1)
             qd[:, legs] = rl["joint_vel"][:, legs] * moving
             r["joint_pos"], r["joint_vel"] = q, qd
         if self.cfg.stage == "1a":  # a still pose: the athlete's first-frame velocities (the leg lift starting) would

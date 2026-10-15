@@ -869,3 +869,14 @@ class Stage1bFwd100rEnvCfg(Stage1bFwd100EnvCfg):
     rsi_prob: float = 0.5
     rsi_min_s: float = 0.3
     rsi_margin_before_release: float = 0.15
+
+
+@configclass
+class Stage1bFwd100rfEnvCfg(Stage1bFwd100rEnvCfg):
+    """Fwd100r with the legs on the athlete's clock through the follow-through (stage_finish "athlete": the back leg
+    comes through to the finishing stance) instead of holding the 1.3 m touchdown lunge. sfwdr 1000 (from the set
+    position): forward stride landed 64/64, lead foot +1.41 m, but 60/64 fell at 1.4 s and training falls stayed 0.97.
+    Zero actions from athlete time 0.7 s: hold -> back foot +0.07 m, falls at 1.23 s; athlete -> back foot +1.63 m,
+    falls at 1.40 s."""
+
+    stage_finish: str = "athlete"

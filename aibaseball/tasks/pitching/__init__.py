@@ -371,3 +371,13 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageLongPPORunnerCfg",
     },
 )
+
+gym.register(
+    id="AIB-Stage1bFwd100rf-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1bFwd100rfEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageLongPPORunnerCfg",
+    },
+)
