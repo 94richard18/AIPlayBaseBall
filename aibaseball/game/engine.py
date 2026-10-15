@@ -32,7 +32,7 @@ class Game:
     def pitch(self) -> dict:
         s = self.state
         ev = dict(inning=s.inning, top=s.top, batter=s.batter, balls=s.balls, strikes=s.strikes, outs=s.outs,
-                  bases=tuple(b is not None for b in s.bases))
+                  bases=tuple(b is not None for b in s.bases), score=tuple(s.score))
         p = self.pitcher.pitch(s, self.rng)
         sw = self.batter.swing(s, p, self.zone, self.rng)
         ev.update(pitch=p, swing=sw.kind, play=None)
