@@ -15,6 +15,12 @@ IT=$(basename "$CKPT" .pt | sed 's/model_//')
 [ "$CKPT" = none ] && IT=0  # from scratch
 BEST=${BEST0:--1}  # BEST0: the starting checkpoint's known goal count
 BESTCK=$CKPT
+# checkpoints are saved at multiples of the save interval (50): an unaligned start (e.g. 2470 after 20-iteration
+# rounds) never reaches model_<IT+STEP>.pt and the cycle trains on without end (fe_1da75 ran 2470 -> 4183)
+if [ -z "${SAVE_EVERY:-}" ] && { [ $((IT % 50)) -ne 0 ] || [ $((STEP % 50)) -ne 0 ]; }; then export SAVE_EVERY=10; fi
+if [ $(((IT + STEP) % ${SAVE_EVERY:-50})) -ne 0 ] || [ $((STEP % ${SAVE_EVERY:-50})) -ne 0 ]; then
+    echo "[cycles] start $IT / step $STEP not on the checkpoint interval ${SAVE_EVERY:-50} - stopped"; exit 1
+fi
 echo "$TASK $RUN $IT $N $STEP" > logs/current_chain.txt  # read by train_progress.py --auto (status-line mod)
 for _ in $(seq "$N"); do
     STOP=$((IT + STEP))
