@@ -380,8 +380,25 @@ class StageEnv(PitchEnv):
             # braking after the release: "support" also needs the COM not ahead of the lead foot (fg D75 3100: after the
             # release the COM ran 1+ m past the lead foot at 0.8-1.9 m/s, walked down the mound's front slope, fell)
             com, _ = self._com()
-            lead_x = self.robot.data.body_link_pos_w[:, self.foot_ids[0], 0]
-            over = torch.exp(-(((com[:, 0] - lead_x).clamp_min(0.0) / c.brake_lead_sigma_m) ** 2))
+            feet = self.robot.data.body_link_pos_w[:, self.foot_ids]
+            if c.brake_mode == "support":
+                # COM over the feet on the ground (a human finish: the back foot steps forward and the weight settles
+                # over the feet; the "lead" mode penalised exactly that, the COM ahead of the lead foot): horizontal
+                # distance from the COM to the segment between both feet when both are down, else to the one planted
+                # foot; in the air (mid-step) no penalty
+                forces = self.feet.data.net_forces_w_history[:, :, self.foot_sensor_ids].norm(dim=-1).max(1).values
+                planted = forces > c.contact_force_n
+                p = com[:, :2]
+                a, b = feet[:, 0, :2], feet[:, 1, :2]
+                ab = b - a
+                s = (((p - a) * ab).sum(-1) / (ab * ab).sum(-1).clamp_min(1e-6)).clamp(0.0, 1.0)
+                d_seg = (p - (a + s.unsqueeze(-1) * ab)).norm(dim=-1)
+                d_a, d_b = (p - a).norm(dim=-1), (p - b).norm(dim=-1)
+                dist = torch.where(planted[:, 0] & planted[:, 1], d_seg,
+                                   torch.where(planted[:, 0], d_a, torch.where(planted[:, 1], d_b, torch.zeros_like(d_a))))
+                over = torch.exp(-(((dist - c.brake_support_tol_m).clamp_min(0.0) / c.brake_lead_sigma_m) ** 2))
+            else:
+                over = torch.exp(-(((com[:, 0] - feet[:, 0, 0]).clamp_min(0.0) / c.brake_lead_sigma_m) ** 2))
             support = torch.where(self.released, over * (0.5 + 0.5 * support), support)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)

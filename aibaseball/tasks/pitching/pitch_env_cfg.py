@@ -656,6 +656,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
     brake_lead_sigma_m: float = 0.0  # > 0, throw_upper: after the release the quality's support part also needs the COM
     # not ahead of the lead foot: x exp(-(COM x beyond the lead foot / this)^2)
+    brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
+    brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
@@ -1089,6 +1091,21 @@ class Stage1dBEnvCfg(Stage1dDEnvCfg):
 
 @configclass
 class Stage1dB75EnvCfg(Stage1dBEnvCfg):
+    throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dSEnvCfg(Stage1dBEnvCfg):
+    """Stage1dB with the braking on the support instead of the lead foot. User 2026-10-17: "我的目標是類似真人能停下，
+    而非原地煞住" - a follow-through step (back foot forward) and then settling is the intended finish; the "lead" term
+    penalised the COM ahead of the lead foot, i.e. that finish. Now: COM xy over the planted feet (segment between both
+    / the one planted; mid-step free), sigma 0.15 m past a 0.05 m tolerance. RSI 0.5 as fk."""
+
+    brake_mode: str = "support"
+
+
+@configclass
+class Stage1dS75EnvCfg(Stage1dSEnvCfg):
     throw_upper_scale: float = 0.75
 
 
