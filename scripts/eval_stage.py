@@ -27,6 +27,10 @@ parser.add_argument("--assist", action="store_true", help="keep the training ass
 parser.add_argument("--zero", action="store_true", help="what-if: zero actions (PD on the set position only)")
 parser.add_argument("--trace", action="store_true", help="print env 0 every 0.1 s (feet, pelvis, trunk)")
 parser.add_argument("--slow", type=float, default=2.0, help="video slow-motion factor")
+parser.add_argument("--gate_min_speed", type=float, default=10.0,
+                    help="throw tasks: a release slower than this (m/s) is a drop and fails the [goal] count")
+parser.add_argument("--gate_min_release_t", type=float, default=0.9,
+                    help="throw tasks: a release before this reference time (s; athlete ~0.98 s) is a drop")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 if args.video:
@@ -162,6 +166,12 @@ def main():
                     if rel[i]:
                         f.write(f"{v[i]:.3f},{yz[i, 0] - cfg.zone_center_y:.4f},{yz[i, 1]:.4f},{int(cr[i])}" + chr(10))
             say(f"  pitch table: {args.pitch_csv} ({int(rel.sum())} rows)")
+        # a dropped ball is not a throw: A25/A50 "passed" with the ball slipping out at 0.65 s (1-2 m/s), fe A75 from
+        # 3550 on dropped it at 0.83 s - keep-best must not pick a checkpoint that stands because it never throws
+        thrown = rel & (v >= args.gate_min_speed) & (base.rel_ref_t.cpu().numpy() >= args.gate_min_release_t)
+        say(f"  thrown (release >= {args.gate_min_speed:.0f} m/s at >= {args.gate_min_release_t:.2f} s): {thrown.sum()}/{n}; "
+            f"at rest and thrown: {(ok & thrown).sum()}/{n}")
+        ok = ok & thrown
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
