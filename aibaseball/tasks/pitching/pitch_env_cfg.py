@@ -1090,3 +1090,17 @@ class Stage1dBEnvCfg(Stage1dDEnvCfg):
 @configclass
 class Stage1dB75EnvCfg(Stage1dBEnvCfg):
     throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dREnvCfg(Stage1dBEnvCfg):
+    """Stage1dB with most episodes from the set position (RSI 0.5 -> 0.2): the eval scores full pitches only. fk B75
+    (2950 -> 3400): 12 / 25 / 28 / 28 / 24 / 27 / 28 / 10 / 12 of 64; training set starts 29-54% success, RSI starts
+    66-79% falls throughout - the mid-pitch starts kept the policy busy with recoveries the eval never needs."""
+
+    rsi_prob: float = 0.2
+
+
+@configclass
+class Stage1dR75EnvCfg(Stage1dREnvCfg):
+    throw_upper_scale: float = 0.75
