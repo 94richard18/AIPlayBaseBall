@@ -152,6 +152,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+        # the adaptive schedule starts from alg.learning_rate (the cfg's 1e-4), not the optimizer's restored rate:
+        # the first mini-batches after every resume ran at up to 10x the rate the run had settled on (1e-5)
+        runner.alg.learning_rate = runner.alg.optimizer.param_groups[0]["lr"]
+        print(f"[INFO]: learning rate restored: {runner.alg.learning_rate:.2e}", flush=True)
         if args_cli.reset_normalizer and agent_cfg.empirical_normalization:
             # rsl_rl stops updating the normalizers after 1e8 samples: a checkpoint from an earlier stage keeps that
             # stage's statistics (1a: phase always 0, fingers still -> in 1b the phase came in at 88 and the finger

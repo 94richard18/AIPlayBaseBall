@@ -14,10 +14,15 @@ for TASK in "$@"; do
     echo "[curriculum] $TASK from $CKPT (run $RUN)"
     G=${GOAL_MID:-60}
     [ "$TASK" = "${!#}" ] && G=60
-    bash scripts/train_cycles.sh "$TASK" "$CKPT" "$N" "$RUN" "${STEP:-150}" "$G" > "logs/chain_$RUN.txt" 2>&1
+    if [ -n "${LIVE:-}" ]; then  # LIVE=1: one continuous training process, N x STEP iterations (train_live.sh)
+        bash scripts/train_live.sh "$TASK" "$CKPT" $((N * ${STEP:-50})) "$RUN" "${STEP:-50}" "$G" > "logs/chain_$RUN.txt" 2>&1
+    else
+        bash scripts/train_cycles.sh "$TASK" "$CKPT" "$N" "$RUN" "${STEP:-150}" "$G" > "logs/chain_$RUN.txt" 2>&1
+    fi
     cat "logs/chain_$RUN.txt" | grep "^\[cycles\]"
     grep -q "goal reached" "logs/chain_$RUN.txt" || { echo "[curriculum] $TASK did not pass - stopped"; exit 1; }
-    CKPT=$(sed -n 's/^\[cycles\] [0-9]*: [0-9]* up (\(.*\))$/\1/p' "logs/chain_$RUN.txt" | tail -1)
+    CKPT=$(sed -n 's/^\[cycles\] next: //p' "logs/chain_$RUN.txt" | tail -1)
+    [ -z "$CKPT" ] && CKPT=$(sed -n 's/^\[cycles\] [0-9]*: [0-9]* up (\(.*\))$/\1/p' "logs/chain_$RUN.txt" | tail -1)
     unset WARMUP RESET_NORM ZERO_HEAD ZERO_ARMS BEST0
 done
 echo "[curriculum] all passed: $CKPT"
