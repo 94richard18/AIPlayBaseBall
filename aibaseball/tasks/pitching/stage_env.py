@@ -45,6 +45,12 @@ class StageEnv(PitchEnv):
         self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
         self.s_need0 = torch.ones(n, dtype=torch.bool, device=dev)  # start positions still to be read
+        # desync: each env's first episode is cut (time-out, bootstrapped) at a random length. The reference clock runs
+        # on episode_length_buf, so rsl_rl's random start length cannot be used (df5ed19), and without it all envs
+        # start, fall and time out in phase - every PPO batch saw one slice of the pitch (fc: mean episode length
+        # waved 184 -> 1100 -> 690; fg / fh from fe 2950 only went down)
+        self.s_cut = torch.full((n,), int(self.max_episode_length), device=dev)
+        self.s_desync = True  # drawn on the first step (the first reset sets every cut back to the full length)
         self.s_crossed = torch.zeros(n, dtype=torch.bool, device=dev)  # ball crossed the plate (arm + ball step)
         self.s_cross_yz = torch.zeros(n, 2, device=dev)
         self.s_ball_maxx = torch.zeros(n, device=dev)
@@ -457,7 +463,10 @@ class StageEnv(PitchEnv):
             air = (forces <= c.contact_force_n).all(-1) & ~self.s_landed
             self.s_air = torch.where(air, self.s_air + self.step_dt, torch.zeros_like(self.s_air))
             self.fallen |= self.s_air > c.max_flight_s
-        time_out = self.episode_length_buf >= self.max_episode_length - 1
+        if self.s_desync:
+            self.s_cut = torch.randint(1, int(self.max_episode_length), self.s_cut.shape, device=self.device)
+            self.s_desync = False
+        time_out = (self.episode_length_buf >= self.max_episode_length - 1) | (self.episode_length_buf >= self.s_cut)
         self.s_drop = torch.zeros_like(self.fallen)
         if c.throw_upper and c.drop_ends:  # a dropped ball is a failed pitch, like a fall (reward: same penalty)
             self.s_drop = self.released & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
@@ -489,6 +498,7 @@ class StageEnv(PitchEnv):
         self.s_land_step[env_ids] = 0
         self.s_lift_t[env_ids] = 0.0
         self.s_need0[env_ids] = True
+        self.s_cut[env_ids] = int(self.max_episode_length)
         self.s_slid[env_ids] = False
         self.s_crossed[env_ids] = False
         self.s_ball_maxx[env_ids] = 0.0
