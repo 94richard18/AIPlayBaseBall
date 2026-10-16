@@ -1110,6 +1110,26 @@ class Stage1dS75EnvCfg(Stage1dSEnvCfg):
 
 
 @configclass
+class Stage1dS60EnvCfg(Stage1dSEnvCfg):
+    throw_upper_scale: float = 0.6
+
+
+@configclass
+class Stage1dS70EnvCfg(Stage1dSEnvCfg):
+    throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dS80EnvCfg(Stage1dSEnvCfg):
+    throw_upper_scale: float = 0.8
+
+
+@configclass
+class Stage1dS90EnvCfg(Stage1dSEnvCfg):
+    throw_upper_scale: float = 0.9
+
+
+@configclass
 class Stage1dREnvCfg(Stage1dBEnvCfg):
     """Stage1dB with most episodes from the set position (RSI 0.5 -> 0.2): the eval scores full pitches only. fk B75
     (2950 -> 3400): 12 / 25 / 28 / 28 / 24 / 27 / 28 / 10 / 12 of 64; training set starts 29-54% success, RSI starts
