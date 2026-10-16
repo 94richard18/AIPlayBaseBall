@@ -31,7 +31,8 @@ class StageEnv(PitchEnv):
         self.stage_stats = {k: torch.zeros((), device=self.device)
                             for k in ("fall_rate", "stand_ok", "tilt_deg", "com_speed", "head_z", "both_feet",
                                       "landed", "stride_m", "lift_s", "back_slide_m",
-                                      "fall_rate_set", "success_set", "fall_rate_rsi", "success_rsi")}
+                                      "fall_rate_set", "success_set", "fall_rate_rsi", "success_rsi", "drop_rate_set",
+                                      "drop_rate_rsi")}
         n, dev = self.num_envs, self.device
         self.s_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot off the ground since 0.1 s
         self.s_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot down after a real stride
@@ -410,6 +411,8 @@ class StageEnv(PitchEnv):
         win = (ok & self.reset_time_outs & ~self.fallen).float()
         for k, v, m in (("fall_rate_set", self.fallen.float(), done & set_start), ("success_set", win, done & set_start),
                         ("fall_rate_rsi", self.fallen.float(), done & ~set_start), ("success_rsi", win, done & ~set_start),
+                        ("drop_rate_set", self.s_drop.float(), done & set_start),
+                        ("drop_rate_rsi", self.s_drop.float(), done & ~set_start),
                         ("fall_rate", self.fallen.float(), done), ("stand_ok", ok.float(), self.reset_time_outs),
                         ("tilt_deg", tilt, up), ("com_speed", speed, up), ("head_z", head_z, up),
                         ("both_feet", both.float(), up), ("landed", self.s_landed.float(), self.reset_time_outs),
@@ -476,7 +479,10 @@ class StageEnv(PitchEnv):
         time_out = (self.episode_length_buf >= self.max_episode_length - 1) | (self.episode_length_buf >= self.s_cut)
         self.s_drop = torch.zeros_like(self.fallen)
         if c.throw_upper and c.drop_ends:  # a dropped ball is a failed pitch, like a fall (reward: same penalty)
-            self.s_drop = self.released & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
+            # only episodes that start before the throw: an RSI start after the athlete's release (t0 up to 1.9 s) has
+            # no throw to make, its ball leaves the hand slowly - fg / fi ended every such episode as a "drop"
+            # (fi: RSI episodes 10% falls, 0% success)
+            self.s_drop = self.released & (self.t0 < c.drop_min_release_t) & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
                                            | (self.rel_ref_t < c.drop_min_release_t))
         return self.fallen | self.s_drop, time_out
 
