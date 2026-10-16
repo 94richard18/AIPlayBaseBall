@@ -368,6 +368,13 @@ class StageEnv(PitchEnv):
             over = torch.exp(-(((com[:, :2] - back).norm(dim=-1) / c.lift_balance_sigma_m) ** 2))
             support = torch.where(win, over, support)
             q_on = torch.ones_like(speed)  # standing quality all episode (balance before the lift is the point)
+        if c.throw_upper and c.brake_lead_sigma_m > 0:
+            # braking after the release: "support" also needs the COM not ahead of the lead foot (fg D75 3100: after the
+            # release the COM ran 1+ m past the lead foot at 0.8-1.9 m/s, walked down the mound's front slope, fell)
+            com, _ = self._com()
+            lead_x = self.robot.data.body_link_pos_w[:, self.foot_ids[0], 0]
+            over = torch.exp(-(((com[:, 0] - lead_x).clamp_min(0.0) / c.brake_lead_sigma_m) ** 2))
+            support = torch.where(self.released, over * (0.5 + 0.5 * support), support)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
         if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate

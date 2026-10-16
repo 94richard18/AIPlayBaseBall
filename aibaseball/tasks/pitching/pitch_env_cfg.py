@@ -654,6 +654,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     drop_ends: bool = False  # throw_upper: a dropped ball ends the episode with the fall penalty (as eval_stage's gate)
     drop_min_speed: float = 10.0  # ... a release slower than this (m/s) is a drop
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
+    brake_lead_sigma_m: float = 0.0  # > 0, throw_upper: after the release the quality's support part also needs the COM
+    # not ahead of the lead foot: x exp(-(COM x beyond the lead foot / this)^2)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
@@ -1073,4 +1075,18 @@ class Stage1dDEnvCfg(Stage1dAEnvCfg):
 
 @configclass
 class Stage1dD75EnvCfg(Stage1dDEnvCfg):
+    throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dBEnvCfg(Stage1dDEnvCfg):
+    """Stage1dD + braking after the release: the standing quality's support part needs the COM not ahead of the lead
+    foot (sigma 0.15 m). fg D75 (drop ends) 3000-3250: 12 / 18 / 16 / 6 / 4 / 3 of 64, all thrown; the COM ran 1+ m past
+    the lead foot after the release and the robot walked down the mound's front slope."""
+
+    brake_lead_sigma_m: float = 0.15
+
+
+@configclass
+class Stage1dB75EnvCfg(Stage1dBEnvCfg):
     throw_upper_scale: float = 0.75
