@@ -11,7 +11,7 @@ shift 3
 for TASK in "$@"; do
     RUN="${PRE}_$(echo "$TASK" | sed 's/^AIB-Stage//; s/-v0$//' | tr 'A-Z' 'a-z')"
     echo "[curriculum] $TASK from $CKPT (run $RUN)"
-    bash scripts/train_cycles.sh "$TASK" "$CKPT" "$N" "$RUN" 150 60 > "logs/chain_$RUN.txt" 2>&1
+    bash scripts/train_cycles.sh "$TASK" "$CKPT" "$N" "$RUN" "${STEP:-150}" 60 > "logs/chain_$RUN.txt" 2>&1
     cat "logs/chain_$RUN.txt" | grep "^\[cycles\]"
     grep -q "goal reached" "logs/chain_$RUN.txt" || { echo "[curriculum] $TASK did not pass - stopped"; exit 1; }
     CKPT=$(sed -n 's/^\[cycles\] [0-9]*: [0-9]* up (\(.*\))$/\1/p' "logs/chain_$RUN.txt" | tail -1)
