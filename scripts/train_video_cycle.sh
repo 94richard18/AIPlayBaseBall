@@ -24,8 +24,9 @@ $PY -u scripts/train.py --task "$TASK" --headless --num_envs "$ENVS" --max_itera
     "${RESUME[@]}" ${RESET_NORM:+--reset_normalizer} ${ZERO_HEAD:+--zero_actor_head} ${ZERO_ARMS:+--zero_arm_actions} ${WARMUP:+--critic_warmup $WARMUP} ${NOISE:+--max_noise_std $NOISE} ${SEED:+--seed $SEED} >> logs_pitch_stand.txt 2>&1 &
 PID=$!
 NEW=""
+MARK=$(mktemp)  # only this cycle's checkpoint counts: a keep-best retry reaches the same model_<stop>.pt name again
 while kill -0 $PID 2>/dev/null; do
-    NEW=$(ls -t "$EXP_DIR"/*_"$RUN"/model_"$STOP".pt 2>/dev/null | head -1)
+    NEW=$(find "$EXP_DIR" -path "*_$RUN/model_$STOP.pt" -newer "$MARK" 2>/dev/null | head -1)
     [ -n "$NEW" ] && break
     sleep 30
 done

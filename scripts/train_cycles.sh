@@ -29,6 +29,7 @@ for _ in $(seq "$N"); do
     GOALN=$(grep -o '^\[goal\] [0-9]*' "logs/cycle_${RUN}_$STOP.txt" | head -1 | cut -d' ' -f2)
     [ -n "$GOALN" ] && UP=$GOALN  # stage 1 steps (eval_stage.py)
     echo "[cycles] $STOP: $UP up ($CKPT)"
+    grep -E "^  (noisy   )?(falls:|at rest)" "logs/cycle_${RUN}_$STOP.txt" | sed 's/^/    /'  # kept: a keep-best retry rewrites the cycle log
     [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ] && { echo "[cycles] goal reached"; exit 0; }
     IT=$STOP
     if [ -n "${KEEP_BEST:-}" ]; then  # a cycle below the best: the next one resumes from the best checkpoint
