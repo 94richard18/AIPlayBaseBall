@@ -479,10 +479,10 @@ class StageEnv(PitchEnv):
         time_out = (self.episode_length_buf >= self.max_episode_length - 1) | (self.episode_length_buf >= self.s_cut)
         self.s_drop = torch.zeros_like(self.fallen)
         if c.throw_upper and c.drop_ends:  # a dropped ball is a failed pitch, like a fall (reward: same penalty)
-            # only episodes that start before the throw: an RSI start after the athlete's release (t0 up to 1.9 s) has
-            # no throw to make, its ball leaves the hand slowly - fg / fi ended every such episode as a "drop"
-            # (fi: RSI episodes 10% falls, 0% success)
-            self.s_drop = self.released & (self.t0 < c.drop_min_release_t) & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
+            # only full pitches from the set position (what the eval scores): an RSI start after the athlete's release
+            # (t0 up to 1.9 s) has no throw to make (fg / fi ended every such episode as a "drop": RSI 0% success), and
+            # mid-windup starts lose the ball by themselves (t0 < 0.9 s rule, fj: 35% of RSI episodes "dropped")
+            self.s_drop = self.released & (self.t0 <= 0.0) & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
                                            | (self.rel_ref_t < c.drop_min_release_t))
         return self.fallen | self.s_drop, time_out
 
