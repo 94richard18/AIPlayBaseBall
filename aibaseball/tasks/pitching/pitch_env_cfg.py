@@ -649,6 +649,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     throw_upper: bool = False  # 1b: trunk + arms follow the athlete (the throw), ball release / plate tracked
     rsi_upper_ref: bool = False  # 1b RSI: the upper body starts on the task's own reference (not the athlete's pose)
     release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
+    throw_upper_trunk: bool = True  # throw_upper: the waist joints follow the athlete's throw too (False: arms only)
     throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
@@ -1031,3 +1032,28 @@ class Stage1dF25rEnvCfg(Stage1dF25EnvCfg):
     noise fell only 21/64, the RSI starts (half the episodes) began with the arms on the athlete's full swing."""
 
     rsi_upper_ref: bool = True
+
+
+@configclass
+class Stage1dAEnvCfg(Stage1dFEnvCfg):
+    """Fall fix, arms only (2026-10-16): Stage1dF with the waist on the stride task's reference (upright) and only the arms
+    on the athlete's throw. The athlete's follow-through flexes the trunk far forward; with it model_2200 at a quarter of
+    the throw fell 58/64, arms only 0/64 (at rest 36/64; 0.5 / 1.0 fall 64/64 at 2.57 / 2.20 s). fx / fxr / fxs2 (trunk
+    included) never beat 25/64 at the quarter throw in 1050 iterations."""
+
+    throw_upper_trunk: bool = False
+
+
+@configclass
+class Stage1dA25EnvCfg(Stage1dAEnvCfg):
+    throw_upper_scale: float = 0.25
+
+
+@configclass
+class Stage1dA50EnvCfg(Stage1dAEnvCfg):
+    throw_upper_scale: float = 0.5
+
+
+@configclass
+class Stage1dA75EnvCfg(Stage1dAEnvCfg):
+    throw_upper_scale: float = 0.75

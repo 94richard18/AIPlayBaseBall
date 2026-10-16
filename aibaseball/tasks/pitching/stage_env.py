@@ -166,7 +166,8 @@ class StageEnv(PitchEnv):
                 moving = (t < self.ref.duration).float().unsqueeze(-1)
             qd[:, legs] = rl["joint_vel"][:, legs] * moving
             if self.cfg.throw_upper:  # arm + ball step: trunk and arms on the athlete's clock (the throw)
-                up_cols = [i for i in range(q.shape[1]) if i not in set(legs)]
+                keep = set(legs) | (set() if self.cfg.throw_upper_trunk else set(self.trunk_cols))
+                up_cols = [i for i in range(q.shape[1]) if i not in keep]
                 k = self.cfg.throw_upper_scale  # fall-fix curriculum: 0 = the stride task's upper body, 1 = the throw
                 q[:, up_cols] = q[:, up_cols] + k * (r["joint_pos"][:, up_cols] - q[:, up_cols])
                 qd[:, up_cols] = k * r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
