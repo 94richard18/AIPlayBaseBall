@@ -79,3 +79,16 @@ class StageLongPPORunnerCfg(StagePPORunnerCfg):
         super().__post_init__()
         self.algorithm.gamma = 0.999
         self.algorithm.lam = 0.98
+
+
+@configclass
+class StageSlowPPORunnerCfg(StageLongPPORunnerCfg):
+    """Long-horizon stage runner with smaller policy steps (2026-10-16, arm + ball fall fix): adaptive KL target 0.003
+    (was 0.01), starting learning rate 1e-4. fx / fxr F25: the first 150 iterations from model_2200 reached falls 1/64,
+    at rest 25/64, then 4 cycles in a row fell 64/64 while training stand_ok never left 0.02-0.11 - the policy drifted
+    away from a fragile solution (model_2200 falls 57/64 at 10% of the throw)."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.desired_kl = 0.003
+        self.algorithm.learning_rate = 1.0e-4

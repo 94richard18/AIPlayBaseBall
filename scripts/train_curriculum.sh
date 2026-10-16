@@ -15,6 +15,6 @@ for TASK in "$@"; do
     cat "logs/chain_$RUN.txt" | grep "^\[cycles\]"
     grep -q "goal reached" "logs/chain_$RUN.txt" || { echo "[curriculum] $TASK did not pass - stopped"; exit 1; }
     CKPT=$(sed -n 's/^\[cycles\] [0-9]*: [0-9]* up (\(.*\))$/\1/p' "logs/chain_$RUN.txt" | tail -1)
-    unset WARMUP RESET_NORM ZERO_HEAD ZERO_ARMS
+    unset WARMUP RESET_NORM ZERO_HEAD ZERO_ARMS BEST0
 done
 echo "[curriculum] all passed: $CKPT"
