@@ -230,7 +230,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # run training
-    runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
+    # pitching envs read the reference clock from episode_length_buf: a random start length puts every env in the
+    # set pose at a random reference time (mid-throw) - a burst of falls and a 10x value loss at each resume
+    random_len = "Batting" in args_cli.task or not any(k in args_cli.task for k in ("Pitch", "Stage"))
+    runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=random_len)
 
     # close the simulator
     env.close()
