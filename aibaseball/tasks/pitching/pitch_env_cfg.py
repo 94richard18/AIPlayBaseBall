@@ -651,6 +651,9 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
     throw_upper_trunk: bool = True  # throw_upper: the waist joints follow the athlete's throw too (False: arms only)
     throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
+    drop_ends: bool = False  # throw_upper: a dropped ball ends the episode with the fall penalty (as eval_stage's gate)
+    drop_min_speed: float = 10.0  # ... a release slower than this (m/s) is a drop
+    drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
     upright_width_deg: float = 15.0  # ... then exp(-(excess / this)^2)
     rsi_landed_after_s: float = 0.85  # 1b RSI: starts at / after this athlete time count as landed (strike 0.83 s)
@@ -1056,4 +1059,18 @@ class Stage1dA50EnvCfg(Stage1dAEnvCfg):
 
 @configclass
 class Stage1dA75EnvCfg(Stage1dAEnvCfg):
+    throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dDEnvCfg(Stage1dAEnvCfg):
+    """Stage1dA + a dropped ball ends the episode with the fall penalty. A25 / A50 "stood" with the ball slipping out at
+    0.65 s (1-2 m/s), fe A75 from 3550 on dropped it at 0.83 s (4-6 m/s) and still fell; nothing in the reward said a
+    drop is a failure."""
+
+    drop_ends: bool = True
+
+
+@configclass
+class Stage1dD75EnvCfg(Stage1dDEnvCfg):
     throw_upper_scale: float = 0.75

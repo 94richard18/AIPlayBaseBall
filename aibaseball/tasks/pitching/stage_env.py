@@ -387,7 +387,7 @@ class StageEnv(PitchEnv):
         else:
             rew_ball = torch.zeros_like(speed)
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
-               - c.w_stage_fall * self.fallen.float() - c.w_stage_rate * rate)
+               - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs
         a = 0.02
         for k, v, m in (("fall_rate", self.fallen.float(), done), ("stand_ok", ok.float(), self.reset_time_outs),
@@ -451,7 +451,11 @@ class StageEnv(PitchEnv):
             self.s_air = torch.where(air, self.s_air + self.step_dt, torch.zeros_like(self.s_air))
             self.fallen |= self.s_air > c.max_flight_s
         time_out = self.episode_length_buf >= self.max_episode_length - 1
-        return self.fallen.clone(), time_out
+        self.s_drop = torch.zeros_like(self.fallen)
+        if c.throw_upper and c.drop_ends:  # a dropped ball is a failed pitch, like a fall (reward: same penalty)
+            self.s_drop = self.released & ((self.rel_vel.norm(dim=-1) < c.drop_min_speed)
+                                           | (self.rel_ref_t < c.drop_min_release_t))
+        return self.fallen | self.s_drop, time_out
 
     def _get_observations(self) -> dict:
         obs = super()._get_observations()
