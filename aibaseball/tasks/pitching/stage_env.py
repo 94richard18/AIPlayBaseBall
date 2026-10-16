@@ -30,7 +30,8 @@ class StageEnv(PitchEnv):
         super().__init__(cfg, render_mode, **kwargs)
         self.stage_stats = {k: torch.zeros((), device=self.device)
                             for k in ("fall_rate", "stand_ok", "tilt_deg", "com_speed", "head_z", "both_feet",
-                                      "landed", "stride_m", "lift_s", "back_slide_m")}
+                                      "landed", "stride_m", "lift_s", "back_slide_m",
+                                      "fall_rate_set", "success_set", "fall_rate_rsi", "success_rsi")}
         n, dev = self.num_envs, self.device
         self.s_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot off the ground since 0.1 s
         self.s_landed = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot down after a real stride
@@ -403,7 +404,13 @@ class StageEnv(PitchEnv):
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs
         a = 0.02
-        for k, v, m in (("fall_rate", self.fallen.float(), done), ("stand_ok", ok.float(), self.reset_time_outs),
+        # by start type (the eval runs full pitches from the set position only; RSI starts mid-pitch at t0 > 0):
+        # success = the episode timed out standing at rest, over all ended episodes of that start type
+        set_start = self.t0 <= 0.0
+        win = (ok & self.reset_time_outs & ~self.fallen).float()
+        for k, v, m in (("fall_rate_set", self.fallen.float(), done & set_start), ("success_set", win, done & set_start),
+                        ("fall_rate_rsi", self.fallen.float(), done & ~set_start), ("success_rsi", win, done & ~set_start),
+                        ("fall_rate", self.fallen.float(), done), ("stand_ok", ok.float(), self.reset_time_outs),
                         ("tilt_deg", tilt, up), ("com_speed", speed, up), ("head_z", head_z, up),
                         ("both_feet", both.float(), up), ("landed", self.s_landed.float(), self.reset_time_outs),
                         ("stride_m", stride if c.stage == "1b" else speed, new),
