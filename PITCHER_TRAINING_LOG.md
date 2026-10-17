@@ -1213,6 +1213,8 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
   - 每個版本都要回報「投出」數，收尾姿勢不能破壞投球。
   - 最好的版本補測隨機起始。
   - 落地時重心還帶著約 1.4 m/s 往前，直接停在靜態姿勢（hold／set）很可能往前倒，所以 brace 用的是後腳已跨到前方的結束姿勢，靠這一步吸收往前的速度。
+- brace 已實作：**AIB-Stage1dK70GB-v0**（commit 47ed556）。K70 本來就有出手後的 PD 過渡（`PitchEnv._pre_physics_step`，stand_pd_blend_s 0.6、stand_pd_legs「hold」：腿過渡到出手時自己的角度，上半身回定位），brace 接在這個過渡上，而不是改 1b 的參考。新欄位（預設值不影響既有任務）：stand_pd_start「release」（預設）／「landed」（從前腳著地開始）、stand_pd_delay_s、finish_roll、stand_pd_legs「end」（腿目標 ＝ 運動員 2.2 s 的腿 ＋ 兩髖 roll +r、兩踝 roll −r）。K70GB：end、landed、delay 0.1、blend 0.3、r 0.1；軀幹前傾減半沒加（throw_upper_trunk 為 False，腰本來就停在定位）。假設 +r 讓重心往三壘側，由掃描驗證。
+- 已排入（零動作、相同起始）：r {0, 0.1, 0.2}，回報跌倒／停穩／跨步／投出；接著在最佳 r 掃 delay {0, 0.2}、再 blend 0.5，最後最佳版本補測隨機起始。
 - 22:00：除非 gj 已確認隨機起始 ≥ 30，否則在 K70GR（K70G 參考）與 hold／set／brace 參考 ＋ 0.25 殘差之中，選零動作停穩數最好的進入 (b)。
 
 ### 這一段學到的
