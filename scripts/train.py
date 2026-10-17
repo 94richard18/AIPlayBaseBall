@@ -29,6 +29,8 @@ parser.add_argument("--reset_normalizer", action="store_true", default=False,
                     help="refit the observation normalizers from the new task's data (starting a new stage)")
 parser.add_argument("--max_noise_std", type=float, default=None,
                     help="cap the action noise std at this (overrides the agent cfg's max_noise_std)")
+parser.add_argument("--min_noise_std", type=float, default=None,
+                    help="hold the action noise std at least at this (exploration floor)")
 parser.add_argument("--critic_warmup", type=int, default=0,
                     help="first N PPO updates train the critic only (actor and noise frozen)")
 parser.add_argument("--zero_arm_actions", action="store_true", default=False,
@@ -212,20 +214,23 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: critic warm-up: actor frozen for {args_cli.critic_warmup} updates", flush=True)
     # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
     max_std = args_cli.max_noise_std or getattr(agent_cfg, "max_noise_std", None)
-    if max_std:
+    # floor (--min_noise_std): fq NR70 std drifted 0.039 -> 0.034 with the learning rate pinned at its 1e-5 floor (KL
+    # per update grows ~1/std^2), training set success 0.51 -> 0.12, evals 44 -> 1 in 250 iterations
+    min_std = args_cli.min_noise_std
+    if max_std or min_std:
         ac = runner.alg.actor_critic
         update = runner.alg.update
 
         def update_capped(*a, **k):
             out = update(*a, **k)
             with torch.no_grad():
-                ac.std.clamp_(max=max_std)
+                ac.std.clamp_(min=min_std, max=max_std)
             return out
 
         runner.alg.update = update_capped
         with torch.no_grad():
-            ac.std.clamp_(max=max_std)
-        print(f"[INFO] action noise std capped at {max_std}")
+            ac.std.clamp_(min=min_std, max=max_std)
+        print(f"[INFO] action noise std held in [{min_std}, {max_std}]")
 
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
