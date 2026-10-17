@@ -658,6 +658,11 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # not ahead of the lead foot: x exp(-(COM x beyond the lead foot / this)^2)
     start_joint_noise: float = 0.0  # > 0: uniform +- this (rad) on the body joints at every reset (independent starts)
     start_noise_ramp_steps: int = 0  # > 0: start_joint_noise ramps in from 0 over this many env steps (one process)
+    plant_brake_sigma: float = 0.0  # > 0: over reference time [plant_brake_t0, _t1) "support" also needs the forward
+    # COM speed under plant_brake_v: x exp(-((v_x - v)+ / sigma)^2) (braking at the lead-foot plant)
+    plant_brake_v: float = 0.8
+    plant_brake_t0: float = 1.0
+    plant_brake_t1: float = 1.3
     brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
     brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -1157,6 +1162,30 @@ class Stage1dNREnvCfg(Stage1dNEnvCfg):
 @configclass
 class Stage1dNR70EnvCfg(Stage1dNREnvCfg):
     throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dPEnvCfg(Stage1dNEnvCfg):
+    """Stage1dN + braking at the lead-foot plant (plant_brake_sigma 0.3: forward COM speed <= 0.8 m/s over 1.0-1.3 s).
+    diag_fall ft 3825 with start noise 0.02: fallers 1.44 vs standers 0.78 m/s over 1.0-1.4 s, lead-foot slip 0.33 vs
+    0.16 m/s, lead hip pitch at its torque limit ~half that time in both groups."""
+
+    plant_brake_sigma: float = 0.3
+
+
+@configclass
+class Stage1dP70EnvCfg(Stage1dPEnvCfg):
+    throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dP80EnvCfg(Stage1dPEnvCfg):
+    throw_upper_scale: float = 0.8
+
+
+@configclass
+class Stage1dP90EnvCfg(Stage1dPEnvCfg):
+    throw_upper_scale: float = 0.9
 
 
 @configclass

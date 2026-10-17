@@ -400,6 +400,16 @@ class StageEnv(PitchEnv):
             else:
                 over = torch.exp(-(((com[:, 0] - feet[:, 0, 0]).clamp_min(0.0) / c.brake_lead_sigma_m) ** 2))
             support = torch.where(self.released, over * (0.5 + 0.5 * support), support)
+        if c.plant_brake_sigma > 0:
+            # braking at the lead-foot plant (diag_fall ft 3825, start noise 0.02): the episodes that fell at ~1.8 s
+            # carried 1.44 m/s forward COM speed over 1.0-1.4 s vs 0.78 for the ones standing (athlete ~0.9 after
+            # killing 2.3 -> 0.8 m/s in 0.1 s); their lead foot then slid and lifted. In that window "support" also
+            # needs the forward COM speed under plant_brake_v: x exp(-((v_x - v)+ / sigma)^2)
+            tr = self._ref_time()
+            _, com_v = self._com()
+            win = (tr >= c.plant_brake_t0) & (tr < c.plant_brake_t1)
+            slow = torch.exp(-(((com_v[:, 0] - c.plant_brake_v).clamp_min(0.0) / c.plant_brake_sigma) ** 2))
+            support = torch.where(win, support * slow, support)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
         if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate
