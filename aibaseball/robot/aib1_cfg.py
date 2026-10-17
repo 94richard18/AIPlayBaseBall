@@ -144,7 +144,8 @@ WAIST_SEA_PARAMS = {"waist_yaw": (400.0, 40.0), "waist_pitch": (600.0, 30.0)}
 
 
 def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False,
-                       leg_stiffness: dict | None = None, waist_gain: float = 1.0) -> dict:
+                       leg_stiffness: dict | None = None, waist_gain: float = 1.0,
+                       waist_spring_gain: float | None = None) -> dict:
     from .sea import SeriesElasticActuatorCfg
 
     acts = _actuators(1.0, HUMAN_ACTUATOR_GROUPS)
@@ -170,7 +171,7 @@ def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea
         for joint, (k_s, joint_vel) in WAIST_SEA_PARAMS.items():
             acts[f"{joint}_sea"] = SeriesElasticActuatorCfg(
                 joint_names_expr=[joint], dt=sea_dt, motor_effort=g.effort, motor_velocity=g.velocity,
-                spring_stiffness=k_s * waist_gain, motor_kp=1500.0 * waist_gain, motor_kd=40.0 * waist_gain,
+                spring_stiffness=k_s * (waist_gain if waist_spring_gain is None else waist_spring_gain), motor_kp=1500.0 * waist_gain, motor_kd=40.0 * waist_gain,
                 motor_inertia=0.05, stiffness=0.0, damping=0.0,
                 armature=g.armature, friction=0.0, effort_limit_sim=1000.0, velocity_limit_sim=joint_vel,
             )
@@ -178,7 +179,8 @@ def _pitcher_actuators(sea_dt: float, leg_damping: dict | None = None, waist_sea
 
 
 def make_elastic_pitcher_cfg(sea_dt: float, leg_damping: dict | None = None, waist_sea: bool = False,
-                             leg_stiffness: dict | None = None, waist_gain: float = 1.0) -> ArticulationCfg:
+                             leg_stiffness: dict | None = None, waist_gain: float = 1.0,
+                             waist_spring_gain: float | None = None) -> ArticulationCfg:
     """Human-strength pitcher whose throwing arm (and optionally trunk) has tendon-like series elasticity."""
     return make_pitcher_cfg().replace(actuators=_pitcher_actuators(sea_dt, leg_damping, waist_sea, leg_stiffness,
-                                                                        waist_gain))
+                                                                        waist_gain, waist_spring_gain))

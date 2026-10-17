@@ -1245,6 +1245,17 @@ class Stage1dK70GW2EnvCfg(Stage1dK70GEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MEnvCfg(Stage1dK70GEnvCfg):
+    """K70G + waist controller gains x2 only (waist_roll PD, yaw / pitch SEA motor kp / kd), SEA springs unchanged -
+    separates a stiffer controller from stiffer mechanics (K70GW2 scales the springs too)."""
+
+    robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 225.0, "knee": 225.0,
+                                                                                   "ankle": 90.0}, waist_sea=True,
+                                                      leg_stiffness={"hip": 1800.0, "knee": 1800.0, "ankle": 900.0},
+                                                      waist_gain=2.0, waist_spring_gain=1.0)
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
