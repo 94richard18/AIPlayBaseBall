@@ -105,6 +105,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # of a ~1.0 s release that falls at ~1.8 s rests on a critic with value loss ~150 (peer analysis 2026-10-17)
     if os.environ.get("PPO_STEPS"):
         agent_cfg.num_steps_per_env = int(os.environ["PPO_STEPS"])
+    # GAE lam (PPO_LAM): 0.98 at gamma 0.999 reaches ~48 steps; higher leans less on the critic (value loss ~150)
+    if os.environ.get("PPO_LAM"):
+        agent_cfg.algorithm.lam = float(os.environ["PPO_LAM"])
     if os.environ.get("PPO_EPOCHS"):
         agent_cfg.algorithm.num_learning_epochs = int(os.environ["PPO_EPOCHS"])
     if os.environ.get("PPO_MINIBATCHES"):
