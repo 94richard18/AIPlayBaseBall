@@ -83,6 +83,8 @@ def main():
     cause = np.full(n, "", dtype=object)  # which fall condition fired first (pelvis / head / <body> touch / flight)
     rb_names = list(base.robot.body_names)
     head_rel = np.full((n, 2), np.nan)  # head - lead foot (x toward the plate, y toward first base) at the fall
+    bland = np.full((n, 4), np.nan)  # back foot's first touchdown after 1.0 s: time, back foot - COM y, - lead foot y / x
+    b_air = np.zeros(n, dtype=bool)  # back foot off the ground since 1.0 s
     at18 = np.full((n, 5), np.nan)  # at 1.8 s: COM - lead foot x / y, back foot - lead foot x, COM to support, planted
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -112,6 +114,18 @@ def main():
                 hr = (hd[:, :2] - d0.body_link_pos_w[:, base.foot_ids[0], :2]).cpu().numpy()
                 head_rel[new] = hr[new]
             fell_at[new] = t
+            if t >= 1.0:
+                d2 = base.robot.data
+                bc = (base.feet.data.net_forces_w_history[:, :, base.foot_sensor_ids[1]].norm(dim=-1).max(1).values
+                      > cfg.contact_force_n).cpu().numpy()
+                land = b_air & bc & np.isnan(bland[:, 0]) & np.isnan(fell_at)
+                if land.any():
+                    c2, _ = base._com()
+                    bp, lp = d2.body_link_pos_w[:, base.foot_ids[1], :2], d2.body_link_pos_w[:, base.foot_ids[0], :2]
+                    v = torch.stack([bp[:, 1] - c2[:, 1], bp[:, 1] - lp[:, 1], bp[:, 0] - lp[:, 0]], -1).cpu().numpy()
+                    bland[land, 0] = t
+                    bland[land, 1:] = v[land]
+                b_air |= ~bc
             if abs(t - 1.8) < dt / 2:
                 d1 = base.robot.data
                 c1, _ = base._com()
@@ -174,6 +188,18 @@ def main():
             f"{np.median(at18[g, 2]):+.2f} m (stepped through in {int((at18[g, 2] > 0).sum())}); COM to the feet segment "
             f"{np.median(at18[g, 3]):.2f} m; planted lead only {int((at18[g, 4] == 1).sum())}, back only "
             f"{int((at18[g, 4] == 2).sum())}, both {int((at18[g, 4] == 3).sum())}, none {int((at18[g, 4] == 0).sum())}")
+        bl = bland[g]
+        hit = ~np.isnan(bl[:, 0])
+        say(f"     back foot touchdown after 1.0 s: {int(hit.sum())}/{int(g.sum())}"
+            + (f", median at {np.median(bl[hit, 0]):.2f} s; back foot - COM y {np.median(bl[hit, 1]):+.2f} m (1B side of the COM "
+               f"in {int((bl[hit, 1] > 0).sum())}), - lead foot y {np.median(bl[hit, 2]):+.2f} x {np.median(bl[hit, 3]):+.2f} m"
+               if hit.any() else ""))
+        wi = [i for i, (a, b) in enumerate(WINDOWS) if a == 1.4][0]
+        st = acc["steps"][g, wi].clip(min=1)
+        share = (sat[g, wi] / st[:, None]).mean(0)
+        say("     at torque limit 1.4-1.8 s: " + ", ".join(f"{nm} {share[names.index(nm)]:.2f}" for nm in
+            ("l_hip_roll", "l_ankle_roll", "l_hip_yaw", "l_hip_pitch", "l_ankle_pitch", "r_hip_roll") if nm in names)
+            + " | top: " + ", ".join(f"{names[j]} {share[j]:.2f}" for j in np.argsort(-share)[:4]))
         if gname.startswith("fell"):
             hr = head_rel[g]
             say(f"     head - lead foot at the fall (x toward the plate, y toward first base): median x {np.median(hr[:, 0]):+.2f} "

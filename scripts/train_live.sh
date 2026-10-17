@@ -50,8 +50,12 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     if [ -n "${NOISY_EVAL:-}" ]; then
         # NOISY_EVAL=1: the start-noise eval on every checkpoint, best tracked by it (user 2026-10-17: full RL until
         # 10-18 22:00, the bar is >= 30/64 at rest and thrown with start noise 0.02)
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
+        # NOISY_ENVS=128: two draws' worth of independent starts in one launch, the score scaled back to /64 (a single
+        # 64-run draw spreads ~+-4: fy r1 3875 drew 20, then 13)
+        NE=${NOISY_ENVS:-64}
+        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs $NE --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
         SCORE=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
+        [ -n "$SCORE" ] && SCORE=$(((SCORE * 64 + NE / 2) / NE))
         echo "[cycles] $IT with start noise 0.02: ${SCORE:-?} up"
         grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_noise.txt" | sed 's/^/    /'
     fi
