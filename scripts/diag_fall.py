@@ -37,7 +37,7 @@ from isaaclab_tasks.utils import load_cfg_from_registry  # noqa: E402
 
 import aibaseball.tasks  # noqa: F401, E402
 
-WINDOWS = ((1.0, 1.4), (1.4, 1.8), (1.8, 2.2))
+WINDOWS = ((0.85, 1.0), (1.0, 1.4), (1.4, 1.8), (1.8, 2.2))
 
 
 def say(*a):
@@ -72,10 +72,11 @@ def main():
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
     n, dt = base.num_envs, base.step_dt
     names = list(base.body_names)  # aligned with base.body_ids
+    knee = base.robot.find_joints("l_knee")[0][0]  # lead knee (left leg leads)
     lim = base.robot.root_physx_view.get_dof_max_forces().to(base.device)[0][base.body_ids].clamp_min(1.0)
     nw = len(WINDOWS)
     # per env, per window sums: steps, lead/back contact, lead/back slip (sum, count), COM-support distance, COM speed
-    acc = {k: np.zeros((n, nw)) for k in ("steps", "c0", "c1", "s0", "s1", "sd", "sv")}
+    acc = {k: np.zeros((n, nw)) for k in ("steps", "c0", "c1", "s0", "s1", "sd", "sv", "kq", "kv", "fx", "fz")}
     sat = np.zeros((n, nw, len(names)))
     fell_at = np.full(n, np.nan)
     with torch.inference_mode():
@@ -111,6 +112,11 @@ def main():
             acc["s1"][:, i] += np.where(pl[:, 1], fvn[:, 1], 0.0)
             acc["sd"][:, i] += np.nan_to_num(dist.cpu().numpy(), nan=0.0)
             acc["sv"][:, i] += com_v.norm(dim=-1).cpu().numpy()
+            acc["kq"][:, i] += d.joint_pos[:, knee].cpu().numpy()
+            acc["kv"][:, i] += d.joint_vel[:, knee].cpu().numpy()
+            f0 = base.feet.data.net_forces_w[:, base.foot_sensor_ids[0]]  # lead foot ground reaction
+            acc["fx"][:, i] += f0[:, :2].norm(dim=-1).cpu().numpy()
+            acc["fz"][:, i] += f0[:, 2].abs().cpu().numpy()
             tq = (d.applied_torque[:, base.body_ids].abs() / lim).cpu().numpy()
             sat[:, i] += tq >= args.sat
         ok = base._stand_state()[4].cpu().numpy() & np.isnan(fell_at)
@@ -128,6 +134,8 @@ def main():
             say(f"    {a:.1f}-{b:.1f} s: contact lead {np.mean(c0 / st):.2f} back {np.mean(c1 / st):.2f} | slip lead "
                 f"{np.sum(acc['s0'][g, i]) / max(c0.sum(), 1):.2f} back {np.sum(acc['s1'][g, i]) / max(c1.sum(), 1):.2f} m/s"
                 f" | COM to support {np.mean(acc['sd'][g, i] / st):.3f} m, COM speed {np.mean(acc['sv'][g, i] / st):.2f} m/s")
+            say(f"      lead knee {np.mean(acc['kq'][g, i] / st):+.2f} rad, {np.mean(acc['kv'][g, i] / st):+.1f} rad/s | "
+                f"lead-foot force horizontal {np.mean(acc['fx'][g, i] / st):.0f} N, vertical {np.mean(acc['fz'][g, i] / st):.0f} N")
             share = (sat[g, i] / st[:, None]).mean(0)
             top = np.argsort(-share)[:6]
             say("      at torque limit: " + ", ".join(f"{names[j]} {share[j]:.2f}" for j in top if share[j] > 0.005))
