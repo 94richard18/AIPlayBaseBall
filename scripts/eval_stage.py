@@ -97,7 +97,9 @@ def main():
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
     n = base.num_envs
     fell_at = np.full(n, np.nan)
-    com_dy18 = np.full(n, np.nan)  # COM y - lead foot y at 1.8 s (y + toward first base)
+    com_dy18 = np.full(n, np.nan)
+    com_dytd = np.full(n, np.nan)  # COM y - lead foot y 0.1 s after the robot's touchdown (stage 1b), and its y speed
+    com_vytd = np.full(n, np.nan)  # COM y - lead foot y at 1.8 s (y + toward first base)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -119,6 +121,13 @@ def main():
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
+            if hasattr(base, "s_land_step"):
+                at = (base.s_landed & ((base.episode_length_buf - base.s_land_step) == int(round(0.1 / base.step_dt)))).cpu().numpy()
+                if at.any():
+                    cm, cv = base._com()
+                    dy = (cm[:, 1] - base.robot.data.body_link_pos_w[:, base.foot_ids[0], 1]).cpu().numpy()
+                    com_dytd[at] = dy[at]
+                    com_vytd[at] = cv[:, 1].cpu().numpy()[at]
             if abs((k + 1) * base.step_dt - 1.8) < base.step_dt / 2:
                 cm, _ = base._com()
                 com_dy18 = (cm[:, 1] - base.robot.data.body_link_pos_w[:, base.foot_ids[0], 1]).cpu().numpy()
@@ -185,6 +194,9 @@ def main():
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
             f"{slid.sum()}/{n}; lift done with the feet back home: {done_lift.sum()}/{n}")
+    if not np.isnan(com_dytd).all():
+        say(f"  COM y - lead foot y 0.1 s after the touchdown (+ toward 1B), median {np.nanmedian(com_dytd):+.2f} m, COM y speed "
+            f"{np.nanmedian(com_vytd):+.2f} m/s ({int((~np.isnan(com_dytd)).sum())} landed)")
     if not np.isnan(com_dy18).all():
         say(f"  COM y - lead foot y at 1.8 s (+ toward 1B), median: all {np.median(com_dy18):+.2f} m, not fallen by then "
             + (f"{np.median(com_dy18[up18]):+.2f} m ({int(up18.sum())})" if up18.any() else "-"))
