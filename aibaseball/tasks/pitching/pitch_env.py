@@ -356,6 +356,13 @@ class PitchEnv(DirectRLEnv):
                 on = self.s_landed
             since = since - c.stand_pd_delay_s
             w = (on.float() * (since / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
+            if c.stand_pd_start == "landed":  # only the legs from the touchdown: the upper body still from the release
+                # (touchdown ~0.9-1.0 s comes before the release - the throwing arm must not be pulled to the set pose)
+                rs = (self.episode_length_buf - self.release_step).float() * self.step_dt
+                w_up = (self.released.float() * (rs / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
+                legm = torch.zeros(1, len(self.body_names), dtype=torch.bool, device=self.device)
+                legm[0, self.lead_leg_cols + self.back_leg_cols] = True
+                w = torch.where(legm, w, w_up)
             stand = self._stand_q
             if c.stand_pd_legs == "hold":
                 legs = self.lead_leg_cols + self.back_leg_cols

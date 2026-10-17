@@ -97,6 +97,7 @@ def main():
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
     n = base.num_envs
     fell_at = np.full(n, np.nan)
+    com_dy18 = np.full(n, np.nan)  # COM y - lead foot y at 1.8 s (y + toward first base)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -118,6 +119,10 @@ def main():
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
+            if abs((k + 1) * base.step_dt - 1.8) < base.step_dt / 2:
+                cm, _ = base._com()
+                com_dy18 = (cm[:, 1] - base.robot.data.body_link_pos_w[:, base.foot_ids[0], 1]).cpu().numpy()
+                up18 = np.isnan(fell_at)
             if 0.2 <= (k + 1) * base.step_dt <= 0.95:
                 lz = base.robot.data.body_link_pos_w[:, base.foot_ids[0], 2] - base.s_feet0[:, 0, 2]
                 lift_max = np.maximum(lift_max, lz.cpu().numpy())
@@ -180,6 +185,9 @@ def main():
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
             f"{slid.sum()}/{n}; lift done with the feet back home: {done_lift.sum()}/{n}")
+    if not np.isnan(com_dy18).all():
+        say(f"  COM y - lead foot y at 1.8 s (+ toward 1B), median: all {np.median(com_dy18):+.2f} m, not fallen by then "
+            + (f"{np.median(com_dy18[up18]):+.2f} m ({int(up18.sum())})" if up18.any() else "-"))
     say(f"  lead foot lift (highest over its start, 0.2-0.95 s): median {np.median(lift_max):.2f} m, max "
         f"{lift_max.max():.2f} m, >= 0.15 m in {(lift_max >= 0.15).sum()}/{n}")
     say(f"  toward the plate (+x) since the start (median): lead foot {np.median(dx[:, 0]):+.2f} m, back foot "
