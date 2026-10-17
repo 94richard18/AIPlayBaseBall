@@ -348,12 +348,32 @@ class PitchEnv(DirectRLEnv):
                 self._rel_q[cap] = self.robot.data.joint_pos[cap][:, self.body_ids]
                 self._rel_q_set |= cap
             since = (self.episode_length_buf - self.release_step).float() * self.step_dt
-            w = (self.released.float() * (since / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
+            on = self.released
+            if c.stand_pd_start == "landed" and hasattr(self, "s_landed"):
+                # brace from the robot's own lead-foot touchdown (zero-action K70G fell at ~1.17 s, right after the
+                # plant at ~0.95 s - a blend from the release or from 1.4 s starts too late)
+                since = (self.episode_length_buf - self.s_land_step).float() * self.step_dt
+                on = self.s_landed
+            since = since - c.stand_pd_delay_s
+            w = (on.float() * (since / c.stand_pd_blend_s).clamp(0.0, 1.0)).unsqueeze(-1)
             stand = self._stand_q
             if c.stand_pd_legs == "hold":
                 legs = self.lead_leg_cols + self.back_leg_cols
                 stand = stand.clone()
                 stand[:, legs] = self._rel_q[:, legs]
+            elif c.stand_pd_legs == "end":
+                # (b) brace: legs to the athlete's end frame (back foot through, in line with the lead foot) + a weight
+                # shift toward third base (both hip rolls +finish_roll, ankle rolls -finish_roll, as lift_shift_roll)
+                if not hasattr(self, "_end_legs"):
+                    z = torch.zeros(self.num_envs, device=self.device)
+                    self._end_legs = self._ref(z + self.ref.duration)["joint_pos"].clone()
+                    col = {self.body_names[i]: i for i in range(len(self.body_ids))}
+                    for side in ("l", "r"):
+                        self._end_legs[:, col[f"{side}_hip_roll"]] += c.finish_roll
+                        self._end_legs[:, col[f"{side}_ankle_roll"]] -= c.finish_roll
+                legs = self.lead_leg_cols + self.back_leg_cols
+                stand = stand.clone()
+                stand[:, legs] = self._end_legs[:, legs]
             nxt["joint_pos"] = nxt["joint_pos"] + w * (stand - nxt["joint_pos"])
             nxt["joint_vel"] = nxt["joint_vel"] * (1.0 - w)
         # after the release (no reference follow-through: the OBP trial ends 0.145 s later) the policy gets

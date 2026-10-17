@@ -117,6 +117,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # legs of that standing pose: "ref_release" = the athlete's at its release (lead hip flexed ~90 deg: with the
     # robot's shorter stride it lifted the planted lead foot), "hold" = the robot's own leg angles at its release
     stand_pd_legs: str = "ref_release"
+    stand_pd_start: str = "release"  # "release" / "landed": the stand_pd_blend_s blend starts at the robot's touchdown
+    stand_pd_delay_s: float = 0.0  # ... this long after its start
+    finish_roll: float = 0.0  # stand_pd_legs "end": hip rolls +, ankle rolls - this (rad; + moves the weight toward 3B)
     # braking guidance: forward COM speed low from the lead-foot touchdown to brake_after_release_s after the release
     # (per step, ~w_brake_v2 over brake_window_s) and once at the release (w_brake_release); each x 0.5 (exp(-(v/0.3)^2)
     # + exp(-(v/1.0)^2))
@@ -1222,6 +1225,19 @@ class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
     residual_scale: float = 0.25
+
+
+@configclass
+class Stage1dK70GBEnvCfg(Stage1dK70GEnvCfg):
+    """(b) brace reference: K70G whose PD base, from the robot's lead-foot touchdown + stand_pd_delay_s, blends over
+    stand_pd_blend_s to a static end pose - the athlete's end-frame legs (back foot through) + finish_roll toward 3B,
+    upper body at the set position. Zero-action scan (one factor at a time): finish_roll, then delay, then blend."""
+
+    stand_pd_legs: str = "end"
+    stand_pd_start: str = "landed"
+    stand_pd_delay_s: float = 0.1
+    stand_pd_blend_s: float = 0.3
+    finish_roll: float = 0.1
 
 
 @configclass
