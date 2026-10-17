@@ -1221,6 +1221,30 @@ class Stage1dK70GEnvCfg(Stage1dK70EnvCfg):
 
 
 @configclass
+class Stage1dK70GW15EnvCfg(Stage1dK70GEnvCfg):
+    """K70G + waist PD / SEA spring and motor gains x1.5 (torque limits unchanged). Zero-action K70G: 0.1 s after the
+    touchdown the COM was already 0.60 m toward 1B of the lead foot at +1.0 m/s with the arm throw, -0.23 m / -0.86 m/s
+    without it - is the waist yielding to the throw's reaction?"""
+
+    robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 225.0, "knee": 225.0,
+                                                                                   "ankle": 90.0}, waist_sea=True,
+                                                      leg_stiffness={"hip": 1800.0, "knee": 1800.0, "ankle": 900.0},
+                                                      waist_gain=1.5)
+
+
+@configclass
+class Stage1dK70GW2EnvCfg(Stage1dK70GEnvCfg):
+    """K70G + waist PD / SEA spring and motor gains x2.0 (torque limits unchanged). Zero-action K70G: 0.1 s after the
+    touchdown the COM was already 0.60 m toward 1B of the lead foot at +1.0 m/s with the arm throw, -0.23 m / -0.86 m/s
+    without it - is the waist yielding to the throw's reaction?"""
+
+    robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 225.0, "knee": 225.0,
+                                                                                   "ankle": 90.0}, waist_sea=True,
+                                                      leg_stiffness={"hip": 1800.0, "knee": 1800.0, "ankle": 900.0},
+                                                      waist_gain=2.0)
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
