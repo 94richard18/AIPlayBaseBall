@@ -1,7 +1,7 @@
 """Is the human-strength batter's bat speed limited by its joints? Open-loop reference swing (zero residual) in physics,
 per actuator group: share of the swing at the torque limit (PD demand >= 98% of effort) and at the speed limit.
 
-    python scripts/diag_bat_speed.py --headless [--strength human|strong] [--effort_scale 1.0] [--ff 1.0]
+    python scripts/diag_bat_speed.py --headless [--strength human|strong] [--effort_scale 1.0] [--gain_scale 1.0] [--ff 1.0]
 
 Prints the sweet-spot speed (peak before contact, and at the reference contact time) next to the reference's own
 (kinematic) bat speed, so the gap can be split into "joints saturate" vs "PD tracking lags".
@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--strength", choices=("human", "strong"), default="human")
 parser.add_argument("--effort_scale", type=float, default=1.0, help="multiplies every group's torque limit (not fingers)")
 parser.add_argument("--ff", type=float, default=1.0, help="velocity feed-forward of the reference")
+parser.add_argument("--gain_scale", type=float, default=1.0, help="multiplies PD stiffness and damping (not the torque limits)")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--window", type=float, default=0.3, help="s before the reference contact counted as the swing")
 AppLauncher.add_app_launcher_args(parser)
@@ -35,6 +36,10 @@ from aibaseball.tasks.tee_batting.mimic_env_cfg import TeeBattingHumanPlayEnvCfg
 def main():
     cfg = TeeBattingHumanPlayEnvCfg()
     cfg.robot = make_aib1_cfg(human_strength=args.strength == "human", effort_scale=args.effort_scale)
+    for name, a in cfg.robot.actuators.items():  # controller gains only: the torque / speed limits stay as chosen
+        if name not in ("finger", "thumb"):
+            a.stiffness *= args.gain_scale
+            a.damping *= args.gain_scale
     cfg.scene.num_envs = args.envs
     cfg.rsi_prob = 0.0
     cfg.vel_feedforward = args.ff
@@ -86,7 +91,7 @@ def main():
                 sat_t[g] += (hit_t & swing).sum()
                 sat_v[g] += (hit_v & swing).sum()
     ok = alive.sum().item()
-    print(f"== diag_bat_speed strength={args.strength} effort_scale={args.effort_scale} ff={args.ff} "
+    print(f"== diag_bat_speed strength={args.strength} effort_scale={args.effort_scale} gain_scale={args.gain_scale} ff={args.ff} "
           f"({ok}/{n} envs swung to the contact time without a reset)")
     m = alive if ok else torch.ones_like(alive)
     print(f"sweet spot peak before contact {peak[m].mean():.1f} m/s (min {peak[m].min():.1f}, max {peak[m].max():.1f}); "
