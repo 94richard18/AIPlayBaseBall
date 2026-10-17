@@ -19,7 +19,7 @@ for r in $(seq 1 "$ROUNDS"); do
     RUN="${PRE}_r$r"
     echo "[select] round $r from $BEST_CK (best $BEST)"
     # identical-start goal 99: never stop a round early, the selection is on the noisy count
-    NOISY_EVAL=1 SEED=$r bash scripts/train_live.sh "$TASK" "$BEST_CK" "$ITS" "$RUN" "$EVERY" 99 > "logs/chain_$RUN.txt" 2>&1
+    NOISY_EVAL=1 SEED=$((r + ${SEED0:-0})) bash scripts/train_live.sh "$TASK" "$BEST_CK" "$ITS" "$RUN" "$EVERY" 99 > "logs/chain_$RUN.txt" 2>&1
     grep -E "^\[cycles\] [0-9]+(:| with start noise)" "logs/chain_$RUN.txt" | sed 's/^/    /'
     CK=""
     while read -r line; do
