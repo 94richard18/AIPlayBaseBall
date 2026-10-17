@@ -1218,6 +1218,13 @@ class Stage1dK70GEnvCfg(Stage1dK70EnvCfg):
 
 
 @configclass
+class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
+    """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
+
+    residual_scale: float = 0.25
+
+
+@configclass
 class Stage1dK70GIEnvCfg(Stage1dK70GEnvCfg):
     """K70G + the COM inboard of the lead foot over 1.4-2.2 s (com_inboard_sigma 0.15, max 0.0). diag_fall fz 4100:
     late fallers' COM +0.23 m toward 1B of the lead foot at 1.8 s (tipped over it, 1B side 22/25), standers -0.35 m;
