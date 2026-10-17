@@ -423,6 +423,18 @@ class StageEnv(PitchEnv):
             qk = self.robot.data.joint_pos[:, self.lead_knee_jid]
             firm = torch.exp(-(((qk - c.lead_knee_max).clamp_min(0.0) / c.lead_knee_sigma) ** 2))
             support = torch.where(win, support * firm, support)
+        if c.com_inboard_sigma > 0:
+            # COM inboard of the lead foot in the finish (diag_fall fz 4100): at 1.8 s, on the lead foot alone, the
+            # late fallers' COM was +0.23 m toward first base of the lead foot and they tipped over it (1B side 22/25);
+            # the standers' -0.35 m (their back foot had landed 0.50 m to the 3B side at ~1.39 s vs 0.23 m). Athlete:
+            # pelvis -0.03 m of the lead foot. Over reference time [com_inboard_t0, _t1) "support" also needs
+            # COM y - lead foot y under com_inboard_max: x exp(-((dy - max)+ / sigma)^2)
+            tr = self._ref_time()
+            win = (tr >= c.com_inboard_t0) & (tr < c.com_inboard_t1)
+            com, _ = self._com()
+            dy = com[:, 1] - self.robot.data.body_link_pos_w[:, self.foot_ids[0], 1]
+            inb = torch.exp(-(((dy - c.com_inboard_max).clamp_min(0.0) / c.com_inboard_sigma) ** 2))
+            support = torch.where(win, support * inb, support)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
         if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate

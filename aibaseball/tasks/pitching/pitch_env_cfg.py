@@ -668,6 +668,10 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     lead_knee_max: float = 0.3
     lead_knee_t0: float = 1.05
     lead_knee_t1: float = 1.35
+    com_inboard_sigma: float = 0.0  # > 0: finish, "support" x exp(-((COM y - lead foot y - max)+ / sigma)^2)
+    com_inboard_max: float = 0.0  # y + = toward first base; the lead foot is the left (1B-side) foot
+    com_inboard_t0: float = 1.4  # reference time window
+    com_inboard_t1: float = 2.2
     brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
     brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -1211,6 +1215,15 @@ class Stage1dK70GEnvCfg(Stage1dK70EnvCfg):
     robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 225.0, "knee": 225.0,
                                                                                    "ankle": 90.0}, waist_sea=True,
                                                       leg_stiffness={"hip": 1800.0, "knee": 1800.0, "ankle": 900.0})
+
+
+@configclass
+class Stage1dK70GIEnvCfg(Stage1dK70GEnvCfg):
+    """K70G + the COM inboard of the lead foot over 1.4-2.2 s (com_inboard_sigma 0.15, max 0.0). diag_fall fz 4100:
+    late fallers' COM +0.23 m toward 1B of the lead foot at 1.8 s (tipped over it, 1B side 22/25), standers -0.35 m;
+    lead-leg roll joints at their torque limit only 3-5% of 1.4-1.8 s. Athlete pelvis -0.03 m of the lead foot."""
+
+    com_inboard_sigma: float = 0.15
 
 
 @configclass
