@@ -577,7 +577,10 @@ class StageEnv(PitchEnv):
             jp = self.robot.data.joint_pos[env_ids].clone()
             jv = self.robot.data.joint_vel[env_ids].clone()
             b = self.body_ids if torch.is_tensor(self.body_ids) else torch.tensor(self.body_ids, device=self.device)
-            jp[:, b] += (2 * torch.rand(len(env_ids), len(b), device=self.device) - 1) * self.cfg.start_joint_noise
+            amp = self.cfg.start_joint_noise
+            if self.cfg.start_noise_ramp_steps > 0:  # ramped in from 0 (fp: full noise at once, set success 3-9%)
+                amp *= min(1.0, self.common_step_counter / self.cfg.start_noise_ramp_steps)
+            jp[:, b] += (2 * torch.rand(len(env_ids), len(b), device=self.device) - 1) * amp
             self.robot.write_joint_state_to_sim(jp, jv, env_ids=env_ids)
         if self._ls is not None and self.cfg.landed_start_prob > 0:
             self._landed_start(env_ids[torch.rand(len(env_ids), device=self.device) < self.cfg.landed_start_prob])

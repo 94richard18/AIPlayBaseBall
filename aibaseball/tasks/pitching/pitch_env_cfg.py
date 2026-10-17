@@ -657,6 +657,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     brake_lead_sigma_m: float = 0.0  # > 0, throw_upper: after the release the quality's support part also needs the COM
     # not ahead of the lead foot: x exp(-(COM x beyond the lead foot / this)^2)
     start_joint_noise: float = 0.0  # > 0: uniform +- this (rad) on the body joints at every reset (independent starts)
+    start_noise_ramp_steps: int = 0  # > 0: start_joint_noise ramps in from 0 over this many env steps (one process)
     brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
     brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -1141,6 +1142,20 @@ class Stage1dNEnvCfg(Stage1dSEnvCfg):
 
 @configclass
 class Stage1dN70EnvCfg(Stage1dNEnvCfg):
+    throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dNREnvCfg(Stage1dNEnvCfg):
+    """Stage1dN with the start noise ramped in from 0 over 300 iterations (64 env steps each). fp N70 (0.02 from the
+    first iteration, from fo S70 3400): training set success 50% -> 3-9%, PPO learned mostly from failures; identical
+    evals 28/18/13/34/6/5/3/6, then 3/3/0/0 to 4000 (600 its); noisy evals 11/64 on the best three (fo 3400: 7)."""
+
+    start_noise_ramp_steps: int = 300 * 64
+
+
+@configclass
+class Stage1dNR70EnvCfg(Stage1dNREnvCfg):
     throw_upper_scale: float = 0.7
 
 
