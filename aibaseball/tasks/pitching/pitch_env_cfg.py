@@ -1131,6 +1131,30 @@ class Stage1dS90EnvCfg(Stage1dSEnvCfg):
 
 
 @configclass
+class Stage1dNEnvCfg(Stage1dSEnvCfg):
+    """Stage1dS trained from varied starts (start_joint_noise 0.02 rad). fo S70 model_3400: 45/64 from the identical
+    start, 7/64 with 0.02 rad start noise (53 falls) - one memorised trajectory; S70 evals 33 / 45 / 11 / 8 / 38 / 2 /
+    0 / 0 flipped together because all starts were the same."""
+
+    start_joint_noise: float = 0.02
+
+
+@configclass
+class Stage1dN70EnvCfg(Stage1dNEnvCfg):
+    throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dN80EnvCfg(Stage1dNEnvCfg):
+    throw_upper_scale: float = 0.8
+
+
+@configclass
+class Stage1dN90EnvCfg(Stage1dNEnvCfg):
+    throw_upper_scale: float = 0.9
+
+
+@configclass
 class Stage1dREnvCfg(Stage1dBEnvCfg):
     """Stage1dB with most episodes from the set position (RSI 0.5 -> 0.2): the eval scores full pitches only. fk B75
     (2950 -> 3400): 12 / 25 / 28 / 28 / 24 / 27 / 28 / 10 / 12 of 64; training set starts 29-54% success, RSI starts
