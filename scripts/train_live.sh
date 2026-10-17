@@ -5,6 +5,7 @@
 # rate jump; 50-iteration cycles spent a large share of each round in that transient (fk / fm swings 28 -> 10, 16 -> 0).
 #   bash scripts/train_live.sh <task> <checkpoint.pt> <max_iterations> <run_name> [every=50] [goal=60]
 # Stops at the goal or after <max_iterations>; the last report also films the best checkpoint (key frames).
+# The goal needs both evals: identical starts and start joint noise 0.02 rad (user decision 2026-10-17).
 set -u
 cd "$(dirname "$0")/.."
 TASK=$1
@@ -37,11 +38,19 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_$IT.txt"
     UP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_$IT.txt" | head -1 | cut -d' ' -f2)
     echo "[cycles] $IT: ${UP:-?} up ($NEW)"
-    grep -E "^  (falls:|at rest|  thrown)" "logs/eval_${RUN}_$IT.txt" | sed 's/^/    /'
+    grep -E "^  (falls:|at rest|thrown)" "logs/eval_${RUN}_$IT.txt" | sed 's/^/    /'
     grep -E "stage/(success_set|fall_rate_set|success_rsi|fall_rate_rsi)" logs_pitch_stand.txt | tail -4 | sed 's/^ */    train /'
     [ -n "$UP" ] && [ "$UP" -gt "$BEST" ] && { BEST=$UP; BESTCK=$NEW; }
     echo "[cycles] best so far $BEST ($BESTCK)"
-    if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then echo "[cycles] goal reached"; RESULT=0; break; fi
+    if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then
+        # user 2026-10-17 "兩次都要過": a crossing counts only if the eval with independent starts (start joint noise
+        # 0.02 rad) passes too - the identical-start eval is 64 copies of one pitch up to solver noise
+        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
+        NUP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
+        echo "[cycles] $IT with start noise 0.02: ${NUP:-?} up"
+        grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_noise.txt" | sed 's/^/    /'
+        if [ -n "$NUP" ] && [ "$NUP" -ge "$GOAL" ]; then echo "[cycles] goal reached"; BESTCK=$NEW; RESULT=0; break; fi
+    fi
 done
 kill $PID 2>/dev/null; wait $PID 2>/dev/null; sleep 10
 $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$BESTCK" --video "videos/${RUN}_best.mp4" 2>&1 \
