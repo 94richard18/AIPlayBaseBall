@@ -20,7 +20,7 @@ IT0=$(basename "$CKPT" .pt | sed 's/model_//')
 [ $((IT0 % EVERY)) -ne 0 ] && { echo "[cycles] start $IT0 not on the checkpoint interval $EVERY - stopped"; exit 1; }
 echo "$TASK $RUN $IT0 $((MAXIT / EVERY)) $EVERY" > logs/current_chain.txt
 MARK=$(mktemp)
-SAVE_EVERY=$EVERY $PY -u scripts/train.py --task "$TASK" --headless --num_envs 4096 --max_iterations 5000 --run_name "$RUN" \
+SAVE_EVERY=$EVERY $PY -u scripts/train.py --task "$TASK" --headless --num_envs ${NUM_ENVS:-4096} --max_iterations 5000 --run_name "$RUN" \
     --resume True --load_run "$(basename "$(dirname "$CKPT")")" --checkpoint "$(basename "$CKPT")" \
     ${NOISE:+--max_noise_std $NOISE} ${MIN_NOISE:+--min_noise_std $MIN_NOISE} ${SEED:+--seed $SEED} >> logs_pitch_stand.txt 2>&1 &
 PID=$!
