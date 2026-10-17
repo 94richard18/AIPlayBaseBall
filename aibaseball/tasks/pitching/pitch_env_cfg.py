@@ -1203,6 +1203,17 @@ class Stage1dK90EnvCfg(Stage1dKEnvCfg):
 
 
 @configclass
+class Stage1dK70GEnvCfg(Stage1dK70EnvCfg):
+    """(b) reference check: K70 with leg PD gains x1.5 (stiffness hip / knee 1800, ankle 900; damping 225 / 225 / 90),
+    torque limits unchanged (human strength). Zero-action K70 fell 64/64 at 0.95 s with the lead foot 0.42 m behind
+    its start; stride_speed 0.8 / 0.7 / leg_ref_scale 0.8 did not help (stride_speed is unused in stage 1b)."""
+
+    robot: ArticulationCfg = make_elastic_pitcher_cfg(sea_dt=1 / 800, leg_damping={"hip": 225.0, "knee": 225.0,
+                                                                                   "ankle": 90.0}, waist_sea=True,
+                                                      leg_stiffness={"hip": 1800.0, "knee": 1800.0, "ankle": 900.0})
+
+
+@configclass
 class Stage1dP70EnvCfg(Stage1dPEnvCfg):
     throw_upper_scale: float = 0.7
 
