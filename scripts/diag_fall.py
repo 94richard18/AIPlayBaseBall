@@ -79,13 +79,31 @@ def main():
     acc = {k: np.zeros((n, nw)) for k in ("steps", "c0", "c1", "s0", "s1", "sd", "sv", "kq", "kv", "fx", "fz")}
     sat = np.zeros((n, nw, len(names)))
     fell_at = np.full(n, np.nan)
+    cause = np.full(n, "", dtype=object)  # which fall condition fired first (pelvis / head / <body> touch / flight)
+    rb_names = list(base.robot.body_names)
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
             obs, _, _, _ = w.step(pol(obs))
             t = (k + 1) * dt
             f = base.fallen.cpu().numpy()
-            fell_at[np.isnan(fell_at) & f] = t
+            new = np.isnan(fell_at) & f
+            if new.any():
+                d0 = base.robot.data
+                pz = (d0.body_link_pos_w[:, base.pelvis_id, 2] < cfg.fallen_pelvis_z).cpu().numpy()
+                hz = (base._head_z() < cfg.fallen_head_z).cpu().numpy()
+                tb = np.full(n, -1)
+                if cfg.fallen_touch_z > 0:
+                    pp = d0.body_link_pos_w[:, base.touch_ids]
+                    x = pp[..., 0] - base.scene.env_origins[:, 0:1]
+                    gr = torch.where(x < cfg.mound_slope_start_x, torch.full_like(x, cfg.mound_top_z),
+                                     (cfg.mound_top_z - (x - cfg.mound_slope_start_x) * cfg.mound_slope).clamp_min(base.field_z))
+                    h = (pp[..., 2] - gr).cpu().numpy()
+                    tb = np.where((h < cfg.fallen_touch_z).any(-1), h.argmin(-1), -1)
+                for e in np.nonzero(new)[0]:
+                    cs = (["pelvis"] if pz[e] else []) + (["head"] if hz[e] else []) +                          ([rb_names[base.touch_ids[tb[e]]] + " touch"] if tb[e] >= 0 else [])
+                    cause[e] = "+".join(cs) or "flight"
+            fell_at[new] = t
             wi = [i for i, (a, b) in enumerate(WINDOWS) if a <= t < b]
             if not wi:
                 continue
@@ -124,6 +142,11 @@ def main():
     say(f"== diag_fall: {args.checkpoint} | {n} episodes, {args.task}, set {' '.join(args.set) or '-'}")
     say(f"  fell {int((~np.isnan(fell_at)).sum())} (in 1.5-2.2 s: {int(late.sum())}), standing at the end {int(ok.sum())}")
     say(f"  fall times: {np.round(np.sort(fell_at[~np.isnan(fell_at)]), 2).tolist()}")
+    for lo, hi in ((0.0, 1.5), (1.5, 2.6), (2.6, 9.0)):
+        m = (fell_at >= lo) & (fell_at < hi)
+        if m.any():
+            u, k = np.unique(cause[m], return_counts=True)
+            say(f"  fall cause {lo:.1f}-{hi:.1f} s ({int(m.sum())}): " + ", ".join(f"{a} {b}" for a, b in sorted(zip(u, k), key=lambda z: -z[1])))
     for gname, g in (("fell 1.5-2.2 s", late), ("standing", ok)):
         if not g.any():
             continue
