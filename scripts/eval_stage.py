@@ -97,6 +97,7 @@ def main():
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
     n = base.num_envs
     fell_at = np.full(n, np.nan)
+    lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
@@ -117,6 +118,9 @@ def main():
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
+            if 0.2 <= (k + 1) * base.step_dt <= 0.95:
+                lz = base.robot.data.body_link_pos_w[:, base.foot_ids[0], 2] - base.s_feet0[:, 0, 2]
+                lift_max = np.maximum(lift_max, lz.cpu().numpy())
         both, speed, tilt, head_z, ok = (x.cpu().numpy() for x in base._stand_state())
         dd = base.robot.data  # movement toward the plate (+x) since the first step: lead foot, back foot, pelvis
         dx = torch.cat([dd.body_link_pos_w[:, base.foot_ids, 0] - base.s_feet0[..., 0],
@@ -176,6 +180,8 @@ def main():
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
             f"{lifted.sum()}/{n}, median {np.median(lift_t):.2f} s; back foot moved > {cfg.back_slide_max_m} m: "
             f"{slid.sum()}/{n}; lift done with the feet back home: {done_lift.sum()}/{n}")
+    say(f"  lead foot lift (highest over its start, 0.2-0.95 s): median {np.median(lift_max):.2f} m, max "
+        f"{lift_max.max():.2f} m, >= 0.15 m in {(lift_max >= 0.15).sum()}/{n}")
     say(f"  toward the plate (+x) since the start (median): lead foot {np.median(dx[:, 0]):+.2f} m, back foot "
         f"{np.median(dx[:, 1]):+.2f} m, pelvis {np.median(dx[:, 2]):+.2f} m (min pelvis {dx[:, 2].min():+.2f} m)")
     if up.any():
