@@ -46,7 +46,16 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     echo "[cycles] $IT: ${UP:-?} up ($NEW)"
     grep -E "^  (falls:|at rest|thrown)" "logs/eval_${RUN}_$IT.txt" | sed 's/^/    /'
     grep -E "stage/(success_set|fall_rate_set|success_rsi|fall_rate_rsi)" logs_pitch_stand.txt | tail -4 | sed 's/^ */    train /'
-    [ -n "$UP" ] && [ "$UP" -gt "$BEST" ] && { BEST=$UP; BESTCK=$NEW; }
+    SCORE=$UP
+    if [ -n "${NOISY_EVAL:-}" ]; then
+        # NOISY_EVAL=1: the start-noise eval on every checkpoint, best tracked by it (user 2026-10-17: full RL until
+        # 10-18 22:00, the bar is >= 30/64 at rest and thrown with start noise 0.02)
+        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
+        SCORE=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
+        echo "[cycles] $IT with start noise 0.02: ${SCORE:-?} up"
+        grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_noise.txt" | sed 's/^/    /'
+    fi
+    [ -n "$SCORE" ] && [ "$SCORE" -gt "$BEST" ] && { BEST=$SCORE; BESTCK=$NEW; }
     echo "[cycles] best so far $BEST ($BESTCK)"
     if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then
         # user 2026-10-17 "兩次都要過": a crossing counts only if the eval with independent starts (start joint noise

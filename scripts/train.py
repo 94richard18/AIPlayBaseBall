@@ -101,6 +101,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # smaller PPO updates (PPO_EPOCHS / PPO_MINIBATCHES, 2026-10-17 user "維持全RL，換穩定方法"): fo / fp / fq / fr all
     # ran 5 epochs x 4 mini-batches with the adaptive learning rate pinned at its 1e-5 floor (KL above target even
     # there), peaked at 44-45 and collapsed within 200-400 iterations
+    # longer rollouts (PPO_STEPS): 64 steps = 0.16 s at 400 Hz, and GAE (lam 0.98) reaches ~0.12 s, so the advantage
+    # of a ~1.0 s release that falls at ~1.8 s rests on a critic with value loss ~150 (peer analysis 2026-10-17)
+    if os.environ.get("PPO_STEPS"):
+        agent_cfg.num_steps_per_env = int(os.environ["PPO_STEPS"])
     if os.environ.get("PPO_EPOCHS"):
         agent_cfg.algorithm.num_learning_epochs = int(os.environ["PPO_EPOCHS"])
     if os.environ.get("PPO_MINIBATCHES"):
