@@ -55,6 +55,10 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         echo "[cycles] $IT with start noise 0.02: ${SCORE:-?} up"
         grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_noise.txt" | sed 's/^/    /'
     fi
+    if [ -f logs/eval_queue.sh ]; then  # side jobs in the eval slot (training runs on, still 2 Isaac processes)
+        mv logs/eval_queue.sh logs/eval_queue_running.sh
+        bash logs/eval_queue_running.sh >> logs/eval_queue_out.txt 2>&1 < /dev/null
+    fi
     [ -n "$SCORE" ] && [ "$SCORE" -gt "$BEST" ] && { BEST=$SCORE; BESTCK=$NEW; }
     echo "[cycles] best so far $BEST ($BESTCK)"
     if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then
