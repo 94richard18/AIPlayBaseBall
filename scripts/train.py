@@ -98,6 +98,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     if os.environ.get("SAVE_EVERY"):  # short keep-best cycles need a checkpoint every few iterations
         agent_cfg.save_interval = int(os.environ["SAVE_EVERY"])
+    # smaller PPO updates (PPO_EPOCHS / PPO_MINIBATCHES, 2026-10-17 user "維持全RL，換穩定方法"): fo / fp / fq / fr all
+    # ran 5 epochs x 4 mini-batches with the adaptive learning rate pinned at its 1e-5 floor (KL above target even
+    # there), peaked at 44-45 and collapsed within 200-400 iterations
+    if os.environ.get("PPO_EPOCHS"):
+        agent_cfg.algorithm.num_learning_epochs = int(os.environ["PPO_EPOCHS"])
+    if os.environ.get("PPO_MINIBATCHES"):
+        agent_cfg.algorithm.num_mini_batches = int(os.environ["PPO_MINIBATCHES"])
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )
