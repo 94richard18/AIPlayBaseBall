@@ -1256,6 +1256,13 @@ class Stage1dK70GW2MEnvCfg(Stage1dK70GEnvCfg):
 
 
 @configclass
+class Stage1dK70GIW2MEnvCfg(Stage1dK70GW2MEnvCfg):
+    """K70GW2M (waist controller gains x2) + K70GI's COM-inboard support factor over 1.4-2.2 s."""
+
+    com_inboard_sigma: float = 0.15
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
