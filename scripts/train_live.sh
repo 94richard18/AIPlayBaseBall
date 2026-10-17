@@ -37,9 +37,10 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     # identical starts (start noise forced off: the Stage1dN tasks train with it on)
     $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 2>&1 \
         | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_$IT.txt"
-    if [ $(((IT - IT0) % 150)) -eq 0 ]; then  # a video every 150 iterations, rendered in the eval slot (training runs on)
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 1 --checkpoint "$NEW" --set start_joint_noise=0.0 \
-            --video "videos/${RUN}_iter_$IT.mp4" --video_episodes 1 2>&1 | grep -E "^\[video\]|CUDA error|out of memory" | head -3
+    # no video here: a 1-env render next to training stalled both (fp 3550: one training iteration 1586 s, the render
+    # ~50 min); user 2026-10-17 "等70%結束再錄就好" - the best checkpoint is filmed when the task ends
+    if [ -n "${LIVE_VIDEO:-}" ] && [ $(((IT - IT0) % 150)) -eq 0 ]; then
+        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 1 --checkpoint "$NEW" --set start_joint_noise=0.0             --video "videos/${RUN}_iter_$IT.mp4" --video_episodes 1 2>&1 | grep -E "^\[video\]|CUDA error|out of memory" | head -3
     fi
     UP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_$IT.txt" | head -1 | cut -d' ' -f2)
     echo "[cycles] $IT: ${UP:-?} up ($NEW)"
