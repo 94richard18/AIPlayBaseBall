@@ -32,6 +32,7 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from rsl_rl.runners import OnPolicyRunner  # noqa: E402
 
+from isaaclab.utils.math import quat_apply  # noqa: E402
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
 from isaaclab_tasks.utils import load_cfg_from_registry  # noqa: E402
 
@@ -81,6 +82,8 @@ def main():
     fell_at = np.full(n, np.nan)
     cause = np.full(n, "", dtype=object)  # which fall condition fired first (pelvis / head / <body> touch / flight)
     rb_names = list(base.robot.body_names)
+    head_rel = np.full((n, 2), np.nan)  # head - lead foot (x toward the plate, y toward first base) at the fall
+    at18 = np.full((n, 5), np.nan)  # at 1.8 s: COM - lead foot x / y, back foot - lead foot x, COM to support, planted
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
@@ -103,7 +106,22 @@ def main():
                 for e in np.nonzero(new)[0]:
                     cs = (["pelvis"] if pz[e] else []) + (["head"] if hz[e] else []) +                          ([rb_names[base.touch_ids[tb[e]]] + " touch"] if tb[e] >= 0 else [])
                     cause[e] = "+".join(cs) or "flight"
+            if new.any():
+                tq = d0.body_link_quat_w[:, base.torso_id]
+                hd = d0.body_link_pos_w[:, base.torso_id] + quat_apply(tq, torch.tensor([0.0, 0.0, 0.62], device=base.device).expand(n, 3))
+                hr = (hd[:, :2] - d0.body_link_pos_w[:, base.foot_ids[0], :2]).cpu().numpy()
+                head_rel[new] = hr[new]
             fell_at[new] = t
+            if abs(t - 1.8) < dt / 2:
+                d1 = base.robot.data
+                c1, _ = base._com()
+                lf, bf = d1.body_link_pos_w[:, base.foot_ids[0], :2], d1.body_link_pos_w[:, base.foot_ids[1], :2]
+                fz = base.feet.data.net_forces_w_history[:, :, base.foot_sensor_ids].norm(dim=-1).max(1).values > cfg.contact_force_n
+                ab = bf - lf
+                sg = (((c1[:, :2] - lf) * ab).sum(-1) / (ab * ab).sum(-1).clamp_min(1e-6)).clamp(0.0, 1.0)
+                dseg = (c1[:, :2] - (lf + sg.unsqueeze(-1) * ab)).norm(dim=-1)
+                at18[:] = torch.stack([c1[:, 0] - lf[:, 0], c1[:, 1] - lf[:, 1], bf[:, 0] - lf[:, 0], dseg,
+                                       fz[:, 0].float() * 1 + fz[:, 1].float() * 2], -1).cpu().numpy()
             wi = [i for i, (a, b) in enumerate(WINDOWS) if a <= t < b]
             if not wi:
                 continue
@@ -147,6 +165,21 @@ def main():
         if m.any():
             u, k = np.unique(cause[m], return_counts=True)
             say(f"  fall cause {lo:.1f}-{hi:.1f} s ({int(m.sum())}): " + ", ".join(f"{a} {b}" for a, b in sorted(zip(u, k), key=lambda z: -z[1])))
+    lt = (fell_at >= 1.9) & (fell_at < 2.9)
+    for gname, g in (("fell 1.9-2.9 s", lt), ("standing", ok)):
+        if not g.any():
+            continue
+        say(f"  -- {gname} ({int(g.sum())}): at 1.8 s COM - lead foot x {np.median(at18[g, 0]):+.2f} y {np.median(at18[g, 1]):+.2f} m"
+            f" (each: {' '.join(f'{v:+.2f}/{w:+.2f}' for v, w in at18[g, :2])}); back foot - lead foot x median "
+            f"{np.median(at18[g, 2]):+.2f} m (stepped through in {int((at18[g, 2] > 0).sum())}); COM to the feet segment "
+            f"{np.median(at18[g, 3]):.2f} m; planted lead only {int((at18[g, 4] == 1).sum())}, back only "
+            f"{int((at18[g, 4] == 2).sum())}, both {int((at18[g, 4] == 3).sum())}, none {int((at18[g, 4] == 0).sum())}")
+        if gname.startswith("fell"):
+            hr = head_rel[g]
+            say(f"     head - lead foot at the fall (x toward the plate, y toward first base): median x {np.median(hr[:, 0]):+.2f} "
+                f"y {np.median(hr[:, 1]):+.2f} m; forward (x > |y|) {int(((hr[:, 0] > np.abs(hr[:, 1]))).sum())}, "
+                f"1B side (y > |x|) {int((hr[:, 1] > np.abs(hr[:, 0])).sum())}, 3B side {int((-hr[:, 1] > np.abs(hr[:, 0])).sum())}, "
+                f"backward {int((-hr[:, 0] > np.abs(hr[:, 1])).sum())}")
     for gname, g in (("fell 1.5-2.2 s", late), ("standing", ok)):
         if not g.any():
             continue
