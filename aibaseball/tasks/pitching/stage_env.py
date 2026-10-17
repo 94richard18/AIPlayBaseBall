@@ -348,6 +348,8 @@ class StageEnv(PitchEnv):
 
     def _get_rewards(self) -> torch.Tensor:
         c = self.cfg
+        if not hasattr(self, "lead_knee_jid"):
+            self.lead_knee_jid = self.robot.find_joints("l_knee")[0][0]
         both, speed, tilt, head_z, ok = self._stand_state()
         new = torch.zeros_like(self.fallen)
         q_on = torch.ones_like(speed)
@@ -410,6 +412,17 @@ class StageEnv(PitchEnv):
             win = (tr >= c.plant_brake_t0) & (tr < c.plant_brake_t1)
             slow = torch.exp(-(((com_v[:, 0] - c.plant_brake_v).clamp_min(0.0) / c.plant_brake_sigma) ** 2))
             support = torch.where(win, support * slow, support)
+        if c.lead_knee_sigma > 0:
+            # a firm front leg (diag_fall fu 3850, start noise 0.02): the robot planted with the lead knee at 1.16 rad
+            # and kept it at 0.6-0.8 rad, lead-foot horizontal force only 50-65 N (fallers and standers alike); the
+            # athlete plants at ~0.9 rad and straightens it by 1.10 s (5-7 rad/s), blocking the stride's momentum
+            # through the leg. Over reference time [lead_knee_t0, _t1) "support" also needs the lead knee under
+            # lead_knee_max: x exp(-((q - max)+ / sigma)^2)
+            tr = self._ref_time()
+            win = (tr >= c.lead_knee_t0) & (tr < c.lead_knee_t1)
+            qk = self.robot.data.joint_pos[:, self.lead_knee_jid]
+            firm = torch.exp(-(((qk - c.lead_knee_max).clamp_min(0.0) / c.lead_knee_sigma) ** 2))
+            support = torch.where(win, support * firm, support)
         quality = (upright + still + support + tall) / 4.0
         rate = ((self.actions - self.prev_actions) ** 2).sum(-1)
         if c.throw_upper and c.w_stage_ball > 0:  # ball outcome, once when its flight ends: progress toward the plate

@@ -811,3 +811,43 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
     },
 )
+
+gym.register(
+    id="AIB-Stage1dK70-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK70EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="AIB-Stage1dK80-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK80EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="AIB-Stage1dK90-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK90EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="AIB-Stage1dK-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dKEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)

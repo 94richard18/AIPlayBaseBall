@@ -663,6 +663,11 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     plant_brake_v: float = 0.8
     plant_brake_t0: float = 1.0
     plant_brake_t1: float = 1.3
+    lead_knee_sigma: float = 0.0  # > 0: over reference time [lead_knee_t0, _t1) "support" also needs the lead knee
+    # under lead_knee_max rad: x exp(-((q - max)+ / sigma)^2) (a firm front leg after the plant)
+    lead_knee_max: float = 0.3
+    lead_knee_t0: float = 1.05
+    lead_knee_t1: float = 1.35
     brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
     brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
@@ -1171,6 +1176,30 @@ class Stage1dPEnvCfg(Stage1dNEnvCfg):
     0.16 m/s, lead hip pitch at its torque limit ~half that time in both groups."""
 
     plant_brake_sigma: float = 0.3
+
+
+@configclass
+class Stage1dKEnvCfg(Stage1dNEnvCfg):
+    """Stage1dN + a firm front leg: lead knee <= 0.3 rad over 1.05-1.35 s (lead_knee_sigma 0.3). diag_fall fu 3850
+    with start noise 0.02: lead knee 1.16 rad at the plant and 0.6-0.8 rad after it in fallers and standers alike,
+    lead-foot horizontal force 50-65 N (stopping 1.5 m/s in 0.1 s needs ~1300 N); athlete 0.9 -> 0.0 rad by 1.10 s."""
+
+    lead_knee_sigma: float = 0.3
+
+
+@configclass
+class Stage1dK70EnvCfg(Stage1dKEnvCfg):
+    throw_upper_scale: float = 0.7
+
+
+@configclass
+class Stage1dK80EnvCfg(Stage1dKEnvCfg):
+    throw_upper_scale: float = 0.8
+
+
+@configclass
+class Stage1dK90EnvCfg(Stage1dKEnvCfg):
+    throw_upper_scale: float = 0.9
 
 
 @configclass
