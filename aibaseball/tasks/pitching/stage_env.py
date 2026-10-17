@@ -570,6 +570,15 @@ class StageEnv(PitchEnv):
             self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)
             self.qd_target[env_ids] = 0.0
             self.robot.write_root_velocity_to_sim(torch.zeros(len(env_ids), 6, device=self.device), env_ids)
+        if self.cfg.start_joint_noise > 0:
+            # independent starts: every episode began on the identical reference pose (no state or physics
+            # randomisation), so the 64 noise-free eval pitches differed only by solver noise and flipped together
+            # (fo S70 45 -> 11). Uniform +-start_joint_noise rad on the body joints, velocities kept
+            jp = self.robot.data.joint_pos[env_ids].clone()
+            jv = self.robot.data.joint_vel[env_ids].clone()
+            b = self.body_ids if torch.is_tensor(self.body_ids) else torch.tensor(self.body_ids, device=self.device)
+            jp[:, b] += (2 * torch.rand(len(env_ids), len(b), device=self.device) - 1) * self.cfg.start_joint_noise
+            self.robot.write_joint_state_to_sim(jp, jv, env_ids=env_ids)
         if self._ls is not None and self.cfg.landed_start_prob > 0:
             self._landed_start(env_ids[torch.rand(len(env_ids), device=self.device) < self.cfg.landed_start_prob])
         if self.cfg.stage == "1a" and self.cfg.push_vel > 0:  # a small random shove at the start (robustness)

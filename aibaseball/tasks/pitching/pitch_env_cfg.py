@@ -656,6 +656,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
     brake_lead_sigma_m: float = 0.0  # > 0, throw_upper: after the release the quality's support part also needs the COM
     # not ahead of the lead foot: x exp(-(COM x beyond the lead foot / this)^2)
+    start_joint_noise: float = 0.0  # > 0: uniform +- this (rad) on the body joints at every reset (independent starts)
     brake_mode: str = "lead"  # "lead": as above; "support": COM over the planted feet (segment between both / the one)
     brake_support_tol_m: float = 0.05  # "support": distance free of penalty (foot size)
     upright_start_frac: float = 0.8  # standing quality "upright": full below this x stand_max_tilt_deg ...
