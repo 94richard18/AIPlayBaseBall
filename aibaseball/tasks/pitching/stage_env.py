@@ -270,6 +270,13 @@ class StageEnv(PitchEnv):
                 # release and swings 10 m/s toward third base 0.02 s later; s1d3 / s1d4 balls crossed 5-11 m wide)
                 hv = d.body_link_lin_vel_w[:, self.hand_id]
                 ahead = ahead & (hv[:, 0] > 5.0) & (hv[:, 1] >= c.release_vy_frac * hv[:, :2].norm(dim=-1))
+            if c.release_heading_deg is not None:
+                # ... or the hand's horizontal velocity heading within +-release_heading_deg of the plate line (+x):
+                # the athlete's hand heading sweeps -60 -> +45 deg over 0.95-1.0 s (~3700 deg/s, ~9 deg per 2.5 ms
+                # step) and crosses 0 at ~0.975 s (release 0.98 s); gk 4525 released at -37 deg on the athlete's time
+                hv = d.body_link_lin_vel_w[:, self.hand_id]
+                hd = torch.rad2deg(torch.atan2(hv[:, 1], hv[:, 0]))
+                ahead = ahead & (hv[:, 0] > 5.0) & (hd.abs() <= c.release_heading_deg)
             self.s_open |= (ahead & (tr >= c.release_window[0])) | (tr >= c.release_window[1])
             opened = (self.hold_q - c.finger_action_scale).expand(self.num_envs, -1)
             self.finger_next = torch.where(self.s_open.unsqueeze(-1),

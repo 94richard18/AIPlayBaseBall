@@ -645,6 +645,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     stride_speed: float = 1.0  # 1c: athlete clock rate
     release_ahead_m: float | None = None  # stage: fingers open when the hand is this far ahead of the pelvis (x) ...
     release_vy_frac: float | None = None  # stage: ... and the hand's velocity y >= this x its horizontal speed
+    release_heading_deg: float | None = None  # stage: ... and the hand's horizontal heading within +-this of +x
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
