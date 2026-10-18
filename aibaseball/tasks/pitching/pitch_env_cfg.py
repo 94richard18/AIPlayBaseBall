@@ -1267,6 +1267,17 @@ class Stage1dK70GIW2MEnvCfg(Stage1dK70GW2MEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MHEnvCfg(Stage1dK70GW2MEnvCfg):
+    """K70GW2M + heading release trigger (user decision 2026-10-18, step B: this change only, reward unchanged): the
+    fingers open when the throwing hand moves within +-10 deg of the plate line (forced at 1.3 s) instead of at the
+    athlete's release time. Eval of gl 4725: heading -43 -> -0.1 deg, 15 m/s, at rest 61 -> 59/64."""
+
+    scripted_release_s: float | None = None
+    release_ahead_m: float | None = -5.0
+    release_heading_deg: float | None = 10.0
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
