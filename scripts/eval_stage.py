@@ -210,9 +210,10 @@ def main():
         t4 = t3 & (np.abs(py) <= 0.2159 + 0.0366) & (pz >= 0.50) & (pz <= 1.10)
         tier = t1.astype(int) + t2 + t3 + t4  # nested: 0..4 (thrown but off-line counts as T0)
         rest = ok  # at rest (stand state, not fallen), before the throw condition
-        say("  W1 pitch tiers (highest per pitch) x at rest:   T0   T1   T2   T3   T4")
+        say("  W1 pitch tiers (highest per pitch) x at rest:  T0 not thrown / T0 off-line (> 10 deg) / T1 / T2 / T3 / T4")
         for lab, m in (("at rest", rest), ("not at rest", ~rest)):
-            say(f"    {lab:11s}                              " + " ".join(f"{int(((tier == t) & m).sum()):4d}" for t in range(5)))
+            say(f"    {lab:11s} " + " / ".join(f"{int(x):3d}" for x in [(~thrown & m).sum(), (thrown & ~t1 & m).sum()]
+                                              + [((tier == t) & m).sum() for t in range(1, 5)]))
         say(f"  release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s, heading median "
             f"{np.median(head[rel]) if rel.any() else 0:+.1f} deg (+ toward 1B); crossed in the air {int((cr & air_cross).sum())}/{n}")
         say(f"  W1 gate: at rest and thrown {int((rest & thrown).sum())}/{n} (>= 60/64), at rest and T3+ "
