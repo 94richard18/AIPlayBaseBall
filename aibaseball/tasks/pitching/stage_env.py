@@ -277,6 +277,12 @@ class StageEnv(PitchEnv):
                 hv = d.body_link_lin_vel_w[:, self.hand_id]
                 hd = torch.rad2deg(torch.atan2(hv[:, 1], hv[:, 0]))
                 ahead = ahead & (hv[:, 0] > 5.0) & (hd.abs() <= c.release_heading_deg)
+            if c.release_elev_deg is not None:
+                # ... and the hand's velocity elevation (deg above horizontal) inside (lo, hi): gm 4825 released on the
+                # plate line but ~48 deg downward from z 1.03 m (the ball landed short at 15 m/s)
+                hv = d.body_link_lin_vel_w[:, self.hand_id]
+                el = torch.rad2deg(torch.atan2(hv[:, 2], hv[:, :2].norm(dim=-1)))
+                ahead = ahead & (el >= c.release_elev_deg[0]) & (el <= c.release_elev_deg[1])
             self.s_open |= (ahead & (tr >= c.release_window[0])) | (tr >= c.release_window[1])
             opened = (self.hold_q - c.finger_action_scale).expand(self.num_envs, -1)
             self.finger_next = torch.where(self.s_open.unsqueeze(-1),
