@@ -33,6 +33,9 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         NEW=$(find "$EXP_DIR" -path "*_$RUN/model_$IT.pt" -newer "$MARK" 2>/dev/null | head -1)
         [ -z "$NEW" ] && sleep 30
     done
+    # EVAL_EVERY (a multiple of <every>): evaluate only every EVAL_EVERY iterations - two evals (64 + 128 envs) per
+    # 25-iteration checkpoint fell ~200 iterations behind the training (gj)
+    [ $(((IT - IT0) % ${EVAL_EVERY:-$EVERY})) -ne 0 ] && continue
     sleep 10  # let the checkpoint finish writing
     # identical starts (start noise forced off: the Stage1dN tasks train with it on)
     $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0 2>&1 \
