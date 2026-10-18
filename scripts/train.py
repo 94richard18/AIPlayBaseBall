@@ -245,6 +245,36 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         with torch.no_grad():
             ac.std.clamp_(min=min_std, max=max_std)
         print(f"[INFO] action noise std held in [{min_std}, {max_std}]")
+    # logging only (peer request 2026-10-19, late-drift analysis): rsl_rl logs no KL. After each update (outermost
+    # wrapper: the policy the next rollout uses), KL(rollout policy || updated policy) and the PPO clip fraction
+    # (|ratio - 1| > clip) over the whole rollout - the size of one update. No gradients, no sampling, no RNG.
+    ac_kl = runner.alg.actor_critic
+    update_kl = runner.alg.update
+    kl_step = [runner.current_learning_iteration]
+
+    def update_logged(*a, **k):
+        st = runner.alg.storage
+        mu0, sig0, obs, act = st.mu, st.sigma, st.observations, st.actions
+        out = update_kl(*a, **k)
+        kl_sum, clip_n, n = 0.0, 0, 0
+        with torch.inference_mode():
+            for i in range(obs.shape[0]):  # one rollout step at a time
+                ac_kl.update_distribution(obs[i])
+                mu, sig = ac_kl.action_mean, ac_kl.action_std
+                kl = (torch.log(sig / sig0[i] + 1.0e-5) + (sig0[i] ** 2 + (mu0[i] - mu) ** 2) / (2.0 * sig**2) - 0.5).sum(-1)
+                lp_new = ac_kl.distribution.log_prob(act[i]).sum(-1)
+                lp_old = torch.distributions.Normal(mu0[i], sig0[i]).log_prob(act[i]).sum(-1)
+                ratio = torch.exp(lp_new - lp_old)
+                kl_sum += kl.sum().item()
+                clip_n += ((ratio - 1.0).abs() > runner.alg.clip_param).sum().item()
+                n += kl.numel()
+        if runner.writer is not None:
+            runner.writer.add_scalar("Loss/approx_kl", kl_sum / n, kl_step[0])
+            runner.writer.add_scalar("Loss/clip_fraction", clip_n / n, kl_step[0])
+        kl_step[0] += 1
+        return out
+
+    runner.alg.update = update_logged
 
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
