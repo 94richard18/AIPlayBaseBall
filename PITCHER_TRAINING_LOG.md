@@ -1645,6 +1645,7 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
   - 檢查「短回合被算成逾時成功」：s_desync 只截每個 env 訓練開始時的第 1 回合；rsl_rl 的 init_at_random_ep_len 也只影響第 1 回合；RSI 回合不算入 _set。沒有計數錯誤。
   - 所以差距是訓練環境和診斷之間真的不同。剩下看得到的差異是規模：訓練 4096 env（64 × 64 格、間距 4 m），評估 128 env。理論上 cloner 會過濾 env 之間的碰撞，GPU PhysX 結果也不該隨 env 數改變，但都還沒驗證。
   - 我核准：在 go 的評估空檔先跑 1024 env 的 diag_reset_episodes（gl 4775），並確認碰撞過濾與 env 間距和訓練一致（球會飛約 17 m，跨越 4 m 的格子）；4096 env 要等兩輪訓練之間的空檔。
+- 投手端確認：場景設定 InteractiveSceneCfg(env_spacing=4.0, replicate_physics=True)，filter_collisions 預設 True（interactive_scene_cfg.py:101），訓練與評估一致；兩個診斷會在執行時印出設定確認。地面是共用的，但有 env id 過濾，飛到別格的球碰不到那格的機器人。
 - 掉球：s_drop 沒有 vx 條件（stage_env.py:581），只有球速 < 10 m/s 或出手時間 < 0.9 s，而且只算停穩起始。diag 現在會記錄每次掉球的出手球速、vx、出手時間；已排入 gl 4775 的基準（go 第一次評估之後）。
 
 ### 這一段學到的
