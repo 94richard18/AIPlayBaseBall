@@ -67,6 +67,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
+    arm_residual_scale: float | None = None  # shoulder / elbow / wrist residual scale (None = residual_scale)
     vel_feedforward: float = 1.0
     post_release_feedforward: float = 1.0  # velocity feed-forward scale after the release
     # balance mode after the release: the reference stays the PD base pose, but nothing rewards following it
@@ -649,6 +650,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
+    ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
@@ -1289,6 +1291,19 @@ class Stage1dK70GW2MBEnvCfg(Stage1dK70GW2MEnvCfg):
     ~25-28% of a full at-rest standing return (alive 100 + quality <= 100)."""
 
     w_stage_ball_rest: float = 50.0
+
+
+@configclass
+class Stage1dK70GW2MBAEnvCfg(Stage1dK70GW2MBEnvCfg):
+    """W2MB with the arms on the policy (user decision 2026-10-18 "手臂也要讓模型控制"): the shoulder / elbow / wrist
+    actions become a residual (0.25 x the action scale, legs 0.5) on the scripted throw reference; fingers still zeroed,
+    release still at the athlete's time. With frozen arms the release heading could only move through the pelvis and
+    legs (gn: -38..-43 deg for 300 iterations). Ball term additive (user-reported bundle): at -45 deg the product score
+    was ~0.3 of 50 - no gradient for the arms; additive 6.3 -> 12.9 from -45 to 0 deg."""
+
+    freeze_arms: bool = False
+    arm_residual_scale: float | None = 0.25
+    ball_rest_additive: bool = True
 
 
 @configclass

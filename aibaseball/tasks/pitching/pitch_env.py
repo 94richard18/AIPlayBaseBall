@@ -396,12 +396,15 @@ class PitchEnv(DirectRLEnv):
             post[self.back_leg_cols] = c.back_leg_post_release_gain
         if c.trunk_post_release_gain is not None:
             post[self.trunk_cols] = c.trunk_post_release_gain
-        pre = torch.full_like(post, c.residual_scale).unsqueeze(0)
+        res = torch.full_like(post, c.residual_scale)
+        if c.arm_residual_scale is not None:  # arms on their own (smaller) residual around the scripted throw
+            res[[i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]] =                 c.arm_residual_scale
+        pre = res.unsqueeze(0)
         if c.free_leg_gain != 1.0:  # reward v2: the legs choose the stride after free_after_s
             legs = torch.ones_like(post)
             legs[self.lead_leg_cols + self.back_leg_cols] = c.free_leg_gain
             pre = torch.where((self._ref_time() >= c.free_after_s).unsqueeze(-1), pre * legs.unsqueeze(0), pre)
-        scale = torch.where(self.released.unsqueeze(-1), c.residual_scale * post.unsqueeze(0), pre)
+        scale = torch.where(self.released.unsqueeze(-1), (res * post).unsqueeze(0), pre)
         body = nxt["joint_pos"] + self.actions[:, :29] * self.action_scale * scale
         self.q_target[:, self.body_ids] = torch.clamp(body, self.q_lo[self.body_ids], self.q_hi[self.body_ids])
         ff = (1.0 + (c.post_release_feedforward - 1.0) * self.released.float()) * c.vel_feedforward

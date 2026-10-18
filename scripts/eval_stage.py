@@ -103,6 +103,9 @@ def main():
     air_cross = np.zeros(n, dtype=bool)  # ball crossed the plate before touching the ground (W1 tier T2+)
     grounded = np.zeros(n, dtype=bool)  # ball flight ended on the ground before any plate crossing
     prev_cr = np.zeros(n, dtype=bool)
+    arm_abs, arm_n = np.zeros(n), np.zeros(n)
+    rel_yaw = np.full(n, np.nan)  # pelvis (root) yaw at the release step, deg (0 = facing +x)
+    prev_rel = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -110,6 +113,11 @@ def main():
             act = pol(obs)
             if args.zero:
                 act = torch.zeros_like(act)
+            if hasattr(base, "_arm_cols"):  # arm residual size over the throw (0.9-1.0 s reference time), raw action units
+                tr_now = base._ref_time()
+                win = ((tr_now >= 0.9) & (tr_now < 1.0)).float()
+                arm_abs += (act[:, base._arm_cols].abs().mean(-1) * win).cpu().numpy()
+                arm_n += win.cpu().numpy()
             obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
             if args.trace and k % 40 == 0:
@@ -124,6 +132,13 @@ def main():
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
+            if hasattr(base, "released"):
+                rel_now = base.released.cpu().numpy()
+                if (rel_now & ~prev_rel).any():
+                    qw, qx, qy, qz = base.robot.data.root_quat_w.cpu().numpy().T
+                    yaw = np.degrees(np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz)))
+                    rel_yaw = np.where(rel_now & ~prev_rel, yaw, rel_yaw)
+                prev_rel = rel_now
             if hasattr(base, "s_crossed"):  # first plate crossing this step, the flight not ended on the ground before
                 cr_now = base.s_crossed.cpu().numpy()
                 air_cross |= cr_now & ~prev_cr & ~grounded
@@ -216,6 +231,18 @@ def main():
                                               + [((tier == t) & m).sum() for t in range(1, 5)]))
         say(f"  release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s, heading median "
             f"{np.median(head[rel]) if rel.any() else 0:+.1f} deg (+ toward 1B); crossed in the air {int((cr & air_cross).sum())}/{n}")
+        drop = base.s_drop.cpu().numpy() if hasattr(base, "s_drop") else np.zeros(n, dtype=bool)
+        if arm_n.sum() > 0:
+            say(f"  arm action |a| mean over 0.9-1.0 s {(arm_abs.sum() / arm_n.sum()):.3f} (freeze_arms {cfg.freeze_arms}, "
+                f"arm residual scale {getattr(cfg, 'arm_residual_scale', None)}); ball dropped {int(drop.sum())}/{n}")
+        ry = rel & ~np.isnan(rel_yaw)
+        if ry.sum() > 2:
+            cc = np.corrcoef(head[ry], rel_yaw[ry])[0, 1]
+            sl = np.polyfit(rel_yaw[ry], head[ry], 1)[0]
+            say(f"  release heading p10/50/90 {np.percentile(head[ry], 10):+.1f}/{np.median(head[ry]):+.1f}/"
+                f"{np.percentile(head[ry], 90):+.1f} deg; pelvis yaw at release p10/50/90 "
+                f"{np.percentile(rel_yaw[ry], 10):+.1f}/{np.median(rel_yaw[ry]):+.1f}/{np.percentile(rel_yaw[ry], 90):+.1f} deg; "
+                f"corr {cc:+.2f}, slope {sl:+.2f} deg heading per deg yaw ({ry.sum()} releases)")
         if rel.any():
             elev = np.degrees(np.arctan2(vv_all[:, 2], np.hypot(vv_all[:, 0], vv_all[:, 1])))
             rz = (base.rel_pos - base.scene.env_origins).cpu().numpy()[:, 2] - base.field_z
