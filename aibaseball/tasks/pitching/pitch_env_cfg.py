@@ -1192,6 +1192,9 @@ class Stage1dKEnvCfg(Stage1dNEnvCfg):
     lead-foot horizontal force 50-65 N (stopping 1.5 m/s in 0.1 s needs ~1300 N); athlete 0.9 -> 0.0 rad by 1.10 s."""
 
     lead_knee_sigma: float = 0.3
+    # user 2026-10-18: the at-rest horizon is 4.0 s for eval and training (gk 4325 at 3.0 / 4.0 s: identical 6 -> 41,
+    # noisy 9 -> 24 of 64 - every run still up at 3.0 s was still settling, not falling)
+    episode_length_s = 4.0
 
 
 @configclass
