@@ -216,6 +216,13 @@ def main():
                                               + [((tier == t) & m).sum() for t in range(1, 5)]))
         say(f"  release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s, heading median "
             f"{np.median(head[rel]) if rel.any() else 0:+.1f} deg (+ toward 1B); crossed in the air {int((cr & air_cross).sum())}/{n}")
+        if rel.any():
+            elev = np.degrees(np.arctan2(vv_all[:, 2], np.hypot(vv_all[:, 0], vv_all[:, 1])))
+            rz = (base.rel_pos - base.scene.env_origins).cpu().numpy()[:, 2] - base.field_z
+            sc = base.release_score().cpu().numpy() if hasattr(base, "release_score") else np.zeros(n)
+            say(f"  release elevation median {np.median(elev[rel]):+.1f} deg, z median {np.median(rz[rel]):.2f} m above the "
+                f"plate ground; release score (gravity-only, 0..1) median {np.median(sc[rel]):.2f}, at rest "
+                + (f"{np.median(sc[rel & rest]):.2f}" if (rel & rest).any() else "-"))
         say(f"  W1 gate: at rest and thrown {int((rest & thrown).sum())}/{n} (>= 60/64), at rest and T3+ "
             f"{int((rest & (tier >= 3)).sum())}/{n} (>= 32/64), at rest and T4 {int((rest & (tier >= 4)).sum())}/{n}")
         ok = ok & thrown

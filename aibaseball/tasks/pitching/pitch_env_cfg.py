@@ -647,6 +647,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_vy_frac: float | None = None  # stage: ... and the hand's velocity y >= this x its horizontal speed
     release_heading_deg: float | None = None  # stage: ... and the hand's horizontal heading within +-this of +x
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
+    w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
+    ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
@@ -1276,6 +1278,17 @@ class Stage1dK70GW2MHEnvCfg(Stage1dK70GW2MEnvCfg):
     scripted_release_s: float | None = None
     release_ahead_m: float | None = -5.0
     release_heading_deg: float | None = 10.0
+
+
+@configclass
+class Stage1dK70GW2MBEnvCfg(Stage1dK70GW2MEnvCfg):
+    """K70GW2M + a ball term again (user decision 2026-10-18, one change; time release as in K70GW2M): the K chain
+    inherits Stage1dF's w_stage_ball = w_stage_zone = 0, so nothing scored the pitch and the policy traded height and
+    speed for balance (gl 4775: on the plate line the hand moves 30-50 deg downward at 12-15 m/s). release_score()
+    (0..1, gravity-only flight from the release state) x 50, paid at the time-out only when the episode ends at rest:
+    ~25-28% of a full at-rest standing return (alive 100 + quality <= 100)."""
+
+    w_stage_ball_rest: float = 50.0
 
 
 @configclass

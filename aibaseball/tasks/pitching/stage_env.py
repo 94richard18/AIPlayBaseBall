@@ -359,6 +359,28 @@ class StageEnv(PitchEnv):
             return ok & self.stride_ok()
         return ok & self.s_landed if self.cfg.stage == "1b" else ok
 
+    def release_score(self) -> torch.Tensor:
+        """0..1 pitch score from the release state (gravity only): 0.4 A + 0.6 B, A = exp(-(heading / sigma)^2) x
+        min(v / 20, 1) x min(x reached in the air / plate distance, 1), B = crossed the plate in the air x
+        exp(-(y / 0.5)^2) x exp(-((z - 0.8) / 0.6)^2) (y from the zone centre, z above the plate-level ground)."""
+        c = self.cfg
+        v = self.rel_vel
+        p = self.rel_pos - self.scene.env_origins
+        vx = v[:, 0].clamp_min(1e-3)
+        head = torch.rad2deg(torch.atan2(v[:, 1], v[:, 0]))
+        g = 9.81
+        h = (p[:, 2] - self.field_z - 0.037).clamp_min(0.0)  # ball centre over the ground at contact (radius)
+        t_g = (v[:, 2] + torch.sqrt(v[:, 2] ** 2 + 2 * g * h)) / g
+        t_p = ((c.plate_distance - p[:, 0]) / vx).clamp_min(0.0)
+        air = (t_g >= t_p) & (v[:, 0] > 0)
+        x_air = p[:, 0] + vx * torch.minimum(t_g, t_p)
+        a = (torch.exp(-((head / c.ball_rest_head_sigma_deg) ** 2)) * (v.norm(dim=-1) / 20.0).clamp(max=1.0)
+             * (x_air / c.plate_distance).clamp(0.0, 1.0)) * (v[:, 0] > 0).float()
+        y = p[:, 1] + v[:, 1] * t_p - c.zone_center_y
+        z = p[:, 2] + v[:, 2] * t_p - 0.5 * g * t_p**2 - self.field_z
+        b = air.float() * torch.exp(-((y / 0.5) ** 2)) * torch.exp(-(((z - 0.8) / 0.6) ** 2))
+        return 0.4 * a + 0.6 * b
+
     def _get_rewards(self) -> torch.Tensor:
         c = self.cfg
         if not hasattr(self, "lead_knee_jid"):
@@ -466,6 +488,13 @@ class StageEnv(PitchEnv):
             rew_ball = self.s_ball_end.float() * (c.w_stage_ball * prog + c.w_stage_zone * self.in_zone().float())
         else:
             rew_ball = torch.zeros_like(speed)
+        if c.throw_upper and c.w_stage_ball_rest > 0:
+            # pitch score from the release state, paid once at the time-out and only if the episode ends at rest (the
+            # W1 gate counts "at rest and T3+ on the same pitch"); gravity-only flight like eval_stage's tiers. The
+            # old progress term paid a rolling ball in full (s_ball_maxx) - the gm failure mode (plate z 0.04 m)
+            score = self.release_score()
+            pay = self.reset_time_outs & ok & ~self.fallen & self.released & ~self.recovery_ep
+            rew_ball = rew_ball + pay.float() * c.w_stage_ball_rest * score
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs
