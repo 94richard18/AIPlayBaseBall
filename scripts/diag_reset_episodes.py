@@ -53,6 +53,7 @@ def main():
     n = base.num_envs
     ep_idx = np.ones(n, dtype=int)  # index of the episode each env is in (1 = the first, from the fresh scene)
     rows = []  # ended episodes: (index, at rest & thrown, fell, end time s, dropped, timed out)
+    drops = []  # dropped balls: release speed, release vx, release reference time, episode time at the drop
     first = []  # first step of each episode: (index, ball-hand dist, max |SEA motor - joint|, |prev_actions|)
     orig_rew = base._get_rewards
 
@@ -71,8 +72,11 @@ def main():
             win = (to & ok & ~base.fallen & thrown).cpu().numpy()
             fell = base.fallen.cpu().numpy()
             drop = base.s_drop.cpu().numpy() if hasattr(base, "s_drop") else np.zeros(n, dtype=bool)
+            vn, vx, rt = v.cpu().numpy(), base.rel_vel[:, 0].cpu().numpy(), base.rel_ref_t.cpu().numpy()
             for i in np.nonzero(done)[0]:
                 rows.append((ep_idx[i], win[i], fell[i], el[i] * base.step_dt, drop[i], bool(to[i])))
+                if drop[i]:
+                    drops.append((vn[i], vx[i], rt[i], el[i] * base.step_dt))
         st = el == 1  # first step of an episode: the reset's writes are visible now
         if st.any():
             hand = d.body_link_pos_w[:, base.hand_id]
@@ -107,6 +111,9 @@ def main():
             if dn.any():  # the returned obs of a done env is its next episode's first observation
                 for i in np.nonzero(dn)[0]:
                     obs0.setdefault(min(ep_idx[i], 3), []).append(obs[i:i + 1].cpu().numpy())
+    sc = cfg.scene
+    say(f"  scene: env_spacing {sc.env_spacing} m, filter_collisions {getattr(sc, 'filter_collisions', '?')}, "
+        f"replicate_physics {sc.replicate_physics}, num_envs {n}")
     say(f"== diag_reset_episodes: {args.checkpoint} | {args.task}, {n} envs, start noise {args.noise}, "
         f"{'stochastic' if args.stochastic else 'deterministic'}, {T} steps ({args.episodes} x {cfg.episode_length_s} s)")
     a = np.array(rows, dtype=float)
@@ -117,6 +124,12 @@ def main():
         say(f"  episode {k}: ended {m.sum()}, at rest & thrown {int(e[:, 1].sum())} ({e[:, 1].mean():.0%}), falls "
             f"{int(fell.sum())} ({fell.mean():.0%})" + (f", fall time median {np.median(e[fell, 3]):.2f} s" if fell.any() else "")
             + f", drops {int(e[:, 4].sum())}, timed out {int(e[:, 5].sum())}")
+    if drops:
+        dr = np.array(drops)
+        say(f"  drops ({len(dr)}): release speed p10/50/90 {np.percentile(dr[:, 0], 10):.1f}/{np.median(dr[:, 0]):.1f}/"
+            f"{np.percentile(dr[:, 0], 90):.1f} m/s, < {cfg.drop_min_speed} m/s {(dr[:, 0] < cfg.drop_min_speed).sum()}, "
+            f"release before {cfg.drop_min_release_t} s {(dr[:, 2] < cfg.drop_min_release_t).sum()}, vx <= 0 "
+            f"{(dr[:, 1] <= 0).sum()}; release time median {np.median(dr[:, 2]):.2f} s, ended at median {np.median(dr[:, 3]):.2f} s")
     f = np.array(first, dtype=float)
     for k in sorted(set(f[:, 0].astype(int))):
         m = f[:, 0] == k

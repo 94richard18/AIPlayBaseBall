@@ -58,6 +58,7 @@ class StageEnv(PitchEnv):
         self.s_ball_maxx = torch.zeros(n, device=dev)
         self.s_ball_done = torch.zeros(n, dtype=torch.bool, device=dev)
         self.s_open = torch.zeros(n, dtype=torch.bool, device=dev)  # fingers opened (release_ahead_m trigger)
+        self.s_rel_forced = torch.zeros(n, dtype=torch.bool, device=dev)  # release action: opened at the window end
         self.s_ball_end = torch.zeros(n, dtype=torch.bool, device=dev)
         self._jcol = {self.body_names[i]: i for i in range(len(self.body_ids))}  # body joint name -> column
         self._arm_cols = [i for i, nm in enumerate(self.body_names) if any(k in nm for k in ("shoulder", "elbow", "wrist"))]
@@ -247,6 +248,7 @@ class StageEnv(PitchEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
+        rel_a = actions[:, 29 + self.cfg.release_action_col].clamp(-1.0, 1.0)  # release action (a finger column)
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
         if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise
             actions[:, self._arm_cols] = 0.0
@@ -258,6 +260,19 @@ class StageEnv(PitchEnv):
         else:
             super()._pre_physics_step(actions)
         c = self.cfg
+        if c.release_action_window_s is not None:
+            # the policy picks the release time: fingers open (latched) once the reference time passes
+            # release_ref + window x a, a = one finger column in [-1, 1] - before release_ref - window it cannot fire,
+            # at release_ref + window it is forced; a = 0 opens exactly at release_ref (scripted_release_s 0.0's step)
+            tr, w = self._ref_time(), c.release_action_window_s
+            fire = tr >= self.release_ref + w * rel_a
+            forced = tr >= self.release_ref + w
+            self.s_rel_forced |= forced & ~fire & ~self.s_open
+            self.s_open |= fire | forced
+            opened = (self.hold_q - c.finger_action_scale).expand(self.num_envs, -1)
+            self.finger_next = torch.where(self.s_open.unsqueeze(-1),
+                                           torch.clamp(opened, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids]),
+                                           self.finger_next)
         if c.release_ahead_m is not None:
             # release when the throwing hand passes release_ahead_m in front of the pelvis (toward the plate), not at
             # the athlete's release time: the robot's arm lags (s1d2 2350: at 0.98 s the hand was ~1 m behind the
@@ -613,6 +628,7 @@ class StageEnv(PitchEnv):
         self.s_ball_maxx[env_ids] = 0.0
         self.s_ball_done[env_ids] = False
         self.s_open[env_ids] = False
+        self.s_rel_forced[env_ids] = False
         self.s_ball_end[env_ids] = False
         if self.cfg.stage == "1b" and self.cfg.rsi_prob > 0:
             # reference-state starts mid-stride (PitchEnv wrote the athlete's pose and velocities at t0): the lead foot

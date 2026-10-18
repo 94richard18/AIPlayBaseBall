@@ -235,6 +235,12 @@ def main():
         if arm_n.sum() > 0:
             say(f"  arm action |a| mean over 0.9-1.0 s {(arm_abs.sum() / arm_n.sum()):.3f} (freeze_arms {cfg.freeze_arms}, "
                 f"arm residual scale {getattr(cfg, 'arm_residual_scale', None)}); ball dropped {int(drop.sum())}/{n}")
+        if getattr(cfg, "release_action_window_s", None) is not None and rel.any():
+            dt_rel = (base.rel_ref_t - base.release_ref).cpu().numpy()[rel] * 1000.0
+            fo = base.s_rel_forced.cpu().numpy()
+            say(f"  release time - release_ref p10/50/90 {np.percentile(dt_rel, 10):+.1f}/{np.median(dt_rel):+.1f}/"
+                f"{np.percentile(dt_rel, 90):+.1f} ms (window +-{cfg.release_action_window_s * 1000:.0f} ms); forced at the "
+                f"window end {int(fo.sum())}/{n}")
         ry = rel & ~np.isnan(rel_yaw)
         if ry.sum() > 2:
             cc = np.corrcoef(head[ry], rel_yaw[ry])[0, 1]

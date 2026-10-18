@@ -648,6 +648,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_vy_frac: float | None = None  # stage: ... and the hand's velocity y >= this x its horizontal speed
     release_heading_deg: float | None = None  # stage: ... and the hand's horizontal heading within +-this of +x
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
+    release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
+    release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
@@ -1304,6 +1306,17 @@ class Stage1dK70GW2MBAEnvCfg(Stage1dK70GW2MBEnvCfg):
     freeze_arms: bool = False
     arm_residual_scale: float | None = 0.25
     ball_rest_additive: bool = True
+
+
+@configclass
+class Stage1dK70GW2MBAREnvCfg(Stage1dK70GW2MBAEnvCfg):
+    """W2MBA + the policy picks the release time (user decision 2026-10-18, "approach A"): action 29 (a finger column,
+    unused otherwise) shifts the finger opening to release_ref + 0.05 s x a, a in [-1, 1], latched, forced at
+    release_ref + 0.05 s. With that output row zeroed (a = 0) it opens on the same step as scripted_release_s 0.0 -
+    the W2MBA run reproduces exactly. drop_ends unchanged (< 10 m/s or before 0.9 s)."""
+
+    scripted_release_s: float | None = None
+    release_action_window_s: float | None = 0.05
 
 
 @configclass
