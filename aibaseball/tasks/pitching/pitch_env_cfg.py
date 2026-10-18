@@ -1310,6 +1310,15 @@ class Stage1dK70GW2MBAEnvCfg(Stage1dK70GW2MBEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASEnvCfg(Stage1dK70GW2MBAEnvCfg):
+    """W2MBA with the ball term paid on set starts only (user decision 2026-10-18): s_drop applies only to t0 <= 0, so
+    the 50% RSI starts (t0 0.3-1.9 s) earned the score with no drop rule - a slow, lofted throw paid there and carried
+    into the set starts (go 4875: +23-28 deg, 8-9 m/s, 105/128 drops); post-release RSI starts got it for free."""
+
+    ball_rest_set_only: bool = True
+
+
+@configclass
 class Stage1dK70GW2MBAREnvCfg(Stage1dK70GW2MBAEnvCfg):
     """W2MBA + the policy picks the release time (user decision 2026-10-18, "approach A"): action 29 (a finger column,
     unused otherwise) shifts the finger opening to release_ref + 0.05 s x a, a in [-1, 1], latched, forced at
