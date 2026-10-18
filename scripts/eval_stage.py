@@ -104,6 +104,8 @@ def main():
     grounded = np.zeros(n, dtype=bool)  # ball flight ended on the ground before any plate crossing
     prev_cr = np.zeros(n, dtype=bool)
     arm_abs, arm_n = np.zeros(n), np.zeros(n)
+    rel_split = np.full((n, 3), np.nan)  # hand speed at the release: pelvis / trunk / arm parts along its direction
+    grp_abs, grp_n = np.zeros(3), 0.0  # |a| over 0.9-1.0 s: legs (0-11) / waist (12-14) / arms (15-28)
     rel_yaw = np.full(n, np.nan)  # pelvis (root) yaw at the release step, deg (0 = facing +x)
     prev_rel = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
@@ -118,6 +120,11 @@ def main():
                 win = ((tr_now >= 0.9) & (tr_now < 1.0)).float()
                 arm_abs += (act[:, base._arm_cols].abs().mean(-1) * win).cpu().numpy()
                 arm_n += win.cpu().numpy()
+                if win.any():
+                    aa = act[:, :29].abs()
+                    for gi, (g0, g1) in enumerate(((0, 12), (12, 15), (15, 29))):
+                        grp_abs[gi] += float((aa[:, g0:g1].mean(-1) * win).sum())
+                    grp_n += float(win.sum())
             obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
             if args.trace and k % 40 == 0:
@@ -138,6 +145,18 @@ def main():
                     qw, qx, qy, qz = base.robot.data.root_quat_w.cpu().numpy().T
                     yaw = np.degrees(np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz)))
                     rel_yaw = np.where(rel_now & ~prev_rel, yaw, rel_yaw)
+                    # hand speed at the release, split along the hand's velocity: pelvis + trunk (torso rigid motion
+                    # relative to the pelvis, at the hand) + arm (the rest)
+                    dd = base.robot.data
+                    vh = dd.body_link_lin_vel_w[:, base.hand_id]
+                    vp = dd.root_link_lin_vel_w
+                    vt = dd.body_link_lin_vel_w[:, base.torso_id] + torch.cross(
+                        dd.body_link_ang_vel_w[:, base.torso_id],
+                        dd.body_link_pos_w[:, base.hand_id] - dd.body_link_pos_w[:, base.torso_id], dim=-1)
+                    u = vh / vh.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+                    parts = torch.stack([(vp * u).sum(-1), ((vt - vp) * u).sum(-1), ((vh - vt) * u).sum(-1)], -1)
+                    new_rel = torch.as_tensor(rel_now & ~prev_rel, device=base.device)
+                    rel_split[new_rel.cpu().numpy()] = parts[new_rel].cpu().numpy()
                 prev_rel = rel_now
             if hasattr(base, "s_crossed"):  # first plate crossing this step, the flight not ended on the ground before
                 cr_now = base.s_crossed.cpu().numpy()
@@ -241,6 +260,14 @@ def main():
             say(f"  release time - release_ref p10/50/90 {np.percentile(dt_rel, 10):+.1f}/{np.median(dt_rel):+.1f}/"
                 f"{np.percentile(dt_rel, 90):+.1f} ms (window +-{cfg.release_action_window_s * 1000:.0f} ms); forced at the "
                 f"window end {int(fo.sum())}/{n}")
+        if grp_n > 0:
+            g = grp_abs / grp_n
+            say(f"  |a| mean over 0.9-1.0 s by group: legs {g[0]:.3f}, waist {g[1]:.3f}, arms {g[2]:.3f} (raw policy output)")
+        rs = rel & ~np.isnan(rel_split[:, 0])
+        if rs.any():
+            m = np.median(rel_split[rs], 0)
+            say(f"  hand speed at the release along its direction (median): pelvis {m[0]:.2f} + trunk {m[1]:.2f} + arm "
+                f"{m[2]:.2f} = {m.sum():.2f} m/s ({rs.sum()} releases)")
         ry = rel & ~np.isnan(rel_yaw)
         if ry.sum() > 2:
             cc = np.corrcoef(head[ry], rel_yaw[ry])[0, 1]

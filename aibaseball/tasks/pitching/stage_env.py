@@ -511,6 +511,8 @@ class StageEnv(PitchEnv):
             # old progress term paid a rolling ball in full (s_ball_maxx) - the gm failure mode (plate z 0.04 m)
             score = self.release_score()
             pay = self.reset_time_outs & ok & ~self.fallen & self.released & ~self.recovery_ep
+            if c.ball_rest_set_only:  # only where the drop rule applies (set starts): RSI starts threw with no drop
+                pay = pay & (self.t0 <= 0.0)
             rew_ball = rew_ball + pay.float() * c.w_stage_ball_rest * score
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)

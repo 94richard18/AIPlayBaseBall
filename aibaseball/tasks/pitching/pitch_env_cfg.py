@@ -653,6 +653,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
+    ball_rest_set_only: bool = False  # release_score() paid only on set starts (t0 <= 0, where s_drop applies)
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
