@@ -17,6 +17,8 @@ The earlier 114.6 km/h / 47 % strikes pitching result (`AIB-PitchElastic-v0`) fe
 could not be reproduced. Pitching restarted as small steps with "stand at rest after the throw" as the criterion;
 the full history is in [`PITCHER_TRAINING_LOG.md`](PITCHER_TRAINING_LOG.md) (Traditional Chinese).
 
+Video of the pitcher in training (2026-10-18): <https://youtu.be/swZP6mBEq0c>
+
 ## Current plan (one month, started 2026-10-15)
 
 Reduced scope on one PC: only the pitcher and the batter are physics RL; fielders, catcher and runners are
