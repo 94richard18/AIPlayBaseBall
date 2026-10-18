@@ -100,6 +100,9 @@ def main():
     com_dy18 = np.full(n, np.nan)
     com_dytd = np.full(n, np.nan)  # COM y - lead foot y 0.1 s after the robot's touchdown (stage 1b), and its y speed
     com_vytd = np.full(n, np.nan)  # COM y - lead foot y at 1.8 s (y + toward first base)
+    air_cross = np.zeros(n, dtype=bool)  # ball crossed the plate before touching the ground (W1 tier T2+)
+    grounded = np.zeros(n, dtype=bool)  # ball flight ended on the ground before any plate crossing
+    prev_cr = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -121,6 +124,11 @@ def main():
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
                     f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
+            if hasattr(base, "s_crossed"):  # first plate crossing this step, the flight not ended on the ground before
+                cr_now = base.s_crossed.cpu().numpy()
+                air_cross |= cr_now & ~prev_cr & ~grounded
+                grounded |= base.s_ball_done.cpu().numpy() & ~cr_now
+                prev_cr = cr_now
             if hasattr(base, "s_land_step"):
                 at = (base.s_landed & ((base.episode_length_buf - base.s_land_step) == int(round(0.1 / base.step_dt)))).cpu().numpy()
                 if at.any():
@@ -189,6 +197,26 @@ def main():
         thrown = rel & (v >= args.gate_min_speed) & (base.rel_ref_t.cpu().numpy() >= args.gate_min_release_t)
         say(f"  thrown (release >= {args.gate_min_speed:.0f} m/s at >= {args.gate_min_release_t:.2f} s): {thrown.sum()}/{n}; "
             f"at rest and thrown: {(ok & thrown).sum()}/{n}")
+        # W1 pitch tiers (user 2026-10-18), the highest each pitch reaches: T0 not thrown; T1 release heading within
+        # +-10 deg of the plate line (+x); T2 crosses the plate in the air, |y| <= 1.0 m; T3 |y| <= 0.5 m, z 0.2-1.5 m;
+        # T4 strike |y| <= 0.2525 m, z 0.50-1.10 m (aibaseball/game/agents.py StrikeZone). Gate: at rest and thrown
+        # >= 60/64, at rest and T3+ on the same pitch >= 32/64 (both evals, 4.0 s episodes)
+        vv_all = base.rel_vel.cpu().numpy()
+        head = np.degrees(np.arctan2(vv_all[:, 1], vv_all[:, 0]))
+        py, pz = yz[:, 0] - cfg.zone_center_y, yz[:, 1]
+        t1 = thrown & (np.abs(head) <= 10.0)
+        t2 = t1 & cr & air_cross & (np.abs(py) <= 1.0)
+        t3 = t2 & (np.abs(py) <= 0.5) & (pz >= 0.2) & (pz <= 1.5)
+        t4 = t3 & (np.abs(py) <= 0.2159 + 0.0366) & (pz >= 0.50) & (pz <= 1.10)
+        tier = t1.astype(int) + t2 + t3 + t4  # nested: 0..4 (thrown but off-line counts as T0)
+        rest = ok  # at rest (stand state, not fallen), before the throw condition
+        say("  W1 pitch tiers (highest per pitch) x at rest:   T0   T1   T2   T3   T4")
+        for lab, m in (("at rest", rest), ("not at rest", ~rest)):
+            say(f"    {lab:11s}                              " + " ".join(f"{int(((tier == t) & m).sum()):4d}" for t in range(5)))
+        say(f"  release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s, heading median "
+            f"{np.median(head[rel]) if rel.any() else 0:+.1f} deg (+ toward 1B); crossed in the air {int((cr & air_cross).sum())}/{n}")
+        say(f"  W1 gate: at rest and thrown {int((rest & thrown).sum())}/{n} (>= 60/64), at rest and T3+ "
+            f"{int((rest & (tier >= 3)).sum())}/{n} (>= 32/64), at rest and T4 {int((rest & (tier >= 4)).sum())}/{n}")
         ok = ok & thrown
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
