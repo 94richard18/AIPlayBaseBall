@@ -654,6 +654,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
     ball_rest_set_only: bool = False  # release_score() paid only on set starts (t0 <= 0, where s_drop applies)
+    ball_rest_no_dist: bool = False  # release_score(): drop the distance factor (additive A = (heading + speed) / 2)
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
@@ -1327,6 +1328,17 @@ class Stage1dK70GW2MBAREnvCfg(Stage1dK70GW2MBAEnvCfg):
 
     scripted_release_s: float | None = None
     release_action_window_s: float | None = 0.05
+
+
+@configclass
+class Stage1dK70GW2MBASVEnvCfg(Stage1dK70GW2MBASEnvCfg):
+    """W2MBAS + throw_upper_scale 0.8 + the distance factor dropped from the ball score (user decision 2026-10-19):
+    A = (heading + speed) / 2, so a lob scores no more than a flat throw at the same speed and heading (gp 5200's
+    +66 deg early slip-out out-scored the flat throw through the distance factor). Scale 0.8 on gp 5300 (eval only):
+    identical 46 -> 58, 0 drops, 12.1 -> 12.6 m/s; noisy drops 28 -> 11."""
+
+    throw_upper_scale: float = 0.8
+    ball_rest_no_dist: bool = True
 
 
 @configclass
