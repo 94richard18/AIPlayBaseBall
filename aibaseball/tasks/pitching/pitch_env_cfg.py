@@ -1342,6 +1342,16 @@ class Stage1dK70GW2MBASVEnvCfg(Stage1dK70GW2MBASEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVREnvCfg(Stage1dK70GW2MBASVEnvCfg):
+    """W2MBASV + the policy picks the release time (W2MBAR's approach A on scale 0.8, peer decision 2026-10-19 for
+    the run from gq 5850): action 29 shifts the finger opening to release_ref + 0.05 s x a, forced at +0.05 s. With
+    that output row zeroed it opens on the same step as W2MBASV's scripted release - checked on gq 5850."""
+
+    scripted_release_s: float | None = None
+    release_action_window_s: float | None = 0.05
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 

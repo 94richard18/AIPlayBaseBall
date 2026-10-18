@@ -933,6 +933,16 @@ gym.register(
 )
 
 gym.register(
+    id="AIB-Stage1dK70GW2MBASVR-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK70GW2MBASVREnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
     id="AIB-Stage1dK70GW2MBAR-v0",
     entry_point=f"{__name__}.stage_env:StageEnv",
     disable_env_checker=True,
