@@ -521,6 +521,9 @@ class StageEnv(PitchEnv):
             if c.ball_rest_set_only:  # only where the drop rule applies (set starts): RSI starts threw with no drop
                 pay = pay & (self.t0 <= 0.0)
             rew_ball = rew_ball + pay.float() * c.w_stage_ball_rest * score
+            if c.w_stage_rel_speed > 0:  # release speed on its own, same pay condition (gw: speed was ~0.5 per m/s)
+                rew_ball = rew_ball + pay.float() * c.w_stage_rel_speed * (
+                    self.rel_vel.norm(dim=-1) / c.rel_speed_full_mps).clamp(max=1.0)
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs

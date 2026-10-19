@@ -651,6 +651,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
     release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
+    w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
+    rel_speed_full_mps: float = 25.0
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
     ball_rest_set_only: bool = False  # release_score() paid only on set starts (t0 <= 0, where s_drop applies)
@@ -1393,6 +1395,16 @@ class Stage1dK70GW2MBASVRE20EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     already past full extension at the release (-412 deg/s), the robot still ~18 ms behind it."""
 
     arm_ref_lead_s: dict | None = {"r_elbow": 0.020}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1WEnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + a release-speed term (peer decision 2026-10-19, gw: reward change only): 50 x min(v / 25, 1), paid with
+    the ball score (set starts, at rest at the time-out, released). With no ball reaching the plate (B = 0) the ball
+    score paid only 50 x 0.4 x (heading + v / 20) / 2, ~0.5 per m/s; this adds 2 per m/s. 80 km/h at the plate needs
+    ~24 m/s at +2.5-5 deg; gv 7200 throws 14.3."""
+
+    w_stage_rel_speed: float = 50.0
 
 
 @configclass
