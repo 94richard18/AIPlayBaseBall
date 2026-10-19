@@ -26,7 +26,7 @@ scripted, and the game is played back from a recording.
 
 | Gate | Due | Content |
 |---|---|---|
-| W1 pitcher | 2026-10-29 | both evals (identical and random starts, 4.0 s episodes): at rest and thrown ≥ 60/64, and at rest + ball tier 3 (catchable) on the same pitch ≥ 32/64 |
+| W1 pitcher | 2026-10-29 | both evals (identical and random starts, 4.0 s episodes): at rest with the ball crossing the plate in the air at ≥ 80 km/h (drag included) ≥ 60/64, and at rest + ≥ 80 km/h + ball tier 3 (catchable) on the same pitch ≥ 32/64; human-strength joints and the elastic arm stay as they are |
 | W2 batter | 2026-11-05 | human-strength batter vs the RL pitcher's pitches, grass bounce / roll model |
 | W3 engine | 2026-11-05 | rules, scripted fielders / runners, 9 innings unattended |
 | W4 video | 2026-11-19 | integration, broadcast camera, full-game video |
