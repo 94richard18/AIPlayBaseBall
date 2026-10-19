@@ -51,7 +51,14 @@ def main():
     for kv in args.set:
         k, v = kv.split("=", 1)
         old = getattr(cfg, k)
-        setattr(cfg, k, (v.lower() in ("1", "true")) if isinstance(old, bool) else type(old)(v))
+        if isinstance(old, bool):
+            v = v.lower() in ("1", "true")
+        elif old is None or v == "None":
+            import ast
+            v = None if v == "None" else ast.literal_eval(v)
+        else:
+            v = type(old)(v)
+        setattr(cfg, k, v)
     for k, v in (("landed_start_prob", 0.0), ("rsi_prob", 0.0), ("assist_force_n", 0.0)):
         if hasattr(cfg, k):
             setattr(cfg, k, v)

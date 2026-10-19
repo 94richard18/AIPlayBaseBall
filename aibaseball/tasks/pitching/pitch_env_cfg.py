@@ -161,6 +161,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     action_scale: dict = {"hip": 0.5, "knee": 0.5, "ankle": 0.4, "waist": 1.0, "shoulder": 1.5, "elbow": 1.5, "wrist": 1.2}
     finger_action_scale: float = 0.4  # rad around the squeezed four-seam grip pose
     grip_squeeze: float = 0.15  # default finger targets this far past contact = grip force (0.3 ejected the ball)
+    # per group (None = grip_squeeze): the 7 Nm thumb out-pushed the 5 Nm fingers - the ball sat 8 mm off the grip pose,
+    # index / middle pads 4-8 mm off it, thumb_cmc_flex at its limit 96% of the hold (diag_grip, gv 7200)
+    grip_squeeze_thumb: float | None = None
+    grip_squeeze_fingers: float | None = None
 
     # ---------------------------------------------------------------- field (OBP lab frame: +x toward home plate)
     plate_distance: float = 18.44  # m, pitching rubber -> home plate

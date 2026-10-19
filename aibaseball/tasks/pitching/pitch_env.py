@@ -103,7 +103,12 @@ class PitchEnv(DirectRLEnv):
         grip = BallGrip.load(PITCHER_GRIP)
         self.ball_local = torch.tensor(grip.ball_center_hand, device=dev).expand(n, 3)
         self.grip_q = self.robot.data.default_joint_pos[0, self.finger_ids].clone()
-        squeeze = torch.tensor([cfg.grip_squeeze if j in SQUEEZE_JOINTS else 0.0 for j in FINGER_JOINTS], device=dev)
+        def sq(j):  # per-group squeeze (None = grip_squeeze): thumb vs index / middle / ring
+            if j not in SQUEEZE_JOINTS:
+                return 0.0
+            v = cfg.grip_squeeze_thumb if j.startswith("thumb") else cfg.grip_squeeze_fingers
+            return cfg.grip_squeeze if v is None else v
+        squeeze = torch.tensor([sq(j) for j in FINGER_JOINTS], device=dev)
         self.hold_q = torch.clamp(self.grip_q + squeeze, self.q_lo[self.finger_ids], self.q_hi[self.finger_ids])
 
         self.hand_id = self.robot.find_bodies("r_hand")[0][0]
