@@ -217,6 +217,8 @@ def main():
                f"  -   /   -   / {jl:5.1f}")
             + (f" | {np.median(np.abs(df[:, :, c_i])) * D:5.1f} / {dmax:5.1f} | {dmax / D * k_s:5.0f}" if k_s else " |   -   |   -  ")
             + f" | {np.median(a_abs):.2f}, {np.mean(a_abs > 0.9) * 100:4.1f}, {np.mean(act[:, -10:, c_i]):+.2f}")
+    say("  SEA gains (motor_kp / motor_kd / spring Nm/rad): " + ", ".join(
+        f"{a.cfg.joint_names_expr[0]} {a.cfg.motor_kp:.0f}/{a.cfg.motor_kd:.1f}/{a.cfg.spring_stiffness:.0f}" for a in seas))
     if mlim:
         say("  SEA motor limits (Nm, rad/s): " + ", ".join(f"{JOINTS[c]} {v[0]:.0f}/{v[1]:.0f}" for c, v in sorted(mlim.items()))
             + "; joint speed limits (rad/s): " + ", ".join(f"{j} {v:.0f}" for j, v in zip(JOINTS, vlim)))

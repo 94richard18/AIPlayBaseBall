@@ -1359,6 +1359,38 @@ class Stage1dK70GW2MBASVR9EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     throw_upper_scale: float = 0.9
 
 
+def _right_arm_sea(robot: ArticulationCfg, **scale) -> ArticulationCfg:
+    """The right-arm SEA actuators (shoulder / elbow / wrist) with these cfg fields scaled, e.g. motor_kp=1.5."""
+    acts = dict(robot.actuators)
+    for k in ("r_shoulder_sea", "r_elbow_sea", "r_wrist_sea"):
+        acts[k] = acts[k].replace(**{f: getattr(acts[k], f) * x for f, x in scale.items()})
+    return robot.replace(actuators=acts)
+
+
+@configclass
+class Stage1dK70GW2MBASVRAEnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR + right-arm SEA motor PD x1.5 (motor_kp 300 -> 450, motor_kd 6 -> 9), motor torque / speed limits
+    unchanged (peer decision 2026-10-19, option A). diag_arm on gt_avg4: arm residual unused (|a| ~0.02), motors at
+    their torque limit 0-12% of the last 150 ms, yet IR 781 vs 2433 deg/s at release, elbow still flexing (-962 deg/s),
+    hand speed arm part 0.9 of 10.4 m/s."""
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _right_arm_sea(self.robot, motor_kp=1.5, motor_kd=1.5)
+
+
+@configclass
+class Stage1dK70GW2MBASVRBEnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR + right-arm SEA spring stiffness x1.5 (shoulder 150 -> 225, elbow 120 -> 180, wrist 40 -> 60 Nm/rad),
+    option B - a model (tendon) choice, eval only until the user decides."""
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _right_arm_sea(self.robot, spring_stiffness=1.5)
+
+
 @configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
