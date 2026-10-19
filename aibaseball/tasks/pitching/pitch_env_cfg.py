@@ -1424,6 +1424,15 @@ class Stage1dK70GW2MBASVRT1C2EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1D1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + the right wrist_pitch reference 10 ms ahead (timing step 0, peer decision 2026-10-19): diag_arm on gv 7200
+    had the robot's wrist_pitch peak 10 ms after the PD base's (-20 vs -30 ms before the release), -10 deg behind at
+    the release."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.03, "r_wrist_pitch": 0.01}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D2EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     """W2MBASVR with the elbow lead +40 ms (timing step 0, peer decision 2026-10-19): after training the robot still
     lagged the +30 ms elbow reference by ~18 ms (gu_avg2: peak -50 vs -68 ms); the 15 / 20 / 30 sweep was not monotonic."""
