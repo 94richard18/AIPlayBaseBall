@@ -1441,6 +1441,14 @@ class Stage1dK70GW2MBASVRT1D1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1D3EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR with the elbow lead +35 ms ("D2'", peer decision 2026-10-20): D2 (+40 ms) kept +0.7-0.9 m/s through
+    training (gy) but noisy at rest stayed ~23-28; a softer step for a smaller balance cost."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.035}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D2EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     """W2MBASVR with the elbow lead +40 ms (timing step 0, peer decision 2026-10-19): after training the robot still
     lagged the +30 ms elbow reference by ~18 ms (gu_avg2: peak -50 vs -68 ms); the 15 / 20 / 30 sweep was not monotonic."""
