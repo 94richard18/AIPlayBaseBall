@@ -167,6 +167,11 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # had the thumb cylinder 6.6 mm and the middle 2.4 mm inside the ball (its solver used pad points + 8 mm, not the
     # collision cylinders) - the ball sat 8 mm off its pose. grip_v2.json: scripts/solve_grip_v2.py, same ball centre
     grip_file: str | None = None
+    # windup squeeze boost: + this (rad) on the index / middle / thumb squeeze joints over reference time [t0, t1]
+    windup_squeeze: float = 0.0
+    windup_squeeze_t0: float = 0.35
+    windup_squeeze_t1: float = 0.85
+    windup_squeeze_ramp_s: float = 0.05
     grip_squeeze_thumb: float | None = None
     grip_squeeze_fingers: float | None = None
 

@@ -420,6 +420,17 @@ class PitchEnv(DirectRLEnv):
         ff = (1.0 + (c.post_release_feedforward - 1.0) * self.released.float()) * c.vel_feedforward
         self.qd_target[:, self.body_ids] = nxt["joint_vel"] * ff.unsqueeze(-1)
         fing = self.hold_q + self.actions[:, 29:] * c.finger_action_scale
+        if c.windup_squeeze > 0:
+            # windup squeeze boost (G3s, 2026-10-20): the ball rolled out at ~7 N of pinch with the palm sideways around
+            # 0.5-0.6 s reference time (diag_grip); extra squeeze on index / middle / thumb over [t0, t1], smooth ramps
+            tr = self._ref_time()
+            r = c.windup_squeeze_ramp_s
+            w = ((tr - c.windup_squeeze_t0) / r).clamp(0.0, 1.0) * ((c.windup_squeeze_t1 - tr) / r).clamp(0.0, 1.0)
+            w = w * w * (3.0 - 2.0 * w)
+            if not hasattr(self, "_wsq"):
+                self._wsq = torch.tensor([1.0 if (j in SQUEEZE_JOINTS and j.startswith(("index", "middle", "thumb"))) else 0.0
+                                          for j in FINGER_JOINTS], device=self.device)
+            fing = fing + c.windup_squeeze * w.unsqueeze(-1) * self._wsq
         if c.scripted_release_s is not None:  # fingers open on the reference's schedule (no holding on to the ball)
             opening = (self._ref_time() >= self.release_ref + c.scripted_release_s).unsqueeze(-1)
             fing = torch.where(opening, (self.hold_q - c.finger_action_scale).expand_as(fing), fing)
