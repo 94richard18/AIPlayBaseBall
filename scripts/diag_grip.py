@@ -179,6 +179,15 @@ def main():
         say(f"    {nm:7s} {np.median(pads[:, 0, p]) * 1000:6.1f} / {np.median(pads[:, W // 2, p]) * 1000:6.1f} / "
             f"{np.median(pads[:, -1, p]) * 1000:6.1f}   first to open in {int((first == p).sum())}/{len(first)}")
     say(f"    none opened > 3 mm before the release in {int((first == -1).sum())}/{len(first)}")
+    # the windup window (reference time 0.35-0.85 s, ball still held): force on the ball, thumb at its limit
+    wnd = (R["tr"] >= 0.35) & (R["tr"] < 0.85)
+    for i, k in enumerate(rel_at):
+        if k >= 0:
+            wnd[i, k:] = False
+    fw = np.linalg.norm(R["f_hand"][wnd], axis=-1)
+    say(f"  windup window (ref 0.35-0.85 s, held): force on the ball median {np.median(fw):.0f} N (p10 {np.percentile(fw, 10):.0f}), "
+        f"thumb_cmc_flex at limit {np.mean(R['tau'][wnd][:, FINGER_JOINTS.index('thumb_cmc_flex')] >= 0.98) * 100:.0f}%, "
+        f"index_mcp at limit {np.mean(R['tau'][wnd][:, FINGER_JOINTS.index('index_mcp')] >= 0.98) * 100:.0f}%")
     # slip classification (contact-solver ejection vs roll-out), early releases: 60 ms before to 20 ms after, per env step
     # (2 physics steps): ball speed relative to the hand and the deepest finger-cylinder penetration
     kb, ka = int(round(0.06 / base.step_dt)), int(round(0.02 / base.step_dt))

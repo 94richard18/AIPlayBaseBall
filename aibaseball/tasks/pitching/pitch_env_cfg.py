@@ -169,8 +169,8 @@ class PitchEnvCfg(DirectRLEnvCfg):
     grip_file: str | None = None
     # windup squeeze boost: + this (rad) on the index / middle / thumb squeeze joints over reference time [t0, t1]
     windup_squeeze: float = 0.0
-    windup_squeeze_t0: float = 0.35
-    windup_squeeze_t1: float = 0.85
+    windup_squeeze_t0: float = 0.35  # ramps in over 0.35-0.40
+    windup_squeeze_t1: float = 0.90  # full boost 0.40-0.85, back to normal by 0.90 (release ~0.98)
     windup_squeeze_ramp_s: float = 0.05
     grip_squeeze_thumb: float | None = None
     grip_squeeze_fingers: float | None = None
