@@ -240,6 +240,11 @@ def main():
         # a dropped ball is not a throw: A25/A50 "passed" with the ball slipping out at 0.65 s (1-2 m/s), fe A75 from
         # 3550 on dropped it at 0.83 s - keep-best must not pick a checkpoint that stands because it never throws
         thrown = rel & (v >= args.gate_min_speed) & (base.rel_ref_t.cpu().numpy() >= args.gate_min_release_t)
+        rt = base.rel_ref_t.cpu().numpy()
+        say(f"  not thrown: early release (< {args.gate_min_release_t:.2f} s) {int((rel & (rt < args.gate_min_release_t)).sum())}, "
+            f"slow (< {args.gate_min_speed:.0f} m/s, on time) {int((rel & (rt >= args.gate_min_release_t) & (v < args.gate_min_speed)).sum())}, "
+            f"not released {int((~rel).sum())}; early releases at reference time median "
+            + (f"{np.median(rt[rel & (rt < args.gate_min_release_t)]):.2f} s" if (rel & (rt < args.gate_min_release_t)).any() else "-"))
         say(f"  thrown (release >= {args.gate_min_speed:.0f} m/s at >= {args.gate_min_release_t:.2f} s): {thrown.sum()}/{n}; "
             f"at rest and thrown: {(ok & thrown).sum()}/{n}")
         # W1 pitch tiers (user 2026-10-18), the highest each pitch reaches: T0 not thrown; T1 release heading within

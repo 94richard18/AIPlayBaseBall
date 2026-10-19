@@ -71,10 +71,10 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then
         # user 2026-10-17 "兩次都要過": a crossing counts only if the eval with independent starts (start joint noise
         # 0.02 rad) passes too - the identical-start eval is 64 copies of one pitch up to solver noise
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
-        NUP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
+        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_goalcheck.txt"
+        NUP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_goalcheck.txt" | head -1 | cut -d' ' -f2)
         echo "[cycles] $IT with start noise 0.02: ${NUP:-?} up"
-        grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_noise.txt" | sed 's/^/    /'
+        grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_goalcheck.txt" | sed 's/^/    /'
         if [ -n "$NUP" ] && [ "$NUP" -ge "$GOAL" ]; then echo "[cycles] goal reached"; BESTCK=$NEW; RESULT=0; break; fi
     fi
 done
