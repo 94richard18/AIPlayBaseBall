@@ -131,6 +131,10 @@ class StageEnv(PitchEnv):
         if self.cfg.stage == "1c" and t.shape[0] == self.num_envs:
             return self._ref_stride(t)
         r = super()._ref(t)
+        if self.cfg.arm_ref_lead_s and t.shape[0] == self.num_envs:  # per-joint time shift of the throw reference
+            for nm, lead in self.cfg.arm_ref_lead_s.items():
+                rr, col = super()._ref(t + lead), self._jcol[nm]
+                r["joint_pos"][:, col], r["joint_vel"][:, col] = rr["joint_pos"][:, col], rr["joint_vel"][:, col]
         if self.cfg.stage == "1b" and t.shape[0] == self.num_envs:
             # PD base / targets: upper body at the set position; legs on the athlete's stride (frozen at the release
             # time if the robot has not landed by then), after the robot's touchdown blending over stand_pd_blend_s

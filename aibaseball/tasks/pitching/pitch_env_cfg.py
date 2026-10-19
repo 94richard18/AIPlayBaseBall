@@ -664,6 +664,9 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
     throw_upper_trunk: bool = True  # throw_upper: the waist joints follow the athlete's throw too (False: arms only)
     throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
+    # throw_upper: per-joint time shift of the PD reference, {joint name: seconds}; + samples the athlete's motion that
+    # much later (the joint's reference runs ahead), - earlier (it lags)
+    arm_ref_lead_s: dict | None = None
     drop_ends: bool = False  # throw_upper: a dropped ball ends the episode with the fall penalty (as eval_stage's gate)
     drop_min_speed: float = 10.0  # ... a release slower than this (m/s) is a drop
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
@@ -1357,6 +1360,23 @@ class Stage1dK70GW2MBASVR9EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     fewer drops, and gq / gs / gt won the heading back under training; speed is the gap to T2."""
 
     throw_upper_scale: float = 0.9
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR + the elbow's PD reference 30 ms ahead (peer decision 2026-10-19, arm reference timing). diag_arm on
+    gt_avg4: elbow velocity peak 30 ms after the reference's (-8 vs -38 ms before the release), still flexing at the
+    release (-962 deg/s vs +123); motor PD / spring x1.5 (A / B) did not change the sequencing."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.03}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT2EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """T1 + the shoulder internal rotation (r_shoulder_yaw) reference 30 ms behind: its velocity peaked 30 ms before
+    the reference's (-40 vs -10 ms) and was down to 781 of 2433 deg/s at the release."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.03, "r_shoulder_yaw": -0.03}
 
 
 def _right_arm_sea(robot: ArticulationCfg, **scale) -> ArticulationCfg:
