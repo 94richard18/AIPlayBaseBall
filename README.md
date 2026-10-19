@@ -19,17 +19,17 @@ the full history is in [`PITCHER_TRAINING_LOG.md`](PITCHER_TRAINING_LOG.md) (Tra
 
 Video of the pitcher in training (2026-10-18): <https://youtu.be/swZP6mBEq0c>
 
-## Current plan (one month, started 2026-10-15)
+## Current plan (one month, started 2026-10-15; moved one week on 2026-10-20)
 
 Reduced scope on one PC: only the pitcher and the batter are physics RL; fielders, catcher and runners are
 scripted, and the game is played back from a recording.
 
 | Gate | Due | Content |
 |---|---|---|
-| W1 pitcher | 2026-10-29 | both evals (identical and random starts, 4.0 s episodes): at rest with the ball crossing the plate in the air at ≥ 80 km/h (drag included) ≥ 60/64, and at rest + ≥ 80 km/h + ball tier 3 (catchable) on the same pitch ≥ 32/64; human-strength joints and the elastic arm stay as they are |
-| W2 batter | 2026-11-05 | human-strength batter vs the RL pitcher's pitches, grass bounce / roll model |
-| W3 engine | 2026-11-05 | rules, scripted fielders / runners, 9 innings unattended |
-| W4 video | 2026-11-19 | integration, broadcast camera, full-game video |
+| W1 pitcher | 2026-11-05 (check on 10-29: release < 20 m/s → the game uses the pitch-library fallback) | both evals (identical and random starts, 4.0 s episodes): at rest with the ball crossing the plate in the air at ≥ 80 km/h (drag included) ≥ 60/64, and at rest + ≥ 80 km/h + ball tier 3 (catchable) on the same pitch ≥ 32/64; human-strength joints and the elastic arm stay as they are |
+| W2 batter | 2026-11-12 | human-strength batter vs 80–100 km/h pitches (pitch library until the RL pitcher is ready), grass bounce / roll model |
+| W3 engine | 2026-11-12 | rules, scripted fielders / runners, 9 innings unattended |
+| W4 video | 2026-11-26 | integration, broadcast camera, full-game video |
 
 Ball tiers, highest reached per pitch: T0 not thrown or > 10° off line, T1 release heading within ±10° of the
 plate line, T2 reaches the plate in the air within 1.0 m sideways, T3 catchable (|y| ≤ 0.5 m, z 0.2–1.5 m),
