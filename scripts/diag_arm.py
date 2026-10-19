@@ -258,7 +258,7 @@ def main():
 
     with torch.inference_mode():
         off = float(np.median(rel_off[relm])) if relm.any() else 0.0
-        say("  reference hand speed at the release, kinematic (pelvis + trunk + arm = along the hand's velocity; |v|):")
+        say("  reference wrist (r_hand link) speed at the release, kinematic (pelvis + trunk + arm = along the hand's velocity; |v|):")
         for lab, scaled in (("athlete (scale 1.0)", False), (f"PD reference (scale {getattr(cfg, 'throw_upper_scale', 1)})", True)):
             for tl, dt_ in (("release_ref", 0.0), (f"release_ref {off * 1000:+.1f} ms", off)):
                 t = torch.full((n,), float(base.release_ref) + dt_, device=dev)

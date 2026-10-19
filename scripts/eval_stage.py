@@ -271,7 +271,7 @@ def main():
         rs = rel & ~np.isnan(rel_split[:, 0])
         if rs.any():
             m = np.median(rel_split[rs], 0)
-            say(f"  hand speed at the release along its direction (median): pelvis {m[0]:.2f} + trunk {m[1]:.2f} + arm "
+            say(f"  wrist (r_hand link) speed at the release along its direction (median): pelvis {m[0]:.2f} + trunk {m[1]:.2f} + arm "
                 f"{m[2]:.2f} = {m.sum():.2f} m/s ({rs.sum()} releases)")
         rj = rel & ~np.isnan(rel_jv[:, 0])
         if rj.any():
