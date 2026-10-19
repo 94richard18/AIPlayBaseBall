@@ -68,6 +68,16 @@ class PitchedBattingHuman2EnvCfg(PitchedBattingHumanEnvCfg):
 
 
 @configclass
+class PitchedBattingHuman3EnvCfg(PitchedBattingHuman2EnvCfg):
+    """One-month plan W2 (2026-10-20 schedule): the game's pitches cross the plate at >= 80 km/h (W1 gate), i.e.
+    about 88-112 km/h at release with drag. Human2 (100-125 km/h) ended at hit rate ~0.14, exit velo ~21 m/s.
+    Only change: the pitch speed range. Start from human_pitched2 model_9699."""
+
+    pitch_speed_range_start: tuple = (88.0, 100.0)
+    pitch_speed_range_final: tuple = (88.0, 112.0)
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
