@@ -1408,6 +1408,22 @@ class Stage1dK70GW2MBASVRT1WEnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1C1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + throw_upper_scale 0.85 (small-step scale curriculum, peer decision 2026-10-19): S1 (1.0) at once sent the
+    release 12-15 deg up and the arm term to ~0; T1's +30 ms elbow lead stays."""
+
+    throw_upper_scale: float = 0.85
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1C2EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + throw_upper_scale 0.9 (small-step scale curriculum, peer decision 2026-10-19): S1 (1.0) at once sent the
+    release 12-15 deg up and the arm term to ~0; T1's +30 ms elbow lead stays."""
+
+    throw_upper_scale: float = 0.9
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1S1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
     """T1 + throw_upper_scale 1.0 (speed step 0, peer decision 2026-10-19). The PD reference itself caps the pitch:
     robot FK of the full reference throws the ball at 33.5 m/s, the task's 0.8 / waist-off reference ~14-19 m/s, the
