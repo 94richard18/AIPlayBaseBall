@@ -56,6 +56,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
 
     # ---------------------------------------------------------------- reference motion
     motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4.npz")  # capture + synthesised 0.8 s follow-through
+    joint_limit_overrides: dict | None = None  # {joint: (lower, upper) rad} written to PhysX at start (robot USD unchanged)
     phase_duration_s: float = 1.1167  # phase observation = t / this (length of the capture alone; keeps trained policies valid)
     # aim the whole delivery (rotation about the vertical axis through the rubber); the retargeted
     # hand releases ~9.5 deg toward first base, so the reference is turned that much toward third base
@@ -1507,6 +1508,24 @@ class Stage1dK70GW2MBASVRT1D3N3EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     (the K chain has trained at 0.02 since Stage1dN - the same distribution as the noisy eval)."""
 
     start_joint_noise: float = 0.03
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYEnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + r_shoulder_yaw layback widened to -130 deg (user decision 2026-10-20) and the reference re-retargeted with it
+    (pitch_2916-4_sy130.npz: layback -130 deg instead of the -91.6 deg clip, IR peak 3331 vs 2856 deg/s)."""
+
+    motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4_sy130.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-2.27, 1.6)}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1D3SYEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D3 + r_shoulder_yaw layback widened to -130 deg (user decision 2026-10-20) and the reference re-retargeted with it
+    (pitch_2916-4_sy130.npz: layback -130 deg instead of the -91.6 deg clip, IR peak 3331 vs 2856 deg/s)."""
+
+    motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4_sy130.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-2.27, 1.6)}
 
 
 @configclass

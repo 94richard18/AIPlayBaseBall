@@ -19,7 +19,7 @@ KEY_BODIES = ["l_hand", "r_hand", "l_foot", "r_foot", "torso", "bat"]
 PITCH_KEY_BODIES = ["l_hand", "r_hand", "l_foot", "r_foot", "torso"]
 
 
-def prepare(npz_in: str, npz_out: str, finger_pose: dict | None = None, ball_local=None):
+def prepare(npz_in: str, npz_out: str, finger_pose: dict | None = None, ball_local=None, limits: dict | None = None):
     """Add velocities and key-body trajectories (from the robot's FK) to a retarget result.
 
     Pitching (`ball_local` given): robot without bat, key points = PITCH_KEY_BODIES + ball centre.
@@ -29,6 +29,8 @@ def prepare(npz_in: str, npz_out: str, finger_pose: dict | None = None, ball_loc
     t = d["time"]
     dt = float(t[1] - t[0])
     robot0 = build_humanoid()
+    for jn, (lo_, hi_) in (limits or {}).items():  # widened ranges the retarget used (else they are clipped back here)
+        robot0.joint(jn).lower, robot0.joint(jn).upper = lo_, hi_
     lo = np.array([robot0.joint(str(n)).lower for n in d["joint_names"]])
     hi = np.array([robot0.joint(str(n)).upper for n in d["joint_names"]])
     q = np.clip(d["joint_pos"], lo + 1e-3, hi - 1e-3)

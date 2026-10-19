@@ -98,6 +98,11 @@ class PitchEnv(DirectRLEnv):
                     scale[i] = s
         assert (scale > 0).all()
         self.action_scale = scale
+        if cfg.joint_limit_overrides:  # runtime joint range override (PhysX limits + soft limits), e.g. the shoulder layback
+            for jn, (lo_, hi_) in cfg.joint_limit_overrides.items():
+                jid = self.robot.find_joints(jn)[0]
+                lims = torch.tensor([[lo_, hi_]], device=dev).expand(self.num_envs, len(jid), 2).clone()
+                self.robot.write_joint_position_limit_to_sim(lims, joint_ids=jid)
         lim = self.robot.data.soft_joint_pos_limits[0]
         self.q_lo, self.q_hi = lim[:, 0], lim[:, 1]
 

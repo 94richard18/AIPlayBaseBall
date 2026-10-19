@@ -38,6 +38,14 @@ FOLLOW_THROUGH_S = 1.1
 def main(paths):
     sel = {r["file"]: r for r in csv.DictReader(open(os.path.join(ROOT, "data", "c3d_pitching", "selected.csv")))}
     robot = build_humanoid(with_bat=False, name="aib1_pitcher")
+    # widened joint ranges for the retarget, e.g. JOINT_LIMITS="r_shoulder_yaw:-2.27:1.6" (user 2026-10-20: the layback was
+    # clipped at -91.6 deg for the last 0.15 s before the release); OUT_SUFFIX names the output npz
+    limits = {}
+    for spec in filter(None, os.environ.get("JOINT_LIMITS", "").split(",")):
+        jn, lo_, hi_ = spec.split(":")
+        limits[jn] = (float(lo_), float(hi_))
+        robot.joint(jn).lower, robot.joint(jn).upper = float(lo_), float(hi_)
+        print(f"[pitch] joint range override {jn}: [{float(lo_):.3f}, {float(hi_):.3f}] rad", flush=True)
     grip = BallGrip.load(GRIP)
     fingers = {f"l_{n}": 0.2 for n in FINGER_JOINTS} | grip.joint_pos  # glove hand lightly curled
     fingers |= {"l_thumb_cmc_rot": 0.5, "l_index_abd": 0.0, "l_middle_abd": 0.0}
@@ -45,7 +53,7 @@ def main(paths):
     for path in paths:
         trial = load_trial(path, body_cutoff=20.0, bat_cutoff=30.0)
         tag = sel.get(os.path.basename(path), {}).get("session_pitch", trial.name).replace("_", "-")
-        out = os.path.join(ROOT, "assets", "motions", f"pitch_{tag}.npz")
+        out = os.path.join(ROOT, "assets", "motions", f"pitch_{tag}{os.environ.get('OUT_SUFFIX', '')}.npz")
         t_rel = trial.contact / trial.rate
         print(f"[pitch] {trial.name}: {trial.exit_velo_mph:.1f} mph, athlete {trial.height:.2f} m, "
               f"release ~{t_rel:.2f} s, peak hand marker {trial.bat_speed_mph.max():.1f} mph", flush=True)
@@ -59,7 +67,7 @@ def main(paths):
                        **FLAT)
         res = append_follow_through(res, robot, fingers, duration=FOLLOW_THROUGH_S, balance_pitch_deg=35.0, balance_waist=0.2)
         save(res, out)
-        d = prepare(out, out, finger_pose=fingers, ball_local=ball_local)
+        d = prepare(out, out, finger_pose=fingers, ball_local=ball_local, limits=limits)
         ball = d["key_pos"][:, -1]
         v = np.linalg.norm(np.gradient(ball, 1 / 120, axis=0), axis=1)
         over = [f"{n} {np.abs(d['joint_vel'][:, i]).max():.0f}>{robot.joint(str(n)).velocity:.0f}"
