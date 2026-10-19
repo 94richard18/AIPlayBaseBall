@@ -1497,6 +1497,14 @@ class Stage1dK70GW2MBASVRT1D3CEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1D3N3EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D2' trained with start_joint_noise 0.03 (hb', peer decision 2026-10-20): a robustness margin over the eval's 0.02
+    (the K chain has trained at 0.02 since Stage1dN - the same distribution as the noisy eval)."""
+
+    start_joint_noise: float = 0.03
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
