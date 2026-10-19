@@ -666,6 +666,12 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     follow_trunk_blend_s: float = 0.05
     back_catch_q: list | None = None  # (b1) back-leg joint targets (back_leg_cols order) after the release
     back_catch_t0: float = 0.10
+    # (b1') Cartesian catch step: back-foot target (x toward the plate, y toward first base) from the lead foot, ground frame
+    back_catch_target: tuple | None = None
+    back_catch_yaw_deg: float = 0.0  # back-foot yaw - lead-foot yaw at the target
+    back_catch_t1: float = 0.40
+    back_catch_apex_m: float = 0.06
+    back_catch_wblend_s: float = 0.05
     back_catch_blend_s: float = 0.15
     w_finish_com: float = 0.0
     finish_com_t0: float = 0.2
@@ -1478,6 +1484,16 @@ class Stage1dK70GW2MBASVRT1D3B1EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     0.54 m to the 3B side of the lead foot) instead of the athlete's step (down at +0.72 s, 0.41 m ahead)."""
 
     back_catch_q: list | None = [0.425, -0.039, -0.434, 0.225, -0.695, 0.331]
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1D3CEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D2' + (b1') Cartesian back-foot catch step (peer decision 2026-10-20): from release + 0.10 s the back foot's
+    reference moves to (-0.10, -0.52) m from the lead foot (the gz 7300 standers' touchdown, ground frame), flat, yaw
+    lead + 79 deg (their touchdown), by +0.40 s on a 6 cm lift arc, then holds; per-step leg IK on the current pelvis."""
+
+    back_catch_target: tuple | None = (-0.10, -0.52)
+    back_catch_yaw_deg: float = 79.0
 
 
 @configclass

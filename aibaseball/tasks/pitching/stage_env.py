@@ -195,6 +195,8 @@ class StageEnv(PitchEnv):
                 tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
                 q[:, tc] = q[:, tc] + wt * (tgt - q[:, tc])
                 qd[:, tc] = wt * c.throw_upper_scale * r["joint_vel"][:, tc] * (t < self.ref.duration).float().unsqueeze(-1)
+            if c.back_catch_target is not None:
+                self._back_catch_cartesian(q, qd, rs, relf)
             if c.back_catch_q is not None:
                 # (b1) back-leg catch step: after the release the back leg's reference blends from the athlete's late
                 # forward step (touchdown +0.72 s, 0.41 m ahead) to the robot standers' early wide stance (their back-leg
@@ -210,6 +212,70 @@ class StageEnv(PitchEnv):
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = torch.zeros_like(r[k])
         return r
+
+    def _back_catch_cartesian(self, q, qd, rs, relf):
+        """(b1') back-foot catch step, Cartesian: from release + back_catch_t0 the back foot's reference moves from where
+        it is to back_catch_target (x toward the plate, y toward first base, from the lead foot, ground frame; foot flat,
+        yaw = lead foot yaw + back_catch_yaw_deg) by release + back_catch_t1 on a smoothstep with a lift arc, then holds
+        it; per-step leg IK on the current pelvis pose gives the back-leg PD targets, blended in over back_catch_wblend_s
+        from the athlete path. Writes q / qd (back-leg columns) in place."""
+        from isaaclab.utils.math import matrix_from_quat
+        from aibaseball.robot.leg_ik import LegIK, rotvec_of
+
+        c, d, dev = self.cfg, self.robot.data, self.device
+        if not hasattr(self, "_cat_ik"):
+            self._cat_ik = LegIK("r", device=dev)
+            n = self.num_envs
+            self._cat_init = torch.zeros(n, dtype=torch.bool, device=dev)
+            self._cat_p0 = torch.zeros(n, 3, device=dev)
+            self._cat_R0 = torch.eye(3, device=dev).repeat(n, 1, 1)
+            self._cat_q = torch.zeros(n, 6, device=dev)
+        bc = self.back_leg_cols
+        rel = self.released
+        new = rel & ~self._cat_init & (rs[:, 0] >= c.back_catch_t0)
+        if new.any():
+            fid = self.foot_ids[1]
+            self._cat_p0[new] = d.body_link_pos_w[new, fid]
+            self._cat_R0[new] = matrix_from_quat(d.body_link_quat_w[new, fid])
+            self._cat_q[new] = d.joint_pos[new][:, self.body_ids[bc]]
+            self._cat_init |= new
+        act = rel & self._cat_init
+        if not act.any():
+            return
+        ids = act.nonzero(as_tuple=False).squeeze(-1)
+        lead = d.body_link_pos_w[ids, self.foot_ids[0]]
+        lq = d.body_link_quat_w[ids, self.foot_ids[0]]
+        lyaw = torch.atan2(2 * (lq[:, 0] * lq[:, 3] + lq[:, 1] * lq[:, 2]), 1 - 2 * (lq[:, 2] ** 2 + lq[:, 3] ** 2))
+        tgt = lead.clone()
+        tgt[:, 0] += c.back_catch_target[0]
+        tgt[:, 1] += c.back_catch_target[1]
+        x = tgt[:, 0] - self.scene.env_origins[ids, 0]
+        ground = torch.where(x < c.mound_slope_start_x, torch.full_like(x, c.mound_top_z),
+                             (c.mound_top_z - (x - c.mound_slope_start_x) * c.mound_slope).clamp_min(self.field_z))
+        tgt[:, 2] = ground + (self.s_feet0[ids, 1, 2] - c.mound_top_z)  # ankle height over the sole when flat
+        yaw = lyaw + math.radians(c.back_catch_yaw_deg)
+        cy, sy, z0, o1 = torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw), torch.ones_like(yaw)
+        R_t = torch.stack([torch.stack([cy, -sy, z0], -1), torch.stack([sy, cy, z0], -1), torch.stack([z0, z0, o1], -1)], -2)
+        s = ((rs[ids, 0] - c.back_catch_t0) / (c.back_catch_t1 - c.back_catch_t0)).clamp(0.0, 1.0)
+        sig = (s * s * (3.0 - 2.0 * s)).unsqueeze(-1)
+        p0, R0 = self._cat_p0[ids], self._cat_R0[ids]
+        p = p0 + sig * (tgt - p0)
+        p[:, 2] = p[:, 2] + 4.0 * c.back_catch_apex_m * s * (1.0 - s)
+        v = rotvec_of(R0.transpose(-1, -2) @ R_t) * sig  # slerp R0 -> R_t
+        ang = v.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+        k = v / ang
+        K = torch.zeros(len(ids), 3, 3, device=dev)
+        K[:, 0, 1], K[:, 0, 2], K[:, 1, 0] = -k[:, 2], k[:, 1], k[:, 2]
+        K[:, 1, 2], K[:, 2, 0], K[:, 2, 1] = -k[:, 0], -k[:, 1], k[:, 0]
+        a_ = ang.unsqueeze(-1)
+        R = R0 @ (torch.eye(3, device=dev) + torch.sin(a_) * K + (1 - torch.cos(a_)) * (K @ K))
+        qi, _, _ = self._cat_ik.solve(matrix_from_quat(d.root_link_quat_w[ids]), d.root_link_pos_w[ids], R, p,
+                                      self._cat_q[ids], iters=4)
+        self._cat_q[ids] = qi
+        wb = ((rs[ids] - c.back_catch_t0) / c.back_catch_wblend_s).clamp(0.0, 1.0)
+        qb = q[ids][:, bc]
+        q[ids.unsqueeze(-1), torch.tensor(bc, device=dev)] = qb + wb * (qi - qb)
+        qd[ids.unsqueeze(-1), torch.tensor(bc, device=dev)] = qd[ids][:, bc] * (1.0 - wb)
 
     def _ref_stride(self, t):
         """1c (stride + rotation, one-month plan W1): the athlete's whole lower body and trunk - lift, stride toward
@@ -668,6 +734,8 @@ class StageEnv(PitchEnv):
         self.s_lift_t[env_ids] = 0.0
         self.s_need0[env_ids] = True
         self.s_cut[env_ids] = int(self.max_episode_length)
+        if hasattr(self, "_cat_init"):
+            self._cat_init[env_ids] = False
         self.s_slid[env_ids] = False
         self.s_crossed[env_ids] = False
         self.s_ball_maxx[env_ids] = 0.0

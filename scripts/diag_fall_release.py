@@ -103,6 +103,10 @@ def main():
     b_td = np.full((n, 3), np.nan)  # touchdown time after the release, back foot - lead foot x / y
     yaw_s = {dtt: np.full((n, 2), np.nan) for dtt in (0.0, 0.2, 0.4, 0.6)}  # pelvis / torso yaw (deg) after the release
     bq45 = np.full((n, len(base.back_leg_cols)), np.nan)  # back-leg joint angles at release + 0.45 s
+    b_tdyaw = np.full(n, np.nan)  # back-foot yaw - lead-foot yaw at the back-foot touchdown (deg)
+    b_tdyawabs = np.full(n, np.nan)
+    pel = {dtt: np.full((n, 7), np.nan) for dtt in (0.1, 0.25, 0.4)}  # pelvis pos - lead foot, quat (IK test poses)
+    leadp = np.full((n, 3), np.nan)
     prev_rel = np.zeros(n, dtype=bool)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -129,9 +133,22 @@ def main():
             m = after & ~np.isnan(b_lift) & np.isnan(b_td[:, 0]) & planted[:, 1]
             if m.any():
                 fp = d.body_link_pos_w[:, base.foot_ids, :2].cpu().numpy()
+                def yawq(q):
+                    qw, qx, qy, qz = q.cpu().numpy().T
+                    return np.degrees(np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz)))
+                fy = yawq(d.body_link_quat_w[:, base.foot_ids[1]]) - yawq(d.body_link_quat_w[:, base.foot_ids[0]])
+                b_tdyaw[m] = ((fy + 180) % 360 - 180)[m]
+                b_tdyawabs[m] = yawq(d.body_link_quat_w[:, base.foot_ids[1]])[m]
                 b_td[m, 0] = t - rel_t[m]
                 b_td[m, 1:] = (fp[:, 1] - fp[:, 0])[m]
             b_lift[after & np.isnan(b_lift) & ~planted[:, 1]] = 1.0
+            for dtt, arr in pel.items():
+                hp = (rel_k >= 0) & ((k - rel_k) == int(round(dtt / dt)))
+                if hp.any():
+                    lf = d.body_link_pos_w[:, base.foot_ids[0]]
+                    arr[hp] = torch.cat([d.root_link_pos_w - lf, d.root_link_quat_w], -1).cpu().numpy()[hp]
+                    if dtt == 0.4:
+                        leadp[hp] = (lf - base.scene.env_origins).cpu().numpy()[hp]
             h45 = (rel_k >= 0) & ((k - rel_k) == int(round(0.45 / dt)))
             if h45.any():
                 bq45[h45] = d.joint_pos[:, base.body_ids[base.back_leg_cols]].cpu().numpy()[h45]
@@ -213,6 +230,11 @@ def main():
             + (f"; before the fall {int((bf & has).sum())}" if lab == "fell" else "")
             + "; pelvis / torso yaw (deg) at +0.0/+0.2/+0.4/+0.6 s: "
             + " ".join(f"{np.nanmedian(yaw_s[x][m, 0]):+.0f}/{np.nanmedian(yaw_s[x][m, 1]):+.0f}" for x in (0.0, 0.2, 0.4, 0.6)))
+    say(f"  back-foot yaw - lead-foot yaw at the back-foot touchdown (deg), median: " + ", ".join(
+        f"{lab} {np.nanmedian(b_tdyaw[m]):+.0f} (abs {np.nanmedian(b_tdyawabs[m]):+.0f})" for lab, m in groups if m.any()))
+    np.savez(os.path.splitext(args.checkpoint)[0].replace(os.sep, "_").replace("/", "_")[-60:] + "_falldiag.npz" if False else
+             "logs/falldiag_poses.npz", rest=rest, fell=fell, b_td=b_td, b_tdyaw=b_tdyaw, b_tdyawabs=b_tdyawabs,
+             pel01=pel[0.1], pel025=pel[0.25], pel04=pel[0.4], leadp=leadp, bq45=bq45)
     if rest.any():
         say(f"  at rest: back-leg joints {[base.body_names[i] for i in base.back_leg_cols]} at release + 0.45 s, median "
             f"{np.round(np.nanmedian(bq45[rest], 0), 3).tolist()}")
