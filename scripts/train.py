@@ -270,6 +270,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         with torch.no_grad():
             ac.std.clamp_(min=min_std, max=max_std)
         print(f"[INFO] action noise std held in [{min_std}, {max_std}]")
+    if os.environ.get("ARM_WINDOW_STD"):  # throwing-arm noise std x k only in the last ARM_WINDOW_S before the release
+        from aibaseball.rl.windowed_std import install as install_windowed_std
+
+        install_windowed_std(runner, env, [16, 18, 20, 22, 24, 26, 28], float(os.environ["ARM_WINDOW_STD"]),
+                             float(os.environ.get("ARM_WINDOW_S", "0.3")))
     # logging only (peer request 2026-10-19, late-drift analysis): rsl_rl logs no KL. After each update (outermost
     # wrapper: the policy the next rollout uses), KL(rollout policy || updated policy) and the PPO clip fraction
     # (|ratio - 1| > clip) over the whole rollout - the size of one update. No gradients, no sampling, no RNG.

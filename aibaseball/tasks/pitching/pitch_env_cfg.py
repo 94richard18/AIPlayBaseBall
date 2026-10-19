@@ -1424,6 +1424,14 @@ class Stage1dK70GW2MBASVRT1C2EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1D2EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR with the elbow lead +40 ms (timing step 0, peer decision 2026-10-19): after training the robot still
+    lagged the +30 ms elbow reference by ~18 ms (gu_avg2: peak -50 vs -68 ms); the 15 / 20 / 30 sweep was not monotonic."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.04}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1S1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
     """T1 + throw_upper_scale 1.0 (speed step 0, peer decision 2026-10-19). The PD reference itself caps the pitch:
     robot FK of the full reference throws the ball at 33.5 m/s, the task's 0.8 / waist-off reference ~14-19 m/s, the

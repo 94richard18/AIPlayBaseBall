@@ -953,6 +953,26 @@ gym.register(
 )
 
 gym.register(
+    id="AIB-Stage1dK70GW2MBASVRT1D1-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK70GW2MBASVRT1D1EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="AIB-Stage1dK70GW2MBASVRT1D2-v0",
+    entry_point=f"{__name__}.stage_env:StageEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitch_env_cfg:Stage1dK70GW2MBASVRT1D2EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:StageSlowPPORunnerCfg",
+    },
+)
+
+gym.register(
     id="AIB-Stage1dK70GW2MBASVRT1C1-v0",
     entry_point=f"{__name__}.stage_env:StageEnv",
     disable_env_checker=True,
