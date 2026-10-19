@@ -1395,6 +1395,30 @@ class Stage1dK70GW2MBASVRE20EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     arm_ref_lead_s: dict | None = {"r_elbow": 0.020}
 
 
+@configclass
+class Stage1dK70GW2MBASVRT1S1EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + throw_upper_scale 1.0 (speed step 0, peer decision 2026-10-19). The PD reference itself caps the pitch:
+    robot FK of the full reference throws the ball at 33.5 m/s, the task's 0.8 / waist-off reference ~14-19 m/s, the
+    robot ~14 (gv 7200). 0.9 gave nothing before the elbow lead (gt_avg4 zero-shot: arm term fell)."""
+
+    throw_upper_scale: float = 1.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1S2EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + the waist PD reference on the throw clock at the arms' scale (throw_upper_trunk, off since Stage1dA): the
+    waist sat at the set pose and its motors were at the 200 Nm limit ~40% of the last 50 ms before the release."""
+
+    throw_upper_trunk: bool = True
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1S3EnvCfg(Stage1dK70GW2MBASVRT1S2EnvCfg):
+    """S1 + S2 (information only): the full throw reference, closest to its 33.5 m/s ceiling."""
+
+    throw_upper_scale: float = 1.0
+
+
 def _right_arm_sea(robot: ArticulationCfg, **scale) -> ArticulationCfg:
     """The right-arm SEA actuators (shoulder / elbow / wrist) with these cfg fields scaled, e.g. motor_kp=1.5."""
     acts = dict(robot.actuators)
