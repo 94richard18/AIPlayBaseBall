@@ -1,0 +1,199 @@
+"""How do noisy-start throws fall after the release? (peer request 2026-10-20: the faster +35 / +40 ms elbow-lead
+runs trade noisy balance for speed - before the next lever, how do they fall)
+
+    python scripts/diag_fall_release.py --headless --task <task> --checkpoint <model.pt> [--envs 128]
+        [--set start_joint_noise=0.02 start_noise_ramp_steps=0]
+
+Per outcome group (fell / standing at rest / standing not at rest): fall time after the release (histogram), fall
+direction (trunk lean at the fall: toward the plate / back / first base / third base), which foot unloads first after
+the release, and at release + 0.3 s: COM distance outside the support (segment between the planted feet, or the one
+planted foot) and its direction, whole-body angular momentum about the COM (translational part, world axes), torso
+angular velocity, lead-knee angle. Non-fallers: which at-rest sub-check fails.
+"""
+
+import argparse
+import os
+import sys
+
+from isaaclab.app import AppLauncher
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--task", type=str, required=True)
+parser.add_argument("--checkpoint", type=str, required=True)
+parser.add_argument("--envs", type=int, default=128)
+parser.add_argument("--set", nargs="*", default=["start_joint_noise=0.02", "start_noise_ramp_steps=0"])
+AppLauncher.add_app_launcher_args(parser)
+args = parser.parse_args()
+app = AppLauncher(args).app
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import ast  # noqa: E402
+
+import gymnasium as gym  # noqa: E402
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+from rsl_rl.runners import OnPolicyRunner  # noqa: E402
+
+from isaaclab.utils.math import quat_apply  # noqa: E402
+from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
+from isaaclab_tasks.utils import load_cfg_from_registry  # noqa: E402
+
+import aibaseball.tasks  # noqa: F401, E402
+
+
+def say(*a):
+    print(*a, flush=True)
+
+
+def seg_dist(p, a, b):
+    """Distance from p to segment a-b (xy), and the offset vector p - closest point."""
+    ab = b - a
+    t = np.clip(((p - a) * ab).sum(-1) / np.maximum((ab * ab).sum(-1), 1e-9), 0.0, 1.0)[..., None]
+    off = p - (a + t * ab)
+    return np.linalg.norm(off, axis=-1), off
+
+
+def main():
+    cfg = load_cfg_from_registry(args.task, "env_cfg_entry_point")
+    cfg.scene.num_envs = args.envs
+    for kv in args.set:
+        k, v = kv.split("=", 1)
+        old = getattr(cfg, k)
+        if isinstance(old, bool):
+            v = v.lower() in ("1", "true")
+        elif old is None:
+            try:
+                v = None if v == "None" else ast.literal_eval(v)
+            except (ValueError, SyntaxError):
+                pass
+        else:
+            v = type(old)(v)
+        setattr(cfg, k, v)
+    for k, v in (("landed_start_prob", 0.0), ("rsi_prob", 0.0), ("assist_force_n", 0.0)):
+        if hasattr(cfg, k):
+            setattr(cfg, k, v)
+    env = gym.make(args.task, cfg=cfg)
+    base = env.unwrapped
+    orig = base._get_dones
+
+    def keep_running():
+        orig()
+        z = torch.zeros_like(base.fallen)
+        return z, z
+    base._get_dones = keep_running
+    w = RslRlVecEnvWrapper(env)
+    ag = load_cfg_from_registry(args.task, "rsl_rl_cfg_entry_point")
+    r = OnPolicyRunner(w, ag.to_dict(), log_dir=None, device=ag.device)
+    r.load(args.checkpoint)
+    r.eval_mode()
+    pol = r.get_inference_policy(device=base.device)
+    T = int(round(cfg.episode_length_s / base.step_dt)) - 2
+    n, dt, dev, rob = base.num_envs, base.step_dt, base.device, base.robot
+    knee = rob.find_joints("l_knee")[0][0]  # lead knee (left leg leads)
+    masses = rob.root_physx_view.get_masses().to(dev)  # (n, bodies)
+    up_local = torch.tensor([0.0, 0.0, 1.0], device=dev).expand(n, 3)
+    rel_t = np.full(n, np.nan)
+    fell_t = np.full(n, np.nan)
+    fall_dir = np.full((n, 2), np.nan)  # trunk lean at the fall (x toward the plate, y toward first base)
+    unload = np.full((n, 2), np.nan)  # first time after the release each foot (lead, back) is unloaded
+    at03 = {k: np.full((n, d), np.nan) for k, d in (("sup", 1), ("off", 2), ("L", 3), ("w", 3), ("knee", 1), ("planted", 2))}
+    k03 = int(round(0.3 / dt))
+    rel_k = np.full(n, -1)
+    prev_rel = np.zeros(n, dtype=bool)
+    with torch.inference_mode():
+        obs, _ = w.reset()
+        for k in range(T):
+            obs, _, _, _ = w.step(pol(obs))
+            t = (k + 1) * dt
+            d = rob.data
+            rel = base.released.cpu().numpy()
+            newr = rel & ~prev_rel
+            rel_t[newr], rel_k[newr] = t, k
+            prev_rel = rel
+            f = base.fallen.cpu().numpy()
+            nf = np.isnan(fell_t) & f
+            if nf.any():
+                lean = quat_apply(d.body_link_quat_w[:, base.torso_id], up_local)[:, :2].cpu().numpy()
+                fall_dir[nf] = lean[nf]
+                fell_t[nf] = t
+            forces = base.feet.data.net_forces_w_history[:, :, base.foot_sensor_ids].norm(dim=-1).max(1).values
+            planted = (forces > cfg.contact_force_n).cpu().numpy()  # (n, 2) lead, back
+            after = ~np.isnan(rel_t) & (t > rel_t)
+            for j in range(2):
+                m = after & np.isnan(unload[:, j]) & ~planted[:, j]
+                unload[m, j] = t - rel_t[m]
+            hit = rel_k >= 0
+            hit &= (k - rel_k) == k03
+            if hit.any():
+                com, comv = base._com()
+                feet = d.body_link_pos_w[:, base.foot_ids, :2].cpu().numpy()
+                c = com[:, :2].cpu().numpy()
+                both_d, both_off = seg_dist(c, feet[:, 0], feet[:, 1])
+                one = np.where(planted[:, :1], feet[:, 0], feet[:, 1])
+                one_off = c - one
+                sup_d = np.where(planted.all(-1), both_d,
+                                 np.where(planted.any(-1), np.linalg.norm(one_off, axis=-1), np.nan))
+                off = np.where(planted.all(-1)[:, None], both_off, one_off)
+                rr = d.body_link_pos_w - com.unsqueeze(1)
+                vv = d.body_link_lin_vel_w - comv.unsqueeze(1)
+                L = (masses.unsqueeze(-1) * torch.cross(rr, vv, dim=-1)).sum(1).cpu().numpy()
+                at03["sup"][hit, 0] = sup_d[hit]
+                at03["off"][hit] = off[hit]
+                at03["L"][hit] = L[hit]
+                at03["w"][hit] = d.body_link_ang_vel_w[:, base.torso_id].cpu().numpy()[hit]
+                at03["knee"][hit, 0] = np.degrees(d.joint_pos[:, knee].cpu().numpy())[hit]
+                at03["planted"][hit] = planted[hit]
+        both, speed, tilt, head_z, ok = (x.cpu().numpy() for x in base._stand_state())
+    fell = ~np.isnan(fell_t)
+    up = ~fell
+    rest = ok & up
+    groups = (("fell", fell), ("at rest", rest), ("up, not at rest", up & ~rest))
+    say(f"== diag_fall_release: {args.checkpoint} | {args.task}, {n} envs, set {args.set}")
+    say(f"  outcome: fell {fell.sum()}, at rest {rest.sum()}, up not at rest {(up & ~rest).sum()}; released "
+        f"{int((~np.isnan(rel_t)).sum())}, release time median {np.nanmedian(rel_t):.3f} s")
+    dtf = fell_t - rel_t
+    edges = [-np.inf, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0, np.inf]
+    hist = np.histogram(dtf[fell & ~np.isnan(dtf)], bins=edges)[0]
+    say("  fall time after the release (s): " + ", ".join(
+        f"{'<0' if a == -np.inf else f'{a:.1f}'}-{'' if b == np.inf else f'{b:.1f}'} {h}" for a, b, h in zip(edges[:-1], edges[1:], hist))
+        + f"; median {np.nanmedian(dtf[fell]):.2f} s")
+    fd = fall_dir[fell]
+    if len(fd):
+        ax = np.where(np.abs(fd[:, 0]) >= np.abs(fd[:, 1]), np.where(fd[:, 0] > 0, "toward the plate", "back"),
+                      np.where(fd[:, 1] > 0, "toward 1B", "toward 3B"))
+        say("  fall direction (trunk lean at the fall): " + ", ".join(f"{a} {int((ax == a).sum())}" for a in
+                                                                      ("toward the plate", "back", "toward 1B", "toward 3B"))
+            + f"; median lean x {np.median(fd[:, 0]):+.2f}, y {np.median(fd[:, 1]):+.2f} (sin of the tilt)")
+    for lab, m in groups:
+        if not m.any():
+            continue
+        u = unload[m]
+        first = np.where(np.isnan(u[:, 0]) & np.isnan(u[:, 1]), "none",
+                         np.where(np.nan_to_num(u[:, 0], nan=9) <= np.nan_to_num(u[:, 1], nan=9), "lead", "back"))
+        say(f"  [{lab}, {m.sum()}] first foot to unload after the release: lead {int((first == 'lead').sum())}, back "
+            f"{int((first == 'back').sum())}, none {int((first == 'none').sum())}; median time lead {np.nanmedian(u[:, 0]):.2f} s, "
+            f"back {np.nanmedian(u[:, 1]):.2f} s")
+        a = {k: v[m] for k, v in at03.items()}
+        say(f"      at release + 0.3 s: COM outside the support median {np.nanmedian(a['sup']) * 100:.1f} cm (offset x "
+            f"{np.nanmedian(a['off'][:, 0]) * 100:+.1f} y {np.nanmedian(a['off'][:, 1]) * 100:+.1f} cm), planted lead / back "
+            f"{np.nanmean(a['planted'][:, 0]) * 100:.0f}% / {np.nanmean(a['planted'][:, 1]) * 100:.0f}%; angular momentum "
+            f"about the COM (x, y, z) median {np.nanmedian(a['L'][:, 0]):+.1f} {np.nanmedian(a['L'][:, 1]):+.1f} "
+            f"{np.nanmedian(a['L'][:, 2]):+.1f} kg m2/s; torso angular velocity {np.nanmedian(a['w'][:, 0]):+.1f} "
+            f"{np.nanmedian(a['w'][:, 1]):+.1f} {np.nanmedian(a['w'][:, 2]):+.1f} rad/s; lead knee {np.nanmedian(a['knee']):.0f} deg")
+    nr = up & ~rest
+    if nr.any():
+        say(f"  up but not at rest ({nr.sum()}): feet not both down {int((~both[nr]).sum())}, COM speed >= "
+            f"{cfg.stand_max_com_v} {int((speed[nr] >= cfg.stand_max_com_v).sum())}, trunk tilt >= {cfg.stand_max_tilt_deg:.0f} "
+            f"{int((tilt[nr] >= cfg.stand_max_tilt_deg).sum())}, head <= {cfg.stand_min_head_z} "
+            f"{int((head_z[nr] <= cfg.stand_min_head_z).sum())}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BaseException:
+        import traceback
+        say(traceback.format_exc())
+        raise
+    finally:
+        app.close()
