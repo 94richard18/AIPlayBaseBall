@@ -112,6 +112,23 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         agent_cfg.algorithm.num_learning_epochs = int(os.environ["PPO_EPOCHS"])
     if os.environ.get("PPO_MINIBATCHES"):
         agent_cfg.algorithm.num_mini_batches = int(os.environ["PPO_MINIBATCHES"])
+    # adaptive learning-rate floor (LR_FLOOR, peer decision 2026-10-19): rsl_rl clamps the adaptive schedule at a
+    # hard-coded max(1e-5, lr / 1.5); every run since gl sat on it with approx KL ~0.013 vs desired 0.003 (gr). The
+    # module's only max() call is that clamp - shadow it in the module namespace, the update itself is unchanged.
+    if os.environ.get("LR_FLOOR"):
+        import builtins
+
+        import rsl_rl.algorithms.ppo as rsl_ppo
+
+        lr_floor = float(os.environ["LR_FLOOR"])
+
+        def ppo_max(a, b, *rest):
+            if a == 1e-5 and not rest:
+                return builtins.max(lr_floor, b)
+            return builtins.max(a, b, *rest)
+
+        rsl_ppo.max = ppo_max
+        print(f"[INFO]: adaptive learning-rate floor {lr_floor:.1e} (rsl_rl default 1e-5)", flush=True)
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )
