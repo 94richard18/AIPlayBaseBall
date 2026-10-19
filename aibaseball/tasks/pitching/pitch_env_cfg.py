@@ -659,6 +659,13 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
     release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
+    # stage: finish shaping - COM >= margin behind / inboard of the lead foot over [release + t0, release + t1]; the
+    # whole window pays w_finish_com at most
+    w_finish_com: float = 0.0
+    finish_com_t0: float = 0.2
+    finish_com_t1: float = 0.5
+    finish_com_margin: float = 0.05
+    finish_com_sigma: float = 0.04
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
@@ -1446,6 +1453,16 @@ class Stage1dK70GW2MBASVRT1D3EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     training (gy) but noisy at rest stayed ~23-28; a softer step for a smaller balance cost."""
 
     arm_ref_lead_s: dict | None = {"r_elbow": 0.035}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1D3FEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D2' (+35 ms) + finish shaping on the COM vs the lead foot (ha, peer decision 2026-10-20): over release + 0.2-0.5 s
+    w x mean(f_x, f_y), f = exp(-((d + 0.05)+ / 0.04)^2) with d = COM - lead foot toward the plate / toward first base.
+    gz / gy fell over the lead foot forward and toward 1B 0.6-1.0 s after the release; standers kept the COM ~8 cm
+    behind and ~10 cm inboard of it at +0.3 s."""
+
+    w_finish_com: float = 20.0
 
 
 @configclass

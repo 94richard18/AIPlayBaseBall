@@ -524,6 +524,19 @@ class StageEnv(PitchEnv):
             if c.w_stage_rel_speed > 0:  # release speed on its own, same pay condition (gw: speed was ~0.5 per m/s)
                 rew_ball = rew_ball + pay.float() * c.w_stage_rel_speed * (
                     self.rel_vel.norm(dim=-1) / c.rel_speed_full_mps).clamp(max=1.0)
+        if c.w_finish_com > 0:
+            # finish shaping (ha, peer decision 2026-10-20): over [release + t0, release + t1] keep the COM behind and
+            # inboard (3B side) of the lead foot - diag_fall_release: at release + 0.3 s the standers had it ~8 cm behind
+            # / ~10 cm inboard, the fallers at or past it (forward, toward 1B), and faster throws pushed it further.
+            # Per step w x mean(f_x, f_y) x dt / window: the whole window pays w at most
+            since = (self.episode_length_buf - self.release_step).float() * self.step_dt
+            on = self.released & ~self.fallen & (since >= c.finish_com_t0) & (since < c.finish_com_t1)
+            com, _ = self._com()
+            lead = self.robot.data.body_link_pos_w[:, self.foot_ids[0]]
+            dx, dy = com[:, 0] - lead[:, 0], com[:, 1] - lead[:, 1]  # + toward the plate / toward first base
+            fx = torch.exp(-(((dx + c.finish_com_margin).clamp_min(0.0) / c.finish_com_sigma) ** 2))
+            fy = torch.exp(-(((dy + c.finish_com_margin).clamp_min(0.0) / c.finish_com_sigma) ** 2))
+            rew_ball = rew_ball + on.float() * c.w_finish_com * 0.5 * (fx + fy) * self.step_dt / (c.finish_com_t1 - c.finish_com_t0)
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
         done = self.reset_terminated | self.reset_time_outs
