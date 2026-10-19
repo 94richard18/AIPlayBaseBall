@@ -65,7 +65,10 @@ def main():
             v = v.lower() in ("1", "true")
         elif old is None or v == "None":
             import ast
-            v = None if v == "None" else ast.literal_eval(v)
+            try:
+                v = None if v == "None" else ast.literal_eval(v)
+            except (ValueError, SyntaxError):
+                pass  # a plain string (e.g. grip_file=grip_v2.json)
         else:
             v = type(old)(v)
         setattr(cfg, k, v)
