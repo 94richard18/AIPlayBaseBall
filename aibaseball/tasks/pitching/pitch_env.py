@@ -103,6 +103,8 @@ class PitchEnv(DirectRLEnv):
                 jid = self.robot.find_joints(jn)[0]
                 lims = torch.tensor([[lo_, hi_]], device=dev).expand(self.num_envs, len(jid), 2).clone()
                 self.robot.write_joint_position_limit_to_sim(lims, joint_ids=jid)
+                print(f"[INFO] joint range override {jn}: soft limits now "
+                      f"{self.robot.data.soft_joint_pos_limits[0, jid[0]].tolist()}", flush=True)
         lim = self.robot.data.soft_joint_pos_limits[0]
         self.q_lo, self.q_hi = lim[:, 0], lim[:, 1]
 
