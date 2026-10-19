@@ -209,6 +209,9 @@ def main():
         f"deg, head > {cfg.stand_min_head_z} m): {ok.sum()}/{n} (failed: fell {fell.sum()}, feet {(up & ~both).sum()}, "
         f"COM speed {(up & (speed >= cfg.stand_max_com_v)).sum()}, trunk tilt {(up & (tilt >= cfg.stand_max_tilt_deg)).sum()}, "
         f"head {(up & (head_z <= cfg.stand_min_head_z)).sum()})")
+    down = (head_z < 1.0) | (tilt > 60.0)  # face-down on the hands etc.: not "fallen" by the env's thresholds
+    say(f"  down at the end (head < 1.0 m or trunk tilt > 60 deg at {cfg.episode_length_s:.1f} s): {int(down.sum())}/{n} "
+        f"(of them not flagged as falls {int((down & ~fell).sum())})")
     if stride_stage:
         say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
             f"{(up & ~landed).sum()}")
