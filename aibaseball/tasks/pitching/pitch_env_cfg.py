@@ -1352,6 +1352,14 @@ class Stage1dK70GW2MBASVREnvCfg(Stage1dK70GW2MBASVEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVR9EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """W2MBASVR with throw_upper_scale 0.9 (peer decision 2026-10-19, gu): 0.7 -> 0.8 gave +0.5-0.8 m/s release and
+    fewer drops, and gq / gs / gt won the heading back under training; speed is the gap to T2."""
+
+    throw_upper_scale: float = 0.9
+
+
+@configclass
 class Stage1dK70GREnvCfg(Stage1dK70GEnvCfg):
     """(b) candidate: K70G with half the RL residual (residual_scale 0.5 -> 0.25), the PD reference leads more."""
 
