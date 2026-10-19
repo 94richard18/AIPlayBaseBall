@@ -99,6 +99,9 @@ def main():
     at03 = {k: np.full((n, d), np.nan) for k, d in (("sup", 1), ("off", 2), ("L", 3), ("w", 3), ("knee", 1), ("planted", 2))}
     k03 = int(round(0.3 / dt))
     rel_k = np.full(n, -1)
+    b_lift = np.full(n, np.nan)  # back foot: first unloaded time after the release, then first re-loaded (touchdown)
+    b_td = np.full((n, 3), np.nan)  # touchdown time after the release, back foot - lead foot x / y
+    yaw_s = {dtt: np.full((n, 2), np.nan) for dtt in (0.0, 0.2, 0.4, 0.6)}  # pelvis / torso yaw (deg) after the release
     prev_rel = np.zeros(n, dtype=bool)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -122,6 +125,20 @@ def main():
             for j in range(2):
                 m = after & np.isnan(unload[:, j]) & ~planted[:, j]
                 unload[m, j] = t - rel_t[m]
+            m = after & ~np.isnan(b_lift) & np.isnan(b_td[:, 0]) & planted[:, 1]
+            if m.any():
+                fp = d.body_link_pos_w[:, base.foot_ids, :2].cpu().numpy()
+                b_td[m, 0] = t - rel_t[m]
+                b_td[m, 1:] = (fp[:, 1] - fp[:, 0])[m]
+            b_lift[after & np.isnan(b_lift) & ~planted[:, 1]] = 1.0
+            for dtt, arr in yaw_s.items():
+                hy = (rel_k >= 0) & ((k - rel_k) == int(round(dtt / dt)))
+                if hy.any():
+                    def yaw(q):
+                        qw, qx, qy, qz = q.cpu().numpy().T
+                        return np.degrees(np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz)))
+                    arr[hy, 0] = yaw(d.root_link_quat_w)[hy]
+                    arr[hy, 1] = yaw(d.body_link_quat_w[:, base.torso_id])[hy]
             hit = rel_k >= 0
             hit &= (k - rel_k) == k03
             if hit.any():
@@ -180,6 +197,18 @@ def main():
             f"about the COM (x, y, z) median {np.nanmedian(a['L'][:, 0]):+.1f} {np.nanmedian(a['L'][:, 1]):+.1f} "
             f"{np.nanmedian(a['L'][:, 2]):+.1f} kg m2/s; torso angular velocity {np.nanmedian(a['w'][:, 0]):+.1f} "
             f"{np.nanmedian(a['w'][:, 1]):+.1f} {np.nanmedian(a['w'][:, 2]):+.1f} rad/s; lead knee {np.nanmedian(a['knee']):.0f} deg")
+    for lab, m in groups:
+        if not m.any():
+            continue
+        td = b_td[m]
+        has = ~np.isnan(td[:, 0])
+        bf = (td[:, 0] < (fell_t - rel_t)[m]) if lab == "fell" else has
+        say(f"  [{lab}] back foot touchdown after the release: {int(has.sum())}/{m.sum()}"
+            + (f", time median {np.nanmedian(td[:, 0]):.2f} s, back - lead foot x {np.nanmedian(td[:, 1]):+.2f} y "
+               f"{np.nanmedian(td[:, 2]):+.2f} m" if has.any() else "")
+            + (f"; before the fall {int((bf & has).sum())}" if lab == "fell" else "")
+            + "; pelvis / torso yaw (deg) at +0.0/+0.2/+0.4/+0.6 s: "
+            + " ".join(f"{np.nanmedian(yaw_s[x][m, 0]):+.0f}/{np.nanmedian(yaw_s[x][m, 1]):+.0f}" for x in (0.0, 0.2, 0.4, 0.6)))
     nr = up & ~rest
     if nr.any():
         say(f"  up but not at rest ({nr.sum()}): feet not both down {int((~both[nr]).sum())}, COM speed >= "
