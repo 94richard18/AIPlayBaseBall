@@ -163,6 +163,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     grip_squeeze: float = 0.15  # default finger targets this far past contact = grip force (0.3 ejected the ball)
     # per group (None = grip_squeeze): the 7 Nm thumb out-pushed the 5 Nm fingers - the ball sat 8 mm off the grip pose,
     # index / middle pads 4-8 mm off it, thumb_cmc_flex at its limit 96% of the hold (diag_grip, gv 7200)
+    # scripted grip angles from this file (in assets/aib1_pitcher) instead of the robot's default pose (grip.json): grip.json
+    # had the thumb cylinder 6.6 mm and the middle 2.4 mm inside the ball (its solver used pad points + 8 mm, not the
+    # collision cylinders) - the ball sat 8 mm off its pose. grip_v2.json: scripts/solve_grip_v2.py, same ball centre
+    grip_file: str | None = None
     grip_squeeze_thumb: float | None = None
     grip_squeeze_fingers: float | None = None
 

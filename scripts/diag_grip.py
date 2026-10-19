@@ -84,6 +84,20 @@ def main():
     m_ball = float(base.phys.ball.mass)
     rad = float(base.phys.ball.radius)
     g = torch.tensor([0.0, 0.0, -9.81], device=dev)
+    # pad gaps from the real collision cylinders (shape 0 of each contact link), not the grip solver's pad points
+    from aibaseball.robot.humanoid import build_humanoid
+    hk = build_humanoid(with_bat=False, name="aib1_pitcher")
+    seg_ids, seg_a, seg_b, seg_r = [], [], [], []
+    for ln in ("r_index_distal", "r_middle_distal", "r_ring_middle", "r_thumb_distal"):
+        sh = hk.links[ln].shapes[0]
+        ax = np.asarray(sh.rot)[:, 2] * sh.size[1] / 2
+        seg_ids.append(rob.find_bodies(ln)[0][0])
+        seg_a.append(np.asarray(sh.pos) - ax)
+        seg_b.append(np.asarray(sh.pos) + ax)
+        seg_r.append(sh.size[0])
+    seg_a = torch.tensor(np.array(seg_a), dtype=torch.float32, device=dev).unsqueeze(0).expand(n, 4, 3)
+    seg_b = torch.tensor(np.array(seg_b), dtype=torch.float32, device=dev).unsqueeze(0).expand(n, 4, 3)
+    seg_r = torch.tensor(seg_r, device=dev)
     T = int(round(1.3 / base.step_dt))
     rec = {k: [] for k in ("tr", "gap", "f_hand", "a_rel", "tau", "qerr", "pads", "w_hand", "ball_hand")}
     rel_at = np.full(n, -1)
@@ -106,8 +120,11 @@ def main():
             rec["a_rel"].append(quat_rotate_inverse(hq, vb - hand_v).cpu().numpy())
             rec["tau"].append((d.applied_torque[:, fid].abs() / eff).cpu().numpy())
             rec["qerr"].append((d.joint_pos[:, fid] - base.q_target[:, fid]).cpu().numpy())
-            pp = d.body_link_pos_w[:, base.pad_ids] + quat_apply(d.body_link_quat_w[:, base.pad_ids], base.pad_local)
-            rec["pads"].append(((pp - ball.data.root_pos_w.unsqueeze(1)).norm(dim=-1) - rad).cpu().numpy())
+            lp, lq = d.body_link_pos_w[:, seg_ids], d.body_link_quat_w[:, seg_ids]
+            pa, pb = lp + quat_apply(lq, seg_a), lp + quat_apply(lq, seg_b)
+            cb = ball.data.root_pos_w.unsqueeze(1)
+            tt = (((cb - pa) * (pb - pa)).sum(-1) / ((pb - pa) ** 2).sum(-1)).clamp(0.0, 1.0).unsqueeze(-1)
+            rec["pads"].append(((cb - (pa + tt * (pb - pa))).norm(dim=-1) - seg_r - rad).cpu().numpy())
             rec["w_hand"].append(d.body_link_ang_vel_w[:, base.hand_id].norm(dim=-1).cpu().numpy())
             rec["ball_hand"].append(quat_rotate_inverse(hq, ball.data.root_pos_w - d.body_link_pos_w[:, base.hand_id]).cpu().numpy())
             rel = base.released.cpu().numpy()
@@ -140,7 +157,7 @@ def main():
         say(f"    {nm:15s} {np.median(tau[:, :, j]):.2f} / {tau[:, :, j].max():.2f}, {np.mean(tau[:, :, j] >= 0.98) * 100:4.0f}%, "
             f"{np.median(e):+6.1f}")
     pads = R["pads"][rows, idx]  # (m, W+1, 4) gap pad -> ball surface
-    say("  pad gap to the ball surface (mm), median at -W / -W/2 / release, and how often each pad opens first (> 3 mm):")
+    say("  finger cylinder surface gap to the ball surface (mm, < 0 = pressed in), median at -W / -W/2 / release, and how often each pad opens first (> 3 mm):")
     first = []
     for i in range(len(pads)):
         t_open = [np.argmax(pads[i, :, p] > 0.003) if (pads[i, :, p] > 0.003).any() else 10**6 for p in range(4)]

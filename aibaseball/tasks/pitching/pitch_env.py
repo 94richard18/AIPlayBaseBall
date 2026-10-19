@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 from collections.abc import Sequence
 
@@ -30,7 +31,7 @@ from aibaseball.mocap.centroidal import mound_z, reference_centroidal
 from aibaseball.mocap.motion import PITCH_KEY_BODIES, MotionRef
 from aibaseball.physics import PhysicsSpec
 from aibaseball.physics.ball_flight import aero_acceleration, simulate_to_plane
-from aibaseball.robot.aib1_cfg import BODY_JOINT_EXPR, GROUP_JOINTS, PITCHER_GRIP
+from aibaseball.robot.aib1_cfg import BODY_JOINT_EXPR, GROUP_JOINTS, PITCHER_DIR, PITCHER_GRIP
 from aibaseball.robot.ball_grip import FINGER_JOINTS, BallGrip
 
 from .pitch_env_cfg import PitchEnvCfg
@@ -103,6 +104,10 @@ class PitchEnv(DirectRLEnv):
         grip = BallGrip.load(PITCHER_GRIP)
         self.ball_local = torch.tensor(grip.ball_center_hand, device=dev).expand(n, 3)
         self.grip_q = self.robot.data.default_joint_pos[0, self.finger_ids].clone()
+        if cfg.grip_file:  # an alternative scripted grip (finger angles; the ball centre must match grip.json's)
+            g2 = BallGrip.load(cfg.grip_file if os.path.isabs(cfg.grip_file) else os.path.join(PITCHER_DIR, cfg.grip_file))
+            assert max(abs(a - b) for a, b in zip(g2.ball_center_hand, grip.ball_center_hand)) < 1e-4, "grip_file moves the ball"
+            self.grip_q = torch.tensor([g2.joint_pos[f"r_{j}"] for j in FINGER_JOINTS], device=dev)
         def sq(j):  # per-group squeeze (None = grip_squeeze): thumb vs index / middle / ring
             if j not in SQUEEZE_JOINTS:
                 return 0.0
