@@ -102,7 +102,9 @@ def main():
     seg_b = torch.tensor(np.array(seg_b), dtype=torch.float32, device=dev).unsqueeze(0).expand(n, 4, 3)
     seg_r = torch.tensor(seg_r, device=dev)
     T = int(round(1.3 / base.step_dt))
-    rec = {k: [] for k in ("tr", "gap", "f_hand", "a_rel", "tau", "qerr", "pads", "w_hand", "ball_hand")}
+    rec = {k: [] for k in ("tr", "gap", "f_hand", "a_rel", "tau", "qerr", "pads", "w_hand", "ball_hand", "palm_dn")}
+    from aibaseball.robot.humanoid import R_PALM_RIGHT
+    volar = torch.tensor(R_PALM_RIGHT @ np.array([0.0, 0.0, -1.0]), dtype=torch.float32, device=dev).expand(n, 3)
     rel_at = np.full(n, -1)
     prev_rel = np.zeros(n, dtype=bool)
     v_prev = None
@@ -129,6 +131,7 @@ def main():
             tt = (((cb - pa) * (pb - pa)).sum(-1) / ((pb - pa) ** 2).sum(-1)).clamp(0.0, 1.0).unsqueeze(-1)
             rec["pads"].append(((cb - (pa + tt * (pb - pa))).norm(dim=-1) - seg_r - rad).cpu().numpy())
             rec["w_hand"].append(d.body_link_ang_vel_w[:, base.hand_id].norm(dim=-1).cpu().numpy())
+            rec["palm_dn"].append(-quat_apply(hq, volar)[:, 2].cpu().numpy())  # cos(palm normal, down): 1 = palm down
             rec["ball_hand"].append(quat_rotate_inverse(hq, ball.data.root_pos_w - d.body_link_pos_w[:, base.hand_id]).cpu().numpy())
             rel = base.released.cpu().numpy()
             rel_at[rel & ~prev_rel] = k
@@ -170,6 +173,20 @@ def main():
         say(f"    {nm:7s} {np.median(pads[:, 0, p]) * 1000:6.1f} / {np.median(pads[:, W // 2, p]) * 1000:6.1f} / "
             f"{np.median(pads[:, -1, p]) * 1000:6.1f}   first to open in {int((first == p).sum())}/{len(first)}")
     say(f"    none opened > 3 mm before the release in {int((first == -1).sum())}/{len(first)}")
+    # early releases (windup slip-outs, before 0.9 s reference time) vs the rest: same window lines, plus the palm
+    rel_tr = np.array([R["tr"][i, k] if k >= 0 else np.nan for i, k in enumerate(rel_at)])
+    early = ok & (rel_tr < 0.9)
+    ti = FINGER_JOINTS.index("thumb_cmc_flex")
+    for lab, m in (("early (< 0.9 s)", early), ("on time", ok & ~early)):
+        if not m.any():
+            continue
+        rr = np.nonzero(m)[0][:, None]
+        ii = np.array([np.arange(k - W, k + 1) for k in rel_at[m]])
+        fmm = np.linalg.norm(R["f_hand"][rr, ii], axis=-1)
+        pd = R["palm_dn"][rr, ii]
+        say(f"  [{lab}, {int(m.sum())}] release ref time median {np.median(rel_tr[m]):.2f} s; last window: force on the ball "
+            f"median {np.median(fmm):.0f} N, thumb_cmc_flex at limit {np.mean(R['tau'][rr, ii][:, :, ti] >= 0.98) * 100:.0f}%; "
+            f"palm facing down (cos to gravity) at the release median {np.median(pd[:, -1]):+.2f}, window mean {np.mean(pd):+.2f}")
     # the hold before the throw (reference time 0.2-0.5 s, not released): where the ball actually sits in the hand
     hold = (R["tr"] >= 0.2) & (R["tr"] < 0.5)
     for i, k in enumerate(rel_at):
