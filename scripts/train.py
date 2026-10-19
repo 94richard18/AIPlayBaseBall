@@ -84,8 +84,11 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+# NO_TF32=1 (KL-floor check 2026-10-19): full FP32 matmuls - at action std ~0.027 TF32 rounding alone reads as
+# KL ~1e-3 between two evaluations of one policy, near the adaptive schedule's 2 x desired_kl
+tf32 = not os.environ.get("NO_TF32")
+torch.backends.cuda.matmul.allow_tf32 = tf32
+torch.backends.cudnn.allow_tf32 = tf32
 torch.backends.cudnn.deterministic = False
 torch.backends.cudnn.benchmark = False
 
@@ -189,6 +192,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         # the first mini-batches after every resume ran at up to 10x the rate the run had settled on (1e-5)
         runner.alg.learning_rate = runner.alg.optimizer.param_groups[0]["lr"]
         print(f"[INFO]: learning rate restored: {runner.alg.learning_rate:.2e}", flush=True)
+        if os.environ.get("LR_RESUME"):  # KL-floor check: LR_RESUME=0 with LR_FLOOR=0 - KL at a zero update size
+            runner.alg.learning_rate = float(os.environ["LR_RESUME"])
+            for g in runner.alg.optimizer.param_groups:
+                g["lr"] = runner.alg.learning_rate
+            print(f"[INFO]: learning rate set to {runner.alg.learning_rate:.2e} (LR_RESUME)", flush=True)
         if args_cli.reset_normalizer and agent_cfg.empirical_normalization:
             # rsl_rl stops updating the normalizers after 1e8 samples: a checkpoint from an earlier stage keeps that
             # stage's statistics (1a: phase always 0, fingers still -> in 1b the phase came in at 88 and the finger
