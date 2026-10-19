@@ -31,6 +31,8 @@ parser.add_argument("--gate_min_speed", type=float, default=10.0,
                     help="throw tasks: a release slower than this (m/s) is a drop and fails the [goal] count")
 parser.add_argument("--gate_min_release_t", type=float, default=0.9,
                     help="throw tasks: a release before this reference time (s; athlete ~0.98 s) is a drop")
+parser.add_argument("--ball_depen", type=float, default=None, help="what-if: ball max_depenetration_velocity (m/s)")
+parser.add_argument("--ball_pos_iters", type=int, default=None, help="what-if: ball solver position iterations")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 if args.video:
@@ -55,6 +57,10 @@ def say(*a):
 
 def main():
     cfg = load_cfg_from_registry(args.task, "env_cfg_entry_point")
+    if args.ball_depen is not None:
+        cfg.ball.spawn.rigid_props.max_depenetration_velocity = args.ball_depen
+    if args.ball_pos_iters is not None:
+        cfg.ball.spawn.rigid_props.solver_position_iteration_count = args.ball_pos_iters
     cfg.scene.num_envs = args.envs
     if hasattr(cfg, "landed_start_prob"):
         cfg.landed_start_prob = 0.0  # evaluate whole episodes from the set position

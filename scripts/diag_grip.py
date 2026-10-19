@@ -21,6 +21,8 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--set", nargs="*", default=[], help="env cfg overrides, key=value")
 parser.add_argument("--window_s", type=float, default=0.1)
+parser.add_argument("--ball_depen", type=float, default=None, help="what-if: ball max_depenetration_velocity (m/s)")
+parser.add_argument("--ball_pos_iters", type=int, default=None, help="what-if: ball solver position iterations")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -47,6 +49,10 @@ def say(*a):
 
 def main():
     cfg = load_cfg_from_registry(args.task, "env_cfg_entry_point")
+    if args.ball_depen is not None:
+        cfg.ball.spawn.rigid_props.max_depenetration_velocity = args.ball_depen
+    if args.ball_pos_iters is not None:
+        cfg.ball.spawn.rigid_props.solver_position_iteration_count = args.ball_pos_iters
     cfg.scene.num_envs = args.envs
     for kv in args.set:
         k, v = kv.split("=", 1)
@@ -173,6 +179,34 @@ def main():
         say(f"    {nm:7s} {np.median(pads[:, 0, p]) * 1000:6.1f} / {np.median(pads[:, W // 2, p]) * 1000:6.1f} / "
             f"{np.median(pads[:, -1, p]) * 1000:6.1f}   first to open in {int((first == p).sum())}/{len(first)}")
     say(f"    none opened > 3 mm before the release in {int((first == -1).sum())}/{len(first)}")
+    # slip classification (contact-solver ejection vs roll-out), early releases: 60 ms before to 20 ms after, per env step
+    # (2 physics steps): ball speed relative to the hand and the deepest finger-cylinder penetration
+    kb, ka = int(round(0.06 / base.step_dt)), int(round(0.02 / base.step_dt))
+    rel_tr0 = np.array([R["tr"][i, k] if k >= 0 else np.nan for i, k in enumerate(rel_at)])
+    ej, ro = [], []
+    for i, k in enumerate(rel_at):
+        if k < kb or not rel_tr0[i] < 0.9 or k + ka >= R["tr"].shape[1]:
+            continue
+        sl = slice(k - kb, k + ka + 1)
+        vr = np.linalg.norm(R["a_rel"][i, sl], axis=-1)
+        pen = R["pads"][i, sl].min(-1)  # most negative gap = deepest penetration (m)
+        jumps = np.diff(vr)
+        j = int(np.argmax(jumps))
+        row = (i, float(jumps[j]), float(pen[j]) * 1000, float(pen[j + 1]) * 1000, float(vr[0]), float(vr[-1]), (j - kb + 1) * base.step_dt * 1000)
+        (ej if jumps[j] > 0.5 and min(pen[j], pen[j + 1]) < -0.001 else ro).append(row)
+    if ej or ro:
+        say(f"  early-slip classification ({len(ej) + len(ro)} slips, per env step = 2 physics steps): ejection (rel speed jump "
+            f"> 0.5 m/s with a finger > 1 mm inside the ball) {len(ej)}, roll-out {len(ro)}")
+        for lab, rows in (("ejection", ej), ("roll-out", ro)):
+            for row in rows[:6]:
+                say(f"    {lab:9s} env {row[0]:3d}: biggest rel-speed jump {row[1]:+.2f} m/s at {row[6]:+.0f} ms from the "
+                    f"release, deepest finger penetration {row[2]:+.1f} / {row[3]:+.1f} mm, rel speed {row[4]:.2f} -> {row[5]:.2f} m/s")
+    c_b = cfg.ball.spawn
+    say(f"  ball: contact_offset {c_b.collision_props.contact_offset}, rest_offset {c_b.collision_props.rest_offset}, "
+        f"max_depenetration_velocity {c_b.rigid_props.max_depenetration_velocity}, solver position iterations "
+        f"{c_b.rigid_props.solver_position_iteration_count}; robot articulation solver iterations "
+        f"{cfg.robot.spawn.articulation_props.solver_position_iteration_count} / "
+        f"{cfg.robot.spawn.articulation_props.solver_velocity_iteration_count}; physics dt {cfg.sim.dt}")
     # early releases (windup slip-outs, before 0.9 s reference time) vs the rest: same window lines, plus the palm
     rel_tr = np.array([R["tr"][i, k] if k >= 0 else np.nan for i, k in enumerate(rel_at)])
     early = ok & (rel_tr < 0.9)
