@@ -78,7 +78,7 @@ def main():
     rad = float(base.phys.ball.radius)
     g = torch.tensor([0.0, 0.0, -9.81], device=dev)
     T = int(round(1.3 / base.step_dt))
-    rec = {k: [] for k in ("tr", "gap", "f_hand", "a_rel", "tau", "qerr", "pads", "w_hand")}
+    rec = {k: [] for k in ("tr", "gap", "f_hand", "a_rel", "tau", "qerr", "pads", "w_hand", "ball_hand")}
     rel_at = np.full(n, -1)
     prev_rel = np.zeros(n, dtype=bool)
     v_prev = None
@@ -102,6 +102,7 @@ def main():
             pp = d.body_link_pos_w[:, base.pad_ids] + quat_apply(d.body_link_quat_w[:, base.pad_ids], base.pad_local)
             rec["pads"].append(((pp - ball.data.root_pos_w.unsqueeze(1)).norm(dim=-1) - rad).cpu().numpy())
             rec["w_hand"].append(d.body_link_ang_vel_w[:, base.hand_id].norm(dim=-1).cpu().numpy())
+            rec["ball_hand"].append(quat_rotate_inverse(hq, ball.data.root_pos_w - d.body_link_pos_w[:, base.hand_id]).cpu().numpy())
             rel = base.released.cpu().numpy()
             rel_at[rel & ~prev_rel] = k
             prev_rel = rel
@@ -142,6 +143,18 @@ def main():
         say(f"    {nm:7s} {np.median(pads[:, 0, p]) * 1000:6.1f} / {np.median(pads[:, W // 2, p]) * 1000:6.1f} / "
             f"{np.median(pads[:, -1, p]) * 1000:6.1f}   first to open in {int((first == p).sum())}/{len(first)}")
     say(f"    none opened > 3 mm before the release in {int((first == -1).sum())}/{len(first)}")
+    # the hold before the throw (reference time 0.2-0.5 s, not released): where the ball actually sits in the hand
+    hold = (R["tr"] >= 0.2) & (R["tr"] < 0.5)
+    for i, k in enumerate(rel_at):
+        if k >= 0:
+            hold[i, k:] = False
+    bh = R["ball_hand"][hold]
+    ref = base.ball_local[0].cpu().numpy()
+    off = np.median(bh, 0) - ref
+    say(f"  hold (ref time 0.2-0.5 s): ball centre in the r_hand frame median {np.round(np.median(bh, 0), 4).tolist()} vs grip "
+        f"{np.round(ref, 4).tolist()} -> offset {np.round(off * 1000, 1).tolist()} mm (|{np.linalg.norm(off) * 1000:.1f}| mm); pad gaps "
+        "(mm) median: " + ", ".join(f"{nm} {np.median(R['pads'][hold][:, p]) * 1000:.1f}" for p, nm in enumerate(PADS))
+        + "; thumb_cmc_flex at limit " + f"{np.mean(R['tau'][hold][:, FINGER_JOINTS.index('thumb_cmc_flex')] >= 0.98) * 100:.0f}%")
 
 
 if __name__ == "__main__":
