@@ -107,6 +107,7 @@ def main():
     rel_split = np.full((n, 3), np.nan)  # hand speed at the release: pelvis / trunk / arm parts along its direction
     grp_abs, grp_n = np.zeros(3), 0.0  # |a| over 0.9-1.0 s: legs (0-11) / waist (12-14) / arms (15-28)
     rel_yaw = np.full(n, np.nan)  # pelvis (root) yaw at the release step, deg (0 = facing +x)
+    rel_jv = np.full((n, 2), np.nan)  # right elbow / shoulder yaw (internal rotation) velocity at the release, deg/s
     prev_rel = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     with torch.inference_mode():
@@ -157,6 +158,10 @@ def main():
                     parts = torch.stack([(vp * u).sum(-1), ((vt - vp) * u).sum(-1), ((vh - vt) * u).sum(-1)], -1)
                     new_rel = torch.as_tensor(rel_now & ~prev_rel, device=base.device)
                     rel_split[new_rel.cpu().numpy()] = parts[new_rel].cpu().numpy()
+                    jn = list(base.robot.joint_names)
+                    if "r_elbow" in jn:
+                        jv = dd.joint_vel[:, [jn.index("r_elbow"), jn.index("r_shoulder_yaw")]].cpu().numpy() * 180.0 / np.pi
+                        rel_jv[rel_now & ~prev_rel] = jv[rel_now & ~prev_rel]
                 prev_rel = rel_now
             if hasattr(base, "s_crossed"):  # first plate crossing this step, the flight not ended on the ground before
                 cr_now = base.s_crossed.cpu().numpy()
@@ -268,6 +273,10 @@ def main():
             m = np.median(rel_split[rs], 0)
             say(f"  hand speed at the release along its direction (median): pelvis {m[0]:.2f} + trunk {m[1]:.2f} + arm "
                 f"{m[2]:.2f} = {m.sum():.2f} m/s ({rs.sum()} releases)")
+        rj = rel & ~np.isnan(rel_jv[:, 0])
+        if rj.any():
+            say(f"  at the release (median): elbow velocity {np.median(rel_jv[rj, 0]):+.0f} deg/s (+ extending), shoulder "
+                f"yaw (IR) {np.median(rel_jv[rj, 1]):+.0f} deg/s; elbow extending in {int((rel_jv[rj, 0] >= 0).sum())}/{int(rj.sum())}")
         ry = rel & ~np.isnan(rel_yaw)
         if ry.sum() > 2:
             cc = np.corrcoef(head[ry], rel_yaw[ry])[0, 1]

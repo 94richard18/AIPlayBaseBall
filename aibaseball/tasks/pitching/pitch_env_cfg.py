@@ -1379,6 +1379,22 @@ class Stage1dK70GW2MBASVRT2EnvCfg(Stage1dK70GW2MBASVREnvCfg):
     arm_ref_lead_s: dict | None = {"r_elbow": 0.03, "r_shoulder_yaw": -0.03}
 
 
+@configclass
+class Stage1dK70GW2MBASVRE15EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """T1 with the elbow lead 15 ms (elbow-lead sweep, peer decision 2026-10-19): at +30 ms the PD-base elbow was
+    already past full extension at the release (-412 deg/s), the robot still ~18 ms behind it."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.015}
+
+
+@configclass
+class Stage1dK70GW2MBASVRE20EnvCfg(Stage1dK70GW2MBASVREnvCfg):
+    """T1 with the elbow lead 20 ms (elbow-lead sweep, peer decision 2026-10-19): at +30 ms the PD-base elbow was
+    already past full extension at the release (-412 deg/s), the robot still ~18 ms behind it."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.020}
+
+
 def _right_arm_sea(robot: ArticulationCfg, **scale) -> ArticulationCfg:
     """The right-arm SEA actuators (shoulder / elbow / wrist) with these cfg fields scaled, e.g. motor_kp=1.5."""
     acts = dict(robot.actuators)
