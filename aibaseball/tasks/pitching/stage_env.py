@@ -184,6 +184,26 @@ class StageEnv(PitchEnv):
                 k = self.cfg.throw_upper_scale  # fall-fix curriculum: 0 = the stride task's upper body, 1 = the throw
                 q[:, up_cols] = q[:, up_cols] + k * (r["joint_pos"][:, up_cols] - q[:, up_cols])
                 qd[:, up_cols] = k * r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
+            c = self.cfg
+            rs = ((self.episode_length_buf - self.release_step).float() * self.step_dt).unsqueeze(-1)
+            relf = self.released.float().unsqueeze(-1)
+            if c.follow_trunk_after_release and c.throw_upper and not c.throw_upper_trunk:
+                # (b2) the waist joins the athlete's follow-through rotation after the release (blended in over
+                # follow_trunk_blend_s): the reference held it at the set pose while the athlete's waist turned -34 -> +80 deg
+                tc = self.trunk_cols
+                wt = relf * (rs / c.follow_trunk_blend_s).clamp(0.0, 1.0)
+                tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
+                q[:, tc] = q[:, tc] + wt * (tgt - q[:, tc])
+                qd[:, tc] = wt * c.throw_upper_scale * r["joint_vel"][:, tc] * (t < self.ref.duration).float().unsqueeze(-1)
+            if c.back_catch_q is not None:
+                # (b1) back-leg catch step: after the release the back leg's reference blends from the athlete's late
+                # forward step (touchdown +0.72 s, 0.41 m ahead) to the robot standers' early wide stance (their back-leg
+                # angles at release + 0.45 s), over [back_catch_t0, back_catch_t0 + back_catch_blend_s], then holds it
+                bc = self.back_leg_cols
+                wb = relf * ((rs - c.back_catch_t0) / c.back_catch_blend_s).clamp(0.0, 1.0)
+                tgt = torch.tensor(c.back_catch_q, device=q.device).unsqueeze(0)
+                q[:, bc] = q[:, bc] + wb * (tgt - q[:, bc])
+                qd[:, bc] = qd[:, bc] * (1.0 - wb)
             r["joint_pos"], r["joint_vel"] = q, qd
         if self.cfg.stage == "1a":  # a still pose: the athlete's first-frame velocities (the leg lift starting) would
             # be a constant PD velocity target - with zero actions it lifted the lead foot 16 cm and the robot fell

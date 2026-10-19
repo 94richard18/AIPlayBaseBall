@@ -661,6 +661,12 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     # stage: finish shaping - COM >= margin behind / inboard of the lead foot over [release + t0, release + t1]; the
     # whole window pays w_finish_com at most
+    # follow-through reference changes (2026-10-20, fall diagnosis: the reference's late forward back-foot step is the trap)
+    follow_trunk_after_release: bool = False  # (b2) waist on the athlete's rotation after the release (throw_upper_trunk off)
+    follow_trunk_blend_s: float = 0.05
+    back_catch_q: list | None = None  # (b1) back-leg joint targets (back_leg_cols order) after the release
+    back_catch_t0: float = 0.10
+    back_catch_blend_s: float = 0.15
     w_finish_com: float = 0.0
     finish_com_t0: float = 0.2
     finish_com_t1: float = 0.5
@@ -1463,6 +1469,23 @@ class Stage1dK70GW2MBASVRT1D3FEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     behind and ~10 cm inboard of it at +0.3 s."""
 
     w_finish_com: float = 20.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1D3B1EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D2' + (b1) back-leg catch step (peer decision 2026-10-20): from release + 0.10 s over 0.15 s the back leg's reference
+    blends to the gz 7300 standers' back-leg angles at release + 0.45 s (their back foot down at +0.40 s, 0.13 m behind /
+    0.54 m to the 3B side of the lead foot) instead of the athlete's step (down at +0.72 s, 0.41 m ahead)."""
+
+    back_catch_q: list | None = [0.425, -0.039, -0.434, 0.225, -0.695, 0.331]
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
+    """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
+    0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
+
+    follow_trunk_after_release: bool = True
 
 
 @configclass

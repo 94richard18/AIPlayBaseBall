@@ -102,6 +102,7 @@ def main():
     b_lift = np.full(n, np.nan)  # back foot: first unloaded time after the release, then first re-loaded (touchdown)
     b_td = np.full((n, 3), np.nan)  # touchdown time after the release, back foot - lead foot x / y
     yaw_s = {dtt: np.full((n, 2), np.nan) for dtt in (0.0, 0.2, 0.4, 0.6)}  # pelvis / torso yaw (deg) after the release
+    bq45 = np.full((n, len(base.back_leg_cols)), np.nan)  # back-leg joint angles at release + 0.45 s
     prev_rel = np.zeros(n, dtype=bool)
     with torch.inference_mode():
         obs, _ = w.reset()
@@ -131,6 +132,9 @@ def main():
                 b_td[m, 0] = t - rel_t[m]
                 b_td[m, 1:] = (fp[:, 1] - fp[:, 0])[m]
             b_lift[after & np.isnan(b_lift) & ~planted[:, 1]] = 1.0
+            h45 = (rel_k >= 0) & ((k - rel_k) == int(round(0.45 / dt)))
+            if h45.any():
+                bq45[h45] = d.joint_pos[:, base.body_ids[base.back_leg_cols]].cpu().numpy()[h45]
             for dtt, arr in yaw_s.items():
                 hy = (rel_k >= 0) & ((k - rel_k) == int(round(dtt / dt)))
                 if hy.any():
@@ -209,6 +213,9 @@ def main():
             + (f"; before the fall {int((bf & has).sum())}" if lab == "fell" else "")
             + "; pelvis / torso yaw (deg) at +0.0/+0.2/+0.4/+0.6 s: "
             + " ".join(f"{np.nanmedian(yaw_s[x][m, 0]):+.0f}/{np.nanmedian(yaw_s[x][m, 1]):+.0f}" for x in (0.0, 0.2, 0.4, 0.6)))
+    if rest.any():
+        say(f"  at rest: back-leg joints {[base.body_names[i] for i in base.back_leg_cols]} at release + 0.45 s, median "
+            f"{np.round(np.nanmedian(bq45[rest], 0), 3).tolist()}")
     nr = up & ~rest
     if nr.any():
         say(f"  up but not at rest ({nr.sum()}): feet not both down {int((~both[nr]).sum())}, COM speed >= "
