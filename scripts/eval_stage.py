@@ -294,6 +294,26 @@ def main():
                 + (f"{np.median(sc[rel & rest]):.2f}" if (rel & rest).any() else "-"))
         say(f"  W1 gate: at rest and thrown {int((rest & thrown).sum())}/{n} (>= 60/64), at rest and T3+ "
             f"{int((rest & (tier >= 3)).sum())}/{n} (>= 32/64), at rest and T4 {int((rest & (tier >= 4)).sum())}/{n}")
+        if rel.any():
+            # aero flight (drag + Magnus) from each release state to the plate plane - the eval episodes fly the ball
+            # gravity-only (play_mode off), so this is the realistic plate speed / location. User spec 2026-10-19:
+            # >= 100 km/h (27.8 m/s) over home plate
+            from aibaseball.physics.ball_flight import simulate_to_plane
+            pl = (base.rel_pos - base.scene.env_origins).cpu().double()
+            cr_a, v_a, _, re_a = simulate_to_plane(pl, base.rel_vel.cpu().double(), base.rel_omega.cpu().double(), base.phys,
+                                                   cfg.plate_distance, dt=0.005, ground_z=base.field_z)
+            v_a, re_a = v_a.numpy(), re_a.numpy() & rel
+            ya, za = cr_a[:, 1].numpy() - cfg.zone_center_y, cr_a[:, 2].numpy() - base.field_z
+            fast = re_a & (v_a >= 27.8)
+            t3a = thrown & (np.abs(head) <= 10.0) & re_a & (np.abs(ya) <= 0.5) & (za >= 0.2) & (za <= 1.5)
+            say(f"  aero flight (drag + Magnus from the release state): reached the plate plane in the air "
+                f"{int(re_a.sum())}/{n}; speed there median "
+                + (f"{np.median(v_a[re_a]):.1f} m/s ({np.median(v_a[re_a]) * 3.6:.0f} km/h), y {np.median(ya[re_a]):+.2f} m, "
+                   f"z {np.median(za[re_a]):.2f} m" if re_a.any() else "-")
+                + f" (release median {np.median(v[rel]):.1f} m/s, spin median {np.median(base.rel_omega.norm(dim=-1).cpu().numpy()[rel]) * 60 / (2 * np.pi):.0f} rpm)")
+            say(f"  plate-speed gate (>= 27.8 m/s = 100 km/h over the plate, aero): at rest and in the air and fast "
+                f"{int((rest & fast).sum())}/{n}; and T3 (aero location) {int((rest & fast & t3a).sum())}/{n}; "
+                f"at rest and aero T3 any speed {int((rest & t3a).sum())}/{n}")
         ok = ok & thrown
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
