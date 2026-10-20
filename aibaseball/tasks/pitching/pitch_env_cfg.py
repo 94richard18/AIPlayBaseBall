@@ -1652,6 +1652,15 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5EnvCfg)
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5N1EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 trained with start_joint_noise 0.01 (evals stay at 0.02). hi (H5, train noise 0.02, from hf_avg3): noisy
+    68.5/128 at step 0 -> 60/57/61/40/34 at 7400-7800 while identical stayed 57-59 - at 0.02 about half the set starts
+    fall, so PPO learns mostly from failures and drifts toward the identical start (lesson 7)."""
+
+    start_joint_noise: float = 0.01
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
