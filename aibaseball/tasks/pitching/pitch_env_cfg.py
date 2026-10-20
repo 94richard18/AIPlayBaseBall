@@ -1563,6 +1563,22 @@ class Stage1dK70GW2MBASVRT1SYE50EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SY110EnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + layback widened to -110 deg (curriculum toward -130, peer decision 2026-10-20: the -130 step dropped noisy
+    at rest to ~5-7/64 zero-shot and hc / hd did not recover it); reference re-retargeted at -110 (pitch_2916-4_sy110)."""
+
+    motion_file: str = os.path.join(MOTION_DIR, "pitch_2916-4_sy110.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-1.92, 1.6)}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SY110E40EnvCfg(Stage1dK70GW2MBASVRT1SY110EnvCfg):
+    """SY110 with the elbow lead +40 ms."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.040}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
