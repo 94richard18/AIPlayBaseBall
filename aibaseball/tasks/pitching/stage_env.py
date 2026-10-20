@@ -87,6 +87,25 @@ class StageEnv(PitchEnv):
         sgn = up.float() - down.float()
         return tm, sgn
 
+    def _arm_blend(self, r, t):
+        """SYW: the throwing arm's reference from the second motion around the release (arm_blend_times, smoothstep in
+        and out), each joint on its own arm_ref_lead_s clock."""
+        if not hasattr(self, "_blend_cols"):
+            import re as _re
+            self._blend_cols = [i for i, nm in enumerate(self.body_names) if _re.fullmatch(self.cfg.arm_blend_joints, nm)]
+        t0, t1, t2, t3 = (self.release_ref + x for x in self.cfg.arm_blend_times)
+        sm = lambda x: x * x * (3.0 - 2.0 * x)  # noqa: E731
+        w = sm(((t - t0) / (t1 - t0)).clamp(0.0, 1.0)) * (1.0 - sm(((t - t2) / (t3 - t2)).clamp(0.0, 1.0)))
+        main, leads = self.ref, self.cfg.arm_ref_lead_s or {}
+        try:
+            self.ref = self.ref_arm
+            for col in self._blend_cols:
+                rb = PitchEnv._ref(self, t + leads.get(self.body_names[col], 0.0))
+                r["joint_pos"][:, col] += w * (rb["joint_pos"][:, col] - r["joint_pos"][:, col])
+                r["joint_vel"][:, col] += w * (rb["joint_vel"][:, col] - r["joint_vel"][:, col])
+        finally:
+            self.ref = main
+
     def _ref(self, t):
         if self.cfg.stage == "1b1" and t.shape[0] == self.num_envs:
             # legs (and root / key targets) on the lift clock, scaled by leg_ref_scale; upper body at the set position
@@ -135,6 +154,8 @@ class StageEnv(PitchEnv):
             for nm, lead in self.cfg.arm_ref_lead_s.items():
                 rr, col = super()._ref(t + lead), self._jcol[nm]
                 r["joint_pos"][:, col], r["joint_vel"][:, col] = rr["joint_pos"][:, col], rr["joint_vel"][:, col]
+        if self.ref_arm is not None and t.shape[0] == self.num_envs:
+            self._arm_blend(r, t)
         if self.cfg.stage == "1b" and t.shape[0] == self.num_envs:
             # PD base / targets: upper body at the set position; legs on the athlete's stride (frozen at the release
             # time if the robot has not landed by then), after the robot's touchdown blending over stand_pd_blend_s

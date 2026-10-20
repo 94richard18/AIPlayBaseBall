@@ -703,6 +703,11 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # throw_upper: per-joint time shift of the PD reference, {joint name: seconds}; + samples the athlete's motion that
     # much later (the joint's reference runs ahead), - earlier (it lags)
     arm_ref_lead_s: dict | None = None
+    # throw_upper: a second motion for the throwing arm around the release only (SYW): its joints matching arm_blend_joints
+    # blend from motion_file's into this one's over release + [t0, t1], hold to t2, blend back by t3 (s, reference time)
+    arm_blend_motion_file: str | None = None
+    arm_blend_joints: str = r"r_(shoulder|elbow|wrist)_?.*"
+    arm_blend_times: tuple = (-0.20, -0.12, 0.05, 0.15)
     drop_ends: bool = False  # throw_upper: a dropped ball ends the episode with the fall penalty (as eval_stage's gate)
     drop_min_speed: float = 10.0  # ... a release slower than this (m/s) is a drop
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
@@ -1593,6 +1598,25 @@ class Stage1dK70GW2MBASVRT1SY110WFEnvCfg(Stage1dK70GW2MBASVRT1SY110EnvCfg):
     -130 deg layback the ball / wrist ratio rose 1.25 -> 1.47 through wrist flexion at the release (+277 -> +769 deg/s)."""
 
     throw_upper_scale_joints: dict | None = {"r_wrist_.*": 1.0}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW130EnvCfg(Stage1dK70GW2MBASVRT1WFEnvCfg):
+    """WF + the -130 deg layback reference on the throwing arm only around the release (SYW, peer decision 2026-10-20):
+    the sy130 retarget also moves the waist / legs / left arm from release - 0.19 s and flips the arm to another IK branch
+    after the release (shoulder roll at its -2.8 limit by +0.10 s). Old reference until release - 0.20 s, smoothstep into
+    sy130's arm by - 0.12 s, held to + 0.05 s, back to the old by + 0.15 s; elbow lead and wrist scale as WF."""
+
+    arm_blend_motion_file: str | None = os.path.join(MOTION_DIR, "pitch_2916-4_sy130.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-2.27, 1.6)}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110EnvCfg(Stage1dK70GW2MBASVRT1WFEnvCfg):
+    """SYW with the -110 deg layback reference (pitch_2916-4_sy110)."""
+
+    arm_blend_motion_file: str | None = os.path.join(MOTION_DIR, "pitch_2916-4_sy110.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-1.92, 1.6)}
 
 
 @configclass

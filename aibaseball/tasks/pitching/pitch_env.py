@@ -66,6 +66,11 @@ class PitchEnv(DirectRLEnv):
         self.phys = PhysicsSpec()
         self.ref = MotionRef(cfg.motion_file, dev)
         self.ref.rotate_z(math.radians(cfg.ref_yaw_deg))
+        self.ref_arm = None  # SYW: second motion for the throwing arm around the release
+        if getattr(cfg, "arm_blend_motion_file", None):
+            self.ref_arm = MotionRef(cfg.arm_blend_motion_file, dev)
+            self.ref_arm.rotate_z(math.radians(cfg.ref_yaw_deg))
+            assert abs(self.ref_arm.contact_time - self.ref.contact_time) < 1e-6
         self.release_ref = self.ref.contact_time  # reference release time (stored as "contact")
         # reference COM / planted feet (robot masses, fitted mound), rotated like the reference
         cen = reference_centroidal(cfg.motion_file, lambda x: mound_z(x, cfg.mound_top_z, cfg.mound_height,
