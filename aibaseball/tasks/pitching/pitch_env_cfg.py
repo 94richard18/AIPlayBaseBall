@@ -1620,6 +1620,21 @@ class Stage1dK70GW2MBASVRT1SYW110EnvCfg(Stage1dK70GW2MBASVRT1WFEnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110REnvCfg(Stage1dK70GW2MBASVRT1SYW110EnvCfg):
+    """SYW110 with the sy110 arm only through the release, back to the old by + 0.10 s: holding it to + 0.05 s sat in
+    sy110's post-release IK-branch flip; step 0 on hf_avg3 at rest identical 25 -> 39 / 64, noisy 32 -> 45 / 128, 18.0 m/s."""
+
+    arm_blend_times: tuple = (-0.20, -0.12, 0.0, 0.10)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5EnvCfg(Stage1dK70GW2MBASVRT1SYW110EnvCfg):
+    """SYW110R with the blend back to the old arm by + 0.05 s."""
+
+    arm_blend_times: tuple = (-0.20, -0.12, 0.0, 0.05)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
