@@ -89,6 +89,16 @@ class PitchedBattingHuman4EnvCfg(PitchedBattingHuman3EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman5EnvCfg(PitchedBattingHuman4EnvCfg):
+    """2026-10-21 diag (Human4 model_10897, 256 pitches): hit rate 0.398; misses are still mostly timing (134/154) and
+    spread wide (-0.079 / -0.051 / -0.018 s vs the hits' ~-0.10 s) - the +-0.08 s arrival jitter is not absorbed per
+    pitch although t_arrive is observed and |tempo| stays ~0.16. Only change: tempo penalty 0.3 -> 0.1 (w_miss 20
+    still makes a drift to tracking expensive, the Human v0 failure). Start from Human4 model_10897."""
+
+    w_tempo: float = 0.1
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
