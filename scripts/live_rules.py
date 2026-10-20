@@ -30,6 +30,10 @@ p.add_argument("--win_noisy", type=float, default=34.25)
 p.add_argument("--win_speed", type=float, default=16.6)
 p.add_argument("--poll", type=int, default=60, help="seconds between file checks")
 p.add_argument("--no_kill", action="store_true")
+p.add_argument("--once", action="store_true",
+               help="one pass over the eval files, then exit (no verdict -> exit code 2). train_live.sh's EVAL_WAIT_FREE "
+                    "counts python.exe processes, so a resident watcher blocks every eval (hi, 2026-10-20) - call --once "
+                    "from a bash loop (scripts/live_rules_loop.sh) instead")
 a = p.parse_args()
 
 
@@ -92,12 +96,16 @@ while verdict is None:
                 verdict = f"speed stop at {it}: identical speed {s_last[0]}, {s_last[1]} < {a.speed_lt} twice"
         if verdict:
             break
+    if verdict is None and a.once:
+        break
     if verdict is None and not trainer_alive():
         verdict = "trainer ended (max iterations or crashed) - no rule fired"
         break
     if verdict is None:
         time.sleep(a.poll)
 
+if verdict is None:  # --once, nothing decided yet
+    raise SystemExit(2)
 newest = sorted(glob.glob(os.path.join(ROOT, "logs", "rsl_rl", "*", f"*_{a.run}", "model_*.pt")),
                 key=lambda f: int(re.search(r"model_(\d+)\.pt$", f).group(1)))
 if verdict.startswith(("balance", "speed")) and not a.no_kill:
