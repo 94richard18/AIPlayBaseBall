@@ -708,6 +708,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     arm_blend_motion_file: str | None = None
     arm_blend_joints: str = r"r_(shoulder|elbow|wrist)_?.*"
     arm_blend_times: tuple = (-0.20, -0.12, 0.05, 0.15)
+    arm_blend_weight: float = 1.0  # peak blend weight toward the second motion (0.5: half-way between the two arm paths)
     drop_ends: bool = False  # throw_upper: a dropped ball ends the episode with the fall penalty (as eval_stage's gate)
     drop_min_speed: float = 10.0  # ... a release slower than this (m/s) is a drop
     drop_min_release_t: float = 0.9  # ... and so is one before this reference time (s; athlete ~0.98 s)
@@ -1632,6 +1633,22 @@ class Stage1dK70GW2MBASVRT1SYW110R5EnvCfg(Stage1dK70GW2MBASVRT1SYW110EnvCfg):
     """SYW110R with the blend back to the old arm by + 0.05 s."""
 
     arm_blend_times: tuple = (-0.20, -0.12, 0.0, 0.05)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW100R5EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5EnvCfg):
+    """SYW110R5 at half the layback step: the arm reference retargeted at -100 deg (pitch_2916-4_sy100; peer decision
+    2026-10-20 after hh: identical rose 36 -> 49 / 64 at 18.1 m/s while noisy fell 26 -> 17)."""
+
+    arm_blend_motion_file: str | None = os.path.join(MOTION_DIR, "pitch_2916-4_sy100.npz")
+    joint_limit_overrides: dict | None = {"r_shoulder_yaw": (-1.75, 1.6)}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5EnvCfg):
+    """SYW110R5 at blend weight 0.5: the arm reference half-way between the old path and sy110's around the release."""
+
+    arm_blend_weight: float = 0.5
 
 
 @configclass

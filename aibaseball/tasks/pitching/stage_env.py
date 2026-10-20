@@ -96,6 +96,7 @@ class StageEnv(PitchEnv):
         t0, t1, t2, t3 = (self.release_ref + x for x in self.cfg.arm_blend_times)
         sm = lambda x: x * x * (3.0 - 2.0 * x)  # noqa: E731
         w = sm(((t - t0) / (t1 - t0)).clamp(0.0, 1.0)) * (1.0 - sm(((t - t2) / (t3 - t2)).clamp(0.0, 1.0)))
+        w = w * self.cfg.arm_blend_weight
         main, leads = self.ref, self.cfg.arm_ref_lead_s or {}
         try:
             self.ref = self.ref_arm
