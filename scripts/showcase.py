@@ -25,6 +25,7 @@ parser.add_argument("--swings", type=int, default=1)
 parser.add_argument("--all", action="store_true", help="keep every swing in the video (not only the best)")
 parser.add_argument("--pitch_kmh", type=float, nargs=2, default=None, help="pitched task: pitch speed range")
 parser.add_argument("--timing_noise", type=float, default=None, help="pitched task: +- arrival-time offset (s)")
+parser.add_argument("--timing_bias", type=float, default=None, help="pitched task: cfg.timing_bias_s (s, + = pitch later)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 AppLauncher.add_app_launcher_args(parser)
@@ -278,6 +279,8 @@ def run_pitched_video(ckpt: str):
         cfg.pitch_speed_range_final = tuple(args.pitch_kmh)
     if args.timing_noise is not None:
         cfg.timing_noise_s = args.timing_noise
+    if args.timing_bias is not None:
+        cfg.timing_bias_s = args.timing_bias
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
     wrapped = RslRlVecEnvWrapper(env)
     policy = load_policy(wrapped, ckpt)
