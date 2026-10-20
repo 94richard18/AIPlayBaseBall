@@ -70,7 +70,9 @@
 | 投手（10-20 決定） | 暫停 PPO 微調。H65 / H8 零樣本掃描：H65 60/64、62+62/128、17.1 m/s；H8 55/64、54+56/128、17.5 m/s，都沒過，混入比例這條路結束（只靠手臂最多約 18 m/s）。下一個零樣本測試：腰只在放球附近跟著投球時鐘（trunk_window_times，任務 H5TW1 / H5TW2，7ce2a50），避開 S2 的準備期滑球；條件同上，另外要求相同起始球速 ≥ 18.0 |
 | hi | 7800 被平衡規則停止（noisy 17/64），沒有取代交付；hi_avg5 也沒有 |
 | 打者 Human4 | 完成，擊中率 39.8%（見第 3 節） |
-| 影片 | 10-21 07:10 起錄：打者 `videos/batter_human4_1021.mp4`、投手 `videos/deliverable_h5_{identical,noisy}_1021.mp4` |
+| 影片 | 10-21 07:03-07:19：打者 `videos/batter_human4_1021.mp4`（88-112 km/h、bias 0.04，5 球中 2 次界外、至少 2 次沒打中，界外都是滾地球 0.4-0.7 m）；投手 `videos/deliverable_h5_identical_1021.mp4`（2 回合站穩）、`_noisy_1021.mp4`（這次站穩）。下次最晚 10-21 19:00 |
+| 打者 Human5 | 07:20 啟動（`AIB-PitchedBatting-Human5-v0`：tempo 懲罰 0.3 → 0.1，從 Human4 model_10897，600 次，2048 envs，`logs/train_human5.txt`）；結束後用 diag_bat_contact（bias 0.04）跟 Human4 的 39.8% 比 |
+| 投手 TW1Y | 07:20 和 Human5 同時跑 eval_protocol（1 個行程） |
 | 注意 | Isaac 行程結束時可能卡住不退出（10-21 00:11 診斷寫完結果後卡到 06:19，GPU 空了 6 小時）：長的串接指令每段加 `timeout`；bash 的 `python` 是 WindowsApps 的假程式，要用 `/c/Users/User/anaconda3/envs/isaaclab_env/python.exe` |
 | GPU | 最多 2 個 Isaac 行程；trainer 在跑時不錄影（渲染 + 訓練會超過 12 GB）；EVAL_WAIT_FREE 只算 Isaac 行程（66e4331）；監看不要用常駐的 python |
 
