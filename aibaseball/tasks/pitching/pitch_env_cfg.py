@@ -1529,6 +1529,22 @@ class Stage1dK70GW2MBASVRT1D3SYEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYE40EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
+    """SY (layback -130 deg) with the elbow lead +40 ms (re-tune on the SY reference, peer decision 2026-10-20): at +30 ms
+    the elbow was still flexing at the release in ~80-90% (hc 7300 / 7400)."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.040}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYE50EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
+    """SY (layback -130 deg) with the elbow lead +50 ms (re-tune on the SY reference, peer decision 2026-10-20): at +30 ms
+    the elbow was still flexing at the release in ~80-90% (hc 7300 / 7400)."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.050}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
