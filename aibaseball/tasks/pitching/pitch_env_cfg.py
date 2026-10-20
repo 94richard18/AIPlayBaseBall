@@ -674,6 +674,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # smoothstep in over t0-t1, out over t2-t3; throw_upper_trunk off): S2 (whole throw) slid the ball out at ~0.59 s
     trunk_window_times: tuple | None = None
     trunk_window_weight: float = 1.0
+    trunk_window_joints: str = "waist_.*"  # regex on the waist joint names the window applies to
     back_catch_q: list | None = None  # (b1) back-leg joint targets (back_leg_cols order) after the release
     back_catch_t0: float = 0.10
     # (b1') Cartesian catch step: back-foot target (x toward the plate, y toward first base) from the lead foot, ground frame
@@ -1692,6 +1693,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW
     """TW1 starting later (in over -0.12 -> -0.06): a smaller counter-rotation before the turn to the plate."""
 
     trunk_window_times: tuple | None = (-0.12, -0.06, 0.0, 0.05)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW1YEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW1EnvCfg):
+    """TW1 on waist_yaw only. TW1 on hf_avg3: 18.0 m/s (+1.4) but elevation +26.7 deg (H5 +1-2) and 0/64 standing;
+    the athlete's waist pitch goes +10 -> -25 deg over -0.12 s -> release (trunk extension), the likely lift."""
+
+    trunk_window_joints: str = "waist_yaw"
 
 
 @configclass

@@ -223,7 +223,8 @@ class StageEnv(PitchEnv):
                 q[:, tc] = q[:, tc] + wt * (tgt - q[:, tc])
                 qd[:, tc] = wt * c.throw_upper_scale * r["joint_vel"][:, tc] * (t < self.ref.duration).float().unsqueeze(-1)
             if c.trunk_window_times is not None and c.throw_upper and not c.throw_upper_trunk:
-                tc = self.trunk_cols
+                import re as _re
+                tc = [i for i in self.trunk_cols if _re.fullmatch(c.trunk_window_joints, self.body_names[i])]
                 t0, t1, t2, t3 = (self.release_ref + x for x in c.trunk_window_times)
                 sm = lambda x: x * x * (3.0 - 2.0 * x)  # noqa: E731
                 ww = sm(((t - t0) / (t1 - t0)).clamp(0.0, 1.0)) * (1.0 - sm(((t - t2) / (t3 - t2)).clamp(0.0, 1.0)))
