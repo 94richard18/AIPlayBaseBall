@@ -69,7 +69,7 @@ def main():
         old = getattr(cfg, k)
         if isinstance(old, bool):
             v = v.lower() in ("1", "true")
-        elif old is None or v == "None":
+        elif old is None or v == "None" or isinstance(old, (tuple, list, dict)):
             import ast
             try:
                 v = None if v == "None" else ast.literal_eval(v)
