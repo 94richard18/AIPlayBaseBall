@@ -1,6 +1,6 @@
 # 投手訓練：目前進度、執行狀況與待辦
 
-最後更新：2026-10-20 19:15
+最後更新：2026-10-20 19:25
 
 完整的歷程與教訓在 `PITCHER_TRAINING_LOG.md`，這份只記「現在在哪裡、正在跑什麼、接下來要做什麼」。
 
@@ -70,6 +70,20 @@
 | Slot A | 打者用（由同伴啟動），目前空著 |
 
 注意：錄影和 hi 訓練同時佔 GPU，hi 會跑得比較慢，第一次評估（7400）會往後延。
+
+### 接手資訊（19:25）
+
+| 行程 | PID / 位置 |
+|---|---|
+| hi trainer | python PID 58948；run 目錄 `logs/rsl_rl/aib1_stage/2026-10-20_18-19-03_hi_syw110r5h5`；chain log `logs/chain_hi_syw110r5h5.txt` |
+| hi 啟動指令 | `LR_FLOOR=3e-7 SEED=103 NOISY_EVAL=1 NOISY_ENVS=128 EVAL_EVERY=100 EVAL_WAIT_FREE=1 bash scripts/train_live.sh AIB-Stage1dK70GW2MBASVRT1SYW110R5H5-v0 <hf_avg3 model_7300.pt> 600 hi_syw110r5h5 50` |
+| hi 停止規則監看 | `python scripts/live_rules.py --run hi_syw110r5h5 --from_it 7500`（19:25 起在背景跑，用預設門檻；規則觸發會自動停掉 hi 並在 chain log 加註） |
+| 交付版錄影 | python PID 59156，腳本 `logs/film_deliverable_h5.sh`（identical 2 局，然後 noisy 1 局）；輸出 `videos/deliverable_h5_*.mp4` 和 `_keyframes.png` |
+
+重開 session 後的接手步驟：
+1. 確認錄影是否完成（`videos/deliverable_h5_*.mp4`）；完成就把路徑交給使用者和同伴。
+2. 看 `logs/chain_hi_syw110r5h5.txt` 的 `[cycles]` 行和 live_rules 的結論行。如果結論顯示最新存檔比已評估的新，判定前先評估最新存檔。
+3. hi 結束後，把結果寫進這份檔案並通知同伴；下一步（權重 0.5 → 1.0）由同伴決定。
 
 ---
 
