@@ -1529,6 +1529,24 @@ class Stage1dK70GW2MBASVRT1D3SYEnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYE10EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
+    """SY with the elbow lead +10 ms: diag_arm on gv 7200 + SY (+30) had the PD-base elbow peak at -70 ms and already
+    flexing at the release (-964 deg/s) while the athlete's still extends (+671); the robot lags the base by ~38 ms
+    (old reference: 18) - a smaller lead keeps the reference extending through the release."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.010}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYE20EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
+    """SY with the elbow lead +20 ms: diag_arm on gv 7200 + SY (+30) had the PD-base elbow peak at -70 ms and already
+    flexing at the release (-964 deg/s) while the athlete's still extends (+671); the robot lags the base by ~38 ms
+    (old reference: 18) - a smaller lead keeps the reference extending through the release."""
+
+    arm_ref_lead_s: dict | None = {"r_elbow": 0.020}
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYE40EnvCfg(Stage1dK70GW2MBASVRT1SYEnvCfg):
     """SY (layback -130 deg) with the elbow lead +40 ms (re-tune on the SY reference, peer decision 2026-10-20): at +30 ms
     the elbow was still flexing at the release in ~80-90% (hc 7300 / 7400)."""
