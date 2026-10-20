@@ -40,7 +40,9 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     # EVAL_WAIT_FREE=1: the GPU is shared (2 Isaac processes at most, 2026-10-20 the batter runs on the other slot) - hold
     # this eval until only our trainer is running
     if [ -n "${EVAL_WAIT_FREE:-}" ]; then
-        while [ "$(tasklist 2>/dev/null | grep -ci 'python.exe')" -ge 2 ]; do sleep 20; done
+        # count Isaac processes only (python.exe running scripts/*.py other than live_rules.py): a resident live_rules.py
+        # watcher blocked every eval of hi from 7400 (2026-10-20)
+        while [ "$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'scripts' -and \$_.CommandLine -notmatch 'live_rules' }).Count" | tr -d '\r')" -ge 2 ]; do sleep 20; done
     fi
     # identical starts (start noise forced off: the Stage1dN tasks train with it on)
     $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0 2>&1 \
