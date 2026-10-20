@@ -91,7 +91,7 @@
 
 - 先讀記憶（MEMORY.md）與本檔，再看 PITCHER_TRAINING_LOG.md 最後幾段。
 - 投手的訓練由投手 session（aiplaybaseball-94）執行；規劃 session 負責決策、紀錄與打者。
-- hi 的停止規則改由 `scripts/live_rules.py` 自動監看，指令：`python scripts/live_rules.py --run hi_syw110r5h5 --from_it 7500`，門檻用預設值，由投手 session 掛上；結論出來時，若最新存檔比已評估的新，要先評估最新存檔再判定。
+- hi 的停止規則改由 `bash scripts/live_rules_loop.sh hi_syw110r5h5 7500` 自動監看（每出現一個新的 noisy 評估檔，就呼叫一次 `live_rules.py --once`），門檻用預設值，由投手 session 掛上。不要讓 `live_rules.py` 常駐：它算一個 python.exe，train_live 的 EVAL_WAIT_FREE 遇到 python.exe ≥ 2 會一直等，hi 從 7400 起的評估就是這樣卡住；自己掛的等待也只用 bash / PowerShell；結論出來時，若最新存檔比已評估的新，要先評估最新存檔再判定。
 - 第 0 步評估改用 `bash scripts/eval_protocol.sh <ckpt> <tag> <task>...`（相同起始 64 + 兩次 noisy 128）。
 - 省 token 規則（記憶 token-saving-workflow.md）：
   - 不要用輪詢迴圈，長工作用 run_in_background 等通知。
