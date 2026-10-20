@@ -55,7 +55,8 @@
 - Human3（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-20_06-32-20_human_pitched3/model_10298.pt`），人類力量，88-112 km/h。
 - 診斷（`scripts/diag_bat_contact.py`，256 球）：擊中率 21.5%，球速快慢沒差；沒打中的球 90% 是揮太晚（比打中的球晚 28-131 ms，中位數 81 ms），球從握把端、球棒下方約 26 cm 通過。
 - 零樣本測試：讓投球晚到 0.04 s → 32.8%，晚到 0.08 s → 27.7%（變成揮太早）。
-- Human4（`AIB-PitchedBatting-Human4-v0` = Human3 + `timing_bias_s` 0.04）從 model_10298 練 600 次；`logs/launch_human4.sh` 等 hj 結束後自動啟動，約 2.5 小時。
+- Human4（`AIB-PitchedBatting-Human4-v0` = Human3 + `timing_bias_s` 0.04）從 model_10298 練 600 次；`logs/launch_human4.sh` 等 hj 結束後自動啟動，約 2.5 小時（投手 session 同意，投手下一輪排在它之後）。
+- **接引擎時照做**：`timing_bias_s` 讓球比參考的擊球時間晚 0.04 s 到，等於揮棒起動提早 0.04 s。`sim_game` 接投手球路時，打者回合的起點要用同樣的關係：揮棒起動 = 球到本壘時間 − 參考的擊球時間 − 0.04 s。否則比賽中打者還是會揮太晚。
 - 影片 `videos/batter_human3_2110.mp4`（5 球：2 次沒打中、3 次界外；影片腳本的球速範圍是 100-125 km/h，比訓練快）。
 
 ## 4. 執行中
