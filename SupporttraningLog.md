@@ -1,6 +1,6 @@
 # 支援紀錄：目前進度、執行情況與待辦事項
 
-更新：2026-10-20 晚間（規劃 session）。詳細的投球訓練紀錄在 [`PITCHER_TRAINING_LOG.md`](PITCHER_TRAINING_LOG.md)。
+更新：2026-10-20 22:00（規劃 session）。詳細的投球訓練紀錄在 [`PITCHER_TRAINING_LOG.md`](PITCHER_TRAINING_LOG.md)。
 
 ## 1. 排程與規格（使用者決定）
 
@@ -52,18 +52,21 @@
 
 ## 3. 打者目前進度
 
-- 最新：Human3（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-20_06-32-20_human_pitched3/model_10298.pt`），人類力量，對比賽球速（出手 88-112 km/h）。
-- 擊中率約 15%，擊球初速約 20 m/s，跟 Human2（100-125 km/h）差不多：問題不在球速。
-- 影片 `videos/batter_human3.mp4`：5 球中 2 球碰到，都很弱。
+- Human3（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-20_06-32-20_human_pitched3/model_10298.pt`），人類力量，88-112 km/h。
+- 診斷（`scripts/diag_bat_contact.py`，256 球）：擊中率 21.5%，球速快慢沒差；沒打中的球 90% 是揮太晚（比打中的球晚 28-131 ms，中位數 81 ms），球從握把端、球棒下方約 26 cm 通過。
+- 零樣本測試：讓投球晚到 0.04 s → 32.8%，晚到 0.08 s → 27.7%（變成揮太早）。
+- Human4（`AIB-PitchedBatting-Human4-v0` = Human3 + `timing_bias_s` 0.04）從 model_10298 練 600 次；`logs/launch_human4.sh` 等 hj 結束後自動啟動，約 2.5 小時。
+- 影片 `videos/batter_human3_2110.mp4`（5 球：2 次沒打中、3 次界外；影片腳本的球速範圍是 100-125 km/h，比訓練快）。
 
 ## 4. 執行中
 
 | 項目 | 狀態 |
 |---|---|
-| 投手 hi（已結束） | 7800 被平衡規則停下（noisy 34/128）。相同起始 /64、noisy /128：7400 57、60；7600 57、61；7800 58、34。hi_avg5（7400–7600 平均）59、44/52。沒有存檔達到取代條件，交付模型不變 |
-| 投手 hj（執行中） | 只改訓練起始雜訊 0.02 → 0.01（評估仍用 0.02），任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5N1-v0`（448f9d3）。從 hf_avg3 跑 600 次，停止規則與成功條件同 hi。21:42 啟動，run 目錄 `logs/rsl_rl/aib1_stage/2026-10-20_21-42-30_hj_syw110r5h5n1`，監看用 `live_rules_loop.sh hj_syw110r5h5n1 7500`。若 noisy 仍一路往下，下一步降低 rsi_prob（目前 0.5） |
-| 投手影片 | 18:21 起的錄影跟 hi 訓練搶 GPU 記憶體（11.8/12.3 GB），trainer 一次迭代 3442 s、影片沒產出；19:27 已停掉錄影，trainer 恢復約 13.5 s/次（hi 預計約 21:45 跑到 7900）。**trainer 在跑時不要錄影**；交付影片（`deliverable_h5_identical` / `_noisy`）改在 hi 結束後錄 |
-| GPU | 最多 2 個 Isaac 行程；投手訓練佔 trainer + 評估兩個；評估用 EVAL_WAIT_FREE 避免超過上限 |
+| 投手 hj | 訓練起始雜訊 0.01（評估 0.02），從 hf_avg3，600 次，21:42 開始；run 目錄 `logs/rsl_rl/aib1_stage/2026-10-20_21-42-30_hj_syw110r5h5n1`；監看 `bash scripts/live_rules_loop.sh hj_syw110r5h5n1 7500`；規則同 hi |
+| hi | 7800 被平衡規則停止（noisy 17/64），沒有取代交付；hi_avg5 也沒有 |
+| 打者 Human4 | 排在 hj 之後（`logs/launch_human4.sh`） |
+| 影片 | 投手 `videos/deliverable_h5_*.mp4` 21:40、打者 `videos/batter_human3_2110.mp4` 21:20；下次最晚 10-21 09:20 |
+| GPU | 最多 2 個 Isaac 行程；trainer 在跑時不錄影（渲染 + 訓練會超過 12 GB）；EVAL_WAIT_FREE 只算 Isaac 行程（66e4331）；監看不要用常駐的 python |
 
 ## 5. 待辦事項
 
