@@ -222,6 +222,15 @@ class StageEnv(PitchEnv):
                 tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
                 q[:, tc] = q[:, tc] + wt * (tgt - q[:, tc])
                 qd[:, tc] = wt * c.throw_upper_scale * r["joint_vel"][:, tc] * (t < self.ref.duration).float().unsqueeze(-1)
+            if c.trunk_window_times is not None and c.throw_upper and not c.throw_upper_trunk:
+                tc = self.trunk_cols
+                t0, t1, t2, t3 = (self.release_ref + x for x in c.trunk_window_times)
+                sm = lambda x: x * x * (3.0 - 2.0 * x)  # noqa: E731
+                ww = sm(((t - t0) / (t1 - t0)).clamp(0.0, 1.0)) * (1.0 - sm(((t - t2) / (t3 - t2)).clamp(0.0, 1.0)))
+                ww = (ww * c.trunk_window_weight).unsqueeze(-1)
+                tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
+                q[:, tc] = q[:, tc] + ww * (tgt - q[:, tc])
+                qd[:, tc] = qd[:, tc] + ww * (c.throw_upper_scale * r["joint_vel"][:, tc] - qd[:, tc])
             if c.back_catch_target is not None:
                 self._back_catch_cartesian(q, qd, rs, relf)
             if c.back_catch_q is not None:

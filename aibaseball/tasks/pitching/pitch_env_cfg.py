@@ -670,6 +670,10 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # follow-through reference changes (2026-10-20, fall diagnosis: the reference's late forward back-foot step is the trap)
     follow_trunk_after_release: bool = False  # (b2) waist on the athlete's rotation after the release (throw_upper_trunk off)
     follow_trunk_blend_s: float = 0.05
+    # waist on the athlete's throw clock only inside a window around the release (t0, t1, t2, t3 from release_ref,
+    # smoothstep in over t0-t1, out over t2-t3; throw_upper_trunk off): S2 (whole throw) slid the ball out at ~0.59 s
+    trunk_window_times: tuple | None = None
+    trunk_window_weight: float = 1.0
     back_catch_q: list | None = None  # (b1) back-leg joint targets (back_leg_cols order) after the release
     back_catch_t0: float = 0.10
     # (b1') Cartesian catch step: back-foot target (x toward the plate, y toward first base) from the lead foot, ground frame
@@ -1671,6 +1675,23 @@ class Stage1dK70GW2MBASVRT1SYW110R5H65EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5EnvCfg
 @configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H8EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H65EnvCfg):
     arm_blend_weight: float = 0.8
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW1EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 + the waist on the athlete's throw clock only from release -0.20 s (in by -0.12, out over 0 -> +0.05), the
+    SYW window. Blend sweep H65 / H8: +0.4 m/s per +0.15 for -6/128 noisy - the arm alone tops out near 18 m/s; the
+    athlete's hand speed is mostly trunk (diag_arm: trunk 14.9 of 21.4 m/s) and the waist reference sits at the set
+    pose. Athlete waist yaw from the set pose: -23 deg at -0.20 s, -55 at -0.12, -23 at release (470 deg/s), +43 at +0.10."""
+
+    trunk_window_times: tuple | None = (-0.20, -0.12, 0.0, 0.05)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW1EnvCfg):
+    """TW1 starting later (in over -0.12 -> -0.06): a smaller counter-rotation before the turn to the plate."""
+
+    trunk_window_times: tuple | None = (-0.12, -0.06, 0.0, 0.05)
 
 
 @configclass
