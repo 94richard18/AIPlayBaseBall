@@ -219,6 +219,18 @@ def main():
             + f" | {np.median(a_abs):.2f}, {np.mean(a_abs > 0.9) * 100:4.1f}, {np.mean(act[:, -10:, c_i]):+.2f}")
     say("  SEA gains (motor_kp / motor_kd / spring Nm/rad): " + ", ".join(
         f"{a.cfg.joint_names_expr[0]} {a.cfg.motor_kp:.0f}/{a.cfg.motor_kd:.1f}/{a.cfg.spring_stiffness:.0f}" for a in seas))
+    ce = JOINTS.index("r_elbow")
+    lim_lo = float(rob.data.soft_joint_pos_limits[0, jidx[ce], 0])
+    qe = q[:, :, ce] * D  # deg, (envs, window)
+    near = (qe - lim_lo * D) <= 5.0
+    first = np.where(near.any(1), near.argmax(1), -1)
+    hit = first >= 0
+    vb = np.array([qd[i, max(f - 1, 0), ce] * D for i, f in enumerate(first) if f >= 0])
+    say(f"  r_elbow at the release: angle median {np.median(qe[:, -1]):.1f} deg (extension limit {lim_lo * D:.1f} deg, "
+        f"p10/p90 {np.percentile(qe[:, -1], 10):.1f}/{np.percentile(qe[:, -1], 90):.1f}); within 5 deg of the limit in the "
+        f"window {int(hit.sum())}/{len(hit)}, first at "
+        + (f"{np.median(tt[first[hit]]):+.0f} ms before the release (median), elbow velocity just before {np.median(vb):+.0f} deg/s"
+           if hit.any() else "-"))
     if mlim:
         say("  SEA motor limits (Nm, rad/s): " + ", ".join(f"{JOINTS[c]} {v[0]:.0f}/{v[1]:.0f}" for c, v in sorted(mlim.items()))
             + "; joint speed limits (rad/s): " + ", ".join(f"{j} {v:.0f}" for j, v in zip(JOINTS, vlim)))
