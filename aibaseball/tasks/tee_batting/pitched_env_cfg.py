@@ -79,6 +79,16 @@ class PitchedBattingHuman3EnvCfg(PitchedBattingHuman2EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman4EnvCfg(PitchedBattingHuman3EnvCfg):
+    """2026-10-20 diag (scripts/diag_bat_contact.py, Human3 model_10298, 256 pitches): hit rate 0.215, flat over the
+    pitch speed; misses are late - 90% of them 28-131 ms behind the hits' timing, the ball passing nearest the knob.
+    The policy can wait for a late pitch but cannot catch up with an early one. Zero-shot timing bias: +0.04 s ->
+    hit rate 0.328, +0.08 s -> 0.277 (now early). Only change: the pitch arrives 0.04 s later. Start from model_10298."""
+
+    timing_bias_s: float = 0.04
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
