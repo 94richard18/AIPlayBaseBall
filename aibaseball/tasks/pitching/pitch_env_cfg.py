@@ -699,6 +699,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_neutral: bool = False  # stage: the release changes nothing for the legs (gains, feed-forward, ball observation)
     throw_upper_trunk: bool = True  # throw_upper: the waist joints follow the athlete's throw too (False: arms only)
     throw_upper_scale: float = 1.0  # throw_upper: blend of the upper body from the stride task's reference (0) to the throw (1)
+    throw_upper_scale_joints: dict | None = None  # per-joint overrides of throw_upper_scale, {regex on the joint name: scale}
     # throw_upper: per-joint time shift of the PD reference, {joint name: seconds}; + samples the athlete's motion that
     # much later (the joint's reference runs ahead), - earlier (it lags)
     arm_ref_lead_s: dict | None = None
@@ -1576,6 +1577,22 @@ class Stage1dK70GW2MBASVRT1SY110E40EnvCfg(Stage1dK70GW2MBASVRT1SY110EnvCfg):
     """SY110 with the elbow lead +40 ms."""
 
     arm_ref_lead_s: dict | None = {"r_elbow": 0.040}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1WFEnvCfg(Stage1dK70GW2MBASVRT1EnvCfg):
+    """T1 + the right wrist's PD reference at throw scale 1.0 (the rest at 0.8; peer decision 2026-10-20): on the
+    -130 deg layback the ball / wrist ratio rose 1.25 -> 1.47 through wrist flexion at the release (+277 -> +769 deg/s)."""
+
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 1.0}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SY110WFEnvCfg(Stage1dK70GW2MBASVRT1SY110EnvCfg):
+    """SY110 + the right wrist's PD reference at throw scale 1.0 (the rest at 0.8; peer decision 2026-10-20): on the
+    -130 deg layback the ball / wrist ratio rose 1.25 -> 1.47 through wrist flexion at the release (+277 -> +769 deg/s)."""
+
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 1.0}
 
 
 @configclass

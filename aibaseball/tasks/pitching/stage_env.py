@@ -182,6 +182,11 @@ class StageEnv(PitchEnv):
                 keep = set(legs) | (set() if self.cfg.throw_upper_trunk else set(self.trunk_cols))
                 up_cols = [i for i in range(q.shape[1]) if i not in keep]
                 k = self.cfg.throw_upper_scale  # fall-fix curriculum: 0 = the stride task's upper body, 1 = the throw
+                if self.cfg.throw_upper_scale_joints:  # per-joint scale overrides (regex on the joint name -> scale)
+                    import re as _re
+                    k = torch.tensor([next((sc for pat, sc in self.cfg.throw_upper_scale_joints.items()
+                                            if _re.fullmatch(pat, self.body_names[i])), self.cfg.throw_upper_scale)
+                                      for i in up_cols], device=q.device).unsqueeze(0)
                 q[:, up_cols] = q[:, up_cols] + k * (r["joint_pos"][:, up_cols] - q[:, up_cols])
                 qd[:, up_cols] = k * r["joint_vel"][:, up_cols] * (t < self.ref.duration).float().unsqueeze(-1)
             c = self.cfg
