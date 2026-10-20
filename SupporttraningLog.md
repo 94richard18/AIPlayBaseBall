@@ -86,3 +86,16 @@
 1. 投手影片下次最晚：新交付影片完成後 12 小時內。
 2. 10-24 起新設計要先問使用者（授權到 10-23）。
 3. 比賽引擎 `sim_game` 接上投手評估的投球 CSV（等投手有可用的投球）。
+
+## 6. 接手說明（重開 session 用）
+
+- 先讀記憶（MEMORY.md）與本檔，再看 PITCHER_TRAINING_LOG.md 最後幾段。
+- 投手的訓練由投手 session（aiplaybaseball-94）執行；規劃 session 負責決策、紀錄與打者。
+- hi 的停止規則改由 `scripts/live_rules.py` 自動監看，指令：`python scripts/live_rules.py --run hi_syw110r5h5 --from_it 7500`，門檻用預設值，由投手 session 掛上；結論出來時，若最新存檔比已評估的新，要先評估最新存檔再判定。
+- 第 0 步評估改用 `bash scripts/eval_protocol.sh <ckpt> <tag> <task>...`（相同起始 64 + 兩次 noisy 128）。
+- 省 token 規則（記憶 token-saving-workflow.md）：
+  - 不要用輪詢迴圈，長工作用 run_in_background 等通知。
+  - 只讀摘要行。
+  - 每個階段送一次彙整訊息。
+  - 例行監看交給較小的 subagent。
+  - 每個里程碑先寫進紀錄，再重開 session。
