@@ -1661,6 +1661,19 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5N1EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5Env
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H65EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5EnvCfg):
+    """Zero-shot sweep between H5 (weight 0.5: identical 61/64, noisy 68.5/128, 16.6 m/s on hf_avg3) and R5 (1.0: 45,
+    50, 18.0). Fine-tuning drifted the noisy balance down in hg / hh / hi / hj, so speed comes from the reference."""
+
+    arm_blend_weight: float = 0.65
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H8EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H65EnvCfg):
+    arm_blend_weight: float = 0.8
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
