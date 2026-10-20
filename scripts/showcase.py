@@ -17,7 +17,7 @@ import sys
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--task", type=str, default="launch", choices=["pitched", "human", "perception", "multi", "launch", "power", "mimic", "rl"],
+parser.add_argument("--task", type=str, default="launch", choices=["pitched", "human_pitched", "human", "perception", "multi", "launch", "power", "mimic", "rl"],
                     help="mimic: OBP imitation policy, rl: pure-RL policy")
 parser.add_argument("--checkpoint", type=str, default=None, help="model_*.pt (default: newest in logs/)")
 parser.add_argument("--out", type=str, default="videos/showcase.mp4")
@@ -64,11 +64,18 @@ from aibaseball.tasks.tee_batting.mimic_env_cfg import (  # noqa: E402
     TeeBattingPerceptionEnvCfg,
     TeeBattingPerceptionPlayEnvCfg,
 )
-from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingEnvCfg, PitchedBattingPlayEnvCfg  # noqa: E402
+from aibaseball.tasks.tee_batting.pitched_env_cfg import (  # noqa: E402
+    PitchedBattingEnvCfg,
+    PitchedBattingHuman3EnvCfg,
+    PitchedBattingHumanPlayEnvCfg,
+    PitchedBattingPlayEnvCfg,
+)
 from aibaseball.tasks.tee_batting.tee_batting_env_cfg import TeeBattingEnvCfg, TeeBattingPlayEnvCfg  # noqa: E402
 
 TASKS = {
     "pitched": ("AIB-PitchedBatting-Play-v0", PitchedBattingPlayEnvCfg, PitchedBattingEnvCfg, TeeBattingMimicPPORunnerCfg),
+    "human_pitched": ("AIB-PitchedBatting-Human-Play-v0", PitchedBattingHumanPlayEnvCfg, PitchedBattingHuman3EnvCfg,
+                      TeeBattingMimicPPORunnerCfg),
     "human": ("AIB-TeeBatting-Human-Play-v0", TeeBattingHumanPlayEnvCfg, TeeBattingHumanEnvCfg, TeeBattingMimicPPORunnerCfg),
     "perception": ("AIB-TeeBatting-Perception-Play-v0", TeeBattingPerceptionPlayEnvCfg, TeeBattingPerceptionEnvCfg,
                    TeeBattingMimicPPORunnerCfg),
@@ -345,7 +352,7 @@ if __name__ == "__main__":
         print("[showcase] checkpoint:", ckpt, flush=True)
         if args.eval_envs > 0:
             run_eval(ckpt)
-        elif args.task == "pitched":
+        elif args.task in ("pitched", "human_pitched"):
             run_pitched_video(ckpt)
         else:
             run_video(ckpt)
