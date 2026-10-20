@@ -24,6 +24,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     pitch_speed_range_start: tuple = (75.0, 85.0)
     pitch_speed_range_final: tuple = (100.0, 150.0)
     timing_noise_s: float = 0.08  # +- arrival-time offset the batter must absorb (final)
+    timing_bias_s: float = 0.0  # + = the pitch arrives later than the reference contact (the batter is early)
     pitch_ramp_steps: int = 32 * 1500  # control steps to reach the final speed range / timing noise
     min_lead_s: float = 0.15  # the pitch is released at least this long after the episode start
     ball_obs_clip: float = 1.5  # keep the ball-relative inputs in the range the tee-trained policy knows

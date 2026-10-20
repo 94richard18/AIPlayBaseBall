@@ -194,7 +194,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         # waits in the stance (the reference clock starts negative and holds frame 0).
         clip = self.clip[env_ids]
         jitter = (torch.rand(n, device=dev) * 2 - 1) * c.timing_noise_s * prog
-        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / self.speed - self.lib.flight_time[k] + jitter
+        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / self.speed - self.lib.flight_time[k] + jitter + c.timing_bias_s
         wait = (c.min_lead_s - release).clamp_min(0.0)
         self.release_t[env_ids] = release + wait
         self.phys_t[env_ids] = 0.0
