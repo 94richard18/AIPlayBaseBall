@@ -10,7 +10,7 @@ Isaac Sim / Isaac Lab with physics-based ball models (drag, Magnus lift, bat-bal
 | Tee batting B: perception noise | 2 cm bias, 1 cm noise, 100 ms latency | ✅ contact on every swing, average 84 m |
 | Batting D: pitched fastballs | hit 100–150 km/h pitches | 🔄 makes contact, mostly weak ground balls |
 | Human-strength batter | swing with human joint torques / speeds | 🔄 ~18.5 m/s sweet-spot speed; next: contact quality (sweet-spot hits) |
-| Pitching, stage 1 (stand through the throw) | stride, throw, release, stop and stand at rest | 🔄 stands at rest after the throw on 55/64 (identical starts) and 36/64 (random starts); release ~14.5 m/s, ~17° off line; the W1 gate needs ~24 m/s at release, so no pitch reaches the plate in the air yet |
+| Pitching, stage 1 (stand through the throw) | stride, throw, release, stop and stand at rest | 🔄 stands at rest after the throw on 56/64 (identical starts) and 34/64 (random starts); release ~14.9 m/s, ~19° off line; the W1 gate needs ~24 m/s at release, so no pitch reaches the plate in the air yet |
 | Game engine | 9 innings, scripted fielders / runners, replay video | ✅ CPU engine + top-view replay (`aibaseball/game/`) |
 
 The earlier 114.6 km/h / 47 % strikes pitching result (`AIB-PitchElastic-v0`) fell in the follow-through and
