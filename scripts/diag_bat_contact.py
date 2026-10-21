@@ -29,6 +29,7 @@ parser.add_argument("--timing_bias", type=float, default=None, help="override cf
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+args.headless = True  # diagnostics only: a GUI window also keeps the app alive after the run
 app = AppLauncher(args).app
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
