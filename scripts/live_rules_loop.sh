@@ -6,6 +6,12 @@
 RUN=$1; FROM=$2; shift 2
 PY=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 cd "$(dirname "$0")/.."
+# wait (up to 20 min) for the trainer to appear: started together with train_live.sh, the first check below used to
+# find no train.py yet and exit at once (hj, 2026-10-20)
+for _ in $(seq 40); do
+    powershell -NoProfile -Command "if (Get-CimInstance Win32_Process | ? { \$_.CommandLine -match 'train\.py' -and \$_.CommandLine -match '$RUN' }) { exit 0 } else { exit 1 }" && break
+    sleep 30
+done
 LAST=""
 while true; do
     CUR=$(ls logs/eval_${RUN}_*_noise.txt 2>/dev/null | xargs -r grep -l '^\[goal\]' 2>/dev/null | sort | tr '\n' ' ')
