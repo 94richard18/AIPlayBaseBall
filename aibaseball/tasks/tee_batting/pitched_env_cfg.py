@@ -99,6 +99,17 @@ class PitchedBattingHuman5EnvCfg(PitchedBattingHuman4EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman6EnvCfg(PitchedBattingHuman4EnvCfg):
+    """2026-10-21 user decision: in the game the swing starts from the engine's true arrival time, so no arrival jitter.
+    Human4 model_10897 zero-shot with jitter 0: bias 0.04 -> hit rate 0.590, 0.055 -> 0.648, 0.07 -> 0.594 (+-0.08
+    jitter: 0.398). The hittable window is only ~+-5 ms wide. Game conditions: jitter 0, bias 0.055 (Human5's tempo
+    change failed). Start from Human4 model_10897."""
+
+    timing_noise_s: float = 0.0
+    timing_bias_s: float = 0.055
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
