@@ -1704,6 +1704,43 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW1YEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5T
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5WT15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 + waist torque limits x1.5 (200 -> 300 Nm; user 2026-10-21 "腰部力量上限 ↑"). The waist motors sat at 200 Nm
+    ~40% of the last 50 ms before the release; zero-shot reference changes topped out at 18.0 m/s (R5, TW1)."""
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, waist=1.5)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5S2F15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 + the waist on the whole throw clock (S2, throw_upper_trunk) + finger / thumb torque limits x1.5 (5 -> 7.5,
+    7 -> 10.5 Nm; user 2026-10-21 "拇指／手指力量 ↑"). S2 on gv 7200 slid the ball at ~0.59 s with thumb_cmc_flex at its
+    7 Nm limit 95% of the hold; four-seam grip unchanged."""
+
+    throw_upper_trunk: bool = True
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, hand=1.5)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5S2F15WT15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """S2F15 + waist torque limits x1.5 (both relaxations)."""
+
+    throw_upper_trunk: bool = True
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, waist=1.5, hand=1.5)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1D3B2EnvCfg(Stage1dK70GW2MBASVRT1D3EnvCfg):
     """D2' + (b2) the waist on the athlete's follow-through rotation after the release (0.8 scale, blended in over
     0.05 s): the reference held the waist at the set pose while the athlete's turned -34 -> +80 deg by +0.3 s."""
@@ -1741,6 +1778,20 @@ class Stage1dK70GW2MBASVRT1S3EnvCfg(Stage1dK70GW2MBASVRT1S2EnvCfg):
     """S1 + S2 (information only): the full throw reference, closest to its 33.5 m/s ceiling."""
 
     throw_upper_scale: float = 1.0
+
+
+def _strength(robot: ArticulationCfg, waist: float = 1.0, hand: float = 1.0) -> ArticulationCfg:
+    """Torque limits x waist (waist_roll PD, waist yaw / pitch SEA motors) and x hand (finger / thumb PD, both hands),
+    gains unchanged - the spec relaxation the user approved on 2026-10-21 (waist and fingers only)."""
+    acts = dict(robot.actuators)
+    for k, a in acts.items():
+        if k == "waist":
+            acts[k] = a.replace(effort_limit_sim=a.effort_limit_sim * waist)
+        elif k in ("waist_yaw_sea", "waist_pitch_sea"):
+            acts[k] = a.replace(motor_effort=a.motor_effort * waist)
+        elif k in ("finger", "thumb"):
+            acts[k] = a.replace(effort_limit_sim=a.effort_limit_sim * hand)
+    return robot.replace(actuators=acts)
 
 
 def _right_arm_sea(robot: ArticulationCfg, **scale) -> ArticulationCfg:
