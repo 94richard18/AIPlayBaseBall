@@ -64,11 +64,15 @@ class PitchLibrary:
 
 @torch.no_grad()
 def build_library(n: int, spec: PhysicsSpec, speed_kmh=(75.0, 155.0), backspin_rpm=(1500.0, 2500.0),
-                  spin_tilt_deg=30.0, seed: int = 0, iters: int = 5) -> PitchLibrary:
-    """Right-handed-pitcher fastballs released ~16.9 m from the plate, aimed at targets around the zone."""
+                  spin_tilt_deg=30.0, seed: int = 0, iters: int = 5, release_point=None) -> PitchLibrary:
+    """Right-handed-pitcher fastballs released ~16.9 m from the plate, aimed at targets around the zone.
+    release_point (x, y, z): every pitch from this point instead (the game fallback: the RL pitcher's own release,
+    hf_avg3 7300 + H5: (17.51, +1.17, 1.86) in this frame)."""
     g = torch.Generator().manual_seed(seed)
     u = lambda lo, hi: lo + (hi - lo) * torch.rand(n, generator=g)  # noqa: E731
     release = torch.stack([torch.full((n,), 16.9), u(0.25, 0.75), u(1.55, 1.95)], -1)
+    if release_point is not None:
+        release = torch.tensor(release_point, dtype=release.dtype).expand(n, 3).clone()
     target = torch.stack([torch.zeros(n), u(-0.35, 0.35), u(0.45, 1.15)], -1)
     speed = u(*speed_kmh) * KMH
     spin = u(*backspin_rpm) * 2 * math.pi / 60
