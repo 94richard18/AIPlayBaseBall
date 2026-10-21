@@ -61,7 +61,8 @@
 - Human4 對到達時間雜訊的敏感度（bias 0.04，`diag_bat_contact.py --timing_noise`）：雜訊 ±0.08（訓練值）39.8%、±0.04 44.5%、**0 → 59.0%**。打中的球時機集中在 -0.091 / -0.087 / -0.085 s（25/50/75%），可擊中的時間窗只有約 ±5 ms；雜訊 0 時沒打中的球仍晚約 20 ms（-0.068 s）。雜訊 0 時打中的 151 球中 52 球揮完跌倒。
 - **使用者決定（10-21）**：比賽中揮棒起動用引擎算出的真實到達時間（不加到達時間雜訊）。
 - Human4 在雜訊 0 下的 bias 掃描：0.04 → 59.0%、**0.055 → 64.8%**、0.07 → 59.4%。
-- Human6（`AIB-PitchedBatting-Human6-v0`：雜訊 0、bias 0.055，從 Human4 model_10897，600 次，`logs/train_human6.txt`）10-21 19:14 啟動。之後：揮完跌倒（打中的約 1/3）、打擊仰角（界外都是滾地球）。
+- Human6（`AIB-PitchedBatting-Human6-v0`：雜訊 0、bias 0.055，從 Human4 model_10897，600 次，`logs/train_human6.txt`）10-21 19:14 啟動，20:55 完成：`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-21_19-14-55_human_pitched6/model_11496.pt`。
+- **Human6 診斷（比賽時機：雜訊 0、bias 0.055，256 球）：擊中率 94.5%**（Human4 同條件 64.8%）；沒打中 14 球（時機 13）；打中的 242 球中 44 球揮完跌倒。訓練擊中率 0.66 → 0.84。影片 `videos/batter_human6_1021pm.mp4`（5 球：2 次界外 0.3-0.7 m、3 次界內 47.8 / 1.7 / 30.5 m）。**打者交付改為 Human6**；`sim_game` 揮棒起動 = 球到本壘時間 − 參考擊球時間 − 0.055 s。之後：揮完跌倒（打中的約 1/3）、打擊仰角（界外都是滾地球）。
 - 注意：`diag_bat_contact.py` 以前沒加 `--headless` 會開 Isaac Sim 視窗，而且跑完不退出（凌晨卡 6 小時的原因）；c6a2733 起一律 headless。
 - **接引擎時照做**：`timing_bias_s` 讓球比參考的擊球時間晚 0.04 s 到，等於揮棒起動提早 0.04 s。`sim_game` 接投手球路時，打者回合的起點要用同樣的關係：揮棒起動 = 球到本壘時間 − 參考的擊球時間 − 0.04 s。否則比賽中打者還是會揮太晚。
 - 影片 `videos/batter_human3_2110.mp4`（5 球：2 次沒打中、3 次界外；影片腳本的球速範圍是 100-125 km/h，比訓練快）。
@@ -80,7 +81,8 @@
 | 打者 Human4 | 完成，擊中率 39.8%（見第 3 節） |
 | 影片 | 10-21 07:03-07:19：打者 `videos/batter_human4_1021.mp4`（88-112 km/h、bias 0.04，5 球中 2 次界外、至少 2 次沒打中，界外都是滾地球 0.4-0.7 m）；投手 `videos/deliverable_h5_identical_1021.mp4`（2 回合站穩）、`_noisy_1021.mp4`（這次站穩）。下次最晚 10-21 19:00 |
 | 打者 Human5 | 07:20 啟動（`AIB-PitchedBatting-Human5-v0`：tempo 懲罰 0.3 → 0.1，從 Human4 model_10897，600 次，2048 envs，`logs/train_human5.txt`）；結束後用 diag_bat_contact（bias 0.04）跟 Human4 的 39.8% 比 |
-| 投手 TW1Y | 07:20 和 Human5 同時跑 eval_protocol（1 個行程） |
+| 投手 hk | 使用者決定最後試一輪：WT12（腰 ×1.2），21:08 啟動，`logs/rsl_rl/aib1_stage/2026-10-21_21-08-55_hk_wt12`，監看 `live_rules_loop.sh hk_wt12 7500`；失敗就採用備案 |
+| 影片 21:08 | 打者 `videos/batter_human6_1021pm.mp4`；投手 `videos/deliverable_h5_{identical,noisy}_1021pm.mp4`（相同起始 2 回合站穩、noisy 1.73 s 跌倒）。下次最晚 10-22 09:00，hk 在跑時要等空檔 |
 | 注意 | Isaac 行程結束時可能卡住不退出（10-21 00:11 診斷寫完結果後卡到 06:19，GPU 空了 6 小時）：長的串接指令每段加 `timeout`；bash 的 `python` 是 WindowsApps 的假程式，要用 `/c/Users/User/anaconda3/envs/isaaclab_env/python.exe` |
 | GPU | 最多 2 個 Isaac 行程；trainer 在跑時不錄影（渲染 + 訓練會超過 12 GB）；EVAL_WAIT_FREE 只算 Isaac 行程（66e4331）；監看不要用常駐的 python |
 
