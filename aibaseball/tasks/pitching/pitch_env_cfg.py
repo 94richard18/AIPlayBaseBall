@@ -1715,6 +1715,17 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5WT15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5E
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5WT12EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 + waist torque limits x1.2 (240 Nm). WT15 on hf_avg3: 0/64 standing, 15.5 m/s (-1.1) - the 200 Nm clip was
+    part of the policy's balance; a smaller step to train through (curriculum 1.2 -> 1.5)."""
+
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, waist=1.2)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5S2F15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
     """H5 + the waist on the whole throw clock (S2, throw_upper_trunk) + finger / thumb torque limits x1.5 (5 -> 7.5,
     7 -> 10.5 Nm; user 2026-10-21 "拇指／手指力量 ↑"). S2 on gv 7200 slid the ball at ~0.59 s with thumb_cmc_flex at its
