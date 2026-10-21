@@ -237,6 +237,16 @@ def run_eval(ckpt: str):
         setattr(cfg, k, getattr(train, k))
     if hasattr(cfg, "tee_noise_ramp_steps"):
         cfg.tee_noise_ramp_steps = 0  # full randomisation range in evaluation
+    if hasattr(cfg, "pitch_ramp_steps"):  # pitched tasks: training pitch speeds / timing noise, full range
+        for k in ("pitch_speed_range_start", "pitch_speed_range_final", "timing_noise_s"):
+            setattr(cfg, k, getattr(train, k))
+        cfg.pitch_ramp_steps = 0
+        if args.pitch_kmh:
+            cfg.pitch_speed_range_start = cfg.pitch_speed_range_final = tuple(args.pitch_kmh)
+        if args.timing_noise is not None:
+            cfg.timing_noise_s = args.timing_noise
+        if args.timing_bias is not None:
+            cfg.timing_bias_s = args.timing_bias
     cfg.scene.num_envs = args.eval_envs
     env = gym.make(TASK_ID, cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
@@ -261,6 +271,11 @@ def run_eval(ckpt: str):
         launch_deg_mean=float(np.mean([r["launch_deg"] for r in logs])) if logs else 0.0,
         spin_rpm_mean=float(np.mean([r["spin_rpm"] for r in logs])) if logs else 0.0,
     )
+    if logs:  # batted-ball quality over the balls that came off the bat
+        ev = np.array([r["exit_velo_mps"] for r in logs])
+        stats.update(exit_velo_mps_median=float(np.median(ev)), exit_velo_ge28=float((ev >= 28.0).mean()),
+                     fair_frac=float(fair.mean()), fair_carry_median=float(np.median(carry[fair])) if fair.any() else 0.0,
+                     launch_deg_quartiles=[float(x) for x in np.percentile([r["launch_deg"] for r in logs], [25, 50, 75])])
     os.makedirs(os.path.join(ROOT, "videos"), exist_ok=True)
     with open(os.path.join(ROOT, "videos", "showcase_stats.json"), "w", encoding="utf-8") as f:
         json.dump(dict(stats=stats, swings=logs), f, indent=2)
