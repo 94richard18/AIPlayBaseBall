@@ -90,6 +90,19 @@ class TablePitcher:
 
 
 @dataclass
+class FallbackPitcher:
+    """The game's fallback pitch (user rule, adopted 2026-10-21 after hk): the RL pitcher's motion is played back and
+    the ball after the release is a simulated fastball at the batter's training speeds - 88-112 km/h at release
+    (build_library, drag + Magnus), 80-102 km/h at the plate. Location: StatPitcher's Gaussian miss around mid-zone."""
+
+    speed_kmh: tuple = (88.0, 112.0)
+    miss_sd_m: float = 0.22
+
+    def pitch(self, state: GameState, rng: random.Random) -> Pitch:
+        return Pitch(rng.uniform(*self.speed_kmh) / 3.6, rng.gauss(0.0, self.miss_sd_m), rng.gauss(0.80, self.miss_sd_m))
+
+
+@dataclass
 class StatBatter:
     """Swing / contact rates and batted-ball spread loosely after MLB averages."""
 

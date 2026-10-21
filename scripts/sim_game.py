@@ -11,17 +11,19 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aibaseball.game import Game, TablePitcher, line_score  # noqa: E402
+from aibaseball.game import FallbackPitcher, Game, TablePitcher, line_score  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--games", type=int, default=1)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--pitches", default=None, help="CSV of the RL pitcher's evaluated pitches (speed_mps, plate_y, plate_z, crossed)")
+parser.add_argument("--fallback", action="store_true", help="the fallback pitch (88-112 km/h at release, adopted 2026-10-21)")
 args = parser.parse_args()
 
 outcomes, runs, t0 = collections.Counter(), [], time.time()
 for i in range(args.games):
-    g = Game(seed=args.seed + i, **({"pitcher": TablePitcher.from_csv(args.pitches)} if args.pitches else {}))
+    kw = {"pitcher": TablePitcher.from_csv(args.pitches)} if args.pitches else {"pitcher": FallbackPitcher()} if args.fallback else {}
+    g = Game(seed=args.seed + i, **kw)
     s = g.play()
     runs += s.score
     outcomes.update(e["result"] for e in g.log)
