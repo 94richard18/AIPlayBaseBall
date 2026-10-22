@@ -26,6 +26,7 @@ parser.add_argument("--all", action="store_true", help="keep every swing in the 
 parser.add_argument("--pitch_kmh", type=float, nargs=2, default=None, help="pitched task: pitch speed range")
 parser.add_argument("--timing_noise", type=float, default=None, help="pitched task: +- arrival-time offset (s)")
 parser.add_argument("--timing_bias", type=float, default=None, help="pitched task: cfg.timing_bias_s (s, + = pitch later)")
+parser.add_argument("--tee_offset_z", type=float, default=None, help="pitched task eval: cfg.tee_offset_z (m, + = pitch aimed above the sweet-spot path)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 AppLauncher.add_app_launcher_args(parser)
@@ -247,6 +248,8 @@ def run_eval(ckpt: str):
             cfg.timing_noise_s = args.timing_noise
         if args.timing_bias is not None:
             cfg.timing_bias_s = args.timing_bias
+        if args.tee_offset_z is not None:
+            cfg.tee_offset_z = args.tee_offset_z
     cfg.scene.num_envs = args.eval_envs
     env = gym.make(TASK_ID, cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
