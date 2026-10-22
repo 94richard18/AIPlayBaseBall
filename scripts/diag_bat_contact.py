@@ -26,6 +26,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=256)
 parser.add_argument("--tag", type=str, default="human3")
 parser.add_argument("--timing_bias", type=float, default=None, help="override cfg.timing_bias_s (s, + = pitch later)")
+parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -63,6 +64,8 @@ def main():
     cfg.pitch_ramp_steps = 0  # full speed range and timing noise
     if args.timing_bias is not None:
         cfg.timing_bias_s = args.timing_bias
+    if args.aim_offset_z is not None:
+        cfg.aim_offset_z = args.aim_offset_z
     if args.timing_noise is not None:
         cfg.timing_noise_s = args.timing_noise
     if hasattr(cfg, "tee_noise_ramp_steps"):

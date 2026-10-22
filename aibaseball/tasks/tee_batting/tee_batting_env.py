@@ -447,6 +447,7 @@ class TeeBattingEnv(DirectRLEnv):
         super()._reset_idx(env_ids)
         n = len(env_ids)
         self.ball_obs_bias[env_ids] = torch.randn(n, 3, device=self.device) * self.cfg.ball_obs_bias_std
+        self.ball_obs_bias[env_ids, 2] += self.cfg.aim_offset_z  # < 0: the batter aims under the ball
         self.ball_obs_fresh[env_ids] = True
         dev = self.device
         origins = self.scene.env_origins[env_ids]
