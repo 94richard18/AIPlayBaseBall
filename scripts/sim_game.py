@@ -11,18 +11,22 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aibaseball.game import FallbackPitcher, Game, TablePitcher, line_score  # noqa: E402
+from aibaseball.game import FallbackPitcher, Game, TableBatter, TablePitcher, line_score  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--games", type=int, default=1)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--pitches", default=None, help="CSV of the RL pitcher's evaluated pitches (speed_mps, plate_y, plate_z, crossed)")
+parser.add_argument("--batter_table", default=None, help="RL batter: showcase_stats.json from showcase --eval_envs")
+parser.add_argument("--batter_hit_rate", type=float, default=0.73, help="RL batter: measured contact rate (diag_bat_contact)")
 parser.add_argument("--fallback", action="store_true", help="the fallback pitch (88-112 km/h at release, adopted 2026-10-21)")
 args = parser.parse_args()
 
 outcomes, runs, t0 = collections.Counter(), [], time.time()
 for i in range(args.games):
     kw = {"pitcher": TablePitcher.from_csv(args.pitches)} if args.pitches else {"pitcher": FallbackPitcher()} if args.fallback else {}
+    if args.batter_table:
+        kw["batter"] = TableBatter.from_json(args.batter_table, args.batter_hit_rate)
     g = Game(seed=args.seed + i, **kw)
     s = g.play()
     runs += s.score

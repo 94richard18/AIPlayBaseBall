@@ -103,6 +103,41 @@ class FallbackPitcher:
 
 
 @dataclass
+class TableBatter:
+    """Replays the RL batter's evaluated batted balls (scripts/showcase.py --eval_envs -> videos/showcase_stats.json
+    "swings": exit_velo_mps, launch_deg, spray_deg, backspin_rpm). Swing decisions stay StatBatter's; contact uses the
+    measured hit rate (diag_bat_contact) in the zone, scaled by StatBatter's out/in-zone contact ratio outside it."""
+
+    rows: list
+    hit_rate: float
+    swing_in_zone: float = 0.68
+    swing_out_zone: float = 0.28
+    out_zone_contact_scale: float = 0.52 / 0.78
+
+    @classmethod
+    def from_json(cls, path: str, hit_rate: float) -> "TableBatter":
+        import json
+
+        with open(path, encoding="utf-8") as f:
+            swings = json.load(f)["swings"]
+        rows = [(float(s["exit_velo_mps"]), float(s["launch_deg"]), float(s["spray_deg"]), float(s["backspin_rpm"]))
+                for s in swings]
+        assert rows, f"no batted balls in {path}"
+        return cls(rows, hit_rate)
+
+    def swing(self, state: GameState, pitch: Pitch, zone: StrikeZone, rng: random.Random) -> Swing:
+        in_zone = zone.contains(pitch.plate_y, pitch.plate_z)
+        if abs(pitch.plate_y) > 1.0:
+            return Swing("take")
+        if rng.random() >= (self.swing_in_zone if in_zone else self.swing_out_zone):
+            return Swing("take")
+        if rng.random() >= self.hit_rate * (1.0 if in_zone else self.out_zone_contact_scale):
+            return Swing("miss")
+        ev, la, spray, spin = rng.choice(self.rows)
+        return Swing("contact", BattedBall(ev, la, spray, spin))
+
+
+@dataclass
 class StatBatter:
     """Swing / contact rates and batted-ball spread loosely after MLB averages."""
 
