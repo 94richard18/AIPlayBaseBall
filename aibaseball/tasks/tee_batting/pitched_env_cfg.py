@@ -121,6 +121,16 @@ class PitchedBattingHuman7EnvCfg(PitchedBattingHuman6EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman8EnvCfg(PitchedBattingHuman7EnvCfg):
+    """2026-10-23 zero-shot on Human7 model_12095 (256 pitches): aim_offset_z 0 / -0.03 / -0.06 / -0.09 m -> launch
+    median -37 / -23 / -14 / -4 deg, carry median 1.0 / 1.7 / 2.7 / 5.6 m, hit rate (+-0.03 s) 0.84 / - / 0.79 / 0.80.
+    Raising the pitch aim (tee_offset_z 0.10 / 0.13) did more (-1 / +6 deg) - the policy half follows the perceived
+    ball. Only change: the batter aims 0.10 m under the ball (its controller, usable in the game). Start from Human7."""
+
+    aim_offset_z: float = -0.10
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
