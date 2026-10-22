@@ -110,6 +110,17 @@ class PitchedBattingHuman6EnvCfg(PitchedBattingHuman4EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman7EnvCfg(PitchedBattingHuman6EnvCfg):
+    """2026-10-22 quality check (Human6 model_11496, 256 pitches, showcase --eval_envs): contact 94.5% but launch
+    quartiles -55 / -34 / -16 deg, carry median 1.1 m, exit 23 m/s (>= 28 m/s 4%), topspin ~-5000 rpm; diag: ball
+    centre 1.3 cm below the bat axis at contact (median). The inherited launch reward (TeeBattingMimicLaunch: Gaussian,
+    sigma 12 deg around 28) is ~1e-14 at -40 deg and the backspin term is clamped at -1: no gradient toward lift.
+    Only change: the smooth direction score (any angle, 0.45 at -40 deg, 1 at the ideal 30 deg). Start from Human6."""
+
+    launch_sigma_deg: float = 0.0
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
