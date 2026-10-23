@@ -1733,6 +1733,18 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5HTEEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5HT
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5HTELEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5HTEEnvCfg):
+    """H5HTE with the release gated on the elevation (user 2026-10-24, ONE OUTS step 3): the fingers open when the hand
+    moves +5..+25 deg upward and within +-30 deg of the plate line (forced at 1.3 s). hl / hm: with the +-5 deg heading
+    trigger the hand is already swinging down when it lines up (-26 deg) and training pushed it lower (hm 7900 -33 deg);
+    here the elevation is guaranteed by the trigger and the heading is left to the policy (release_score's heading and
+    zone terms, w_stage_rel_elev kept)."""
+
+    release_heading_deg: float | None = 30.0
+    release_elev_deg: tuple | None = (5.0, 25.0)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW1YEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW1EnvCfg):
     """TW1 on waist_yaw only. TW1 on hf_avg3: 18.0 m/s (+1.4) but elevation +26.7 deg (H5 +1-2) and 0/64 standing;
     the athlete's waist pitch goes +10 -> -25 deg over -0.12 s -> release (trunk extension), the likely lift."""
