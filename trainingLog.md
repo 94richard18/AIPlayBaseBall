@@ -71,7 +71,8 @@
 | 投手第 0 步 c | 12:48 跑完，最後一組 TW2 + 觸發 ±5° + 仰角窗：相同起始 16/64（大多不放球）、noisy 27/128，不採用 |
 | 打者影片（12 小時規則） | 完成 `videos/batter_h7_aim012_1023pm.mp4`（951 格、白畫面 0%）：5 球 4 界外（16.8–34.0 m）1 揮空。下次最晚 10-24 00:55 |
 | **投手第 1 步 hl（規劃 session 決定，10-23 授權內）** | 方案 (a)：任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5HT-v0`（292c3ab）= H5 + 觸發 ±10°、策略放球時間關掉，獎勵不變（release_score ×50 已含空中距離與好球帶）。從 hf_avg3 7300 練 600 次（SEED 105、EVAL_EVERY 100、EVAL_WAIT_FREE）。`logs/oo_step1_hl.sh` 在影片後自動啟動，live_rules_loop hl_h5ht 7400 監看，輸出 `logs/train_hl.txt` |
-| 暫停已解除（使用者「繼續」，10-23 16:xx） | hl 從 `logs/rsl_rl/aib1_stage/2026-10-23_12-59-47_hl_h5ht/model_7450.pt` 續練到 7900（`logs/oo_step1_hl_resume.sh`，SEED 106，輸出 `logs/train_hl_resume.txt`，評估 7550、7650…）；投手 session 跑 sr5 / sr8 零樣本，並補評 7400 / 7450 |
+| **hl 停止（10-23 17:52，判定失敗）** | 仰角 -9.5（起點）→ 7400 -10、7450 -11、7550 -13.4、7650 -15°，訓練把仰角往下推；noisy 57、53/128（起點 74），7650 goalcheck 28/64；級 3 全 0。PPO 微調路線 (a) 結束，交付不變 |
+| 投手零樣本 (b) 手臂時間（投手 session） | sr8（r_shoulder_roll -0.08 s）+ TW2 + 觸發 ±5°：仰角 +12 / +17°、方向 -7 / -9°、相同起始 54/64 在空中越過本壘，本壘 y -3.1 m、z 0.73 m（級 1），但站穩 31/64、39/128。偏的原因：觸發在方向第一次進窗口就放球（每步約 9°），出手在窗口三壘側邊（y 約 0.33 m/°）。新增 `release_heading_center_deg`（4be8c16）；b5 = 中心 +6 / +10° 執行中。下一個問題是站穩 |
 | 投手 (b) 新手臂參考 | 投手 session 同時設計並零樣本評估（第二個 Isaac 位置） |
 | 3 小時檢查 | 已重設（CronCreate 70e6cf71，:17 前後） |
 
