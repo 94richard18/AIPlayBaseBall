@@ -650,6 +650,13 @@ class StageEnv(PitchEnv):
             if c.w_stage_rel_speed > 0:  # release speed on its own, same pay condition (gw: speed was ~0.5 per m/s)
                 rew_ball = rew_ball + pay.float() * c.w_stage_rel_speed * (
                     self.rel_vel.norm(dim=-1) / c.rel_speed_full_mps).clamp(max=1.0)
+            if c.w_stage_rel_elev > 0:  # release elevation, same pay condition (ramp up to the target, bell above it)
+                v = self.rel_vel
+                el = torch.rad2deg(torch.atan2(v[:, 2], v[:, :2].norm(dim=-1)))
+                tgt = c.rel_elev_target_deg
+                up = ((el - c.rel_elev_lo_deg) / (tgt - c.rel_elev_lo_deg)).clamp(0.0, 1.0)
+                score = torch.where(el <= tgt, up, torch.exp(-(((el - tgt) / c.rel_elev_above_sigma_deg) ** 2)))
+                rew_ball = rew_ball + pay.float() * c.w_stage_rel_elev * score
         if c.w_finish_com > 0:
             # finish shaping (ha, peer decision 2026-10-20): over [release + t0, release + t1] keep the COM behind and
             # inboard (3B side) of the lead foot - diag_fall_release: at release + 0.3 s the standers had it ~8 cm behind

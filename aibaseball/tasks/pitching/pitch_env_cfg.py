@@ -692,6 +692,12 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     finish_com_sigma: float = 0.04
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
+    # stage: release elevation on its own, paid like w_stage_ball_rest: ramps 0 -> 1 from rel_elev_lo_deg to
+    # rel_elev_target_deg, then exp(-((elev - target) / rel_elev_above_sigma_deg)^2) above it (ONE OUTS step 2, 2026-10-23)
+    w_stage_rel_elev: float = 0.0
+    rel_elev_lo_deg: float = -40.0
+    rel_elev_target_deg: float = 15.0
+    rel_elev_above_sigma_deg: float = 10.0
     ball_rest_head_sigma_deg: float = 30.0  # release_score(): heading width (gl 4775 releases at -45 deg: 15 -> ~1e-4)
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
     ball_rest_set_only: bool = False  # release_score() paid only on set starts (t0 <= 0, where s_drop applies)
@@ -1708,6 +1714,22 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5HTEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5Env
     release_action_window_s: float | None = None
     release_ahead_m: float | None = -5.0
     release_heading_deg: float | None = 10.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5HTEEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5HTEnvCfg):
+    """ONE OUTS pitcher step 2 (user 2026-10-23): the best zero-shot start - aim 10/30 arm reference, trigger +-5 deg,
+    waist pitch on the athlete clock around the release at 0.7 (hf_avg3 7300: 61/64, 72/128, plate y within 0.1-0.2 m,
+    elevation -26 deg, tier 3 = 0) - trained with a release-elevation term. Zero-shot reference changes could not lift
+    the elevation (the trigger fires when the hand already swings down); hl had only release_score(), which is ~0 that
+    far below the zone, and drove the elevation down (-9.5 -> -15 deg). 50 = the ball term's weight."""
+
+    arm_blend_motion_file: str | None = os.path.join(MOTION_DIR, "pitch_2916-4_sy110aim10_30.npz")
+    release_heading_deg: float | None = 5.0
+    trunk_window_joints: str = "waist_pitch"
+    trunk_window_times: tuple | None = (-0.20, -0.12, 0.0, 0.05)
+    trunk_window_weight: float = 0.7
+    w_stage_rel_elev: float = 50.0
 
 
 @configclass
