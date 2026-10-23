@@ -33,6 +33,44 @@ LEG_MAX_VEL = {k: HUMAN_ACTUATOR_GROUPS[k].velocity for k in ("hip", "knee", "an
 FLAT = dict(flat_weight=8.0, flat_both=True)
 KEEP_UNTIL_S = 0.96  # the first IK flip (waist / lead hip) is at the release frame, 0.98 s
 FOLLOW_THROUGH_S = 1.1
+# throwing-hand aim warp (ONE OUTS 2026-10-23, user plan 1): AIM_WARP="yaw_deg:lift_deg" rotates the right elbow / wrist /
+# hand markers about the right shoulder by yaw (about +z, + toward first base) and lift (about the horizontal axis
+# across the hand's path, + up), smoothstep in over release + AIM_TIMES[0..1], held, out over AIM_TIMES[2..3]: on the
+# robot the hand lines up with the plate only once it is already swinging down (heading 0 at -3.5 deg elevation,
+# +12 deg elevation at heading -7), so the reference's release direction itself is turned
+AIM_KEYS = ("r_elbow", "r_wrist", "r_wrist_radial", "r_wrist_ulnar", "r_hand")
+AIM_TIMES = (-0.12, -0.06, 0.02, 0.05)
+
+
+def _smooth(x):
+    x = np.clip(x, 0.0, 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def aim_warp(trial, yaw_deg, lift_deg, times=AIM_TIMES, elbow=True):
+    """Rotate the throwing arm's markers about the shoulder around the release (in place)."""
+    t = np.arange(trial.T) / trial.rate - trial.contact / trial.rate
+    a0, a1, a2, a3 = times
+    w = _smooth((t - a0) / (a1 - a0)) * (1.0 - _smooth((t - a2) / (a3 - a2)))
+    hand = trial.lm["r_hand"]
+    v = np.gradient(hand, 1.0 / trial.rate, axis=0)[trial.contact]
+    across = np.cross([0.0, 0.0, 1.0], v)  # horizontal, across the hand's path
+    across /= np.linalg.norm(across)
+    sh = trial.lm["r_shoulder"]
+    keys = AIM_KEYS if elbow else AIM_KEYS[1:]
+    for i in range(trial.T):
+        if w[i] <= 0.0:
+            continue
+        R = (Rotation.from_rotvec(np.deg2rad(yaw_deg * w[i]) * np.array([0.0, 0.0, 1.0]))
+             * Rotation.from_rotvec(-np.deg2rad(lift_deg * w[i]) * across))
+        for k in keys:
+            trial.lm[k][i] = sh[i] + R.apply(trial.lm[k][i] - sh[i])
+
+
+def hand_dir(p, i, rate):
+    """Heading (deg, from atan2(vy, vx)) and elevation (deg) of a point path's velocity at frame i."""
+    v = np.gradient(p, 1.0 / rate, axis=0)[i]
+    return np.degrees(np.arctan2(v[1], v[0])), np.degrees(np.arctan2(v[2], np.linalg.norm(v[:2]))), np.linalg.norm(v)
 
 
 def main(paths):
@@ -52,6 +90,15 @@ def main(paths):
     ball_local = np.array(grip.ball_center_hand)
     for path in paths:
         trial = load_trial(path, body_cutoff=20.0, bat_cutoff=30.0)
+        h0 = hand_dir(trial.lm["r_hand"], trial.contact, trial.rate)
+        if os.environ.get("AIM_WARP"):
+            yaw_, lift_ = (float(x) for x in os.environ["AIM_WARP"].split(":"))
+            aim_warp(trial, yaw_, lift_)
+            h1 = hand_dir(trial.lm["r_hand"], trial.contact, trial.rate)
+            print(f"[pitch] aim warp yaw {yaw_:+.1f} lift {lift_:+.1f} deg: athlete hand at release heading "
+                  f"{h0[0]:+.1f} -> {h1[0]:+.1f}, elevation {h0[1]:+.1f} -> {h1[1]:+.1f} deg, {h0[2]:.1f} -> {h1[2]:.1f} m/s", flush=True)
+        if os.environ.get("AIM_ONLY"):  # marker check only, no retarget
+            continue
         tag = sel.get(os.path.basename(path), {}).get("session_pitch", trial.name).replace("_", "-")
         out = os.path.join(ROOT, "assets", "motions", f"pitch_{tag}{os.environ.get('OUT_SUFFIX', '')}.npz")
         t_rel = trial.contact / trial.rate
@@ -70,6 +117,12 @@ def main(paths):
         d = prepare(out, out, finger_pose=fingers, ball_local=ball_local, limits=limits)
         ball = d["key_pos"][:, -1]
         v = np.linalg.norm(np.gradient(ball, 1 / 120, axis=0), axis=1)
+        ir = int(res.contact_time * 120)
+        bh = hand_dir(ball, ir, 120.0)
+        print(f"[pitch]  robot reference ball at release: heading {bh[0]:+.1f} deg, elevation {bh[1]:+.1f} deg, "
+              f"{bh[2]:.1f} m/s; 1 frame earlier / later heading {hand_dir(ball, ir - 1, 120.0)[0]:+.1f} / "
+              f"{hand_dir(ball, ir + 1, 120.0)[0]:+.1f}, elevation {hand_dir(ball, ir - 1, 120.0)[1]:+.1f} / "
+              f"{hand_dir(ball, ir + 1, 120.0)[1]:+.1f}", flush=True)
         over = [f"{n} {np.abs(d['joint_vel'][:, i]).max():.0f}>{robot.joint(str(n)).velocity:.0f}"
                 for i, n in enumerate(d["joint_names"]) if np.abs(d["joint_vel"][:, i]).max() > robot.joint(str(n)).velocity]
         print(f"[pitch]  -> {out}\n         keypoint RMS {res.keypoint_err.mean()*100:.1f} cm (max {res.keypoint_err.max()*100:.1f}), "
