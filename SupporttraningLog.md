@@ -130,38 +130,38 @@
 | 注意 | Isaac 行程結束時可能卡住不退出（10-21 00:11 診斷寫完結果後卡到 06:19，GPU 空了 6 小時）：長的串接指令每段加 `timeout`；bash 的 `python` 是 WindowsApps 的假程式，要用 `/c/Users/User/anaconda3/envs/isaaclab_env/python.exe` |
 | GPU | 最多 2 個 Isaac 行程；trainer 在跑時不錄影（渲染 + 訓練會超過 12 GB）；EVAL_WAIT_FREE 只算 Isaac 行程（66e4331）；監看不要用常駐的 python |
 
-## 5. 待辦事項
+## 5. 待辦事項（10-23 13:00 更新，目標 ONE OUTS）
 
-**投手**
-1. hi 有結果後：
-   - 決定要不要把混入比例從 0.5 慢慢提高到 1.0。
-   - 照規則挑出最好的模型，跟交付模型比較。
-2. 方向從 -19° 修到 ±10° 以內（T1 級），之後再往可接（級 3）前進。
-3. 出手仰角要到 +2.5～5°，球速要到約 24 m/s，球才能在空中以 80 km/h 到本壘。
-4. 可考慮的下一步：
-   - 手肘伸直後一直保持到放球（改參考動作的形狀）。
-   - 肩膀放寬的半步課程。
-5. 10-29 檢查點：出手 < 20 m/s 就改用備案。
+**現在執行中**
+- 打者 12 小時影片：`videos/batter_h7_aim012_1023pm.mp4`（Human7 + aim -0.12，錄完自動跑 `scripts/check_video_frames.py`，白畫面就重錄一次）。
+- 每 3 小時定時檢查（CronCreate，:17 前後，只在目前 session 有效、7 天到期；重開 session 要重設）。
 
-**打者**
-1. 診斷打不中的原因：揮棒時機、甜蜜點、球棒和球的最近距離。
-2. 依診斷結果設計下一輪打者訓練（W2 期限 11-12）。
-3. 打者影片每 12 小時一次。
+**投手（期限 11-12，過關：級 3 在空中 ≥ 32/64 且不倒 ≥ 48/64，兩種評估）**
+1. 目前位置（零樣本，hf_avg3 7300）：方向已可修到 0°（TW2 + 方向觸發 ±5°，必須同時關掉策略放球時間），但放球時手往下揮，仰角 -16°，球全部滾地，級 3 = 0。
+2. **下一步要先問使用者（10-24 起新設計需同意）**：仰角怎麼補。候選：
+   - (a) 在「TW2 + 方向觸發 ±5°」的設定下訓練，獎勵加級 3 的球路分數（之前的球路獎勵在偏 40° 時沒梯度，現在方向已近 0°，梯度應該有）；
+   - (b) 新的手臂參考動作：放球前手往上 / 水平移動（例如手肘伸直保持到放球、出手點抬高）；
+   - (c) 放球觸發改成「手往上移動時」再加方向條件（release_elev_deg 這次零樣本無效，可能要配合訓練）。
+3. 投手影片每 12 小時（上次 10-23 09:15，下次最晚 21:15）。
 
-**其他**
-1. 交付影片已完成（21:35 / 21:41）：`videos/deliverable_h5_identical.mp4`（2 回合都站穩，球飛 37.7 / 36.2 m）、`videos/deliverable_h5_noisy.mp4`（1.42 s 跌倒）。投手影片下次最晚 10-21 09:41，要在 trainer 停下的空檔錄。
-2. 10-24 起新設計要先問使用者（授權到 10-23）。
-3. 比賽引擎 `sim_game` 接上投手評估的投球 CSV（等投手有可用的投球）。
+**打者（期限 11-12，標準等新投手的球出來再定）**
+1. 交付：Human7 model_12095 + aim_offset_z -0.12（擊中率 0.73、仰角中位數 +8°、界內 48%、界內落點中位數 4 m）。
+2. 弱點：界外 48% 飛向一壘側（揮棒軌跡問題，不是時機）；初速 ≥ 28 m/s 只有約 6%。
+3. 投手能投出級 3 的球之後：用投手的球（eval_stage --pitch_csv）重新評估、訓練打者，再跟使用者定標準。
+4. 打者影片每 12 小時（上次 10-23 13:00 前後）。
+
+**ONE OUTS 遊戲與影片（11-26）**
+1. 規則已實作：`aibaseball/game/one_outs.py`、`scripts/one_outs.py`（--pitches 投手投球表、--batter_table 打者擊球表）。目前：備案投手 vs RL 打者，打者 9% 勝；訓練投手 vs 打者，100% 四壞。
+2. 待做：對決影片（投手動作 + 球路 + 牆上好球帶 + 比數 / 落點 / 勝負字幕），約 10 場，再加勝率統計。需要把投手與打者放進同一個場景，或兩段畫面接起來。
 
 ## 6. 接手說明（重開 session 用）
 
-- 先讀記憶（MEMORY.md）與本檔，再看 PITCHER_TRAINING_LOG.md 最後幾段。
-- 投手的訓練由投手 session（aiplaybaseball-94）執行；規劃 session 負責決策、紀錄與打者。
-- hi 的停止規則改由 `bash scripts/live_rules_loop.sh hi_syw110r5h5 7500` 自動監看（每出現一個新的 noisy 評估檔，就呼叫一次 `live_rules.py --once`），門檻用預設值，由投手 session 掛上。不要讓 `live_rules.py` 常駐：它算一個 python.exe，train_live 的 EVAL_WAIT_FREE 遇到 python.exe ≥ 2 會一直等，hi 從 7400 起的評估就是這樣卡住；自己掛的等待也只用 bash / PowerShell；結論出來時，若最新存檔比已評估的新，要先評估最新存檔再判定。
-- 第 0 步評估改用 `bash scripts/eval_protocol.sh <ckpt> <tag> <task>...`（相同起始 64 + 兩次 noisy 128）。
-- 省 token 規則（記憶 token-saving-workflow.md）：
-  - 不要用輪詢迴圈，長工作用 run_in_background 等通知。
-  - 只讀摘要行。
-  - 每個階段送一次彙整訊息。
-  - 例行監看交給較小的 subagent。
-  - 每個里程碑先寫進紀錄，再重開 session。
+1. 先讀記憶（MEMORY.md，特別是 one-outs-goal、game-rules-2026-10-23、act-before-ending-turn、video-every-12h、token-saving-workflow），再讀本檔第 0、1、5 節，以及 trainingLog.md、PITCHER_TRAINING_LOG.md 最後幾段。
+2. 重新設定每 3 小時檢查（CronCreate "17 */3 * * *"，prompt 照上一個 session：看進度、GPU 閒置就排下一步、影片超過 11 小時就錄並檢查白畫面、更新紀錄並 push、回簡短進度）。
+3. 分工：投手 session（aiplaybaseball-94）負責 PITCHER_TRAINING_LOG.md 與投手訓練的執行；規劃 session 負責決策、本檔、打者、遊戲引擎與影片。GPU 閒置 > 1 小時且沒人排工作時，任一邊直接接手錄影或最新打者的品質檢查。
+4. 執行規則：
+   - 每一輪結束前確認有工作在跑或已排好，並且結束時會收到通知（記憶 act-before-ending-turn）。
+   - 長工作用 run_in_background；等行程用 PowerShell 查命令列（Git Bash 沒有 pgrep）；不要改正在執行的 bash 腳本。
+   - 錄影不跟 trainer 同時跑；每支影片用 `scripts/check_video_frames.py` 檢查，失敗重錄一次（GPU 長時間閒置後第一次渲染容易白畫面）。
+   - 最多 2 個 Isaac 行程；第 0 步評估用 `bash scripts/eval_protocol.sh`，或 eval_stage 加 `--set`（方向觸發要一起設 scripted_release_s=None release_action_window_s=None release_ahead_m=-5.0）。
+   - 10-24 起：新的訓練設計、規格、排程都先問使用者；停止 / 挑存檔照既定規則執行並回報。
