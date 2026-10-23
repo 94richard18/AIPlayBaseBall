@@ -39,7 +39,9 @@ FOLLOW_THROUGH_S = 1.1
 # robot the hand lines up with the plate only once it is already swinging down (heading 0 at -3.5 deg elevation,
 # +12 deg elevation at heading -7), so the reference's release direction itself is turned
 AIM_KEYS = ("r_elbow", "r_wrist", "r_wrist_radial", "r_wrist_ulnar", "r_hand")
-AIM_TIMES = (-0.12, -0.06, 0.02, 0.05)
+# AIM_TIMES="a0:a1:a2:a3" overrides; the first try (out over +0.02 -> +0.05) put the robot's lagging release in the
+# warp's way back down (-26 to -31 deg)
+AIM_TIMES = tuple(float(x) for x in os.environ.get("AIM_TIMES", "-0.12:-0.06:0.02:0.05").split(":"))
 
 
 def _smooth(x):
