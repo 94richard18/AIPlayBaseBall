@@ -378,7 +378,9 @@ def film(w, base, pol, T, fps=30):
         return None
 
     every = max(1, int(round(1.0 / (fps * args.slow * base.step_dt))))
-    keys = {0, T // 3, 2 * T // 3, T - 1}
+    # key frames: start, the release (user 2026-10-23; T // 3 if the ball is still held by then), 2/3, end
+    keys = {0, 2 * T // 3, T - 1}
+    rel_k = None
     frames, kf = [], []
     for e in range(args.video_episodes):
         with torch.inference_mode():
@@ -391,7 +393,10 @@ def film(w, base, pol, T, fps=30):
             t = (k + 1) * base.step_dt
             if fell is None and bool(base.fallen[0]):
                 fell = t
-            if k % every and not (e == 0 and k in keys):
+            if e == 0 and rel_k is None and (bool(base.released[0]) or k == T // 3):
+                rel_k = k
+            key = e == 0 and (k in keys or k == rel_k)
+            if k % every and not key:
                 continue
             o = base.scene.env_origins[0].cpu().numpy()  # follow the pelvis along the ground (1b walks off the view)
             pel = base.robot.data.root_link_pos_w[0].cpu().numpy()
@@ -422,9 +427,11 @@ def film(w, base, pol, T, fps=30):
                     cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2,
                                 cv2.LINE_AA)
             txt = f"episode {e + 1}  t = {t:.2f} s" + (f"  FELL at {fell:.2f} s" if fell is not None else "")
+            if e == 0 and k == rel_k and bool(base.released[0]):
+                txt += "  release"
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
-            if e == 0 and k in keys:
+            if key:
                 kf.append(cv2.resize(img, (640, 360)))
             if k % every == 0:
                 frames.append(img if args.no_plate_view else np.concatenate([img, np.zeros_like(img) if pv is None else pv], 1))
