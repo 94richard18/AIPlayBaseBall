@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 class GameState:
     innings: int = 9
     max_innings: int = 15  # a tie after this ends the game
+    scoreless_tie_ends: bool = True  # 0-0 after `innings`: the game ends as a tie (no extra innings)
     inning: int = 1
     top: bool = True
     outs: int = 0
@@ -115,6 +116,9 @@ class GameState:
         else:
             if self.inning >= self.innings and self.score[0] != self.score[1]:
                 self.final = True
+                return
+            if self.inning >= self.innings and self.scoreless_tie_ends and self.score == [0, 0]:
+                self.final = True  # user rule 2026-10-23: a 0-0 game after the regulation innings is a tie
                 return
             if self.inning >= self.max_innings:
                 self.final = True

@@ -61,4 +61,6 @@ def line_score(s: GameState) -> str:
     n = max(len(s.line[0]), len(s.line[1]))
     cells = lambda row: " ".join(f"{r:>2}" for r in row) + "   " * (n - len(row))  # noqa: E731
     head = "      " + " ".join(f"{i + 1:>2}" for i in range(n)) + "    R"
-    return "\n".join([head, f"Away  {cells(s.line[0])}  {s.score[0]:>3}", f"Home  {cells(s.line[1])}  {s.score[1]:>3}"])
+    result = "Tie" if s.score[0] == s.score[1] else ("Away wins" if s.score[0] > s.score[1] else "Home wins")
+    return "\n".join([head, f"Away  {cells(s.line[0])}  {s.score[0]:>3}", f"Home  {cells(s.line[1])}  {s.score[1]:>3}",
+                      f"{result} after {s.inning} innings"])
