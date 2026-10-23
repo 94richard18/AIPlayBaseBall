@@ -19,6 +19,8 @@ parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
+parser.add_argument("--no_plate_view", action="store_true",
+                    help="video: side view only (default: side view + a view from home plate toward the pitcher, side by side)")
 parser.add_argument("--pitch_csv", type=str, default=None,
                     help="arm + ball step: one row per episode 'speed_mps,plate_y,plate_z,crossed' for the game engine")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
@@ -357,7 +359,8 @@ def main():
 
 
 def film(w, base, pol, T, fps=30):
-    """Side view of env 0 (others hidden); key frames at 0, 1/3, 2/3 and the end of episode 1 side by side (.png)."""
+    """Side view of env 0 (others hidden), and next to it a view from behind home plate toward the pitcher (user
+    2026-10-23; --no_plate_view drops it); key frames (side view) at 0, 1/3, 2/3 and the end of episode 1 (.png)."""
     import cv2
     import imageio
     import omni.usd
@@ -398,13 +401,33 @@ def film(w, base, pol, T, fps=30):
             if img is None:
                 continue
             img = img.copy()
+            if not args.no_plate_view:
+                # from 1 m behind the plate at eye height toward the rubber; the single viewport camera is moved for
+                # this frame and back for the next side-view grab (one stale render dropped after each move)
+                g = base.scene.env_origins[0].cpu().numpy() + [0.0, 0.0, base.field_z]
+                pd = base.cfg.plate_distance
+                base.sim.set_camera_view(eye=(g + [pd + 1.0, base.cfg.zone_center_y, 1.5]).tolist(),
+                                         target=(g + [0.0, 0.0, 1.3]).tolist())
+                base.render()
+                pv = grab()
+                base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
+                base.render()
+                if pv is not None:
+                    # the pitcher is ~19 m away (2x crop: ~27% of the frame height): 3x crop, centred at 55% of the
+                    # height where the pitcher stands, back to full size
+                    hh, ww = pv.shape[:2]
+                    y0 = int(hh * 0.55 - hh / 6)
+                    pv = cv2.resize(pv[y0: y0 + hh // 3, ww // 3: ww - ww // 3], (ww, hh))
+                    cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
+                    cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2,
+                                cv2.LINE_AA)
             txt = f"episode {e + 1}  t = {t:.2f} s" + (f"  FELL at {fell:.2f} s" if fell is not None else "")
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
             if e == 0 and k in keys:
                 kf.append(cv2.resize(img, (640, 360)))
             if k % every == 0:
-                frames.append(img)
+                frames.append(img if args.no_plate_view else np.concatenate([img, np.zeros_like(img) if pv is None else pv], 1))
         # StageEnv never runs the release check (_get_dones is its own): measure the ball's distance to the grip
         gap = float((base.ball.data.root_pos_w[0] - base._grip_point()[0]).norm())
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
