@@ -19,17 +19,22 @@ the full history is in [`PITCHER_TRAINING_LOG.md`](PITCHER_TRAINING_LOG.md) (Tra
 
 Video of the pitcher in training (2026-10-18): <https://youtu.be/swZP6mBEq0c>
 
-## Current plan (one month, started 2026-10-15; moved one week on 2026-10-20)
+## Current goal: ONE OUTS (changed 2026-10-23)
 
-Reduced scope on one PC: only the pitcher and the batter are physics RL; fielders, catcher and runners are
-scripted, and the game is played back from a recording.
+The project now plays ONE OUTS (from the manga by Shinobu Kaitani): one pitcher against one batter for one plate
+appearance, no fielders, a wall with a painted strike zone behind the plate. Batter wins on a walk, a hit-by-pitch,
+a fair ball whose first bounce is beyond the infield (95 ft from the rubber) or a home run; the pitcher wins on a
+strikeout or a fair ball whose first bounce is in the infield. A foul is a strike but never the third.
+Code: `aibaseball/game/one_outs.py`, `scripts/one_outs.py`.
 
 | Gate | Due | Content |
 |---|---|---|
-| W1 pitcher | 2026-11-05 (check on 10-29: release < 20 m/s → the game uses the pitch-library fallback) | both evals (identical and random starts, 4.0 s episodes): at rest with the ball crossing the plate in the air at ≥ 80 km/h (drag included) ≥ 60/64, and at rest + ≥ 80 km/h + ball tier 3 (catchable) on the same pitch ≥ 32/64; human-strength joints and the elastic arm stay as they are |
-| W2 batter | 2026-11-12 | human-strength batter vs 80–100 km/h pitches (pitch library until the RL pitcher is ready), grass bounce / roll model |
-| W3 engine | 2026-11-12 | rules, scripted fielders / runners, 9 innings unattended |
-| W4 video | 2026-11-26 | integration, broadcast camera, full-game video |
+| Pitcher | 2026-11-12 | both evals (identical and random starts, 4.0 s episodes): ball reaches the wall in the air at tier 3 or better (|y| ≤ 0.5 m, z 0.2–1.5 m) ≥ 32/64, and not fallen after the pitch ≥ 48/64; speed reported, no bar; human-strength joints (waist / finger strength relaxed ×1.5 approved 2026-10-21) |
+| Batter | 2026-11-12 | human-strength batter trained and evaluated on the new pitcher's pitches; the bar is set once those pitches exist |
+| Video | 2026-11-26 | ONE OUTS match video (about 10 matches: count, wall strike zone, landing point, verdict) + win-rate statistics |
+
+The earlier one-month plan (9-inning game, scripted fielders, 80 km/h pitching gate) was replaced; its engine code
+(`aibaseball/game`) stays for the rules and ball flight.
 
 Ball tiers, highest reached per pitch: T0 not thrown or > 10° off line, T1 release heading within ±10° of the
 plate line, T2 reaches the plate in the air within 1.0 m sideways, T3 catchable (|y| ≤ 0.5 m, z 0.2–1.5 m),
