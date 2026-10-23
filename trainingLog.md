@@ -71,6 +71,7 @@
 | 投手第 0 步 c | 12:48 跑完，最後一組 TW2 + 觸發 ±5° + 仰角窗：相同起始 16/64（大多不放球）、noisy 27/128，不採用 |
 | 打者影片（12 小時規則） | 完成 `videos/batter_h7_aim012_1023pm.mp4`（951 格、白畫面 0%）：5 球 4 界外（16.8–34.0 m）1 揮空。下次最晚 10-24 00:55 |
 | **投手第 1 步 hl（規劃 session 決定，10-23 授權內）** | 方案 (a)：任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5HT-v0`（292c3ab）= H5 + 觸發 ±10°、策略放球時間關掉，獎勵不變（release_score ×50 已含空中距離與好球帶）。從 hf_avg3 7300 練 600 次（SEED 105、EVAL_EVERY 100、EVAL_WAIT_FREE）。`logs/oo_step1_hl.sh` 在影片後自動啟動，live_rules_loop hl_h5ht 7400 監看，輸出 `logs/train_hl.txt` |
+| **訓練暫停（使用者 10-23 13:34）** | hl 已停在 7450（存檔 7400、7450，都還沒評估）；不要啟動任何訓練，等使用者指示。續練：train_live 從 `logs/rsl_rl/aib1_stage/*hl_h5ht/model_7450.pt` |
 | 投手 (b) 新手臂參考 | 投手 session 同時設計並零樣本評估（第二個 Isaac 位置） |
 | 3 小時檢查 | 已重設（CronCreate 70e6cf71，:17 前後） |
 
