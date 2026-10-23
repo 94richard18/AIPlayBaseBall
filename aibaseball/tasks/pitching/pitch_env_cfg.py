@@ -661,6 +661,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_ahead_m: float | None = None  # stage: fingers open when the hand is this far ahead of the pelvis (x) ...
     release_vy_frac: float | None = None  # stage: ... and the hand's velocity y >= this x its horizontal speed
     release_heading_deg: float | None = None  # stage: ... and the hand's horizontal heading within +-this of +x
+    release_heading_center_deg: float = 0.0  # ... of this heading (deg, + toward first base) instead of +x
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
     release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
     release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)

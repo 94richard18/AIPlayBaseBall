@@ -418,7 +418,10 @@ class StageEnv(PitchEnv):
                 # step) and crosses 0 at ~0.975 s (release 0.98 s); gk 4525 released at -37 deg on the athlete's time
                 hv = d.body_link_lin_vel_w[:, self.hand_id]
                 hd = torch.rad2deg(torch.atan2(hv[:, 1], hv[:, 0]))
-                ahead = ahead & (hv[:, 0] > 5.0) & (hd.abs() <= c.release_heading_deg)
+                # ... centred on release_heading_center_deg: the trigger fires on the first step inside the window (the
+                # sweep enters from the third-base side), so the ball leaves near centre - width (ONE OUTS b4: -7 deg
+                # at +-5, crossing y -3.1 m; the plate centre needs ~+2.5 deg)
+                ahead = ahead & (hv[:, 0] > 5.0) & ((hd - c.release_heading_center_deg).abs() <= c.release_heading_deg)
             if c.release_elev_deg is not None:
                 # ... and the hand's velocity elevation (deg above horizontal) inside (lo, hi): gm 4825 released on the
                 # plate line but ~48 deg downward from z 1.03 m (the ball landed short at 15 m/s)
