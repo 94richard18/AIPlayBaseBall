@@ -1696,6 +1696,20 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5HTEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
+    """H5 trained with the heading release trigger (ONE OUTS pitcher step 1, 2026-10-23): the fingers open when the
+    throwing hand moves within +-10 deg of the plate line; the policy's release time is off (it overrides the trigger).
+    Zero-shot on hf_avg3 7300: identical 63/64, noisy 74/128, heading -7 deg, but elevation -9.5 deg (the hand is moving
+    down when it lines up) and tier 3 = 0/64. release_score() (x 50 at rest) pays air distance and the zone crossing,
+    so with the heading fixed its gradient points at the elevation (+15 deg needed at 16 m/s from 1.86 m)."""
+
+    scripted_release_s: float | None = None
+    release_action_window_s: float | None = None
+    release_ahead_m: float | None = -5.0
+    release_heading_deg: float | None = 10.0
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW1YEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW1EnvCfg):
     """TW1 on waist_yaw only. TW1 on hf_avg3: 18.0 m/s (+1.4) but elevation +26.7 deg (H5 +1-2) and 0/64 standing;
     the athlete's waist pitch goes +10 -> -25 deg over -0.12 s -> release (trunk extension), the likely lift."""
