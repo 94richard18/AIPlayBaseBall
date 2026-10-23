@@ -11,19 +11,20 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from aibaseball.game import FallbackPitcher, StatBatter, TableBatter  # noqa: E402
+from aibaseball.game import FallbackPitcher, StatBatter, TableBatter, TablePitcher  # noqa: E402
 from aibaseball.game.one_outs import play_one_outs  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--matches", type=int, default=1000)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--batter_table", default=None, help="RL batter table (default: the statistical batter)")
+parser.add_argument("--pitches", default=None, help="the RL pitcher's evaluated pitches (eval_stage --pitch_csv); default: the fallback pitch")
 parser.add_argument("--hit_rate", type=float, default=0.73)
 parser.add_argument("--show", type=int, default=3, help="print this many matches pitch by pitch")
 args = parser.parse_args()
 
 rng = random.Random(args.seed)
-pitcher = FallbackPitcher()
+pitcher = TablePitcher.from_csv(args.pitches) if args.pitches else FallbackPitcher()
 batter = TableBatter.from_json(args.batter_table, args.hit_rate) if args.batter_table else StatBatter()
 wins, hows, n_pitches = collections.Counter(), collections.Counter(), 0
 for i in range(args.matches):
