@@ -111,6 +111,8 @@
 
 ## 4. 執行中
 
+**2026-10-24 06:55 交接（最新，優先讀這段）**：投手 hn 執行中，詳細狀態、卡住問題與下一步見 trainingLog.md 第 4、5 節。投手 10-23～10-24 的嘗試與結論：方向可修（觸發 ±5° + 中心 +6°，本壘 y ±0.3 m），但出手仰角卡在 -26°（方向對時手已在下揮）；兩輪訓練 hl、hm 都把仰角壓更低（hm 7900 -33°、站穩 63 → 43）；hn 改用仰角觸發，仰角 +13° 但方向 -36°。交付不變：hf_avg3 7300 + H5。
+
 | 項目 | 狀態 |
 |---|---|
 | 投手 hj（已結束） | 訓練雜訊 0.01。7600 被平衡規則停下（noisy 26、27/64）。7400：60/64、66/128；7600：63/64、54/128。沒有存檔達到取代條件。發現：訓練中定位起點成功率只有 0.08–0.4（hi、hj），遠低於評估，因為訓練動作帶探索雜訊（σ 0.03），快速甩臂時自己的雜訊造成跌倒 |
@@ -156,6 +158,8 @@
 2. 待做：對決影片（投手動作 + 球路 + 牆上好球帶 + 比數 / 落點 / 勝負字幕），約 10 場，再加勝率統計。需要把投手與打者放進同一個場景，或兩段畫面接起來。
 
 ## 6. 接手說明（重開 session 用）
+
+- 10-24 補充：(1) eval_stage 結束後的 `omni.telemetry.transmitter.exe` 會卡住 train_live 的 eval 管線，停它需要使用者 `! taskkill //PID <pid> //F`（auto mode 擋下 Stop-Process）。(2) 投手錄影：`eval_stage --video` 預設側面 + 本壘視角並排，關鍵畫面第二張是放球那一刻。(3) 每 3 小時檢查是 session-only cron，重開 session 要重設。(4) 使用量 hook：`~/.claude/settings.json` 的 statusLine + PostToolUse / UserPromptSubmit，99% 時提醒寫交接。
 
 1. 先讀記憶（MEMORY.md，特別是 one-outs-goal、game-rules-2026-10-23、act-before-ending-turn、video-every-12h、token-saving-workflow），再讀本檔第 0、1、5 節，以及 trainingLog.md、PITCHER_TRAINING_LOG.md 最後幾段。
 2. 重新設定每 3 小時檢查（CronCreate "17 */3 * * *"，prompt 照上一個 session：看進度、GPU 閒置就排下一步、影片超過 11 小時就錄並檢查白畫面、更新紀錄並 push、回簡短進度）。
