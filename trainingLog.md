@@ -68,7 +68,8 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **投手 hn（執行中）** | `logs/oo_step3_hn.sh`：任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5HTEL-v0`（9bc9866，放球在手速仰角 +5～+25° 且方向 ±30° 內，方向交給策略；aim 10/30 手臂 + waist pitch 0.7 + 仰角獎勵 50）。hf_avg3 7300 起 600 次（到 7900），run `logs/rsl_rl/aib1_stage/2026-10-24_03-43-06_hn_h5htel/`，輸出 `logs/train_hn.txt`，評估 `logs/eval_hn_h5htel_*.txt`，監看 live_rules_loop（noisy）+ 投手 session 的 `logs/watch_hn.sh`（`logs/watch_hn.txt`）。零樣本：48/64、39/128，仰角 +11.5 / +13.4°，方向 -36 / -41°，本壘 y -14.6 m，級 3 = 0。7400：56/64，方向 -35.9°，仰角 +13.0°，級 3 = 0 |
+| **訓練暫停（使用者 10-24 08:16）** | hn 已停（存檔到 `model_8450.pt`：7500 eval 被 telemetry 卡住，train_live 沒在 7900 收尾）。只有 7400 有評估。不要啟動任何訓練，等使用者指示；3 小時檢查只錄影 / 更新紀錄 |
+| 投手 hn（已停） | `logs/oo_step3_hn.sh`：任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5HTEL-v0`（9bc9866，放球在手速仰角 +5～+25° 且方向 ±30° 內，方向交給策略；aim 10/30 手臂 + waist pitch 0.7 + 仰角獎勵 50）。hf_avg3 7300 起 600 次（到 7900），run `logs/rsl_rl/aib1_stage/2026-10-24_03-43-06_hn_h5htel/`，輸出 `logs/train_hn.txt`，評估 `logs/eval_hn_h5htel_*.txt`，監看 live_rules_loop（noisy）+ 投手 session 的 `logs/watch_hn.sh`（`logs/watch_hn.txt`）。零樣本：48/64、39/128，仰角 +11.5 / +13.4°，方向 -36 / -41°，本壘 y -14.6 m，級 3 = 0。7400：56/64，方向 -35.9°，仰角 +13.0°，級 3 = 0 |
 | **卡住問題（未解）** | eval_stage 結束時留下 `omni.telemetry.transmitter.exe`，佔住 train_live.sh 的 eval 管線（`| sed`），之後的存檔都不評估。06:47 卡在 7500（transmitter PID 126324，sed 121472）。我停 transmitter 被權限擋下；使用者用 `! taskkill //PID <pid> //F` 解（05:21 解過一次 7400）。hn 結束後要改 train_live.sh：eval 先寫暫存檔再 sed（不改執行中的腳本） |
 | 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
 | 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
