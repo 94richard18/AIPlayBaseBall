@@ -1,0 +1,7 @@
+18:08 pitcher P2 running, batter starts in slot B
+18:12 model_12300 aim -0.12: diag1024 0.666 | fell after hit 52%
+18:16 model_12500 aim -0.08: diag1024 0.684 | fell after hit 57% | fair >= 29 m 15.9% | 1000 matches: batter 18.5%, pitcher 81.5%; 3.4 pitches each how: infield_ball 44.7%, strikeout 36.8%, outfield_hit 11.1%, walk 4.5%, hit_by_pitch 2.9% 
+18:20 model_12500 aim -0.04: diag1024 0.729 | fell after hit 49% | fair >= 29 m 10.8% | 1000 matches: batter 15.0%, pitcher 85.0%; 3.2 pitches each how: infield_ball 54.7%, strikeout 30.3%, outfield_hit 8.9%, walk 3.5%, hit_by_pitch 2.6% 
+18:25 model_12350 aim -0.08: diag1024 0.659 | fell after hit 55%
+gate: diag1024 >= 0.68, ONE OUTS >= 13.1%, fair >= 29 m >= 11.3%; none -> highest diag1024 is the delivery
+18:25 done

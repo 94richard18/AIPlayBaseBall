@@ -1,5 +1,5 @@
 {
- "source": "Human9b model_12500 (target 29 m) + aim_offset_z -0.08, showcase --eval_envs 1024 (first ball per env), timing_noise 0.03, bias 0.055, 2026-10-25",
+ "source": "Human9b model_12500 (target 29 m) + aim_offset_z -0.08, showcase --eval_envs 1024 (first ball per env), timing_noise 0.03, bias 0.055, 2026-10-25; hit_rate from diag 1024 pitches seed 0 (700/1024)",
  "hit_rate": 0.684,
  "stats": {
   "checkpoint": "logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt",
@@ -23,7 +23,9 @@
    17.4
   ],
   "fair_ge29_of_pitches": 0.1591796875,
-  "diag_fell_after_hit": 0.6114285714285714
+  "diag_fell_after_hit": 0.5728571428571428,
+  "diag_pitches": 1024,
+  "diag_seed": 0
  },
  "swings": [
   {
