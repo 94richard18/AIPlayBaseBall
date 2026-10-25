@@ -34,6 +34,11 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # eval / game: pitches from the RL pitcher's eval_stage --pitch_csv table instead of the analytic library
     pitch_table_csv: str | None = None
     pitch_release_csv: str | None = None  # eval_stage --release_csv: every pitch from its own release state (preferred)
+    # training: this share of the pitches shaped like an RL pitcher's releases (direction / spin / release point of the
+    # table rows, speed drawn in pitch_mix_speed_kmh, near-zone only); the rest from the analytic library
+    pitch_mix_release_csv: str | None = None
+    pitch_mix_frac: float = 0.5
+    pitch_mix_speed_kmh: tuple = (55.0, 75.0)
     pitch_table_center_z: float = 0.80  # m, the table's plate z that maps onto the swing's nominal contact height
 
 
@@ -187,6 +192,18 @@ class PitchedBattingHuman13EnvCfg(PitchedBattingHuman12EnvCfg):
 
     ref_hold_end: bool = True
     clamp_ref_phase: bool = True
+
+
+@configclass
+class PitchedBattingHuman14EnvCfg(PitchedBattingHuman13EnvCfg):
+    """2026-10-25 the delivery batter (12500 + aim -0.08) vs the RL pitcher's P3c t18 pitches (~64 km/h, 1.05 s flight):
+    diag hit rate 0.140 (0.684 at 88-112 km/h), swings early and under the ball. Change (decision session): half the
+    training pitches shaped like P3c's releases (release point + spin, 55-75 km/h, aimed near the zone), half the
+    analytic 88-112 km/h. Start from Human13's best checkpoint (the delivery if Human13 fails)."""
+
+    pitch_mix_release_csv: str = "assets/game/p3c_identical_t18_release.csv"
+    pitch_mix_frac: float = 0.5
+    pitch_mix_speed_kmh: tuple = (55.0, 75.0)
 
 
 @configclass

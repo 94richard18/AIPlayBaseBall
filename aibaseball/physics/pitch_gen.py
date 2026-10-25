@@ -163,3 +163,30 @@ def build_library_from_release(path: str, spec: PhysicsSpec, plate_distance: flo
     target = torch.stack([torch.zeros(len(k)), p_hit[k, 1], p_hit[k, 2]], -1)
     return PitchLibrary(release=release[k], target=target, v0=v0[k], omega=omega[k], flight_time=t_hit[k],
                         speed_kmh=v0[k].norm(dim=-1) * 3.6)
+
+
+def build_library_like_release(path: str, n: int, spec: PhysicsSpec, speed_kmh=(55.0, 75.0), zone_y: float = 0.5,
+                               zone_z=(0.3, 1.3), loc_sd: float = 0.15, seed: int = 0, iters: int = 5) -> PitchLibrary:
+    """Training pitches shaped like an RL pitcher's releases: each takes a release row of an eval_stage --release_csv
+    (its release point and spin) and a new speed in speed_kmh, and is aimed (drag + Magnus shooting) at that row's plate
+    location + loc_sd noise, clipped to near the zone (|y| <= zone_y, zone_z) - the batter swings at every training pitch."""
+    base = build_library_from_release(path, spec)
+    g = torch.Generator().manual_seed(seed)
+    k = torch.randint(0, len(base.flight_time), (n,), generator=g)
+    speed = (speed_kmh[0] + (speed_kmh[1] - speed_kmh[0]) * torch.rand(n, generator=g)) / 3.6
+    release, omega = base.release[k], base.omega[k]
+    target = base.target[k] + torch.cat([torch.zeros(n, 1), torch.randn(n, 2, generator=g) * loc_sd], -1)
+    target[:, 1] = target[:, 1].clamp(-zone_y, zone_y)
+    target[:, 2] = target[:, 2].clamp(*zone_z)
+    aim = target.clone()
+    for _ in range(iters):
+        d = torch.nn.functional.normalize(aim - release, dim=-1)
+        p_hit, _, _ = fly_to_x(release, d * speed.unsqueeze(-1), omega, spec, 0.0)
+        aim[:, 1:] += target[:, 1:] - p_hit[:, 1:]
+    v0 = torch.nn.functional.normalize(aim - release, dim=-1) * speed.unsqueeze(-1)
+    p_hit, _, t_hit = fly_to_x(release, v0, omega, spec, 0.0)
+    ok = (p_hit[:, 1:] - target[:, 1:]).norm(dim=-1) < 0.02
+    i = ok.nonzero(as_tuple=False).squeeze(-1)
+    assert len(i) > 0.9 * n, f"aiming converged for only {len(i)}/{n} pitches"
+    return PitchLibrary(release=release[i], target=target[i], v0=v0[i], omega=omega[i], flight_time=t_hit[i],
+                        speed_kmh=speed[i] * 3.6)

@@ -17,7 +17,8 @@ from collections.abc import Sequence
 import torch
 
 from aibaseball.physics.ball_flight import _deriv
-from aibaseball.physics.pitch_gen import build_library, build_library_from_release, build_library_from_table, read_pitch_table
+from aibaseball.physics.pitch_gen import (build_library, build_library_from_release, build_library_from_table,
+                                         build_library_like_release, read_pitch_table)
 from isaaclab.utils.math import quat_rotate_inverse
 
 from .mimic_env import TeeBattingMimicEnv
@@ -39,6 +40,10 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             self.lib = build_library_from_table(read_pitch_table(cfg.pitch_table_csv), self.phys).to(dev)
         else:
             self.lib = build_library(cfg.pitch_library_size, self.phys, speed_kmh=(lo, hi)).to(dev)  # whole curriculum
+        self.mix_lib = None
+        if cfg.pitch_mix_release_csv:  # training: a share of the pitches shaped like the RL pitcher's releases
+            self.mix_lib = build_library_like_release(cfg.pitch_mix_release_csv, cfg.pitch_library_size, self.phys,
+                                                      speed_kmh=cfg.pitch_mix_speed_kmh).to(dev)
         self.ref_t = torch.zeros(n, device=dev)
         self.rate = torch.full((n,), self.speed, device=dev)
         self.phys_t = torch.zeros(n, device=dev)  # physical time since episode start
@@ -194,23 +199,35 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             k = torch.randint(i_lo, i_hi, (n,), device=dev)
             # target: the clip's contact point (+ location offset, already applied to tee_pos by the parent reset)
             target = self.tee_pos[env_ids].clone()
-        shift = target - self.lib.target[k]
-        self.pitch_pos[env_ids] = self.lib.release[k] + shift
+        L = {f: getattr(self.lib, f)[k] for f in ("release", "target", "v0", "omega", "flight_time", "speed_kmh")}
+        if self.mix_lib is not None:  # this share of the pitches: shaped like the RL pitcher's, at its plate location
+            mix = torch.rand(n, device=dev) < c.pitch_mix_frac
+            if mix.any():
+                km = torch.randint(0, len(self.mix_lib.speed_kmh), (int(mix.sum()),), device=dev)
+                for f in L:
+                    L[f][mix] = getattr(self.mix_lib, f)[km]
+                tm = self.scene.env_origins[env_ids[mix]] + self.ref.tee_pos[self.clip[env_ids[mix]]]
+                tm[:, 2] += c.tee_offset_z - c.pitch_table_center_z
+                tm[:, 1:] += L["target"][mix, 1:]
+                target[mix] = tm
+                self.tee_pos[env_ids[mix]] = tm
+        shift = target - L["target"]
+        self.pitch_pos[env_ids] = L["release"] + shift
         self.pitch_prev[env_ids] = self.pitch_pos[env_ids]
-        self.pitch_vel[env_ids] = self.lib.v0[k]
-        self.pitch_omega[env_ids] = self.lib.omega[k]
-        self.pitch_kmh[env_ids] = self.lib.speed_kmh[k]
+        self.pitch_vel[env_ids] = L["v0"]
+        self.pitch_omega[env_ids] = L["omega"]
+        self.pitch_kmh[env_ids] = L["speed_kmh"]
         self.contact_x_ref[env_ids] = target[:, 0]
         nominal = self.scene.env_origins[env_ids] + self.ref.tee_pos[self.clip[env_ids]]
         nominal[:, 2] += c.tee_offset_z
         self.nominal_target[env_ids] = nominal
-        self.flight_time[env_ids] = self.lib.flight_time[k]
+        self.flight_time[env_ids] = L["flight_time"]
         # timing: arrive at the contact point when the reference reaches contact at nominal tempo (+ offset).
         # Episodes start in the stance (t0 = 0); if the pitch needs longer than the swing, the batter first
         # waits in the stance (the reference clock starts negative and holds frame 0).
         clip = self.clip[env_ids]
         jitter = (torch.rand(n, device=dev) * 2 - 1) * c.timing_noise_s * prog
-        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / self.speed - self.lib.flight_time[k] + jitter + c.timing_bias_s
+        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / self.speed - L["flight_time"] + jitter + c.timing_bias_s
         wait = (c.min_lead_s - release).clamp_min(0.0)
         self.release_t[env_ids] = release + wait
         self.phys_t[env_ids] = 0.0
