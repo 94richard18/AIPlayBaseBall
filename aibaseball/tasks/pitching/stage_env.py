@@ -391,7 +391,7 @@ class StageEnv(PitchEnv):
             # the policy picks the release time: fingers open (latched) once the reference time passes
             # release_ref + window x a, a = one finger column in [-1, 1] - before release_ref - window it cannot fire,
             # at release_ref + window it is forced; a = 0 opens exactly at release_ref (scripted_release_s 0.0's step)
-            tr, w = self._ref_time(), c.release_action_window_s
+            tr, w = self._ref_time() + c.release_action_shift_s, c.release_action_window_s
             fire = tr >= self.release_ref + w * rel_a
             forced = tr >= self.release_ref + w
             self.s_rel_forced |= forced & ~fire & ~self.s_open

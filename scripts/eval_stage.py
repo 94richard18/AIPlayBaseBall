@@ -375,11 +375,16 @@ def main():
             vr_ = vv_all; el_ = np.degrees(np.arctan2(vr_[:, 2], np.linalg.norm(vr_[:, :2], axis=1)))
             pr_ = pl.numpy()
             with open(args.release_csv, "w", encoding="utf-8") as f:
-                f.write("released,at_rest,thrown,release_t,speed,heading,elevation,x,y,z,aero_reached,aero_y,aero_z,tier" + chr(10))
+                # + the full release state in the plate frame (vx..wz, z in the sim frame) so tiers at another plate_yaw_deg
+                # can be recomputed offline (scripts/release_csv_tiers.py)
+                vp_, wp_ = tp_(base.rel_vel).cpu().numpy(), tp_(base.rel_omega).cpu().numpy()
+                f.write("released,at_rest,thrown,release_t,speed,heading,elevation,x,y,z,aero_reached,aero_y,aero_z,tier,"
+                        "vx,vy,vz,wx,wy,wz,z_sim,field_z,plate_yaw_deg" + chr(10))
                 for i in range(n):
                     f.write(f"{int(rel[i])},{int(rest[i])},{int(thrown[i])},{rt[i]:.4f},{v[i]:.3f},{head[i]:.2f},{el_[i]:.2f},"
                             f"{pr_[i, 0]:.3f},{pr_[i, 1]:.3f},{pr_[i, 2] - base.field_z:.3f},{int(re_a[i])},{ya[i]:.3f},{za[i]:.3f},"
-                            f"{int(tier[i])}" + chr(10))
+                            f"{int(tier[i])},{vp_[i, 0]:.4f},{vp_[i, 1]:.4f},{vp_[i, 2]:.4f},{wp_[i, 0]:.3f},{wp_[i, 1]:.3f},"
+                            f"{wp_[i, 2]:.3f},{pr_[i, 2]:.4f},{base.field_z:.4f},{getattr(cfg, 'plate_yaw_deg', 0.0)}" + chr(10))
             say(f"  release table: {args.release_csv} ({n} rows)")
         ok = ok & thrown
     if lift_stage:

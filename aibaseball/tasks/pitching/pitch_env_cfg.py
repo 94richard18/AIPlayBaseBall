@@ -664,6 +664,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_heading_center_deg: float = 0.0  # ... of this heading (deg, + toward first base) instead of +x
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
     release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
+    release_action_shift_s: float = 0.0  # ... and its choice (and the forced end) moved this much earlier (P3, 2026-10-25)
     release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     # stage: finish shaping - COM >= margin behind / inboard of the lead foot over [release + t0, release + t1]; the
