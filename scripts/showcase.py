@@ -28,6 +28,7 @@ parser.add_argument("--timing_noise", type=float, default=None, help="pitched ta
 parser.add_argument("--timing_bias", type=float, default=None, help="pitched task: cfg.timing_bias_s (s, + = pitch later)")
 parser.add_argument("--tee_offset_z", type=float, default=None, help="pitched task eval: cfg.tee_offset_z (m, + = pitch aimed above the sweet-spot path)")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="batter: cfg.aim_offset_z (m, < 0 = aim under the ball)")
+parser.add_argument("--aim_offset_y", type=float, default=None, help="batter: cfg.aim_offset_y (m, lateral aim offset, world y)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 AppLauncher.add_app_launcher_args(parser)
@@ -253,6 +254,8 @@ def run_eval(ckpt: str):
             cfg.tee_offset_z = args.tee_offset_z
         if args.aim_offset_z is not None:
             cfg.aim_offset_z = args.aim_offset_z
+        if args.aim_offset_y is not None:
+            cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
     env = gym.make(TASK_ID, cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
@@ -281,7 +284,8 @@ def run_eval(ckpt: str):
         ev = np.array([r["exit_velo_mps"] for r in logs])
         stats.update(exit_velo_mps_median=float(np.median(ev)), exit_velo_ge28=float((ev >= 28.0).mean()),
                      fair_frac=float(fair.mean()), fair_carry_median=float(np.median(carry[fair])) if fair.any() else 0.0,
-                     launch_deg_quartiles=[float(x) for x in np.percentile([r["launch_deg"] for r in logs], [25, 50, 75])])
+                     launch_deg_quartiles=[float(x) for x in np.percentile([r["launch_deg"] for r in logs], [25, 50, 75])],
+                     spray_deg_quartiles=[float(x) for x in np.percentile([r["spray_deg"] for r in logs], [25, 50, 75])])
     os.makedirs(os.path.join(ROOT, "videos"), exist_ok=True)
     with open(os.path.join(ROOT, "videos", "showcase_stats.json"), "w", encoding="utf-8") as f:
         json.dump(dict(stats=stats, swings=logs), f, indent=2)
@@ -304,6 +308,8 @@ def run_pitched_video(ckpt: str):
         cfg.timing_bias_s = args.timing_bias
     if args.aim_offset_z is not None:
         cfg.aim_offset_z = args.aim_offset_z
+    if args.aim_offset_y is not None:
+        cfg.aim_offset_y = args.aim_offset_y
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
     wrapped = RslRlVecEnvWrapper(env)
     policy = load_policy(wrapped, ckpt)
