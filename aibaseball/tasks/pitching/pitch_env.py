@@ -457,7 +457,7 @@ class PitchEnv(DirectRLEnv):
         self.release_reward[:] = 0.0
 
     def _apply_action(self):
-        if self.cfg.play_mode:
+        if self.cfg.play_mode or self.cfg.ball_aero_sim:
             self._apply_aero()
         # finger targets ramp linearly over the physics sub-steps (sub-control-step release timing)
         self.substep += 1

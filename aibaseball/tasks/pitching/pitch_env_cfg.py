@@ -317,6 +317,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
 
     # ---------------------------------------------------------------- play / evaluation
     play_mode: bool = False  # ball flies with PhysX + aerodynamic forces; zone drawn; results printed
+    # the released ball gets drag + Magnus every physics step (play mode's force, nothing else of play mode) - for
+    # videos / match pitches whose flight should be the drag one; training and the eval scoring do not use it
+    ball_aero_sim: bool = False
     terminate_on_cross: bool = True
 
 

@@ -349,6 +349,12 @@ def main():
             v_a, re_a = v_a.numpy(), re_a.numpy() & rel
             ya, za = cr_a[:, 1].numpy() - cfg.zone_center_y, cr_a[:, 2].numpy() - base.field_z
             fast = re_a & (v_a >= 80.0 / 3.6)
+            if getattr(cfg, "ball_aero_sim", False) and (cr & re_a).any():  # the sim's own drag flight vs simulate_to_plane
+                both = cr & re_a
+                say(f"  ball_aero_sim check ({int(both.sum())} balls that crossed): sim - simulate_to_plane at the plate, |dy| "
+                    f"median {np.median(np.abs(yz[both, 0] - cfg.zone_center_y - ya[both])):.3f} / max "
+                    f"{np.abs(yz[both, 0] - cfg.zone_center_y - ya[both]).max():.3f} m, |dz| median "
+                    f"{np.median(np.abs(yz[both, 1] - za[both])):.3f} / max {np.abs(yz[both, 1] - za[both]).max():.3f} m")
             t3a = thrown & (np.abs(head) <= 10.0) & re_a & (np.abs(ya) <= 0.5) & (za >= 0.2) & (za <= 1.5)
             say(f"  aero flight (drag + Magnus from the release state): reached the plate plane in the air "
                 f"{int(re_a.sum())}/{n}; speed there median "
