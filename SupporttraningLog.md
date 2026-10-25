@@ -173,7 +173,11 @@
 
 1. 先讀記憶（MEMORY.md，特別是 one-outs-goal、game-rules-2026-10-23、act-before-ending-turn、video-every-12h、token-saving-workflow），再讀本檔第 0、1、5 節，以及 trainingLog.md、PITCHER_TRAINING_LOG.md 最後幾段。
 2. 重新設定每 3 小時檢查（CronCreate "17 */3 * * *"，prompt 照上一個 session：看進度、GPU 閒置就排下一步、影片超過 11 小時就錄並檢查白畫面、更新紀錄並 push、回簡短進度）。
-3. 分工：投手 session（aiplaybaseball-94）負責 PITCHER_TRAINING_LOG.md 與投手訓練的執行；規劃 session 負責決策、本檔、打者、遊戲引擎與影片。GPU 閒置 > 1 小時且沒人排工作時，任一邊直接接手錄影或最新打者的品質檢查。
+3. 分工（使用者 10-25 更新）：
+   - 規劃 session（決策，10-25 是 aiplaybaseball-10）：評估投手與打者 session 的提案、分配 GPU 時間、遊戲引擎、ONE OUTS 對決影片、交接文件（trainingLog.md、本檔第 4–6 節）。只回報自己的決定，不轉述訓練數字。
+   - 投手 session（10-25 是 aiplaybaseball-08）：投手提案、投手訓練與評估的執行、PITCHER_TRAINING_LOG.md；投手結果由它直接回報使用者。
+   - 打者 session（10-25 是 aiplaybaseball-d0）：打者提案與訓練，訓練前先送提案給規劃 session 核可；結果寫本檔第 3 節。
+   - GPU 分配（規劃 session 決定）：最多 2 個 Isaac 行程，trainer 旁不錄影。投手是關鍵路徑、優先用 A 槽；投手 trainer 在跑時兩槽都歸投手（train_live 的 eval 用 B 槽），打者只能在 B 槽空著時跑 30 分鐘內的工作；投手只做評估時，打者可用 B 槽做檢查 / 評估，訓練要規劃 session 同意並給結束時間，投手要開練時在下一個存檔讓出；投手沒有 GPU 工作時，打者拿整段訓練時間。12 小時影片排在空檔。GPU 閒置 > 1 小時且沒人排工作時，任一邊直接接手錄影或最新打者的品質檢查。
 4. 執行規則：
    - 每一輪結束前確認有工作在跑或已排好，並且結束時會收到通知（記憶 act-before-ending-turn）。
    - 長工作用 run_in_background；等行程用 PowerShell 查命令列（Git Bash 沒有 pgrep）；不要改正在執行的 bash 腳本。

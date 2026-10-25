@@ -68,7 +68,7 @@ def play_one_outs(pitcher: PitcherAgent, batter: BatterAgent, rng: random.Random
             strikes += 1
         else:
             end, land = first_bounce(sw.ball, fld, fs, grass, phys)
-            ev["land"] = land
+            ev["land"], ev["ball"], ev["end"] = land, sw.ball, end
             if end in ("home_run", "wall"):
                 return OneOutsResult("batter", "home_run" if end == "home_run" else "outfield_hit", log)
             x, y = land
