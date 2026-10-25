@@ -259,7 +259,8 @@ def main():
         # +-10 deg of the plate line (+x); T2 crosses the plate in the air, |y| <= 1.0 m; T3 |y| <= 0.5 m, z 0.2-1.5 m;
         # T4 strike |y| <= 0.2525 m, z 0.50-1.10 m (aibaseball/game/agents.py StrikeZone). Gate: at rest and thrown
         # >= 60/64, at rest and T3+ on the same pitch >= 32/64 (both evals, 4.0 s episodes)
-        vv_all = base.rel_vel.cpu().numpy()
+        # plate frame (stage plate_yaw_deg: the pitcher turned on the rubber; identity at 0)
+        vv_all = (base.rel_vel_plate if hasattr(base, "rel_vel_plate") else base.rel_vel).cpu().numpy()
         head = np.degrees(np.arctan2(vv_all[:, 1], vv_all[:, 0]))
         py, pz = yz[:, 0] - cfg.zone_center_y, yz[:, 1]
         t1 = thrown & (np.abs(head) <= 10.0)
@@ -281,7 +282,7 @@ def main():
                     f"{sc[pm].mean():.3f}, std {sc[pm].std():.3f}, p10/50/90 {np.percentile(sc[pm], 10):.3f}/"
                     f"{np.median(sc[pm]):.3f}/{np.percentile(sc[pm], 90):.3f}, max {sc[pm].max():.3f}; not released "
                     f"{int((~rel).sum())}, released not at rest {int((rel & ~ok).sum())} (both left out)")
-                vr = base.rel_vel.cpu().numpy(); pr = (base.rel_pos - base.scene.env_origins).cpu().numpy()
+                vr = base.rel_vel_plate.cpu().numpy(); pr = base.rel_pos_plate.cpu().numpy()
                 el = np.degrees(np.arctan2(vr[:, 2], np.linalg.norm(vr[:, :2], axis=1)))
                 tp = np.clip((cfg.plate_distance - pr[:, 0]) / np.maximum(vr[:, 0], 1e-3), 0, None)
                 ly = np.abs(pr[:, 1] + vr[:, 1] * tp - cfg.zone_center_y)
@@ -340,8 +341,9 @@ def main():
             # at rest and crossing the plate plane in the air at >= 80 km/h (22.2 m/s) >= 60/64, the same pitch T3
             # >= 32/64, both evals
             from aibaseball.physics.ball_flight import simulate_to_plane
-            pl = (base.rel_pos - base.scene.env_origins).cpu().double()
-            cr_a, v_a, _, re_a = simulate_to_plane(pl, base.rel_vel.cpu().double(), base.rel_omega.cpu().double(), base.phys,
+            tp_ = getattr(base, "to_plate", lambda x: x)  # plate frame, the spin axis turned with the velocity
+            pl = tp_(base.rel_pos - base.scene.env_origins).cpu().double()
+            cr_a, v_a, _, re_a = simulate_to_plane(pl, tp_(base.rel_vel).cpu().double(), tp_(base.rel_omega).cpu().double(), base.phys,
                                                    cfg.plate_distance, dt=0.005, ground_z=base.field_z)
             v_a, re_a = v_a.numpy(), re_a.numpy() & rel
             ya, za = cr_a[:, 1].numpy() - cfg.zone_center_y, cr_a[:, 2].numpy() - base.field_z

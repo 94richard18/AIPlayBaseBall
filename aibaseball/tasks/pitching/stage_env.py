@@ -504,13 +504,30 @@ class StageEnv(PitchEnv):
             return ok & self.stride_ok()
         return ok & self.s_landed if self.cfg.stage == "1b" else ok
 
+    def to_plate(self, x: torch.Tensor) -> torch.Tensor:
+        """(..., 3) env-local position or velocity in the plate frame: turned +plate_yaw_deg about the vertical axis
+        through the rubber (env origin), so a release heading of -plate_yaw_deg points at the plate."""
+        th = math.radians(self.cfg.plate_yaw_deg)
+        if th == 0.0:
+            return x
+        c, s = math.cos(th), math.sin(th)
+        return torch.stack([c * x[..., 0] - s * x[..., 1], s * x[..., 0] + c * x[..., 1], x[..., 2]], -1)
+
+    @property
+    def rel_pos_plate(self) -> torch.Tensor:
+        return self.to_plate(self.rel_pos - self.scene.env_origins)
+
+    @property
+    def rel_vel_plate(self) -> torch.Tensor:
+        return self.to_plate(self.rel_vel)
+
     def release_score(self) -> torch.Tensor:
         """0..1 pitch score from the release state (gravity only): 0.4 A + 0.6 B, A = exp(-(heading / sigma)^2) x
         min(v / 20, 1) x min(x reached in the air / plate distance, 1), B = crossed the plate in the air x
         exp(-(y / 0.5)^2) x exp(-((z - 0.8) / 0.6)^2) (y from the zone centre, z above the plate-level ground)."""
         c = self.cfg
-        v = self.rel_vel
-        p = self.rel_pos - self.scene.env_origins
+        v = self.rel_vel_plate
+        p = self.rel_pos_plate
         vx = v[:, 0].clamp_min(1e-3)
         head = torch.rad2deg(torch.atan2(v[:, 1], v[:, 0]))
         g = 9.81
@@ -704,9 +721,10 @@ class StageEnv(PitchEnv):
         x = plate_distance (y, z above the plate-level ground), else the farthest x it reached."""
         self._check_release()
         b = self.ball.data.root_pos_w - self.scene.env_origins
-        self.s_ball_maxx = torch.maximum(self.s_ball_maxx, torch.where(self.released, b[:, 0], self.s_ball_maxx))
-        new = self.released & ~self.s_crossed & (b[:, 0] >= self.cfg.plate_distance)
-        self.s_cross_yz = torch.where(new.unsqueeze(-1), torch.stack([b[:, 1], b[:, 2] - self.field_z], -1), self.s_cross_yz)
+        bp = self.to_plate(b)  # plate frame (plate_yaw_deg); the ground check below stays in the sim frame (the mound)
+        self.s_ball_maxx = torch.maximum(self.s_ball_maxx, torch.where(self.released, bp[:, 0], self.s_ball_maxx))
+        new = self.released & ~self.s_crossed & (bp[:, 0] >= self.cfg.plate_distance)
+        self.s_cross_yz = torch.where(new.unsqueeze(-1), torch.stack([bp[:, 1], bp[:, 2] - self.field_z], -1), self.s_cross_yz)
         self.s_crossed |= new
         # the flight ends at the plate or on the ground (mound / field): one-off ball outcome reward then
         c = self.cfg

@@ -705,6 +705,12 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # release_score(): linear plate miss instead - (1 - |y| / y_scale) and (1 - |z - z_target| / z_scale), each clamped at
     # 0, averaged, + t3_bonus if T3 (gravity-only line from the release; z can go below the ground, so a rolling ball
     # still has a slope toward a higher release)
+    # stage: the pitcher stands turned this much toward first base on the rubber (deg; P2, planning session 2026-10-25).
+    # Done as the plate line at -this in the sim frame: the ball's release state and its track are turned +this about
+    # the rubber (env origin) before the plate is scored - release_score, the plate crossing / zone, eval_stage's
+    # heading / tiers / aero. The policy sees no plate direction, so only the ball scoring changes; the mound slope
+    # still runs along +x (the robot's stride), not toward the turned plate. The heading release trigger is not turned.
+    plate_yaw_deg: float = 0.0
     ball_rest_plate_lin: bool = False
     ball_plate_y_scale_m: float = 20.0
     ball_plate_z_scale_m: float = 2.5
