@@ -37,6 +37,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # training: this share of the pitches shaped like an RL pitcher's releases (direction / spin / release point of the
     # table rows, speed drawn in pitch_mix_speed_kmh, near-zone only); the rest from the analytic library
     pitch_mix_release_csv: str | None = None
+    tempo_zero_after_release: bool = False  # eval: tempo action held at 0 once the pitch is released
     pitch_mix_frac: float = 0.5
     pitch_mix_speed_kmh: tuple = (55.0, 75.0)
     pitch_table_center_z: float = 0.80  # m, the table's plate z that maps onto the swing's nominal contact height

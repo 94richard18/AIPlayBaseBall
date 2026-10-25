@@ -26,6 +26,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=256)
 parser.add_argument("--tag", type=str, default="human3")
 parser.add_argument("--timing_bias", type=float, default=None, help="override cfg.timing_bias_s (s, + = pitch later)")
+parser.add_argument("--tempo_zero_after_release", action="store_true", help="cfg.tempo_zero_after_release: no tempo correction once the ball is in the air")
 parser.add_argument("--mix_release_csv", type=str, default=None, help="training mix: cfg.pitch_mix_release_csv (half the pitches shaped like these releases)")
 parser.add_argument("--release_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --release_csv (own release state each)")
 parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --pitch_csv table (speed_mps, plate_y, plate_z, crossed)")
@@ -81,6 +82,7 @@ def main():
         cfg.pitch_release_csv = args.release_csv
     if args.mix_release_csv:
         cfg.pitch_mix_release_csv = args.mix_release_csv
+    cfg.tempo_zero_after_release = args.tempo_zero_after_release
     if args.timing_noise is not None:
         cfg.timing_noise_s = args.timing_noise
     if hasattr(cfg, "tee_noise_ramp_steps"):
