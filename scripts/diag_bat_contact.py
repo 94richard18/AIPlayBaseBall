@@ -180,6 +180,7 @@ def main():
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
     r["kmh"] = base.pitch_kmh.cpu().numpy()
+    r["plate_y"], r["plate_z"] = (v.cpu().numpy() for v in base.pitch_plate.unbind(-1))
     ss = float(geom.sweet_spot_x)
 
     def summary(name, m):
@@ -216,7 +217,11 @@ def main():
     # by pitch speed (mixed libraries / the RL pitcher's slow pitches): hit rate, early / late misses, tempo, reference clock
     tempo = r["tempo_sum"] / np.maximum(r["tempo_n"], 1)
     out["by_speed"] = {}
-    for name, m in (("slow < 80 km/h", done & (r["kmh"] < 80)), ("fast >= 80 km/h", done & (r["kmh"] >= 80))):
+    zone = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)  # StrikeZone
+    groups = [("slow < 80 km/h", done & (r["kmh"] < 80)), ("fast >= 80 km/h", done & (r["kmh"] >= 80))]
+    if args.release_csv or args.pitch_csv or args.mix_release_csv:  # pitches with a real plate location
+        groups += [("slow in zone", done & (r["kmh"] < 80) & zone), ("slow out of zone", done & (r["kmh"] < 80) & ~zone)]
+    for name, m in groups:
         if not m.any():
             continue
         mm = m & ~r["hit"]

@@ -53,6 +53,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.pitch_omega = torch.zeros(n, 3, device=dev)
         self.pitch_prev = torch.zeros(n, 3, device=dev)
         self.pitch_kmh = torch.zeros(n, device=dev)
+        self.pitch_plate = torch.zeros(n, 2, device=dev)  # (y, z) where the pitch crosses the plate (table / mix pitches)
         self.contact_x_ref = torch.zeros(n, device=dev)
         self.passed = torch.zeros(n, dtype=torch.bool, device=dev)
         self.nominal_target = torch.zeros(n, 3, device=dev)
@@ -219,6 +220,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.pitch_vel[env_ids] = L["v0"]
         self.pitch_omega[env_ids] = L["omega"]
         self.pitch_kmh[env_ids] = L["speed_kmh"]
+        self.pitch_plate[env_ids] = L["target"][:, 1:]
         self.contact_x_ref[env_ids] = target[:, 0]
         nominal = self.scene.env_origins[env_ids] + self.ref.tee_pos[self.clip[env_ids]]
         nominal[:, 2] += c.tee_offset_z

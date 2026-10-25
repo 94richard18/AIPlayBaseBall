@@ -1,0 +1,12 @@
+== 21:40 slowdiag_h14_mix (aim 0 --mix_release_csv assets/game/p3c_identical_t18_release.csv)
+[bat] pitches 1024  hit rate 0.532  (quartiles 25/50/75)
+[bat] slow < 80 km/h: {"n": 455, "hit_rate": 0.534, "misses": 212, "early": 194, "late": 18, "tempo_q": [-0.114, -0.093, -0.075], "ref_err_s_q": [0.018, 0.038, 0.05], "kmh_q": [57.2, 65.7, 73.4]}
+[bat] fast >= 80 km/h: {"n": 569, "hit_rate": 0.531, "misses": 267, "early": 246, "late": 21, "tempo_q": [-0.112, -0.092, -0.067], "ref_err_s_q": [0.018, 0.036, 0.051], "kmh_q": [90.3, 99.2, 109.4]}
+== 21:42 slowdiag_del_mix (aim 0 --mix_release_csv assets/game/p3c_identical_t18_release.csv)
+[bat] pitches 1024  hit rate 0.504  (quartiles 25/50/75)
+[bat] slow < 80 km/h: {"n": 391, "hit_rate": 0.501, "misses": 195, "early": 187, "late": 8, "tempo_q": [-0.097, -0.082, -0.062], "ref_err_s_q": [0.027, 0.045, 0.057], "kmh_q": [56.5, 65.9, 73.0]}
+[bat] fast >= 80 km/h: {"n": 633, "hit_rate": 0.506, "misses": 313, "early": 301, "late": 12, "tempo_q": [-0.093, -0.08, -0.062], "ref_err_s_q": [0.026, 0.042, 0.056], "kmh_q": [89.9, 99.1, 109.4]}
+== 21:45 slowdiag_del_p3c (aim -0.08 --release_csv assets/game/p3c_identical_t18_release.csv)
+[bat] pitches 1024  hit rate 0.140  (quartiles 25/50/75)
+[bat] slow < 80 km/h: {"n": 1024, "hit_rate": 0.14, "misses": 881, "early": 814, "late": 51, "tempo_q": [-0.085, -0.075, -0.059], "ref_err_s_q": [0.023, 0.037, 0.053], "kmh_q": [63.0, 64.0, 64.9]}
+SLOWDIAG_END 21:45
