@@ -1,6 +1,6 @@
 # 訓練交接：目前目標、進度與待辦
 
-最後更新：2026-10-25 13:20（使用者授權到 10-26 20:00，規劃 session 自行決定）
+最後更新：2026-10-25 14:05（使用者授權到 10-26 20:00，規劃 session 自行決定）
 
 完整歷程在 `PITCHER_TRAINING_LOG.md`（投手）與 `SupporttraningLog.md`（打者、引擎、決策）。這份只記「現在的目標、現在在哪裡、接下來要做什麼」。
 
@@ -74,6 +74,8 @@
 | 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
 | 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
 | 用量 | 每週用量 99%（10-24 06:55）。狀態列 + `~/.claude/hooks/usage_handoff_hook.py` 在 99% 時提醒寫交接（每個用量週期一次） |
+
+**10-25 14:05 決定**：ho 13:55 依規則停（noisy 7400 58、7500 56/128；相同起始 |y| 每 100 次改善 0.6 m，noisy 沒改善），細節在 PITCHER_TRAINING_LOG.md。投手改成兩段：過關要求隨機起始站穩 ≥ 48/64，但 hf_avg3 本身只有約 34/64，hi / hj 加訓練雜訊也都被 noisy 規則停掉，隨機起始的平衡是另一個沒解決的問題。第 1 段先在相同起始證明球能進級 3，noisy 只當底線；第 2 段再處理隨機起始。ho2：從 ho model_7500 續練 600 次，w_stage_ball_rest 50 → 100（只改這項）；停止 = 相同起始站穩連兩次 < 40/64，或相同起始 |y| 連兩個評估點每 100 次改善 < 0.3 m，或 noisy 連兩次 < 40/128；相同起始級 3 ≥ 16/64 就回報。GPU：打者 Human9 續練 14:00 起（A 槽，到 12695，`logs/run_human9b.sh`，約 15:10 結束），ho2 排在打者之後（兩個 trainer 同時跑會超過 12 GB）。
 
 **10-25 13:20**：(1) 打者交付換成 Human9 model_12300 + aim -0.12（426f66d；`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_12-31-03_human_pitched9/model_12300.pt`）：ONE OUTS 1000 場打者勝 13.1%（Human7 8.0%），diag 擊中率 0.691（門檻 0.68）；表 `assets/game/batter_h9_12300_aim012.json`（200 球，續練那輪改 1024 球）。剩下 395 次排在 ho 結束後（約 15:30），要 ONE OUTS ≥ 13.1% 且 diag ≥ 0.68 才取代。(2) 投手 ho 13:04 開練（1bcdd66，run ho_tw2pl，`logs/train_ho.txt`），預計 15:20–15:30 結束，結果由投手 session 回報。(3) ONE OUTS 影片換新打者表重錄：`videos/one_outs_h9_1025.mp4`（10 場、149 s、白畫面 0%），render 預設改成 Human9 表。
 
