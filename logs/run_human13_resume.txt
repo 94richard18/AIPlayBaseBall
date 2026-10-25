@@ -8,3 +8,12 @@ ONE OUTS same table vs the fallback pitcher: 1000 matches: batter 10.8%, pitcher
 19:41 P3c eval done; Human13 resumes
 19:45 12549 diag1024 0.711 fall 54% (stop if diag < 0.66)
 19:45 Human13 second segment starts
+ bat/hit_rate: 0.7705
+ bat/fall_rate: 0.7241
+ bat/success_rate: 0.2081
+20:04 Human13 training ended: logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_19-23-49_human_pitched13/model_12549.pt logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_19-45-19_human_pitched13b/model_12650.pt logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_19-45-19_human_pitched13b/model_12650.pt
+20:04 model_12549 diag1024 0.711 | fall 54% (fails, no showcase)
+20:08 model_12650 diag1024 0.632 | fall 54% (fails, no showcase)
+20:08 model_12650 diag1024 0.632 | fall 54% (fails, no showcase)
+gate: fall <= 37%, diag1024 >= 0.68, ONE OUTS >= 17.0%, fair >= 29 m >= 14.8%; lowest fall, within 5 points the higher win
+20:08 done
