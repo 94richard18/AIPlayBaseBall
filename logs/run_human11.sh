@@ -4,8 +4,8 @@
 # evals): train 100 -> diag -> train the other 200 -> evals one by one.
 # Falsifier: after the first 100 its (model_12599) the 1024-pitch diag (seed 0, aim -0.08) fall-after-hit share must be
 # <= 47% (delivery 57% - 10), else stop.
-# Gate per checkpoint (12599 / 12700 / last) (decision session): fall-after-hit <= 37% (57% - 20) and no regression vs the
-# delivery: diag1024 >= 0.684, ONE OUTS (1000 matches, same seed) >= 18.5%, fair and >= 29 m >= 15.9% of 1024 pitches.
+# Gate per checkpoint (12599 / 12700 / last), decision session 10-25: fall-after-hit <= 37%, diag1024 >= 0.68 (absolute),
+# ONE OUTS >= 17.0%, fair and >= 29 m >= 14.8% (delivery minus ~1 s.e.). Pick the lowest fall; within 5 points the higher win.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=50
@@ -37,5 +37,5 @@ for M in $LIST; do
     W=$($P scripts/one_outs.py --matches 1000 --batter_table logs/b_table_h11_$it.json --hit_rate ${HR:-0} --show 0 2>&1 | tail -2 | tr '\n' ' ')
     echo "$(date +%H:%M) model_$it diag1024 ${HR:-none} | fall $FALL% | fair >= 29 m $F% | $W"
 done
-echo "gate: fall <= 37%, diag1024 >= 0.684, ONE OUTS >= 18.5%, fair >= 29 m >= 15.9%"
+echo "gate: fall <= 37%, diag1024 >= 0.68, ONE OUTS >= 17.0%, fair >= 29 m >= 14.8%; lowest fall, within 5 points the higher win"
 date +"%H:%M done"
