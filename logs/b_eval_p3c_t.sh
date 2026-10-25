@@ -6,8 +6,8 @@ cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 C=logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt
 cnt() { powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"name='python.exe'\" | Where-Object { \$_.CommandLine -match 'scripts/(train|showcase|eval_stage|diag_)' }).Count" | tr -d '\r'; }
-until R=$(ls assets/game/release_p3c_identical*_t*.csv 2>/dev/null | head -1) && [ -n "$R" ]; do git pull -q --rebase >/dev/null 2>&1; sleep 60; done
-T=$(ls assets/game/pitches_p3c_identical*_t*.csv 2>/dev/null | head -1)
+R=${R:-assets/game/p3c_identical_t18_release.csv}
+T=${T:-assets/game/p3c_identical_t18_pitches.csv}
 echo "$(date +%H:%M) release $R | pitch table ${T:-missing}"
 for step in diag showcase; do
     until [ "$(cnt)" -lt 2 ]; do sleep 20; done
