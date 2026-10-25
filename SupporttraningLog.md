@@ -168,6 +168,9 @@
   - **phase 輸入假說不成立（18:57–19:01）**：觀測裡的 phase = t / 回合長度（訓練 2.6 s、play 9 s，打中時差 3.5 倍）。加了 `phase_horizon_s`（預設 None，訓練不變），diag1024 用 2.6 s 換算：擊中率 0.665、跌倒 395/681 = 58%、跌倒時間不變，跟原本一樣。
   - **較可能的原因（CPU 查程式，`mimic_env.py` `_get_dones`）**：訓練時 (1) 關鍵點偏離參考 > max_key_err 就 `lost` 結束回合（算 terminated，沒有跌倒懲罰），打者開始傾倒時通常先觸發這個，所以 fall_rate 一直是 0；(2) 打中後只看 follow_through_s（Human9 0.4 s、Human11 1.2 s），回合 2.6 s；跌倒中位數在打中後 1.27 s、一半在回合 2.6 s 之後。play 模式（diag / 影片 / 比賽）關掉 (1)，參考停在收棒姿勢，打者要一直站著，所以會倒。
   - 候選設計（給決策 session 決定）：打中後的 `lost` 也算跌倒（罰 w_fall_after_hit），follow_through 拉到約 2.0 s，回合拉到約 3.5 s。
+  - **決策 session 選 A → 否證沒過（19:03–19:06，`scripts/diag_episode_end.py`，訓練環境 Human12 設定：lost 算跌倒、follow 2.0 s、回合 3.5 s；交付 12500，1024 回合，±0.03 s）**：打中的回合裡 fell + lost 只佔 1.5%（aim 0：12 + 0 / 794）和 1.0%（aim -0.08：7 + 0 / 695），門檻 40%。照規則停止，不訓練（Human12 設定和 `lost_after_hit_is_fall` 旗標留著，預設關）。
+  - **真正結束回合的是參考動作播完**：打中的回合 98% 以上都是「時間到」（`_get_dones` 的 `ref_end` 算 time_out），沒有一個撐到打中後 2 s（follow_end 0），也沒有 lost。也就是說，訓練回合在參考揮棒播完時就結束，打者還沒到會倒的時候；play 模式讓參考停在最後姿勢、回合繼續，打者才倒。這解釋了 fall_rate 0 和 Human11 沒效果。
+  - 下一個候選（給決策 session）：訓練時參考播完後不結束回合，改成跟 play 一樣停在最後姿勢，繼續到打中後約 2 s。
 
 ## 4. 執行中
 

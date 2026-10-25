@@ -1,0 +1,95 @@
+[INFO][AppLauncher]: Loading experience file: C:\Users\User\IsaacLab\apps\isaaclab.python.headless.kit
+[Warning] [simulation_app.simulation_app] Modules: ['omni.kit_app'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [simulation_app.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+Loading user config located at: 'c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/data/Kit/Isaac-Sim/4.5/user.config.json'
+[Info] [carb] Logging to file: c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/logs/Kit/Isaac-Sim/4.5/kit_20261025_190504.log
+2026-10-25 11:05:04 [0ms] [Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+2026-10-25 11:05:04 [17ms] [Warning] [omni.ext.plugin] [ext: src] Extensions config 'extension.toml' doesn't exist 'c:/users/user/isaaclab/source/src' or 'c:/users/user/isaaclab/source/src/config'
+2026-10-25 11:05:04 [369ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+2026-10-25 11:05:04 [906ms] [Warning] [omni.datastore] OmniHub is inaccessible
+2026-10-25 11:05:05 [1,050ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 560.94        | Graphics API: D3D12
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3080 Ti       | Yes: 0 |     | 12086   MB | 10de      | 6fbf0000.. |
+|     |                                  |        |     |            | 2208      | 0          |
+|     |                                  |        |     |            | 2d        |            |
+|=============================================================================================|
+| OS: Windows 11 Home, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9711
+| Processor: AMD Ryzen 7 5800X3D 8-Core Processor           
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 65461 | Free Memory: 46805
+| Total Page/Swap (MB): 69557 | Free Page/Swap: 42027
+|---------------------------------------------------------------------------------------------|
+2026-10-25 11:05:13 [9,592ms] [Warning] [omni.kvdb.plugin] Disabling key-value database because another kit process is locking it
+[INFO]: Parsing configuration from: aibaseball.tasks.tee_batting.pitched_env_cfg:PitchedBattingHuman12EnvCfg
+Setting seed: 0
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 0
+	Physics step-size     : 0.0025
+	Rendering step-size   : 0.01
+	Environment step-size : 0.01
+2026-10-25 11:05:14 [10,919ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPreviewSurface.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,919ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdUVTexture.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,920ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,920ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float2.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,920ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float3.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,921ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float4.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,921ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_int.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,921ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_string.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,922ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_normal.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,922ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_point.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,922ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_vector.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,923ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_matrix.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 11:05:14 [10,923ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdTransform2d.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+[INFO]: Time taken for scene creation : 1.831327 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 1024
+	Environment spacing   : 4.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-10-25 11:05:16 [12,878ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/Robot/top_hand_grip
+[INFO]: Time taken for simulation start : 3.727049 seconds
+[INFO]: Completed setting up the environment...
+Actor MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+[end] {"checkpoint": "logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt", "task": "AIB-PitchedBatting-Human12-v0", "episodes": 1024, "hits": 695, "fell": 7, "lost": 0, "follow_end": 0, "time_out": 688, "episode_s": 3.5, "follow_through_s": 2.0, "lost_plus_fell_share": 0.010071942446043165}
+[INFO]: Simulation is stopped. Shutting down the app.

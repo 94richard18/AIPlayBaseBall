@@ -162,6 +162,19 @@ class PitchedBattingHuman11EnvCfg(PitchedBattingHuman9EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman12EnvCfg(PitchedBattingHuman9EnvCfg):
+    """2026-10-25 Human11 (follow through 1.2 s) failed: diag fall 57 -> 65%. Training never registers the falls
+    (bat/fall_rate ~0): a batter starting to tip drifts off the reference first, and that 'lost' termination carries no
+    fall penalty; the follow-through window (0.4 / 1.2 s) and the 2.6 s episode end before most falls (diag: 0.94 / 1.25 /
+    1.87 s after contact at 10 / 50 / 90%). One intervention, three settings (decision session, option A): lost after
+    contact counts as a fall, follow through 2.0 s, episode 3.5 s. Start from Human9b model_12500."""
+
+    lost_after_hit_is_fall: bool = True
+    follow_through_s: float = 2.0
+    episode_length_s = 3.5
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0

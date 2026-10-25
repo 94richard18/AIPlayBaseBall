@@ -69,6 +69,7 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     sigma_contact: float = 0.08  # m
     contact_window_s: float = 0.04
     max_key_err: float = 0.45  # terminate when key bodies drift this far (m RMS)
+    lost_after_hit_is_fall: bool = False  # True: losing the reference after contact counts as a fall (w_fall_after_hit)
 
     # task shaping: tracking replaces the hand-made swing shaping
     w_bat_speed: float = 0.0

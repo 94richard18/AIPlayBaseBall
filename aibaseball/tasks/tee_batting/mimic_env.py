@@ -153,6 +153,9 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         if self.cfg.play_mode:  # let the ball fly; the reference holds its final (follow-through) pose
             return terminated, time_out
         lost = key_err > self.cfg.max_key_err
+        self.lost = lost
+        if self.cfg.lost_after_hit_is_fall:  # drifting off the follow-through is how a fall starts: penalise it as one
+            self.fallen = self.fallen | (lost & self.hit)
         ref_end = self._ref_time(1) >= self.ref.duration[self.clip]
         return terminated | lost, time_out | ref_end
 
