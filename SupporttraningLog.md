@@ -189,6 +189,8 @@
     最高 0.212，遠低於 0.5，零樣本救不回來。延後到 -0.035 時揮早的反而更多：打者對慢球的揮棒時機本身就很散，不是整體偏早。所以要訓練（Human14）。
   - Human13 第一段：12549 的 diag1024（88–112 km/h）擊中率 0.711、跌倒 54%，過了提早停（≥ 0.66），19:45 起第二段。
   - **Human13 結果（20:04 GPU crash 停在 12661，見第 6 節）**：12549 擊中率 0.711、跌倒 54%；12650 擊中率 0.632、跌倒 54%。都沒過（跌倒 ≤ 37%），練 150 次跌倒沒降、擊中率在掉。Human14 從交付版 12500 起練（決策 session 方案 b）。
+- **Human14（20:10–20:31，Human9 + 一半 P3c 形狀慢球 55–75 km/h，從交付版 12500，`logs/run_human14.sh`）：否證點就停了**。12599（+100 次）：對 P3c diag1024（aim 0）**0.205**（門檻 0.25；零樣本最好 0.212），aim -0.08 0.160；88–112 km/h（aim -0.08）0.730（交付 0.684）、跌倒 59%。ONE OUTS 對 P3c（hit 0.205）17.0%，外野安打 0.5%。
+  - 練了 100 次慢球沒學起來，快球反而變好。查過：慢球出手延後時，參考時鐘有一起往回撥（`ref_t = t0 − wait`），時機的 oracle 是對的，不是這個原因。還沒查：訓練時慢球那一半的擊中率（目前訓練統計沒有分球速）、策略的 tempo 動作是否在慢球時把揮棒提早。下一步要先加「依球速分組」的訓練統計再決定。
 
 ## 4. 執行中
 
@@ -255,7 +257,7 @@
 - **交付版**：Human9b `logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt` + aim_offset_z -0.08；表 `assets/game/batter_h9b_12500_aim008.json`（hit_rate 0.684，ONE OUTS 對備案投手 18.5%）。量法統一：diag 1024 球 seed 0；ONE OUTS 1000 場同 seed。
 - **最大問題**：對投手 P3c t18 的球（約 64 km/h）diag 擊中率只有 0.140，零樣本時機 × 瞄準掃描最高 0.212 → 需要 Human14。打中後跌倒 57%（訓練回合在參考播完就結束；Human13 修這點）。
 - **現在狀態（20:10）**：20:04 我的串接腳本（`logs/chain_h13_h14.sh`）把子紀錄的「19:41 done」誤判為 Human13 結束，提早開 Human14，GPU 上 3 個 Isaac → GPU crash；Human13 trainer 停在 12661（最後存檔 `logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_19-45-19_human_pitched13b/model_12650.pt`），投手的 ball_aero_sim 也一起掛掉。Human14 已停、沒有有效存檔。`logs/run_human13_resume.sh` 還在背景評估 12549（0.711、跌倒 54%，未過）和 12650（輸出 `logs/run_human13_resume.txt`）。
-- **決策 session 20:1x 選 (b)**：Human13 不補 150 次。12650 的 diag 已出（0.632、跌倒 54%，沒過）→ Human14 從交付版 12500 起練；開之前先等投手 session 單獨跑完 ball_aero_sim（約 8 分鐘，它會通知），並用 nvidia-smi 確認沒有殘留行程、顯存回到基準。Human14 已核可：`logs/run_human14.sh`（START_RUN / START_CKPT / START_FALL 環境變數；+100 次否證：P3c diag ≥ 0.25、88–112 ≥ 0.60、88–112 跌倒 ≤ 起點 + 10；判定：ONE OUTS 對 p3c_identical_t18 > 17.5% 且外野安打 ≥ 5%（若只差這條先回報）、P3c diag ≥ 0.5、88–112 diag ≥ 0.60）。**不要再用 chain_h13_h14.sh**（結束判定有錯），改成手動或用 Human13 腳本自己的結束行。Human14 結束後通知投手 session「槽空了」（C 排在後面），影片（23:10 / 23:28）排在 Human14 和 C 之間。
+- **決策 session 20:1x 選 (b)**：Human13 不補 150 次。12650 的 diag 已出（0.632、跌倒 54%，沒過）→ Human14 從交付版 12500 起練；開之前先等投手 session 單獨跑完 ball_aero_sim（約 8 分鐘，它會通知），並用 nvidia-smi 確認沒有殘留行程、顯存回到基準。Human14 已跑過一次、否證失敗（見第 3 節）；腳本 `logs/run_human14.sh`（START_RUN / START_CKPT / START_FALL 環境變數；+100 次否證：P3c diag ≥ 0.25、88–112 ≥ 0.60、88–112 跌倒 ≤ 起點 + 10；判定：ONE OUTS 對 p3c_identical_t18 > 17.5% 且外野安打 ≥ 5%（若只差這條先回報）、P3c diag ≥ 0.5、88–112 diag ≥ 0.60）。**不要再用 chain_h13_h14.sh**（結束判定有錯），改成手動或用 Human13 腳本自己的結束行。Human14 結束後通知投手 session「槽空了」（C 排在後面），影片（23:10 / 23:28）排在 Human14 和 C 之間。
 - 工具：diag / showcase 有 `--release_csv`（每球自己的出手狀態）、`--pitch_csv`（快速版）、`--clamp_ref_phase`、`--zero_ff_after_ref_end`、`--seed`；`scripts/diag_episode_end.py`（訓練環境的回合結束原因）、`scripts/make_batter_table.py`（showcase log → 打者表）。
 
 - 10-24 補充：(1) eval_stage 結束後的 `omni.telemetry.transmitter.exe` 會卡住 train_live 的 eval 管線，停它需要使用者 `! taskkill //PID <pid> //F`（auto mode 擋下 Stop-Process）。(2) 投手錄影：`eval_stage --video` 預設側面 + 本壘視角並排，關鍵畫面第二張是放球那一刻。(3) 每 3 小時檢查是 session-only cron，重開 session 要重設。(4) 使用量 hook：`~/.claude/settings.json` 的 statusLine + PostToolUse / UserPromptSubmit，99% 時提醒寫交接。

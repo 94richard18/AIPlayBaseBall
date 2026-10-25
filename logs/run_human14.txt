@@ -1,1 +1,7 @@
-20:04 start Human14 from 2026-10-25_13-56-51_human_pitched9b/model_12500.pt
+20:10 start Human14 from 2026-10-25_13-56-51_human_pitched9b/model_12500.pt
+20:26 12599 diag1024 vs P3c (aim 0) 0.205 fall 38%, 88-112 km/h (aim -0.08) 0.730 fall 59% (stop if < 0.25 / < 0.60 / fall 88-112 > 57 + 10)
+falsifier: stop at 12599
+20:26 Human14 training ended: logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_20-10-51_human_pitched14/model_12599.pt
+20:31 model_12599 vs P3c: diag aim 0 0.205 / aim -0.08 0.160 (eval aim 0) | 88-112 km/h 0.730 | ONE OUTS vs P3c: 1000 matches: batter 17.0%, pitcher 83.0%; 4.0 pitches each how: strikeout 64.8%, infield_ball 18.2%, walk 10.3%, hit_by_pitch 6.2%, outfield_hit 0.5% 
+gate: ONE OUTS vs P3c > 17.5% with outfield_hit >= 5% (if this is the only miss: report, decision session decides); diag vs P3c >= 0.5; diag 88-112 >= 0.60
+20:31 done
