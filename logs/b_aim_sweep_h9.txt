@@ -1,0 +1,11 @@
+17:12 model_12300 aim 0: diag 0.711 | fell after hit 51/182 = 28% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 4.6% | 1000 matches: batter 7.3%, pitcher 92.7%; 3.1 pitches each how: infield_ball 64.2%, strikeout 28.5%, walk 3.7%, hit_by_pitch 2.4%, outfield_hit 1.2% 
+17:15 model_12300 aim -0.04: diag 0.758 | fell after hit 77/194 = 40% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 8.1% | 1000 matches: batter 10.6%, pitcher 89.4%; 3.1 pitches each how: infield_ball 61.8%, strikeout 27.6%, outfield_hit 5.0%, walk 3.1%, hit_by_pitch 2.5% 
+17:19 model_12300 aim -0.08: diag 0.758 | fell after hit 88/194 = 45% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 10.0% | 1000 matches: batter 11.5%, pitcher 88.5%; 3.0 pitches each how: infield_ball 61.5%, strikeout 27.0%, outfield_hit 5.4%, walk 3.4%, hit_by_pitch 2.7% 
+17:21 model_12500 aim 0: diag 0.793 | fell after hit 90/203 = 44% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 10.2% | 1000 matches: batter 10.7%, pitcher 89.3%; 3.1 pitches each how: infield_ball 63.7%, strikeout 25.6%, outfield_hit 4.8%, walk 3.4%, hit_by_pitch 2.5% 
+17:25 model_12500 aim -0.04: diag 0.754 | fell after hit 97/193 = 50% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 10.8% | 1000 matches: batter 15.3%, pitcher 84.7%; 3.1 pitches each how: infield_ball 56.2%, strikeout 28.5%, outfield_hit 9.3%, walk 3.4%, hit_by_pitch 2.6% 
+17:29 model_12500 aim -0.08: diag 0.684 | fell after hit 107/175 = 61% (12300 at -0.12: 95/177 = 54%) | fair >= 29 m 15.9% | 1000 matches: batter 18.5%, pitcher 81.5%; 3.4 pitches each how: infield_ball 44.7%, strikeout 36.8%, outfield_hit 11.1%, walk 4.5%, hit_by_pitch 2.9% 
+17:34 model_12694 aim 0: diag 0.625 | fell after hit 91/160 = 57% (12300 at -0.12: 95/177 = 54%)
+17:37 model_12694 aim -0.04: diag 0.578 | fell after hit 96/148 = 65% (12300 at -0.12: 95/177 = 54%)
+17:39 model_12694 aim -0.08: diag 0.488 | fell after hit 84/125 = 67% (12300 at -0.12: 95/177 = 54%)
+gate: diag >= 0.68, ONE OUTS >= 13.1%, fair >= 29 m >= 11.3%; fall after hit > 64% (12300 + 10 points) -> report before replacing
+17:39 done

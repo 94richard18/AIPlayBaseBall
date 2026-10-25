@@ -1,0 +1,5889 @@
+{
+ "source": "Human9b model_12500 (target 29 m) + aim_offset_z -0.08, showcase --eval_envs 1024 (first ball per env), timing_noise 0.03, bias 0.055, 2026-10-25",
+ "hit_rate": 0.684,
+ "stats": {
+  "checkpoint": "logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt",
+  "swings": 1024,
+  "landed": 837,
+  "carry_mean": 20.257706093189967,
+  "carry_median": 19.1,
+  "carry_max": 71.8,
+  "exit_velo_mps_median": 20.4,
+  "exit_velo_ge28": 0.04540023894862605,
+  "fair_frac": 0.4862604540023895,
+  "fair_carry_median": 21.9,
+  "launch_deg_quartiles": [
+   -2.3,
+   22.4,
+   42.0
+  ],
+  "spray_deg_quartiles": [
+   -93.6,
+   -29.0,
+   17.4
+  ],
+  "fair_ge29_of_pitches": 0.1591796875,
+  "diag_fell_after_hit": 0.6114285714285714
+ },
+ "swings": [
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -30.5,
+   "spray_deg": 82.2,
+   "backspin_rpm": -2006.0,
+   "carry_m": 1.5
+  },
+  {
+   "exit_velo_mps": 11.8,
+   "launch_deg": -41.4,
+   "spray_deg": 94.5,
+   "backspin_rpm": -480.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 8.3,
+   "launch_deg": -69.9,
+   "spray_deg": -38.8,
+   "backspin_rpm": -4265.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 15.4,
+   "launch_deg": -15.6,
+   "spray_deg": 59.4,
+   "backspin_rpm": -2235.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 26.2,
+   "launch_deg": -4.2,
+   "spray_deg": 49.6,
+   "backspin_rpm": -2373.0,
+   "carry_m": 6.6
+  },
+  {
+   "exit_velo_mps": 9.6,
+   "launch_deg": -15.6,
+   "spray_deg": 30.7,
+   "backspin_rpm": -2701.0,
+   "carry_m": 2.3
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": -64.0,
+   "spray_deg": -12.4,
+   "backspin_rpm": -4485.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": -56.0,
+   "spray_deg": -13.6,
+   "backspin_rpm": -4247.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": -62.3,
+   "spray_deg": -40.9,
+   "backspin_rpm": -3983.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": -58.6,
+   "spray_deg": 8.1,
+   "backspin_rpm": -4916.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 23.8,
+   "launch_deg": -47.6,
+   "spray_deg": -47.0,
+   "backspin_rpm": -2951.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": -60.5,
+   "spray_deg": -21.0,
+   "backspin_rpm": -4772.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": -53.3,
+   "spray_deg": -8.8,
+   "backspin_rpm": -3418.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 21.5,
+   "launch_deg": -59.6,
+   "spray_deg": 70.7,
+   "backspin_rpm": -2558.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": -44.7,
+   "spray_deg": -6.7,
+   "backspin_rpm": -4186.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": -67.7,
+   "spray_deg": -19.7,
+   "backspin_rpm": -4729.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 22.9,
+   "launch_deg": -43.3,
+   "spray_deg": -37.7,
+   "backspin_rpm": -2474.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -56.8,
+   "spray_deg": 24.5,
+   "backspin_rpm": -4236.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 24.9,
+   "launch_deg": -50.8,
+   "spray_deg": -0.4,
+   "backspin_rpm": -4335.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 20.8,
+   "launch_deg": -48.8,
+   "spray_deg": -31.4,
+   "backspin_rpm": -3585.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": -60.6,
+   "spray_deg": -24.6,
+   "backspin_rpm": -4229.0,
+   "carry_m": 0.4
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": -49.5,
+   "spray_deg": 24.0,
+   "backspin_rpm": -4358.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": -29.3,
+   "spray_deg": -0.0,
+   "backspin_rpm": -3320.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": -39.5,
+   "spray_deg": -12.1,
+   "backspin_rpm": -3991.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": -33.5,
+   "spray_deg": -37.3,
+   "backspin_rpm": -2316.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 24.7,
+   "launch_deg": -33.3,
+   "spray_deg": 4.2,
+   "backspin_rpm": -3648.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": -37.0,
+   "spray_deg": 20.7,
+   "backspin_rpm": -4172.0,
+   "carry_m": 0.8
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": -33.1,
+   "spray_deg": -31.9,
+   "backspin_rpm": -3021.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": -26.2,
+   "spray_deg": -26.0,
+   "backspin_rpm": -2960.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 28.8,
+   "launch_deg": -20.3,
+   "spray_deg": 1.0,
+   "backspin_rpm": -2366.0,
+   "carry_m": 1.8
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": -52.9,
+   "spray_deg": 54.1,
+   "backspin_rpm": -3453.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": -22.6,
+   "spray_deg": -25.8,
+   "backspin_rpm": -1851.0,
+   "carry_m": 1.5
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": -42.7,
+   "spray_deg": 59.6,
+   "backspin_rpm": -3095.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": -31.6,
+   "spray_deg": 16.4,
+   "backspin_rpm": -4577.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 27.6,
+   "launch_deg": -22.2,
+   "spray_deg": -26.5,
+   "backspin_rpm": -2327.0,
+   "carry_m": 1.7
+  },
+  {
+   "exit_velo_mps": 24.3,
+   "launch_deg": -24.9,
+   "spray_deg": -5.8,
+   "backspin_rpm": -3344.0,
+   "carry_m": 1.4
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": -23.9,
+   "spray_deg": -29.6,
+   "backspin_rpm": -2257.0,
+   "carry_m": 1.4
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": -44.7,
+   "spray_deg": 53.9,
+   "backspin_rpm": -3104.0,
+   "carry_m": 0.8
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": -57.5,
+   "spray_deg": 50.5,
+   "backspin_rpm": -3622.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 28.7,
+   "launch_deg": -17.1,
+   "spray_deg": -2.7,
+   "backspin_rpm": -3188.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": -30.5,
+   "spray_deg": 29.1,
+   "backspin_rpm": -3498.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 11.7,
+   "launch_deg": -69.1,
+   "spray_deg": 157.8,
+   "backspin_rpm": 5968.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": -30.9,
+   "spray_deg": 33.9,
+   "backspin_rpm": -3800.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": -31.3,
+   "spray_deg": 31.6,
+   "backspin_rpm": -3820.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": -27.9,
+   "spray_deg": 22.8,
+   "backspin_rpm": -3947.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": -19.9,
+   "spray_deg": 8.4,
+   "backspin_rpm": -2273.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": -43.7,
+   "spray_deg": 80.7,
+   "backspin_rpm": -1400.0,
+   "carry_m": 0.8
+  },
+  {
+   "exit_velo_mps": 23.9,
+   "launch_deg": -19.0,
+   "spray_deg": 3.6,
+   "backspin_rpm": -2720.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 14.4,
+   "launch_deg": -56.4,
+   "spray_deg": 130.2,
+   "backspin_rpm": 3097.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": -42.7,
+   "spray_deg": 107.2,
+   "backspin_rpm": 588.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 18.7,
+   "launch_deg": -36.2,
+   "spray_deg": 104.1,
+   "backspin_rpm": 53.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": -32.5,
+   "spray_deg": 40.4,
+   "backspin_rpm": -3875.0,
+   "carry_m": 1.3
+  },
+  {
+   "exit_velo_mps": 17.5,
+   "launch_deg": -25.1,
+   "spray_deg": -66.5,
+   "backspin_rpm": -668.0,
+   "carry_m": 1.5
+  },
+  {
+   "exit_velo_mps": 24.9,
+   "launch_deg": -24.3,
+   "spray_deg": 35.7,
+   "backspin_rpm": -3158.0,
+   "carry_m": 1.7
+  },
+  {
+   "exit_velo_mps": 15.9,
+   "launch_deg": -51.4,
+   "spray_deg": 145.9,
+   "backspin_rpm": 4844.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": -26.4,
+   "spray_deg": 161.1,
+   "backspin_rpm": 4943.0,
+   "carry_m": 1.3
+  },
+  {
+   "exit_velo_mps": 23.5,
+   "launch_deg": -25.5,
+   "spray_deg": 1.8,
+   "backspin_rpm": -3275.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": -18.8,
+   "spray_deg": -18.3,
+   "backspin_rpm": -2508.0,
+   "carry_m": 1.8
+  },
+  {
+   "exit_velo_mps": 13.6,
+   "launch_deg": -47.2,
+   "spray_deg": 78.2,
+   "backspin_rpm": -1665.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 12.5,
+   "launch_deg": -60.1,
+   "spray_deg": 139.4,
+   "backspin_rpm": 4975.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": -23.6,
+   "spray_deg": 2.5,
+   "backspin_rpm": -2819.0,
+   "carry_m": 1.7
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": -32.8,
+   "spray_deg": 64.0,
+   "backspin_rpm": -2490.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 29.1,
+   "launch_deg": -14.2,
+   "spray_deg": 2.1,
+   "backspin_rpm": -2768.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": -16.5,
+   "spray_deg": -20.1,
+   "backspin_rpm": -2542.0,
+   "carry_m": 2.2
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": -17.9,
+   "spray_deg": 19.0,
+   "backspin_rpm": -4044.0,
+   "carry_m": 2.2
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": -18.0,
+   "spray_deg": 56.7,
+   "backspin_rpm": -2371.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": -21.7,
+   "spray_deg": 32.9,
+   "backspin_rpm": -3370.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 9.3,
+   "launch_deg": -68.3,
+   "spray_deg": -115.2,
+   "backspin_rpm": 2589.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 23.1,
+   "launch_deg": -16.7,
+   "spray_deg": 170.8,
+   "backspin_rpm": 3590.0,
+   "carry_m": 2.1
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": -13.3,
+   "spray_deg": -32.7,
+   "backspin_rpm": -1168.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 14.7,
+   "launch_deg": -30.2,
+   "spray_deg": -23.3,
+   "backspin_rpm": -2943.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 10.4,
+   "launch_deg": -44.9,
+   "spray_deg": 3.7,
+   "backspin_rpm": -3983.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 15.3,
+   "launch_deg": -28.3,
+   "spray_deg": 147.5,
+   "backspin_rpm": 4321.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 17.0,
+   "launch_deg": -27.4,
+   "spray_deg": 88.9,
+   "backspin_rpm": -993.0,
+   "carry_m": 1.4
+  },
+  {
+   "exit_velo_mps": 28.0,
+   "launch_deg": -12.8,
+   "spray_deg": 26.2,
+   "backspin_rpm": -3288.0,
+   "carry_m": 3.0
+  },
+  {
+   "exit_velo_mps": 8.9,
+   "launch_deg": -54.9,
+   "spray_deg": -72.5,
+   "backspin_rpm": -1389.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 23.6,
+   "launch_deg": -12.8,
+   "spray_deg": -23.8,
+   "backspin_rpm": -1602.0,
+   "carry_m": 2.8
+  },
+  {
+   "exit_velo_mps": 11.7,
+   "launch_deg": -41.5,
+   "spray_deg": 37.1,
+   "backspin_rpm": -3844.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": -16.9,
+   "spray_deg": 33.6,
+   "backspin_rpm": -2504.0,
+   "carry_m": 2.0
+  },
+  {
+   "exit_velo_mps": 24.6,
+   "launch_deg": -13.8,
+   "spray_deg": -175.0,
+   "backspin_rpm": 2696.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -20.4,
+   "spray_deg": 43.2,
+   "backspin_rpm": -3847.0,
+   "carry_m": 2.1
+  },
+  {
+   "exit_velo_mps": 11.2,
+   "launch_deg": -32.6,
+   "spray_deg": -91.6,
+   "backspin_rpm": -220.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 15.8,
+   "launch_deg": -26.3,
+   "spray_deg": 149.4,
+   "backspin_rpm": 3607.0,
+   "carry_m": 1.4
+  },
+  {
+   "exit_velo_mps": 12.6,
+   "launch_deg": -38.3,
+   "spray_deg": 158.8,
+   "backspin_rpm": 5244.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": -12.2,
+   "spray_deg": -20.6,
+   "backspin_rpm": -1637.0,
+   "carry_m": 3.0
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": -27.2,
+   "spray_deg": 162.9,
+   "backspin_rpm": 4303.0,
+   "carry_m": 1.7
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": -18.4,
+   "spray_deg": 168.5,
+   "backspin_rpm": 3681.0,
+   "carry_m": 2.2
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": -21.8,
+   "spray_deg": 37.4,
+   "backspin_rpm": -3755.0,
+   "carry_m": 2.0
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": -11.6,
+   "spray_deg": -6.3,
+   "backspin_rpm": -2387.0,
+   "carry_m": 3.0
+  },
+  {
+   "exit_velo_mps": 15.1,
+   "launch_deg": -24.9,
+   "spray_deg": 153.1,
+   "backspin_rpm": 3952.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 26.8,
+   "launch_deg": -13.9,
+   "spray_deg": 42.3,
+   "backspin_rpm": -2361.0,
+   "carry_m": 3.0
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": -12.9,
+   "spray_deg": 41.0,
+   "backspin_rpm": -2958.0,
+   "carry_m": 3.1
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": -19.0,
+   "spray_deg": 172.9,
+   "backspin_rpm": 3199.0,
+   "carry_m": 2.5
+  },
+  {
+   "exit_velo_mps": 14.8,
+   "launch_deg": -23.2,
+   "spray_deg": 7.8,
+   "backspin_rpm": -3387.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": -22.5,
+   "spray_deg": 57.3,
+   "backspin_rpm": -2332.0,
+   "carry_m": 2.0
+  },
+  {
+   "exit_velo_mps": 25.7,
+   "launch_deg": -11.4,
+   "spray_deg": 177.2,
+   "backspin_rpm": 2610.0,
+   "carry_m": 3.1
+  },
+  {
+   "exit_velo_mps": 11.3,
+   "launch_deg": -40.8,
+   "spray_deg": -87.5,
+   "backspin_rpm": -193.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 15.7,
+   "launch_deg": -25.0,
+   "spray_deg": 74.1,
+   "backspin_rpm": -2413.0,
+   "carry_m": 1.7
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": -13.3,
+   "spray_deg": 173.4,
+   "backspin_rpm": 3353.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 14.6,
+   "launch_deg": -28.1,
+   "spray_deg": -144.6,
+   "backspin_rpm": 3577.0,
+   "carry_m": 1.5
+  },
+  {
+   "exit_velo_mps": 26.5,
+   "launch_deg": -8.3,
+   "spray_deg": -14.6,
+   "backspin_rpm": -2412.0,
+   "carry_m": 3.4
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": -10.2,
+   "spray_deg": -38.6,
+   "backspin_rpm": -1327.0,
+   "carry_m": 3.3
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": -7.8,
+   "spray_deg": -8.5,
+   "backspin_rpm": -1795.0,
+   "carry_m": 3.7
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": -10.5,
+   "spray_deg": 48.9,
+   "backspin_rpm": -2005.0,
+   "carry_m": 3.1
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": -9.7,
+   "spray_deg": -58.7,
+   "backspin_rpm": -373.0,
+   "carry_m": 3.3
+  },
+  {
+   "exit_velo_mps": 27.9,
+   "launch_deg": -6.6,
+   "spray_deg": -34.8,
+   "backspin_rpm": -1355.0,
+   "carry_m": 4.2
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": -10.0,
+   "spray_deg": -24.3,
+   "backspin_rpm": -1242.0,
+   "carry_m": 3.7
+  },
+  {
+   "exit_velo_mps": 25.3,
+   "launch_deg": -7.7,
+   "spray_deg": 6.0,
+   "backspin_rpm": -2220.0,
+   "carry_m": 3.8
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": -14.4,
+   "spray_deg": 55.5,
+   "backspin_rpm": -2126.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 16.0,
+   "launch_deg": -15.5,
+   "spray_deg": 72.6,
+   "backspin_rpm": -2494.0,
+   "carry_m": 2.3
+  },
+  {
+   "exit_velo_mps": 28.1,
+   "launch_deg": -7.1,
+   "spray_deg": -16.0,
+   "backspin_rpm": -2133.0,
+   "carry_m": 4.7
+  },
+  {
+   "exit_velo_mps": 8.6,
+   "launch_deg": -35.2,
+   "spray_deg": -79.2,
+   "backspin_rpm": -1218.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 26.9,
+   "launch_deg": -8.2,
+   "spray_deg": 17.4,
+   "backspin_rpm": -2343.0,
+   "carry_m": 4.3
+  },
+  {
+   "exit_velo_mps": 25.9,
+   "launch_deg": -4.7,
+   "spray_deg": -12.5,
+   "backspin_rpm": -726.0,
+   "carry_m": 4.8
+  },
+  {
+   "exit_velo_mps": 14.7,
+   "launch_deg": -15.0,
+   "spray_deg": 15.9,
+   "backspin_rpm": -3167.0,
+   "carry_m": 2.2
+  },
+  {
+   "exit_velo_mps": 22.7,
+   "launch_deg": -10.0,
+   "spray_deg": 44.8,
+   "backspin_rpm": -2238.0,
+   "carry_m": 3.5
+  },
+  {
+   "exit_velo_mps": 23.5,
+   "launch_deg": -6.1,
+   "spray_deg": 27.3,
+   "backspin_rpm": -2168.0,
+   "carry_m": 4.4
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -7.3,
+   "spray_deg": -8.2,
+   "backspin_rpm": -1478.0,
+   "carry_m": 3.8
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": -5.7,
+   "spray_deg": -5.4,
+   "backspin_rpm": -1388.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": -5.7,
+   "spray_deg": -2.9,
+   "backspin_rpm": -2541.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": -8.6,
+   "spray_deg": 34.1,
+   "backspin_rpm": -1910.0,
+   "carry_m": 3.9
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": -7.3,
+   "spray_deg": 53.6,
+   "backspin_rpm": -2829.0,
+   "carry_m": 4.4
+  },
+  {
+   "exit_velo_mps": 29.4,
+   "launch_deg": -3.2,
+   "spray_deg": -14.3,
+   "backspin_rpm": -1480.0,
+   "carry_m": 6.3
+  },
+  {
+   "exit_velo_mps": 25.2,
+   "launch_deg": -5.8,
+   "spray_deg": 35.3,
+   "backspin_rpm": -1905.0,
+   "carry_m": 5.1
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": -7.9,
+   "spray_deg": 40.3,
+   "backspin_rpm": -2363.0,
+   "carry_m": 4.3
+  },
+  {
+   "exit_velo_mps": 13.8,
+   "launch_deg": -12.4,
+   "spray_deg": 38.9,
+   "backspin_rpm": -3001.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": -4.4,
+   "spray_deg": -37.6,
+   "backspin_rpm": -1415.0,
+   "carry_m": 5.0
+  },
+  {
+   "exit_velo_mps": 27.1,
+   "launch_deg": -6.1,
+   "spray_deg": -177.1,
+   "backspin_rpm": 1628.0,
+   "carry_m": 6.1
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 3.4,
+   "spray_deg": -175.0,
+   "backspin_rpm": 422.0,
+   "carry_m": 13.2
+  },
+  {
+   "exit_velo_mps": 25.9,
+   "launch_deg": -4.9,
+   "spray_deg": 24.5,
+   "backspin_rpm": -2810.0,
+   "carry_m": 5.6
+  },
+  {
+   "exit_velo_mps": 23.5,
+   "launch_deg": -8.3,
+   "spray_deg": -177.6,
+   "backspin_rpm": 2204.0,
+   "carry_m": 5.4
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": -6.6,
+   "spray_deg": 59.3,
+   "backspin_rpm": -1702.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 28.8,
+   "launch_deg": -2.7,
+   "spray_deg": -4.6,
+   "backspin_rpm": -1938.0,
+   "carry_m": 7.0
+  },
+  {
+   "exit_velo_mps": 19.5,
+   "launch_deg": -3.7,
+   "spray_deg": -32.0,
+   "backspin_rpm": -1181.0,
+   "carry_m": 5.4
+  },
+  {
+   "exit_velo_mps": 28.3,
+   "launch_deg": -2.4,
+   "spray_deg": 9.2,
+   "backspin_rpm": -2035.0,
+   "carry_m": 7.2
+  },
+  {
+   "exit_velo_mps": 26.5,
+   "launch_deg": -5.4,
+   "spray_deg": -175.9,
+   "backspin_rpm": 1690.0,
+   "carry_m": 6.6
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": -2.3,
+   "spray_deg": -31.7,
+   "backspin_rpm": -1609.0,
+   "carry_m": 6.3
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": -1.8,
+   "spray_deg": -18.6,
+   "backspin_rpm": -1622.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": -3.3,
+   "spray_deg": 32.4,
+   "backspin_rpm": -2232.0,
+   "carry_m": 6.8
+  },
+  {
+   "exit_velo_mps": 27.8,
+   "launch_deg": -1.8,
+   "spray_deg": 17.6,
+   "backspin_rpm": -2569.0,
+   "carry_m": 8.0
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": -5.0,
+   "spray_deg": 80.6,
+   "backspin_rpm": -1128.0,
+   "carry_m": 4.6
+  },
+  {
+   "exit_velo_mps": 21.5,
+   "launch_deg": -3.0,
+   "spray_deg": 42.6,
+   "backspin_rpm": -1710.0,
+   "carry_m": 6.4
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": -2.9,
+   "spray_deg": -171.6,
+   "backspin_rpm": 867.0,
+   "carry_m": 7.1
+  },
+  {
+   "exit_velo_mps": 9.4,
+   "launch_deg": -5.8,
+   "spray_deg": -30.9,
+   "backspin_rpm": -1702.0,
+   "carry_m": 2.8
+  },
+  {
+   "exit_velo_mps": 20.6,
+   "launch_deg": -1.1,
+   "spray_deg": -25.3,
+   "backspin_rpm": -1144.0,
+   "carry_m": 6.8
+  },
+  {
+   "exit_velo_mps": 19.7,
+   "launch_deg": -0.8,
+   "spray_deg": -76.4,
+   "backspin_rpm": -620.0,
+   "carry_m": 6.6
+  },
+  {
+   "exit_velo_mps": 15.7,
+   "launch_deg": -4.5,
+   "spray_deg": 74.6,
+   "backspin_rpm": -713.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": 4.9,
+   "spray_deg": -167.0,
+   "backspin_rpm": 361.0,
+   "carry_m": 12.5
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": -3.1,
+   "spray_deg": -175.9,
+   "backspin_rpm": 981.0,
+   "carry_m": 7.8
+  },
+  {
+   "exit_velo_mps": 24.3,
+   "launch_deg": -2.0,
+   "spray_deg": -175.6,
+   "backspin_rpm": 774.0,
+   "carry_m": 8.2
+  },
+  {
+   "exit_velo_mps": 21.5,
+   "launch_deg": -0.2,
+   "spray_deg": 57.9,
+   "backspin_rpm": -2164.0,
+   "carry_m": 7.7
+  },
+  {
+   "exit_velo_mps": 29.8,
+   "launch_deg": 1.3,
+   "spray_deg": -4.3,
+   "backspin_rpm": -1883.0,
+   "carry_m": 10.6
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 0.7,
+   "spray_deg": -34.6,
+   "backspin_rpm": 229.0,
+   "carry_m": 8.6
+  },
+  {
+   "exit_velo_mps": 22.9,
+   "launch_deg": -1.1,
+   "spray_deg": -174.8,
+   "backspin_rpm": 833.0,
+   "carry_m": 8.5
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": -0.2,
+   "spray_deg": -173.1,
+   "backspin_rpm": 479.0,
+   "carry_m": 10.1
+  },
+  {
+   "exit_velo_mps": 11.0,
+   "launch_deg": -0.4,
+   "spray_deg": -29.0,
+   "backspin_rpm": -2260.0,
+   "carry_m": 4.7
+  },
+  {
+   "exit_velo_mps": 29.1,
+   "launch_deg": 8.1,
+   "spray_deg": 20.9,
+   "backspin_rpm": -1597.0,
+   "carry_m": 21.6
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 0.9,
+   "spray_deg": 53.1,
+   "backspin_rpm": -1471.0,
+   "carry_m": 8.9
+  },
+  {
+   "exit_velo_mps": 28.2,
+   "launch_deg": 2.8,
+   "spray_deg": 17.7,
+   "backspin_rpm": -1477.0,
+   "carry_m": 12.3
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": 1.6,
+   "spray_deg": -174.8,
+   "backspin_rpm": 702.0,
+   "carry_m": 11.4
+  },
+  {
+   "exit_velo_mps": 18.6,
+   "launch_deg": 3.1,
+   "spray_deg": 8.0,
+   "backspin_rpm": -1728.0,
+   "carry_m": 8.3
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 2.5,
+   "spray_deg": -1.0,
+   "backspin_rpm": -1277.0,
+   "carry_m": 11.1
+  },
+  {
+   "exit_velo_mps": 24.9,
+   "launch_deg": 3.2,
+   "spray_deg": 23.1,
+   "backspin_rpm": -1383.0,
+   "carry_m": 11.3
+  },
+  {
+   "exit_velo_mps": 31.9,
+   "launch_deg": 3.3,
+   "spray_deg": 24.9,
+   "backspin_rpm": -1950.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 11.7,
+   "launch_deg": 4.3,
+   "spray_deg": -42.8,
+   "backspin_rpm": -1371.0,
+   "carry_m": 5.5
+  },
+  {
+   "exit_velo_mps": 23.6,
+   "launch_deg": 1.1,
+   "spray_deg": -176.4,
+   "backspin_rpm": 1238.0,
+   "carry_m": 11.6
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 4.1,
+   "spray_deg": -44.9,
+   "backspin_rpm": -256.0,
+   "carry_m": 8.9
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": 3.5,
+   "spray_deg": 26.2,
+   "backspin_rpm": -1628.0,
+   "carry_m": 10.7
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": 10.3,
+   "spray_deg": 36.1,
+   "backspin_rpm": -1476.0,
+   "carry_m": 17.9
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": 4.0,
+   "spray_deg": 48.7,
+   "backspin_rpm": -3122.0,
+   "carry_m": 8.4
+  },
+  {
+   "exit_velo_mps": 23.4,
+   "launch_deg": 0.5,
+   "spray_deg": -175.4,
+   "backspin_rpm": 1236.0,
+   "carry_m": 12.3
+  },
+  {
+   "exit_velo_mps": 27.2,
+   "launch_deg": 3.9,
+   "spray_deg": -2.3,
+   "backspin_rpm": -1131.0,
+   "carry_m": 14.2
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 4.4,
+   "spray_deg": -7.4,
+   "backspin_rpm": -734.0,
+   "carry_m": 11.1
+  },
+  {
+   "exit_velo_mps": 30.3,
+   "launch_deg": 4.8,
+   "spray_deg": 13.4,
+   "backspin_rpm": -1388.0,
+   "carry_m": 16.5
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 3.3,
+   "spray_deg": -174.6,
+   "backspin_rpm": 396.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 14.6,
+   "launch_deg": 7.0,
+   "spray_deg": 32.6,
+   "backspin_rpm": -1366.0,
+   "carry_m": 7.8
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": 2.5,
+   "spray_deg": -172.3,
+   "backspin_rpm": 702.0,
+   "carry_m": 13.5
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": 5.4,
+   "spray_deg": -50.4,
+   "backspin_rpm": 306.0,
+   "carry_m": 12.4
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": 4.2,
+   "spray_deg": -166.1,
+   "backspin_rpm": 345.0,
+   "carry_m": 12.5
+  },
+  {
+   "exit_velo_mps": 24.3,
+   "launch_deg": 3.9,
+   "spray_deg": -173.6,
+   "backspin_rpm": 396.0,
+   "carry_m": 14.9
+  },
+  {
+   "exit_velo_mps": 21.0,
+   "launch_deg": 5.2,
+   "spray_deg": -168.4,
+   "backspin_rpm": 19.0,
+   "carry_m": 13.0
+  },
+  {
+   "exit_velo_mps": 32.0,
+   "launch_deg": 5.7,
+   "spray_deg": 23.8,
+   "backspin_rpm": -1849.0,
+   "carry_m": 19.1
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 6.2,
+   "spray_deg": -40.4,
+   "backspin_rpm": -432.0,
+   "carry_m": 12.8
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 6.3,
+   "spray_deg": -47.0,
+   "backspin_rpm": -465.0,
+   "carry_m": 12.7
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": 6.2,
+   "spray_deg": -172.7,
+   "backspin_rpm": 429.0,
+   "carry_m": 11.1
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": 5.7,
+   "spray_deg": -27.5,
+   "backspin_rpm": -650.0,
+   "carry_m": 15.0
+  },
+  {
+   "exit_velo_mps": 27.6,
+   "launch_deg": 5.2,
+   "spray_deg": -23.1,
+   "backspin_rpm": -442.0,
+   "carry_m": 17.3
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": 7.1,
+   "spray_deg": 27.1,
+   "backspin_rpm": -1707.0,
+   "carry_m": 13.7
+  },
+  {
+   "exit_velo_mps": 17.7,
+   "launch_deg": 7.7,
+   "spray_deg": -38.0,
+   "backspin_rpm": -611.0,
+   "carry_m": 11.6
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 6.6,
+   "spray_deg": 61.1,
+   "backspin_rpm": -1330.0,
+   "carry_m": 13.4
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 6.9,
+   "spray_deg": -39.9,
+   "backspin_rpm": -432.0,
+   "carry_m": 14.2
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 7.4,
+   "spray_deg": -49.9,
+   "backspin_rpm": -519.0,
+   "carry_m": 12.7
+  },
+  {
+   "exit_velo_mps": 28.6,
+   "launch_deg": 7.4,
+   "spray_deg": 4.1,
+   "backspin_rpm": -1561.0,
+   "carry_m": 19.6
+  },
+  {
+   "exit_velo_mps": 22.9,
+   "launch_deg": 8.3,
+   "spray_deg": 0.9,
+   "backspin_rpm": -1351.0,
+   "carry_m": 16.1
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": 8.6,
+   "spray_deg": -7.4,
+   "backspin_rpm": -813.0,
+   "carry_m": 14.2
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 8.3,
+   "spray_deg": -52.2,
+   "backspin_rpm": -287.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 8.7,
+   "spray_deg": -146.2,
+   "backspin_rpm": -159.0,
+   "carry_m": 12.1
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": 10.8,
+   "spray_deg": 30.9,
+   "backspin_rpm": -411.0,
+   "carry_m": 12.3
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 15.2,
+   "spray_deg": -172.5,
+   "backspin_rpm": -1255.0,
+   "carry_m": 21.0
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 10.1,
+   "spray_deg": 32.2,
+   "backspin_rpm": -857.0,
+   "carry_m": 12.4
+  },
+  {
+   "exit_velo_mps": 9.3,
+   "launch_deg": 18.2,
+   "spray_deg": -130.5,
+   "backspin_rpm": -887.0,
+   "carry_m": 6.7
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 7.8,
+   "spray_deg": 53.4,
+   "backspin_rpm": -917.0,
+   "carry_m": 16.3
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": 8.0,
+   "spray_deg": -23.2,
+   "backspin_rpm": -407.0,
+   "carry_m": 18.8
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": 9.5,
+   "spray_deg": -14.5,
+   "backspin_rpm": -710.0,
+   "carry_m": 16.4
+  },
+  {
+   "exit_velo_mps": 12.6,
+   "launch_deg": 14.4,
+   "spray_deg": -7.5,
+   "backspin_rpm": -677.0,
+   "carry_m": 9.5
+  },
+  {
+   "exit_velo_mps": 17.0,
+   "launch_deg": 11.1,
+   "spray_deg": 36.8,
+   "backspin_rpm": -1681.0,
+   "carry_m": 13.1
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": 7.3,
+   "spray_deg": -177.6,
+   "backspin_rpm": 61.0,
+   "carry_m": 18.5
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": 8.0,
+   "spray_deg": -31.0,
+   "backspin_rpm": -199.0,
+   "carry_m": 20.0
+  },
+  {
+   "exit_velo_mps": 23.1,
+   "launch_deg": 8.5,
+   "spray_deg": -168.6,
+   "backspin_rpm": 41.0,
+   "carry_m": 18.4
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 9.4,
+   "spray_deg": -83.1,
+   "backspin_rpm": 30.0,
+   "carry_m": 17.5
+  },
+  {
+   "exit_velo_mps": 22.2,
+   "launch_deg": 8.4,
+   "spray_deg": -174.4,
+   "backspin_rpm": -160.0,
+   "carry_m": 17.7
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": 9.2,
+   "spray_deg": -22.6,
+   "backspin_rpm": -624.0,
+   "carry_m": 19.8
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 10.5,
+   "spray_deg": -21.2,
+   "backspin_rpm": -348.0,
+   "carry_m": 16.7
+  },
+  {
+   "exit_velo_mps": 27.3,
+   "launch_deg": 8.8,
+   "spray_deg": -18.9,
+   "backspin_rpm": -777.0,
+   "carry_m": 22.4
+  },
+  {
+   "exit_velo_mps": 26.8,
+   "launch_deg": 8.2,
+   "spray_deg": -31.9,
+   "backspin_rpm": -63.0,
+   "carry_m": 22.6
+  },
+  {
+   "exit_velo_mps": 25.3,
+   "launch_deg": 10.7,
+   "spray_deg": 9.9,
+   "backspin_rpm": -1162.0,
+   "carry_m": 21.7
+  },
+  {
+   "exit_velo_mps": 22.7,
+   "launch_deg": 10.1,
+   "spray_deg": -39.0,
+   "backspin_rpm": -249.0,
+   "carry_m": 19.7
+  },
+  {
+   "exit_velo_mps": 20.0,
+   "launch_deg": 12.9,
+   "spray_deg": 11.8,
+   "backspin_rpm": -1398.0,
+   "carry_m": 17.1
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": -2.0,
+   "spray_deg": 5.0,
+   "backspin_rpm": -2073.0,
+   "carry_m": 7.0
+  },
+  {
+   "exit_velo_mps": 30.6,
+   "launch_deg": 10.2,
+   "spray_deg": 19.3,
+   "backspin_rpm": -1524.0,
+   "carry_m": 26.3
+  },
+  {
+   "exit_velo_mps": 10.8,
+   "launch_deg": 21.1,
+   "spray_deg": -53.7,
+   "backspin_rpm": 309.0,
+   "carry_m": 9.2
+  },
+  {
+   "exit_velo_mps": 26.2,
+   "launch_deg": -56.1,
+   "spray_deg": 15.5,
+   "backspin_rpm": -4496.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 28.1,
+   "launch_deg": 10.1,
+   "spray_deg": 31.5,
+   "backspin_rpm": -1173.0,
+   "carry_m": 24.1
+  },
+  {
+   "exit_velo_mps": 12.2,
+   "launch_deg": 20.0,
+   "spray_deg": -135.5,
+   "backspin_rpm": -1443.0,
+   "carry_m": 10.7
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 13.7,
+   "spray_deg": -80.4,
+   "backspin_rpm": 140.0,
+   "carry_m": 15.6
+  },
+  {
+   "exit_velo_mps": 24.5,
+   "launch_deg": 9.3,
+   "spray_deg": -177.5,
+   "backspin_rpm": -294.0,
+   "carry_m": 21.6
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 13.8,
+   "spray_deg": 18.4,
+   "backspin_rpm": -1345.0,
+   "carry_m": 18.3
+  },
+  {
+   "exit_velo_mps": 9.6,
+   "launch_deg": 38.5,
+   "spray_deg": -109.1,
+   "backspin_rpm": -1847.0,
+   "carry_m": 9.6
+  },
+  {
+   "exit_velo_mps": 11.2,
+   "launch_deg": 21.9,
+   "spray_deg": -60.3,
+   "backspin_rpm": -284.0,
+   "carry_m": 9.9
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 12.2,
+   "spray_deg": -170.7,
+   "backspin_rpm": -1062.0,
+   "carry_m": 20.1
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 18.9,
+   "spray_deg": -21.4,
+   "backspin_rpm": -731.0,
+   "carry_m": 24.8
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": -48.8,
+   "spray_deg": 108.4,
+   "backspin_rpm": 532.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 13.9,
+   "launch_deg": 27.1,
+   "spray_deg": -162.4,
+   "backspin_rpm": -1681.0,
+   "carry_m": 16.0
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": 15.3,
+   "spray_deg": -157.3,
+   "backspin_rpm": -957.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": -40.4,
+   "spray_deg": -15.6,
+   "backspin_rpm": -3239.0,
+   "carry_m": 0.8
+  },
+  {
+   "exit_velo_mps": 16.0,
+   "launch_deg": 18.0,
+   "spray_deg": -161.6,
+   "backspin_rpm": -1697.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 24.6,
+   "launch_deg": 10.7,
+   "spray_deg": -35.0,
+   "backspin_rpm": -217.0,
+   "carry_m": 23.2
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": -24.2,
+   "spray_deg": -27.4,
+   "backspin_rpm": -2295.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": -27.5,
+   "spray_deg": 61.2,
+   "backspin_rpm": -2612.0,
+   "carry_m": 1.3
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": 13.9,
+   "spray_deg": -169.9,
+   "backspin_rpm": -1289.0,
+   "carry_m": 20.8
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": 12.1,
+   "spray_deg": -18.6,
+   "backspin_rpm": -774.0,
+   "carry_m": 24.1
+  },
+  {
+   "exit_velo_mps": 21.0,
+   "launch_deg": 12.9,
+   "spray_deg": 179.2,
+   "backspin_rpm": -715.0,
+   "carry_m": 20.5
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": -30.5,
+   "spray_deg": 94.6,
+   "backspin_rpm": -857.0,
+   "carry_m": 1.3
+  },
+  {
+   "exit_velo_mps": 22.2,
+   "launch_deg": 14.5,
+   "spray_deg": 9.3,
+   "backspin_rpm": -916.0,
+   "carry_m": 21.9
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 18.5,
+   "spray_deg": -88.1,
+   "backspin_rpm": -145.0,
+   "carry_m": 15.5
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 15.7,
+   "spray_deg": -161.4,
+   "backspin_rpm": -1437.0,
+   "carry_m": 20.1
+  },
+  {
+   "exit_velo_mps": 20.8,
+   "launch_deg": -19.0,
+   "spray_deg": 63.9,
+   "backspin_rpm": -2171.0,
+   "carry_m": 2.5
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": 19.0,
+   "spray_deg": -164.7,
+   "backspin_rpm": -1516.0,
+   "carry_m": 16.8
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 18.4,
+   "spray_deg": -165.2,
+   "backspin_rpm": -1225.0,
+   "carry_m": 17.8
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": 13.5,
+   "spray_deg": -56.0,
+   "backspin_rpm": -189.0,
+   "carry_m": 23.6
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 16.4,
+   "spray_deg": -172.9,
+   "backspin_rpm": -1653.0,
+   "carry_m": 21.0
+  },
+  {
+   "exit_velo_mps": 15.8,
+   "launch_deg": 20.6,
+   "spray_deg": 15.2,
+   "backspin_rpm": -1296.0,
+   "carry_m": 16.4
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 14.5,
+   "spray_deg": -33.3,
+   "backspin_rpm": -497.0,
+   "carry_m": 23.1
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": 22.4,
+   "spray_deg": -172.5,
+   "backspin_rpm": -2442.0,
+   "carry_m": 28.7
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": 14.9,
+   "spray_deg": 14.2,
+   "backspin_rpm": -1073.0,
+   "carry_m": 26.1
+  },
+  {
+   "exit_velo_mps": 27.5,
+   "launch_deg": 12.3,
+   "spray_deg": 50.3,
+   "backspin_rpm": -953.0,
+   "carry_m": 28.7
+  },
+  {
+   "exit_velo_mps": 30.1,
+   "launch_deg": 13.3,
+   "spray_deg": 13.7,
+   "backspin_rpm": -1166.0,
+   "carry_m": 31.9
+  },
+  {
+   "exit_velo_mps": 15.9,
+   "launch_deg": 18.9,
+   "spray_deg": -57.3,
+   "backspin_rpm": 571.0,
+   "carry_m": 17.0
+  },
+  {
+   "exit_velo_mps": 25.9,
+   "launch_deg": 12.9,
+   "spray_deg": -25.7,
+   "backspin_rpm": -625.0,
+   "carry_m": 27.4
+  },
+  {
+   "exit_velo_mps": 25.9,
+   "launch_deg": 14.0,
+   "spray_deg": -9.9,
+   "backspin_rpm": -994.0,
+   "carry_m": 27.6
+  },
+  {
+   "exit_velo_mps": 27.5,
+   "launch_deg": -4.9,
+   "spray_deg": 4.5,
+   "backspin_rpm": -2257.0,
+   "carry_m": 5.8
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 16.5,
+   "spray_deg": -46.7,
+   "backspin_rpm": -94.0,
+   "carry_m": 20.7
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 15.3,
+   "spray_deg": -24.9,
+   "backspin_rpm": -175.0,
+   "carry_m": 22.4
+  },
+  {
+   "exit_velo_mps": 30.5,
+   "launch_deg": 13.1,
+   "spray_deg": 22.7,
+   "backspin_rpm": -1040.0,
+   "carry_m": 32.6
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 16.7,
+   "spray_deg": -166.7,
+   "backspin_rpm": -980.0,
+   "carry_m": 22.8
+  },
+  {
+   "exit_velo_mps": 15.4,
+   "launch_deg": 22.7,
+   "spray_deg": -149.4,
+   "backspin_rpm": -1675.0,
+   "carry_m": 16.4
+  },
+  {
+   "exit_velo_mps": 15.8,
+   "launch_deg": 21.0,
+   "spray_deg": -70.6,
+   "backspin_rpm": -390.0,
+   "carry_m": 17.1
+  },
+  {
+   "exit_velo_mps": 16.2,
+   "launch_deg": 20.6,
+   "spray_deg": -85.9,
+   "backspin_rpm": -308.0,
+   "carry_m": 17.8
+  },
+  {
+   "exit_velo_mps": 19.7,
+   "launch_deg": 18.5,
+   "spray_deg": -164.9,
+   "backspin_rpm": -1645.0,
+   "carry_m": 21.3
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": 17.2,
+   "spray_deg": -169.1,
+   "backspin_rpm": -840.0,
+   "carry_m": 22.5
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 17.6,
+   "spray_deg": -172.8,
+   "backspin_rpm": -1634.0,
+   "carry_m": 23.5
+  },
+  {
+   "exit_velo_mps": 14.2,
+   "launch_deg": 24.6,
+   "spray_deg": -166.2,
+   "backspin_rpm": -1446.0,
+   "carry_m": 15.3
+  },
+  {
+   "exit_velo_mps": 12.3,
+   "launch_deg": 28.7,
+   "spray_deg": -120.1,
+   "backspin_rpm": -1467.0,
+   "carry_m": 12.9
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 19.6,
+   "spray_deg": -46.6,
+   "backspin_rpm": 335.0,
+   "carry_m": 19.1
+  },
+  {
+   "exit_velo_mps": 14.1,
+   "launch_deg": 25.1,
+   "spray_deg": -120.2,
+   "backspin_rpm": -1030.0,
+   "carry_m": 15.5
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 19.7,
+   "spray_deg": -172.4,
+   "backspin_rpm": -1872.0,
+   "carry_m": 21.3
+  },
+  {
+   "exit_velo_mps": 14.1,
+   "launch_deg": 24.5,
+   "spray_deg": -22.7,
+   "backspin_rpm": -538.0,
+   "carry_m": 15.5
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 5.5,
+   "spray_deg": -175.1,
+   "backspin_rpm": 264.0,
+   "carry_m": 14.2
+  },
+  {
+   "exit_velo_mps": 15.0,
+   "launch_deg": 23.5,
+   "spray_deg": 31.5,
+   "backspin_rpm": -556.0,
+   "carry_m": 16.7
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 21.9,
+   "spray_deg": -158.7,
+   "backspin_rpm": -1557.0,
+   "carry_m": 19.4
+  },
+  {
+   "exit_velo_mps": 23.8,
+   "launch_deg": 16.2,
+   "spray_deg": 24.9,
+   "backspin_rpm": -468.0,
+   "carry_m": 27.9
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": -80.2,
+   "spray_deg": 157.7,
+   "backspin_rpm": 5068.0,
+   "carry_m": 0.1
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": -51.4,
+   "spray_deg": -15.5,
+   "backspin_rpm": -4165.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 23.1,
+   "launch_deg": -78.5,
+   "spray_deg": 21.1,
+   "backspin_rpm": -5251.0,
+   "carry_m": 0.1
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": -54.9,
+   "spray_deg": -11.2,
+   "backspin_rpm": -4304.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 19.3,
+   "spray_deg": -165.6,
+   "backspin_rpm": -1369.0,
+   "carry_m": 23.4
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": 21.8,
+   "spray_deg": -46.9,
+   "backspin_rpm": 362.0,
+   "carry_m": 18.8
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": -48.9,
+   "spray_deg": 105.8,
+   "backspin_rpm": 571.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": -1.2,
+   "spray_deg": 61.0,
+   "backspin_rpm": -1193.0,
+   "carry_m": 6.9
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": -53.9,
+   "spray_deg": -11.5,
+   "backspin_rpm": -5009.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 17.5,
+   "launch_deg": -34.6,
+   "spray_deg": 67.3,
+   "backspin_rpm": -2276.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 16.2,
+   "launch_deg": 24.2,
+   "spray_deg": -172.5,
+   "backspin_rpm": -1741.0,
+   "carry_m": 18.6
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": -46.3,
+   "spray_deg": 60.1,
+   "backspin_rpm": -3072.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 16.0,
+   "launch_deg": -38.1,
+   "spray_deg": 87.3,
+   "backspin_rpm": -1596.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": -71.0,
+   "spray_deg": -1.1,
+   "backspin_rpm": -4324.0,
+   "carry_m": 0.3
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": -38.8,
+   "spray_deg": 146.8,
+   "backspin_rpm": 4593.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": -13.3,
+   "spray_deg": -21.5,
+   "backspin_rpm": -1868.0,
+   "carry_m": 2.8
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": -48.3,
+   "spray_deg": 90.5,
+   "backspin_rpm": -1030.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 22.7,
+   "launch_deg": 22.2,
+   "spray_deg": 43.1,
+   "backspin_rpm": -275.0,
+   "carry_m": 33.2
+  },
+  {
+   "exit_velo_mps": 17.7,
+   "launch_deg": 23.2,
+   "spray_deg": -158.5,
+   "backspin_rpm": -1364.0,
+   "carry_m": 21.2
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": -23.3,
+   "spray_deg": 39.2,
+   "backspin_rpm": -2974.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 11.0,
+   "launch_deg": -37.5,
+   "spray_deg": -80.2,
+   "backspin_rpm": -542.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 9.7,
+   "launch_deg": -76.1,
+   "spray_deg": 176.0,
+   "backspin_rpm": 6025.0,
+   "carry_m": 0.2
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": -47.7,
+   "spray_deg": 118.9,
+   "backspin_rpm": 1761.0,
+   "carry_m": 0.7
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": -34.9,
+   "spray_deg": 108.8,
+   "backspin_rpm": -54.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": -27.6,
+   "spray_deg": 4.5,
+   "backspin_rpm": -4372.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 15.7,
+   "launch_deg": 26.2,
+   "spray_deg": -145.8,
+   "backspin_rpm": -2346.0,
+   "carry_m": 18.4
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 19.8,
+   "spray_deg": -38.3,
+   "backspin_rpm": 105.0,
+   "carry_m": 23.4
+  },
+  {
+   "exit_velo_mps": 14.0,
+   "launch_deg": 40.0,
+   "spray_deg": -153.9,
+   "backspin_rpm": -2614.0,
+   "carry_m": 18.1
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": -29.0,
+   "spray_deg": 52.8,
+   "backspin_rpm": -2907.0,
+   "carry_m": 1.5
+  },
+  {
+   "exit_velo_mps": 12.8,
+   "launch_deg": 31.0,
+   "spray_deg": -4.7,
+   "backspin_rpm": -442.0,
+   "carry_m": 14.7
+  },
+  {
+   "exit_velo_mps": 19.7,
+   "launch_deg": -22.0,
+   "spray_deg": 29.8,
+   "backspin_rpm": -3573.0,
+   "carry_m": 1.8
+  },
+  {
+   "exit_velo_mps": 14.7,
+   "launch_deg": 26.7,
+   "spray_deg": -41.4,
+   "backspin_rpm": 475.0,
+   "carry_m": 17.8
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": 24.1,
+   "spray_deg": 18.1,
+   "backspin_rpm": 24.0,
+   "carry_m": 19.9
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 25.5,
+   "spray_deg": -77.4,
+   "backspin_rpm": 4.0,
+   "carry_m": 19.0
+  },
+  {
+   "exit_velo_mps": 20.1,
+   "launch_deg": -11.1,
+   "spray_deg": -21.9,
+   "backspin_rpm": -1655.0,
+   "carry_m": 3.2
+  },
+  {
+   "exit_velo_mps": 14.6,
+   "launch_deg": -20.7,
+   "spray_deg": 81.2,
+   "backspin_rpm": -1993.0,
+   "carry_m": 1.9
+  },
+  {
+   "exit_velo_mps": 13.5,
+   "launch_deg": 32.0,
+   "spray_deg": -151.8,
+   "backspin_rpm": -2266.0,
+   "carry_m": 15.8
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": -17.5,
+   "spray_deg": -175.1,
+   "backspin_rpm": 2968.0,
+   "carry_m": 2.5
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 37.5,
+   "spray_deg": -161.6,
+   "backspin_rpm": -2995.0,
+   "carry_m": 21.1
+  },
+  {
+   "exit_velo_mps": 20.8,
+   "launch_deg": 20.8,
+   "spray_deg": 51.9,
+   "backspin_rpm": -767.0,
+   "carry_m": 26.2
+  },
+  {
+   "exit_velo_mps": 22.9,
+   "launch_deg": -5.9,
+   "spray_deg": -31.1,
+   "backspin_rpm": -1063.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 28.3,
+   "launch_deg": 17.1,
+   "spray_deg": 11.0,
+   "backspin_rpm": -919.0,
+   "carry_m": 35.9
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": 25.0,
+   "spray_deg": -48.7,
+   "backspin_rpm": -6.0,
+   "carry_m": 20.8
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": -3.9,
+   "spray_deg": -4.3,
+   "backspin_rpm": -2115.0,
+   "carry_m": 5.6
+  },
+  {
+   "exit_velo_mps": 14.4,
+   "launch_deg": 28.7,
+   "spray_deg": -74.0,
+   "backspin_rpm": 282.0,
+   "carry_m": 17.6
+  },
+  {
+   "exit_velo_mps": 25.4,
+   "launch_deg": -8.0,
+   "spray_deg": -179.1,
+   "backspin_rpm": 2081.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 25.8,
+   "launch_deg": -7.7,
+   "spray_deg": 30.1,
+   "backspin_rpm": -2437.0,
+   "carry_m": 4.0
+  },
+  {
+   "exit_velo_mps": 27.9,
+   "launch_deg": 17.3,
+   "spray_deg": -2.8,
+   "backspin_rpm": -869.0,
+   "carry_m": 36.0
+  },
+  {
+   "exit_velo_mps": 13.3,
+   "launch_deg": 42.6,
+   "spray_deg": -79.4,
+   "backspin_rpm": -797.0,
+   "carry_m": 17.0
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": -7.2,
+   "spray_deg": 19.2,
+   "backspin_rpm": -2700.0,
+   "carry_m": 4.3
+  },
+  {
+   "exit_velo_mps": 16.3,
+   "launch_deg": 28.3,
+   "spray_deg": -160.5,
+   "backspin_rpm": -1712.0,
+   "carry_m": 20.7
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": 24.6,
+   "spray_deg": -155.4,
+   "backspin_rpm": -2314.0,
+   "carry_m": 24.2
+  },
+  {
+   "exit_velo_mps": 19.5,
+   "launch_deg": 24.9,
+   "spray_deg": -158.7,
+   "backspin_rpm": -2435.0,
+   "carry_m": 24.6
+  },
+  {
+   "exit_velo_mps": 27.9,
+   "launch_deg": 17.6,
+   "spray_deg": -5.5,
+   "backspin_rpm": -857.0,
+   "carry_m": 36.3
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": 25.8,
+   "spray_deg": -166.0,
+   "backspin_rpm": -1734.0,
+   "carry_m": 23.1
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": -7.0,
+   "spray_deg": 69.5,
+   "backspin_rpm": -1209.0,
+   "carry_m": 4.4
+  },
+  {
+   "exit_velo_mps": 27.6,
+   "launch_deg": -2.5,
+   "spray_deg": 32.8,
+   "backspin_rpm": -2126.0,
+   "carry_m": 6.6
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": 23.8,
+   "spray_deg": -64.9,
+   "backspin_rpm": 266.0,
+   "carry_m": 23.6
+  },
+  {
+   "exit_velo_mps": 11.5,
+   "launch_deg": 38.6,
+   "spray_deg": -70.5,
+   "backspin_rpm": -168.0,
+   "carry_m": 13.2
+  },
+  {
+   "exit_velo_mps": 26.9,
+   "launch_deg": 16.2,
+   "spray_deg": -26.7,
+   "backspin_rpm": -24.0,
+   "carry_m": 35.8
+  },
+  {
+   "exit_velo_mps": 25.0,
+   "launch_deg": -1.9,
+   "spray_deg": -16.3,
+   "backspin_rpm": -1402.0,
+   "carry_m": 7.4
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 17.7,
+   "spray_deg": -34.1,
+   "backspin_rpm": 552.0,
+   "carry_m": 32.4
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": -2.7,
+   "spray_deg": -8.4,
+   "backspin_rpm": -2001.0,
+   "carry_m": 5.9
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 30.0,
+   "spray_deg": -77.2,
+   "backspin_rpm": 61.0,
+   "carry_m": 19.3
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": 19.5,
+   "spray_deg": -58.9,
+   "backspin_rpm": 177.0,
+   "carry_m": 30.3
+  },
+  {
+   "exit_velo_mps": 13.5,
+   "launch_deg": 36.1,
+   "spray_deg": -120.4,
+   "backspin_rpm": -2152.0,
+   "carry_m": 16.4
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 7.9,
+   "spray_deg": 37.8,
+   "backspin_rpm": -3048.0,
+   "carry_m": 10.8
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": -3.1,
+   "spray_deg": 46.9,
+   "backspin_rpm": -2071.0,
+   "carry_m": 5.7
+  },
+  {
+   "exit_velo_mps": 26.5,
+   "launch_deg": -3.1,
+   "spray_deg": -174.1,
+   "backspin_rpm": 1193.0,
+   "carry_m": 7.6
+  },
+  {
+   "exit_velo_mps": 25.0,
+   "launch_deg": -1.1,
+   "spray_deg": 5.6,
+   "backspin_rpm": -1916.0,
+   "carry_m": 7.9
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 22.3,
+   "spray_deg": -70.5,
+   "backspin_rpm": 128.0,
+   "carry_m": 27.9
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": -1.9,
+   "spray_deg": 43.8,
+   "backspin_rpm": -1582.0,
+   "carry_m": 6.5
+  },
+  {
+   "exit_velo_mps": 20.1,
+   "launch_deg": 23.5,
+   "spray_deg": 55.4,
+   "backspin_rpm": -616.0,
+   "carry_m": 27.2
+  },
+  {
+   "exit_velo_mps": 12.7,
+   "launch_deg": 35.3,
+   "spray_deg": 18.1,
+   "backspin_rpm": 636.0,
+   "carry_m": 15.9
+  },
+  {
+   "exit_velo_mps": 10.5,
+   "launch_deg": 48.8,
+   "spray_deg": -152.7,
+   "backspin_rpm": -3378.0,
+   "carry_m": 10.8
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": 28.9,
+   "spray_deg": -164.3,
+   "backspin_rpm": -2610.0,
+   "carry_m": 23.9
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 32.2,
+   "spray_deg": -114.9,
+   "backspin_rpm": -1244.0,
+   "carry_m": 19.5
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": -0.4,
+   "spray_deg": 8.3,
+   "backspin_rpm": -1867.0,
+   "carry_m": 8.6
+  },
+  {
+   "exit_velo_mps": 18.4,
+   "launch_deg": 25.4,
+   "spray_deg": -63.9,
+   "backspin_rpm": 819.0,
+   "carry_m": 25.0
+  },
+  {
+   "exit_velo_mps": 27.9,
+   "launch_deg": 18.5,
+   "spray_deg": 17.4,
+   "backspin_rpm": -531.0,
+   "carry_m": 39.0
+  },
+  {
+   "exit_velo_mps": 11.1,
+   "launch_deg": 44.2,
+   "spray_deg": -59.7,
+   "backspin_rpm": -733.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 26.7,
+   "launch_deg": 18.4,
+   "spray_deg": -32.6,
+   "backspin_rpm": -234.0,
+   "carry_m": 37.3
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 28.1,
+   "spray_deg": -164.6,
+   "backspin_rpm": -1845.0,
+   "carry_m": 26.3
+  },
+  {
+   "exit_velo_mps": 25.8,
+   "launch_deg": -0.1,
+   "spray_deg": -173.9,
+   "backspin_rpm": 1287.0,
+   "carry_m": 10.8
+  },
+  {
+   "exit_velo_mps": 13.9,
+   "launch_deg": 37.6,
+   "spray_deg": -130.6,
+   "backspin_rpm": -2007.0,
+   "carry_m": 17.6
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": 21.9,
+   "spray_deg": -44.5,
+   "backspin_rpm": 347.0,
+   "carry_m": 31.3
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 21.5,
+   "spray_deg": -34.8,
+   "backspin_rpm": -627.0,
+   "carry_m": 34.4
+  },
+  {
+   "exit_velo_mps": 11.5,
+   "launch_deg": 48.1,
+   "spray_deg": -135.2,
+   "backspin_rpm": -2594.0,
+   "carry_m": 12.8
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": 35.1,
+   "spray_deg": -147.2,
+   "backspin_rpm": -3638.0,
+   "carry_m": 21.4
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": 31.2,
+   "spray_deg": -58.1,
+   "backspin_rpm": 471.0,
+   "carry_m": 22.3
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 31.4,
+   "spray_deg": -164.7,
+   "backspin_rpm": -2514.0,
+   "carry_m": 24.8
+  },
+  {
+   "exit_velo_mps": 17.2,
+   "launch_deg": 33.3,
+   "spray_deg": -155.6,
+   "backspin_rpm": -2978.0,
+   "carry_m": 23.5
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 33.6,
+   "spray_deg": -51.4,
+   "backspin_rpm": -461.0,
+   "carry_m": 20.4
+  },
+  {
+   "exit_velo_mps": 16.3,
+   "launch_deg": 31.0,
+   "spray_deg": -65.8,
+   "backspin_rpm": 1370.0,
+   "carry_m": 22.4
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 2.2,
+   "spray_deg": 33.9,
+   "backspin_rpm": -1640.0,
+   "carry_m": 7.8
+  },
+  {
+   "exit_velo_mps": 12.2,
+   "launch_deg": 46.1,
+   "spray_deg": -130.0,
+   "backspin_rpm": -2735.0,
+   "carry_m": 14.4
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 23.6,
+   "spray_deg": -36.6,
+   "backspin_rpm": -447.0,
+   "carry_m": 32.7
+  },
+  {
+   "exit_velo_mps": 27.3,
+   "launch_deg": 21.3,
+   "spray_deg": 16.8,
+   "backspin_rpm": -767.0,
+   "carry_m": 40.1
+  },
+  {
+   "exit_velo_mps": 19.3,
+   "launch_deg": 10.2,
+   "spray_deg": -167.2,
+   "backspin_rpm": -925.0,
+   "carry_m": 14.9
+  },
+  {
+   "exit_velo_mps": 13.3,
+   "launch_deg": 50.2,
+   "spray_deg": -32.8,
+   "backspin_rpm": 301.0,
+   "carry_m": 16.8
+  },
+  {
+   "exit_velo_mps": 30.0,
+   "launch_deg": 20.2,
+   "spray_deg": -1.2,
+   "backspin_rpm": -880.0,
+   "carry_m": 44.3
+  },
+  {
+   "exit_velo_mps": 12.8,
+   "launch_deg": 56.3,
+   "spray_deg": -126.1,
+   "backspin_rpm": -2724.0,
+   "carry_m": 14.4
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": 34.0,
+   "spray_deg": -144.2,
+   "backspin_rpm": -2167.0,
+   "carry_m": 22.8
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": 19.5,
+   "spray_deg": -41.2,
+   "backspin_rpm": 413.0,
+   "carry_m": 37.7
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 3.0,
+   "spray_deg": -33.6,
+   "backspin_rpm": -385.0,
+   "carry_m": 11.5
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 31.5,
+   "spray_deg": -160.5,
+   "backspin_rpm": -2885.0,
+   "carry_m": 25.8
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 39.0,
+   "spray_deg": -157.3,
+   "backspin_rpm": -2738.0,
+   "carry_m": 19.8
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 25.4,
+   "spray_deg": 33.7,
+   "backspin_rpm": -231.0,
+   "carry_m": 31.1
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 37.8,
+   "spray_deg": -166.5,
+   "backspin_rpm": -3469.0,
+   "carry_m": 20.9
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 30.9,
+   "spray_deg": -161.4,
+   "backspin_rpm": -3193.0,
+   "carry_m": 27.0
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 23.7,
+   "spray_deg": 43.9,
+   "backspin_rpm": -507.0,
+   "carry_m": 34.1
+  },
+  {
+   "exit_velo_mps": 23.6,
+   "launch_deg": 21.4,
+   "spray_deg": 36.7,
+   "backspin_rpm": 46.0,
+   "carry_m": 35.8
+  },
+  {
+   "exit_velo_mps": 17.5,
+   "launch_deg": 32.1,
+   "spray_deg": -111.6,
+   "backspin_rpm": -1321.0,
+   "carry_m": 24.6
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 27.6,
+   "spray_deg": -61.4,
+   "backspin_rpm": 294.0,
+   "carry_m": 28.0
+  },
+  {
+   "exit_velo_mps": 26.7,
+   "launch_deg": 19.5,
+   "spray_deg": -17.5,
+   "backspin_rpm": 118.0,
+   "carry_m": 40.3
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": 3.2,
+   "spray_deg": -19.5,
+   "backspin_rpm": -985.0,
+   "carry_m": 12.4
+  },
+  {
+   "exit_velo_mps": 16.2,
+   "launch_deg": 36.1,
+   "spray_deg": -148.1,
+   "backspin_rpm": -2742.0,
+   "carry_m": 22.1
+  },
+  {
+   "exit_velo_mps": 28.5,
+   "launch_deg": 23.6,
+   "spray_deg": 29.1,
+   "backspin_rpm": -1900.0,
+   "carry_m": 42.2
+  },
+  {
+   "exit_velo_mps": 12.0,
+   "launch_deg": 48.4,
+   "spray_deg": -103.9,
+   "backspin_rpm": -893.0,
+   "carry_m": 13.9
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 1.9,
+   "spray_deg": -173.6,
+   "backspin_rpm": 696.0,
+   "carry_m": 11.6
+  },
+  {
+   "exit_velo_mps": 27.1,
+   "launch_deg": 19.5,
+   "spray_deg": -39.0,
+   "backspin_rpm": 122.0,
+   "carry_m": 40.9
+  },
+  {
+   "exit_velo_mps": 15.1,
+   "launch_deg": 36.0,
+   "spray_deg": -65.6,
+   "backspin_rpm": 505.0,
+   "carry_m": 20.9
+  },
+  {
+   "exit_velo_mps": 13.3,
+   "launch_deg": 44.0,
+   "spray_deg": -102.0,
+   "backspin_rpm": -1392.0,
+   "carry_m": 16.7
+  },
+  {
+   "exit_velo_mps": 14.4,
+   "launch_deg": 40.4,
+   "spray_deg": -107.8,
+   "backspin_rpm": -1413.0,
+   "carry_m": 19.0
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 38.2,
+   "spray_deg": -100.1,
+   "backspin_rpm": -668.0,
+   "carry_m": 20.1
+  },
+  {
+   "exit_velo_mps": 26.8,
+   "launch_deg": 19.5,
+   "spray_deg": -36.0,
+   "backspin_rpm": 515.0,
+   "carry_m": 40.7
+  },
+  {
+   "exit_velo_mps": 12.8,
+   "launch_deg": 44.1,
+   "spray_deg": -32.3,
+   "backspin_rpm": 498.0,
+   "carry_m": 16.0
+  },
+  {
+   "exit_velo_mps": 17.0,
+   "launch_deg": 35.9,
+   "spray_deg": -174.2,
+   "backspin_rpm": -2920.0,
+   "carry_m": 24.1
+  },
+  {
+   "exit_velo_mps": 21.0,
+   "launch_deg": 5.0,
+   "spray_deg": 35.4,
+   "backspin_rpm": -1109.0,
+   "carry_m": 11.5
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 30.8,
+   "spray_deg": -70.1,
+   "backspin_rpm": 16.0,
+   "carry_m": 27.2
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 34.6,
+   "spray_deg": -159.7,
+   "backspin_rpm": -3160.0,
+   "carry_m": 26.1
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 26.7,
+   "spray_deg": 67.5,
+   "backspin_rpm": 288.0,
+   "carry_m": 30.4
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": 24.6,
+   "spray_deg": -30.9,
+   "backspin_rpm": 845.0,
+   "carry_m": 33.1
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 32.1,
+   "spray_deg": -62.1,
+   "backspin_rpm": 63.0,
+   "carry_m": 26.3
+  },
+  {
+   "exit_velo_mps": 21.1,
+   "launch_deg": 4.5,
+   "spray_deg": -170.4,
+   "backspin_rpm": 269.0,
+   "carry_m": 12.7
+  },
+  {
+   "exit_velo_mps": 25.0,
+   "launch_deg": 21.9,
+   "spray_deg": 37.5,
+   "backspin_rpm": 82.0,
+   "carry_m": 40.0
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": 36.3,
+   "spray_deg": -101.5,
+   "backspin_rpm": -933.0,
+   "carry_m": 23.9
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": 25.0,
+   "spray_deg": -28.1,
+   "backspin_rpm": 159.0,
+   "carry_m": 35.7
+  },
+  {
+   "exit_velo_mps": 22.7,
+   "launch_deg": 26.2,
+   "spray_deg": 10.5,
+   "backspin_rpm": -305.0,
+   "carry_m": 36.1
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 45.5,
+   "spray_deg": -169.6,
+   "backspin_rpm": -3801.0,
+   "carry_m": 26.2
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": 14.6,
+   "spray_deg": -171.3,
+   "backspin_rpm": -1184.0,
+   "carry_m": 17.8
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": 47.6,
+   "spray_deg": -165.7,
+   "backspin_rpm": -3496.0,
+   "carry_m": 24.1
+  },
+  {
+   "exit_velo_mps": 11.9,
+   "launch_deg": 55.5,
+   "spray_deg": -128.4,
+   "backspin_rpm": -2996.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 15.5,
+   "launch_deg": 41.5,
+   "spray_deg": -164.6,
+   "backspin_rpm": -3238.0,
+   "carry_m": 21.4
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 37.6,
+   "spray_deg": -157.2,
+   "backspin_rpm": -3431.0,
+   "carry_m": 25.5
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": 27.1,
+   "spray_deg": -37.5,
+   "backspin_rpm": 106.0,
+   "carry_m": 33.6
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": 38.3,
+   "spray_deg": -101.8,
+   "backspin_rpm": -857.0,
+   "carry_m": 23.5
+  },
+  {
+   "exit_velo_mps": 18.4,
+   "launch_deg": 32.7,
+   "spray_deg": -23.6,
+   "backspin_rpm": -463.0,
+   "carry_m": 27.8
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 33.0,
+   "spray_deg": -44.9,
+   "backspin_rpm": 754.0,
+   "carry_m": 27.2
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": 25.0,
+   "spray_deg": -9.1,
+   "backspin_rpm": -119.0,
+   "carry_m": 38.8
+  },
+  {
+   "exit_velo_mps": 18.6,
+   "launch_deg": 32.4,
+   "spray_deg": -49.5,
+   "backspin_rpm": -14.0,
+   "carry_m": 28.5
+  },
+  {
+   "exit_velo_mps": 17.7,
+   "launch_deg": 38.2,
+   "spray_deg": -173.7,
+   "backspin_rpm": -3804.0,
+   "carry_m": 25.7
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 42.8,
+   "spray_deg": -145.8,
+   "backspin_rpm": -3061.0,
+   "carry_m": 21.6
+  },
+  {
+   "exit_velo_mps": 13.7,
+   "launch_deg": 47.4,
+   "spray_deg": -113.6,
+   "backspin_rpm": -1831.0,
+   "carry_m": 17.6
+  },
+  {
+   "exit_velo_mps": 28.4,
+   "launch_deg": 7.5,
+   "spray_deg": 14.2,
+   "backspin_rpm": -1861.0,
+   "carry_m": 19.7
+  },
+  {
+   "exit_velo_mps": 14.7,
+   "launch_deg": 44.8,
+   "spray_deg": -142.3,
+   "backspin_rpm": -3134.0,
+   "carry_m": 19.7
+  },
+  {
+   "exit_velo_mps": 12.8,
+   "launch_deg": 52.1,
+   "spray_deg": -158.4,
+   "backspin_rpm": -3433.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 44.2,
+   "spray_deg": -147.8,
+   "backspin_rpm": -3338.0,
+   "carry_m": 20.5
+  },
+  {
+   "exit_velo_mps": 12.6,
+   "launch_deg": 55.5,
+   "spray_deg": -155.2,
+   "backspin_rpm": -4090.0,
+   "carry_m": 14.0
+  },
+  {
+   "exit_velo_mps": 25.7,
+   "launch_deg": 22.7,
+   "spray_deg": -25.0,
+   "backspin_rpm": 440.0,
+   "carry_m": 42.3
+  },
+  {
+   "exit_velo_mps": 24.5,
+   "launch_deg": 24.0,
+   "spray_deg": -4.2,
+   "backspin_rpm": 132.0,
+   "carry_m": 40.6
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 28.2,
+   "spray_deg": -36.9,
+   "backspin_rpm": 904.0,
+   "carry_m": 33.2
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 38.8,
+   "spray_deg": -163.1,
+   "backspin_rpm": -2676.0,
+   "carry_m": 26.6
+  },
+  {
+   "exit_velo_mps": 16.0,
+   "launch_deg": 11.4,
+   "spray_deg": 64.5,
+   "backspin_rpm": -1175.0,
+   "carry_m": 11.8
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 38.7,
+   "spray_deg": -161.3,
+   "backspin_rpm": -2730.0,
+   "carry_m": 26.7
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": 8.1,
+   "spray_deg": -167.4,
+   "backspin_rpm": -183.0,
+   "carry_m": 14.4
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -7.9,
+   "spray_deg": 75.2,
+   "backspin_rpm": -1336.0,
+   "carry_m": 4.5
+  },
+  {
+   "exit_velo_mps": 26.1,
+   "launch_deg": 24.2,
+   "spray_deg": 4.4,
+   "backspin_rpm": -151.0,
+   "carry_m": 43.9
+  },
+  {
+   "exit_velo_mps": 13.1,
+   "launch_deg": 54.0,
+   "spray_deg": -119.1,
+   "backspin_rpm": -2765.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 16.3,
+   "launch_deg": 41.9,
+   "spray_deg": -126.5,
+   "backspin_rpm": -1829.0,
+   "carry_m": 23.3
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 41.7,
+   "spray_deg": -168.5,
+   "backspin_rpm": -3127.0,
+   "carry_m": 25.2
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 7.8,
+   "spray_deg": -169.9,
+   "backspin_rpm": 249.0,
+   "carry_m": 17.9
+  },
+  {
+   "exit_velo_mps": 15.5,
+   "launch_deg": 47.3,
+   "spray_deg": -174.3,
+   "backspin_rpm": -4664.0,
+   "carry_m": 21.0
+  },
+  {
+   "exit_velo_mps": 18.3,
+   "launch_deg": 40.6,
+   "spray_deg": -166.6,
+   "backspin_rpm": -3690.0,
+   "carry_m": 27.5
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 24.2,
+   "spray_deg": 16.3,
+   "backspin_rpm": 145.0,
+   "carry_m": 43.6
+  },
+  {
+   "exit_velo_mps": 21.0,
+   "launch_deg": 31.9,
+   "spray_deg": 48.1,
+   "backspin_rpm": -479.0,
+   "carry_m": 34.5
+  },
+  {
+   "exit_velo_mps": 15.9,
+   "launch_deg": 42.0,
+   "spray_deg": -80.7,
+   "backspin_rpm": 216.0,
+   "carry_m": 23.2
+  },
+  {
+   "exit_velo_mps": 14.8,
+   "launch_deg": 46.9,
+   "spray_deg": -87.9,
+   "backspin_rpm": -338.0,
+   "carry_m": 20.2
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 45.0,
+   "spray_deg": -81.5,
+   "backspin_rpm": 357.0,
+   "carry_m": 21.2
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 41.7,
+   "spray_deg": -143.4,
+   "backspin_rpm": -3051.0,
+   "carry_m": 25.4
+  },
+  {
+   "exit_velo_mps": 22.8,
+   "launch_deg": 28.0,
+   "spray_deg": -24.4,
+   "backspin_rpm": 146.0,
+   "carry_m": 38.5
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 32.8,
+   "spray_deg": 28.9,
+   "backspin_rpm": 393.0,
+   "carry_m": 30.7
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 30.1,
+   "spray_deg": -12.7,
+   "backspin_rpm": -30.0,
+   "carry_m": 37.3
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 18.2,
+   "spray_deg": -47.6,
+   "backspin_rpm": 203.0,
+   "carry_m": 19.8
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": 36.7,
+   "spray_deg": -39.1,
+   "backspin_rpm": 842.0,
+   "carry_m": 28.8
+  },
+  {
+   "exit_velo_mps": 28.1,
+   "launch_deg": 9.3,
+   "spray_deg": 24.5,
+   "backspin_rpm": -1096.0,
+   "carry_m": 23.4
+  },
+  {
+   "exit_velo_mps": 15.7,
+   "launch_deg": 47.0,
+   "spray_deg": -122.7,
+   "backspin_rpm": -2613.0,
+   "carry_m": 21.8
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 30.9,
+   "spray_deg": -56.2,
+   "backspin_rpm": 849.0,
+   "carry_m": 35.3
+  },
+  {
+   "exit_velo_mps": 15.0,
+   "launch_deg": 45.3,
+   "spray_deg": -12.3,
+   "backspin_rpm": 497.0,
+   "carry_m": 21.5
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": 43.9,
+   "spray_deg": -93.6,
+   "backspin_rpm": -961.0,
+   "carry_m": 23.8
+  },
+  {
+   "exit_velo_mps": 15.9,
+   "launch_deg": 42.7,
+   "spray_deg": -34.4,
+   "backspin_rpm": 516.0,
+   "carry_m": 23.6
+  },
+  {
+   "exit_velo_mps": 26.9,
+   "launch_deg": 9.7,
+   "spray_deg": 29.1,
+   "backspin_rpm": -1487.0,
+   "carry_m": 22.5
+  },
+  {
+   "exit_velo_mps": 26.7,
+   "launch_deg": 25.2,
+   "spray_deg": 1.5,
+   "backspin_rpm": -96.0,
+   "carry_m": 46.9
+  },
+  {
+   "exit_velo_mps": 20.6,
+   "launch_deg": 31.2,
+   "spray_deg": -9.2,
+   "backspin_rpm": 341.0,
+   "carry_m": 35.2
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 27.2,
+   "spray_deg": 37.1,
+   "backspin_rpm": 507.0,
+   "carry_m": 39.5
+  },
+  {
+   "exit_velo_mps": 12.3,
+   "launch_deg": 62.3,
+   "spray_deg": -50.8,
+   "backspin_rpm": 1852.0,
+   "carry_m": 11.8
+  },
+  {
+   "exit_velo_mps": 17.0,
+   "launch_deg": 41.7,
+   "spray_deg": -92.8,
+   "backspin_rpm": -334.0,
+   "carry_m": 25.6
+  },
+  {
+   "exit_velo_mps": 26.5,
+   "launch_deg": 10.8,
+   "spray_deg": 15.5,
+   "backspin_rpm": -1548.0,
+   "carry_m": 22.8
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 12.7,
+   "spray_deg": 71.8,
+   "backspin_rpm": -648.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 15.1,
+   "launch_deg": 47.8,
+   "spray_deg": -92.2,
+   "backspin_rpm": -148.0,
+   "carry_m": 20.8
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 35.3,
+   "spray_deg": -44.2,
+   "backspin_rpm": 1284.0,
+   "carry_m": 30.9
+  },
+  {
+   "exit_velo_mps": 27.1,
+   "launch_deg": 24.5,
+   "spray_deg": 13.5,
+   "backspin_rpm": 113.0,
+   "carry_m": 48.8
+  },
+  {
+   "exit_velo_mps": 27.1,
+   "launch_deg": 25.7,
+   "spray_deg": -20.8,
+   "backspin_rpm": -129.0,
+   "carry_m": 47.7
+  },
+  {
+   "exit_velo_mps": 13.3,
+   "launch_deg": 58.1,
+   "spray_deg": -91.8,
+   "backspin_rpm": -1322.0,
+   "carry_m": 14.9
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": 34.4,
+   "spray_deg": -2.3,
+   "backspin_rpm": 554.0,
+   "carry_m": 32.5
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -35.7,
+   "spray_deg": 13.6,
+   "backspin_rpm": -3259.0,
+   "carry_m": 0.9
+  },
+  {
+   "exit_velo_mps": 23.8,
+   "launch_deg": 27.5,
+   "spray_deg": 15.1,
+   "backspin_rpm": 256.0,
+   "carry_m": 42.5
+  },
+  {
+   "exit_velo_mps": 23.2,
+   "launch_deg": 27.8,
+   "spray_deg": -38.7,
+   "backspin_rpm": 1436.0,
+   "carry_m": 40.2
+  },
+  {
+   "exit_velo_mps": 20.8,
+   "launch_deg": 19.1,
+   "spray_deg": -173.1,
+   "backspin_rpm": -1023.0,
+   "carry_m": 25.2
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 27.7,
+   "spray_deg": -56.9,
+   "backspin_rpm": 708.0,
+   "carry_m": 41.9
+  },
+  {
+   "exit_velo_mps": 18.4,
+   "launch_deg": 35.0,
+   "spray_deg": 35.0,
+   "backspin_rpm": 683.0,
+   "carry_m": 31.3
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": -15.8,
+   "spray_deg": 54.6,
+   "backspin_rpm": -2858.0,
+   "carry_m": 2.7
+  },
+  {
+   "exit_velo_mps": 13.8,
+   "launch_deg": 55.9,
+   "spray_deg": -78.8,
+   "backspin_rpm": -194.0,
+   "carry_m": 16.6
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": -36.4,
+   "spray_deg": 105.1,
+   "backspin_rpm": -85.0,
+   "carry_m": 1.2
+  },
+  {
+   "exit_velo_mps": 28.8,
+   "launch_deg": 15.2,
+   "spray_deg": -3.1,
+   "backspin_rpm": -718.0,
+   "carry_m": 34.7
+  },
+  {
+   "exit_velo_mps": 9.7,
+   "launch_deg": 43.2,
+   "spray_deg": -106.2,
+   "backspin_rpm": -1266.0,
+   "carry_m": 9.9
+  },
+  {
+   "exit_velo_mps": 17.2,
+   "launch_deg": 46.1,
+   "spray_deg": -132.5,
+   "backspin_rpm": -2640.0,
+   "carry_m": 25.3
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 14.5,
+   "spray_deg": 7.9,
+   "backspin_rpm": -1177.0,
+   "carry_m": 21.3
+  },
+  {
+   "exit_velo_mps": 14.2,
+   "launch_deg": 51.2,
+   "spray_deg": -7.2,
+   "backspin_rpm": 1704.0,
+   "carry_m": 18.8
+  },
+  {
+   "exit_velo_mps": 16.2,
+   "launch_deg": 44.3,
+   "spray_deg": -52.1,
+   "backspin_rpm": 1184.0,
+   "carry_m": 24.3
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 12.0,
+   "spray_deg": -39.8,
+   "backspin_rpm": -570.0,
+   "carry_m": 21.7
+  },
+  {
+   "exit_velo_mps": 26.3,
+   "launch_deg": 10.3,
+   "spray_deg": -34.2,
+   "backspin_rpm": -568.0,
+   "carry_m": 24.4
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": -35.1,
+   "spray_deg": 79.6,
+   "backspin_rpm": -1861.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": 12.7,
+   "spray_deg": -45.7,
+   "backspin_rpm": -32.0,
+   "carry_m": 21.1
+  },
+  {
+   "exit_velo_mps": 24.6,
+   "launch_deg": 12.8,
+   "spray_deg": 15.1,
+   "backspin_rpm": -1302.0,
+   "carry_m": 23.2
+  },
+  {
+   "exit_velo_mps": 24.9,
+   "launch_deg": 12.4,
+   "spray_deg": 26.9,
+   "backspin_rpm": -875.0,
+   "carry_m": 23.9
+  },
+  {
+   "exit_velo_mps": 27.4,
+   "launch_deg": 26.5,
+   "spray_deg": 42.8,
+   "backspin_rpm": -207.0,
+   "carry_m": 49.6
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": 30.3,
+   "spray_deg": 2.3,
+   "backspin_rpm": -520.0,
+   "carry_m": 45.7
+  },
+  {
+   "exit_velo_mps": 27.7,
+   "launch_deg": 27.6,
+   "spray_deg": 7.5,
+   "backspin_rpm": -388.0,
+   "carry_m": 50.4
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 40.6,
+   "spray_deg": -93.4,
+   "backspin_rpm": -118.0,
+   "carry_m": 29.4
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": 30.4,
+   "spray_deg": -10.9,
+   "backspin_rpm": 887.0,
+   "carry_m": 50.2
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": 36.6,
+   "spray_deg": -45.4,
+   "backspin_rpm": 329.0,
+   "carry_m": 33.2
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": 15.1,
+   "spray_deg": -169.5,
+   "backspin_rpm": -1304.0,
+   "carry_m": 19.9
+  },
+  {
+   "exit_velo_mps": 27.8,
+   "launch_deg": 24.4,
+   "spray_deg": -5.3,
+   "backspin_rpm": 340.0,
+   "carry_m": 51.2
+  },
+  {
+   "exit_velo_mps": 15.0,
+   "launch_deg": 29.1,
+   "spray_deg": -156.4,
+   "backspin_rpm": -2568.0,
+   "carry_m": 17.9
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 45.7,
+   "spray_deg": -131.9,
+   "backspin_rpm": -2682.0,
+   "carry_m": 27.0
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 47.7,
+   "spray_deg": 177.4,
+   "backspin_rpm": -3843.0,
+   "carry_m": 26.3
+  },
+  {
+   "exit_velo_mps": 14.0,
+   "launch_deg": 62.2,
+   "spray_deg": -168.0,
+   "backspin_rpm": -4772.0,
+   "carry_m": 15.2
+  },
+  {
+   "exit_velo_mps": 16.8,
+   "launch_deg": 59.9,
+   "spray_deg": -128.6,
+   "backspin_rpm": -3299.0,
+   "carry_m": 21.6
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": 26.5,
+   "spray_deg": 33.6,
+   "backspin_rpm": -6.0,
+   "carry_m": 50.3
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": 40.8,
+   "spray_deg": -40.9,
+   "backspin_rpm": 869.0,
+   "carry_m": 29.1
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 55.7,
+   "spray_deg": -109.5,
+   "backspin_rpm": -1456.0,
+   "carry_m": 18.7
+  },
+  {
+   "exit_velo_mps": 16.8,
+   "launch_deg": 47.1,
+   "spray_deg": -92.6,
+   "backspin_rpm": -350.0,
+   "carry_m": 24.7
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 32.0,
+   "spray_deg": 30.6,
+   "backspin_rpm": 27.0,
+   "carry_m": 40.8
+  },
+  {
+   "exit_velo_mps": 24.7,
+   "launch_deg": 29.2,
+   "spray_deg": -21.8,
+   "backspin_rpm": 208.0,
+   "carry_m": 44.8
+  },
+  {
+   "exit_velo_mps": 13.8,
+   "launch_deg": 61.2,
+   "spray_deg": -98.9,
+   "backspin_rpm": -1161.0,
+   "carry_m": 15.0
+  },
+  {
+   "exit_velo_mps": 12.1,
+   "launch_deg": 23.9,
+   "spray_deg": -143.3,
+   "backspin_rpm": -1063.0,
+   "carry_m": 11.7
+  },
+  {
+   "exit_velo_mps": 27.2,
+   "launch_deg": 26.5,
+   "spray_deg": -30.2,
+   "backspin_rpm": 342.0,
+   "carry_m": 49.3
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": 30.6,
+   "spray_deg": 6.5,
+   "backspin_rpm": 673.0,
+   "carry_m": 51.6
+  },
+  {
+   "exit_velo_mps": 14.8,
+   "launch_deg": 59.0,
+   "spray_deg": -160.2,
+   "backspin_rpm": -3961.0,
+   "carry_m": 17.9
+  },
+  {
+   "exit_velo_mps": 20.1,
+   "launch_deg": 37.2,
+   "spray_deg": -50.6,
+   "backspin_rpm": 418.0,
+   "carry_m": 34.3
+  },
+  {
+   "exit_velo_mps": 25.5,
+   "launch_deg": 27.3,
+   "spray_deg": -20.1,
+   "backspin_rpm": 575.0,
+   "carry_m": 47.3
+  },
+  {
+   "exit_velo_mps": 12.2,
+   "launch_deg": 33.8,
+   "spray_deg": -41.2,
+   "backspin_rpm": 126.0,
+   "carry_m": 14.3
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 18.3,
+   "spray_deg": -37.9,
+   "backspin_rpm": 429.0,
+   "carry_m": 29.2
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": 53.2,
+   "spray_deg": -138.7,
+   "backspin_rpm": -3596.0,
+   "carry_m": 22.4
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 19.3,
+   "spray_deg": -46.9,
+   "backspin_rpm": 117.0,
+   "carry_m": 16.3
+  },
+  {
+   "exit_velo_mps": 14.5,
+   "launch_deg": 61.7,
+   "spray_deg": -172.8,
+   "backspin_rpm": -4071.0,
+   "carry_m": 16.4
+  },
+  {
+   "exit_velo_mps": 25.3,
+   "launch_deg": 13.6,
+   "spray_deg": 23.8,
+   "backspin_rpm": -943.0,
+   "carry_m": 26.4
+  },
+  {
+   "exit_velo_mps": 15.5,
+   "launch_deg": 56.0,
+   "spray_deg": -143.8,
+   "backspin_rpm": -3360.0,
+   "carry_m": 20.0
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": 43.5,
+   "spray_deg": -18.8,
+   "backspin_rpm": 1762.0,
+   "carry_m": 26.9
+  },
+  {
+   "exit_velo_mps": 25.0,
+   "launch_deg": 29.0,
+   "spray_deg": -17.4,
+   "backspin_rpm": 456.0,
+   "carry_m": 46.3
+  },
+  {
+   "exit_velo_mps": 23.1,
+   "launch_deg": 32.2,
+   "spray_deg": -44.1,
+   "backspin_rpm": 557.0,
+   "carry_m": 41.7
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": 28.7,
+   "spray_deg": 30.2,
+   "backspin_rpm": 360.0,
+   "carry_m": 46.2
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": 14.4,
+   "spray_deg": -60.1,
+   "backspin_rpm": -427.0,
+   "carry_m": 23.9
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": 28.7,
+   "spray_deg": -17.0,
+   "backspin_rpm": 573.0,
+   "carry_m": 47.6
+  },
+  {
+   "exit_velo_mps": 26.0,
+   "launch_deg": 28.0,
+   "spray_deg": -39.1,
+   "backspin_rpm": 619.0,
+   "carry_m": 48.2
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": 6.0,
+   "spray_deg": -169.6,
+   "backspin_rpm": -363.0,
+   "carry_m": 12.3
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 58.0,
+   "spray_deg": -113.0,
+   "backspin_rpm": -2014.0,
+   "carry_m": 18.8
+  },
+  {
+   "exit_velo_mps": 24.3,
+   "launch_deg": -2.5,
+   "spray_deg": -49.6,
+   "backspin_rpm": -1033.0,
+   "carry_m": 6.5
+  },
+  {
+   "exit_velo_mps": 15.3,
+   "launch_deg": 60.1,
+   "spray_deg": -152.7,
+   "backspin_rpm": -3965.0,
+   "carry_m": 18.4
+  },
+  {
+   "exit_velo_mps": 25.4,
+   "launch_deg": 0.6,
+   "spray_deg": -13.0,
+   "backspin_rpm": -1051.0,
+   "carry_m": 9.3
+  },
+  {
+   "exit_velo_mps": 15.3,
+   "launch_deg": 60.0,
+   "spray_deg": -121.5,
+   "backspin_rpm": -2751.0,
+   "carry_m": 18.5
+  },
+  {
+   "exit_velo_mps": 23.7,
+   "launch_deg": 15.2,
+   "spray_deg": -11.4,
+   "backspin_rpm": -624.0,
+   "carry_m": 26.6
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 41.7,
+   "spray_deg": -54.6,
+   "backspin_rpm": 828.0,
+   "carry_m": 31.9
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 49.9,
+   "spray_deg": -104.3,
+   "backspin_rpm": -1304.0,
+   "carry_m": 26.0
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 38.3,
+   "spray_deg": 23.3,
+   "backspin_rpm": 256.0,
+   "carry_m": 35.8
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": 17.0,
+   "spray_deg": 47.0,
+   "backspin_rpm": -1015.0,
+   "carry_m": 24.5
+  },
+  {
+   "exit_velo_mps": 26.6,
+   "launch_deg": 27.9,
+   "spray_deg": 21.6,
+   "backspin_rpm": 217.0,
+   "carry_m": 51.7
+  },
+  {
+   "exit_velo_mps": 15.8,
+   "launch_deg": 59.2,
+   "spray_deg": -136.0,
+   "backspin_rpm": -3448.0,
+   "carry_m": 19.7
+  },
+  {
+   "exit_velo_mps": 15.4,
+   "launch_deg": -2.9,
+   "spray_deg": 69.7,
+   "backspin_rpm": -2342.0,
+   "carry_m": 5.2
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": -76.4,
+   "spray_deg": 58.9,
+   "backspin_rpm": -3089.0,
+   "carry_m": 0.2
+  },
+  {
+   "exit_velo_mps": 24.5,
+   "launch_deg": 0.1,
+   "spray_deg": -54.9,
+   "backspin_rpm": -356.0,
+   "carry_m": 9.2
+  },
+  {
+   "exit_velo_mps": 24.6,
+   "launch_deg": 30.9,
+   "spray_deg": -17.5,
+   "backspin_rpm": 424.0,
+   "carry_m": 46.7
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 30.4,
+   "spray_deg": 33.1,
+   "backspin_rpm": 489.0,
+   "carry_m": 46.7
+  },
+  {
+   "exit_velo_mps": 15.3,
+   "launch_deg": 62.5,
+   "spray_deg": -133.9,
+   "backspin_rpm": -3696.0,
+   "carry_m": 17.5
+  },
+  {
+   "exit_velo_mps": 17.5,
+   "launch_deg": 51.3,
+   "spray_deg": -103.1,
+   "backspin_rpm": -1117.0,
+   "carry_m": 25.5
+  },
+  {
+   "exit_velo_mps": 24.5,
+   "launch_deg": 31.9,
+   "spray_deg": -47.7,
+   "backspin_rpm": 804.0,
+   "carry_m": 45.4
+  },
+  {
+   "exit_velo_mps": 26.9,
+   "launch_deg": -14.9,
+   "spray_deg": -22.1,
+   "backspin_rpm": -2148.0,
+   "carry_m": 2.2
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 59.1,
+   "spray_deg": -96.9,
+   "backspin_rpm": -1245.0,
+   "carry_m": 19.4
+  },
+  {
+   "exit_velo_mps": 19.7,
+   "launch_deg": -74.1,
+   "spray_deg": 13.1,
+   "backspin_rpm": -4991.0,
+   "carry_m": 0.2
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 34.5,
+   "spray_deg": 6.1,
+   "backspin_rpm": 589.0,
+   "carry_m": 41.1
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 63.6,
+   "spray_deg": -140.2,
+   "backspin_rpm": -3655.0,
+   "carry_m": 22.2
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": -50.3,
+   "spray_deg": 42.7,
+   "backspin_rpm": -3657.0,
+   "carry_m": 0.5
+  },
+  {
+   "exit_velo_mps": 26.1,
+   "launch_deg": 30.3,
+   "spray_deg": -6.0,
+   "backspin_rpm": 249.0,
+   "carry_m": 50.8
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 61.2,
+   "spray_deg": -153.8,
+   "backspin_rpm": -4908.0,
+   "carry_m": 25.8
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 46.9,
+   "spray_deg": 53.6,
+   "backspin_rpm": 1463.0,
+   "carry_m": 33.3
+  },
+  {
+   "exit_velo_mps": 29.8,
+   "launch_deg": 29.8,
+   "spray_deg": 6.4,
+   "backspin_rpm": -381.0,
+   "carry_m": 58.2
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": 59.8,
+   "spray_deg": -158.2,
+   "backspin_rpm": -4945.0,
+   "carry_m": 20.8
+  },
+  {
+   "exit_velo_mps": 12.0,
+   "launch_deg": -44.7,
+   "spray_deg": 168.3,
+   "backspin_rpm": 6371.0,
+   "carry_m": 0.8
+  },
+  {
+   "exit_velo_mps": 15.7,
+   "launch_deg": 63.1,
+   "spray_deg": -145.5,
+   "backspin_rpm": -4494.0,
+   "carry_m": 18.2
+  },
+  {
+   "exit_velo_mps": 12.7,
+   "launch_deg": 31.6,
+   "spray_deg": -113.3,
+   "backspin_rpm": -1586.0,
+   "carry_m": 14.1
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": 42.0,
+   "spray_deg": -41.9,
+   "backspin_rpm": 1176.0,
+   "carry_m": 33.4
+  },
+  {
+   "exit_velo_mps": 25.2,
+   "launch_deg": 30.0,
+   "spray_deg": -17.9,
+   "backspin_rpm": 1169.0,
+   "carry_m": 48.3
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 56.0,
+   "spray_deg": -138.0,
+   "backspin_rpm": -3620.0,
+   "carry_m": 23.2
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 21.0,
+   "spray_deg": -169.8,
+   "backspin_rpm": -1963.0,
+   "carry_m": 24.8
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": -53.1,
+   "spray_deg": 46.3,
+   "backspin_rpm": -3340.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": 48.9,
+   "spray_deg": 71.3,
+   "backspin_rpm": 934.0,
+   "carry_m": 26.5
+  },
+  {
+   "exit_velo_mps": 26.8,
+   "launch_deg": -18.3,
+   "spray_deg": 30.2,
+   "backspin_rpm": -2974.0,
+   "carry_m": 2.0
+  },
+  {
+   "exit_velo_mps": 28.4,
+   "launch_deg": 14.1,
+   "spray_deg": -15.7,
+   "backspin_rpm": -276.0,
+   "carry_m": 34.5
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": 32.9,
+   "spray_deg": -0.7,
+   "backspin_rpm": 297.0,
+   "carry_m": 47.6
+  },
+  {
+   "exit_velo_mps": 13.0,
+   "launch_deg": -51.7,
+   "spray_deg": 120.1,
+   "backspin_rpm": 1872.0,
+   "carry_m": 0.6
+  },
+  {
+   "exit_velo_mps": 18.8,
+   "launch_deg": 45.4,
+   "spray_deg": -48.0,
+   "backspin_rpm": 1456.0,
+   "carry_m": 31.1
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 53.1,
+   "spray_deg": -93.6,
+   "backspin_rpm": 75.0,
+   "carry_m": 25.2
+  },
+  {
+   "exit_velo_mps": 24.1,
+   "launch_deg": 21.1,
+   "spray_deg": -46.2,
+   "backspin_rpm": 283.0,
+   "carry_m": 35.5
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 51.5,
+   "spray_deg": -75.8,
+   "backspin_rpm": 154.0,
+   "carry_m": 26.7
+  },
+  {
+   "exit_velo_mps": 25.3,
+   "launch_deg": 32.2,
+   "spray_deg": -15.9,
+   "backspin_rpm": 353.0,
+   "carry_m": 49.2
+  },
+  {
+   "exit_velo_mps": 22.2,
+   "launch_deg": 18.9,
+   "spray_deg": 11.9,
+   "backspin_rpm": -470.0,
+   "carry_m": 27.4
+  },
+  {
+   "exit_velo_mps": 26.2,
+   "launch_deg": 31.7,
+   "spray_deg": -39.0,
+   "backspin_rpm": 471.0,
+   "carry_m": 50.8
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": -15.8,
+   "spray_deg": 47.3,
+   "backspin_rpm": -2492.0,
+   "carry_m": 2.5
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": -17.0,
+   "spray_deg": 170.4,
+   "backspin_rpm": 3523.0,
+   "carry_m": 2.3
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": 22.4,
+   "spray_deg": -80.3,
+   "backspin_rpm": 199.0,
+   "carry_m": 22.1
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 22.5,
+   "spray_deg": -49.2,
+   "backspin_rpm": 93.0,
+   "carry_m": 22.4
+  },
+  {
+   "exit_velo_mps": 17.2,
+   "launch_deg": -7.5,
+   "spray_deg": -48.7,
+   "backspin_rpm": -1134.0,
+   "carry_m": 3.7
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 37.6,
+   "spray_deg": -48.6,
+   "backspin_rpm": 891.0,
+   "carry_m": 41.4
+  },
+  {
+   "exit_velo_mps": 25.9,
+   "launch_deg": -8.3,
+   "spray_deg": -177.7,
+   "backspin_rpm": 1486.0,
+   "carry_m": 4.9
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": -13.7,
+   "spray_deg": 39.0,
+   "backspin_rpm": -2530.0,
+   "carry_m": 2.9
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 69.0,
+   "spray_deg": -99.0,
+   "backspin_rpm": -1520.0,
+   "carry_m": 14.3
+  },
+  {
+   "exit_velo_mps": 21.5,
+   "launch_deg": 39.9,
+   "spray_deg": -32.0,
+   "backspin_rpm": 885.0,
+   "carry_m": 39.1
+  },
+  {
+   "exit_velo_mps": 28.6,
+   "launch_deg": 34.4,
+   "spray_deg": -16.7,
+   "backspin_rpm": 334.0,
+   "carry_m": 59.9
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 17.6,
+   "spray_deg": 14.3,
+   "backspin_rpm": -337.0,
+   "carry_m": 32.7
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 43.6,
+   "spray_deg": -83.8,
+   "backspin_rpm": -36.0,
+   "carry_m": 36.4
+  },
+  {
+   "exit_velo_mps": 12.7,
+   "launch_deg": 35.3,
+   "spray_deg": -129.5,
+   "backspin_rpm": -2261.0,
+   "carry_m": 14.8
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 54.2,
+   "spray_deg": -111.2,
+   "backspin_rpm": -1844.0,
+   "carry_m": 26.7
+  },
+  {
+   "exit_velo_mps": 16.1,
+   "launch_deg": 66.9,
+   "spray_deg": -162.3,
+   "backspin_rpm": -4795.0,
+   "carry_m": 17.5
+  },
+  {
+   "exit_velo_mps": 10.4,
+   "launch_deg": -34.9,
+   "spray_deg": -127.4,
+   "backspin_rpm": 2438.0,
+   "carry_m": 1.3
+  },
+  {
+   "exit_velo_mps": 23.2,
+   "launch_deg": 37.9,
+   "spray_deg": -45.4,
+   "backspin_rpm": 468.0,
+   "carry_m": 43.1
+  },
+  {
+   "exit_velo_mps": 17.7,
+   "launch_deg": 57.3,
+   "spray_deg": -125.1,
+   "backspin_rpm": -2716.0,
+   "carry_m": 24.6
+  },
+  {
+   "exit_velo_mps": 20.1,
+   "launch_deg": 44.2,
+   "spray_deg": -46.8,
+   "backspin_rpm": 1100.0,
+   "carry_m": 34.6
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": 53.5,
+   "spray_deg": -52.4,
+   "backspin_rpm": 1562.0,
+   "carry_m": 25.3
+  },
+  {
+   "exit_velo_mps": 22.2,
+   "launch_deg": 37.2,
+   "spray_deg": -9.5,
+   "backspin_rpm": 966.0,
+   "carry_m": 42.1
+  },
+  {
+   "exit_velo_mps": 21.9,
+   "launch_deg": 19.8,
+   "spray_deg": 45.5,
+   "backspin_rpm": -422.0,
+   "carry_m": 28.3
+  },
+  {
+   "exit_velo_mps": 18.7,
+   "launch_deg": 44.1,
+   "spray_deg": 43.4,
+   "backspin_rpm": 1718.0,
+   "carry_m": 32.6
+  },
+  {
+   "exit_velo_mps": 27.5,
+   "launch_deg": 30.9,
+   "spray_deg": -34.1,
+   "backspin_rpm": 432.0,
+   "carry_m": 54.7
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": 7.6,
+   "spray_deg": -45.2,
+   "backspin_rpm": -462.0,
+   "carry_m": 10.6
+  },
+  {
+   "exit_velo_mps": 24.8,
+   "launch_deg": 35.3,
+   "spray_deg": -32.1,
+   "backspin_rpm": 528.0,
+   "carry_m": 47.6
+  },
+  {
+   "exit_velo_mps": 15.2,
+   "launch_deg": 64.7,
+   "spray_deg": 11.9,
+   "backspin_rpm": 1692.0,
+   "carry_m": 16.2
+  },
+  {
+   "exit_velo_mps": 19.4,
+   "launch_deg": 46.1,
+   "spray_deg": -47.7,
+   "backspin_rpm": 1469.0,
+   "carry_m": 32.7
+  },
+  {
+   "exit_velo_mps": 27.3,
+   "launch_deg": 31.1,
+   "spray_deg": -16.1,
+   "backspin_rpm": 500.0,
+   "carry_m": 55.0
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 33.8,
+   "spray_deg": -20.0,
+   "backspin_rpm": 729.0,
+   "carry_m": 49.9
+  },
+  {
+   "exit_velo_mps": 13.0,
+   "launch_deg": 49.9,
+   "spray_deg": -116.1,
+   "backspin_rpm": -2468.0,
+   "carry_m": 15.6
+  },
+  {
+   "exit_velo_mps": 24.5,
+   "launch_deg": 35.1,
+   "spray_deg": -35.4,
+   "backspin_rpm": 1167.0,
+   "carry_m": 47.5
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": -1.1,
+   "spray_deg": -20.1,
+   "backspin_rpm": -944.0,
+   "carry_m": 7.0
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 54.6,
+   "spray_deg": -47.2,
+   "backspin_rpm": 701.0,
+   "carry_m": 26.4
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": 36.4,
+   "spray_deg": 8.9,
+   "backspin_rpm": 1369.0,
+   "carry_m": 43.7
+  },
+  {
+   "exit_velo_mps": 26.5,
+   "launch_deg": 33.6,
+   "spray_deg": -32.8,
+   "backspin_rpm": 367.0,
+   "carry_m": 53.1
+  },
+  {
+   "exit_velo_mps": 18.4,
+   "launch_deg": 60.1,
+   "spray_deg": -160.8,
+   "backspin_rpm": -5223.0,
+   "carry_m": 25.1
+  },
+  {
+   "exit_velo_mps": 18.8,
+   "launch_deg": 58.6,
+   "spray_deg": -136.0,
+   "backspin_rpm": -3889.0,
+   "carry_m": 26.4
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 44.3,
+   "spray_deg": -89.1,
+   "backspin_rpm": -608.0,
+   "carry_m": 39.2
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": 41.1,
+   "spray_deg": 8.2,
+   "backspin_rpm": 352.0,
+   "carry_m": 41.4
+  },
+  {
+   "exit_velo_mps": 19.3,
+   "launch_deg": 29.1,
+   "spray_deg": -162.5,
+   "backspin_rpm": -2787.0,
+   "carry_m": 26.2
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": 28.2,
+   "spray_deg": -163.0,
+   "backspin_rpm": -2290.0,
+   "carry_m": 25.9
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 23.3,
+   "spray_deg": -80.5,
+   "backspin_rpm": -33.0,
+   "carry_m": 26.8
+  },
+  {
+   "exit_velo_mps": 18.4,
+   "launch_deg": 31.7,
+   "spray_deg": -33.9,
+   "backspin_rpm": 359.0,
+   "carry_m": 28.5
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 33.0,
+   "spray_deg": -119.3,
+   "backspin_rpm": -1650.0,
+   "carry_m": 19.1
+  },
+  {
+   "exit_velo_mps": 13.4,
+   "launch_deg": 38.0,
+   "spray_deg": -169.8,
+   "backspin_rpm": -2838.0,
+   "carry_m": 16.5
+  },
+  {
+   "exit_velo_mps": 8.6,
+   "launch_deg": -4.2,
+   "spray_deg": -93.4,
+   "backspin_rpm": -886.0,
+   "carry_m": 3.3
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 58.2,
+   "spray_deg": -102.4,
+   "backspin_rpm": -1169.0,
+   "carry_m": 25.2
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": 51.8,
+   "spray_deg": -1.4,
+   "backspin_rpm": 1935.0,
+   "carry_m": 28.1
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 86.1,
+   "spray_deg": 55.4,
+   "backspin_rpm": 2987.0,
+   "carry_m": 1.6
+  },
+  {
+   "exit_velo_mps": 24.3,
+   "launch_deg": -0.4,
+   "spray_deg": -35.0,
+   "backspin_rpm": -424.0,
+   "carry_m": 8.8
+  },
+  {
+   "exit_velo_mps": 18.6,
+   "launch_deg": 56.6,
+   "spray_deg": -91.1,
+   "backspin_rpm": -501.0,
+   "carry_m": 26.8
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": 61.7,
+   "spray_deg": -10.5,
+   "backspin_rpm": 1466.0,
+   "carry_m": 20.4
+  },
+  {
+   "exit_velo_mps": 21.1,
+   "launch_deg": 54.3,
+   "spray_deg": -147.7,
+   "backspin_rpm": -5228.0,
+   "carry_m": 32.8
+  },
+  {
+   "exit_velo_mps": 29.4,
+   "launch_deg": 21.0,
+   "spray_deg": -18.7,
+   "backspin_rpm": -143.0,
+   "carry_m": 48.5
+  },
+  {
+   "exit_velo_mps": 16.7,
+   "launch_deg": 29.8,
+   "spray_deg": -91.5,
+   "backspin_rpm": -3.0,
+   "carry_m": 22.8
+  },
+  {
+   "exit_velo_mps": 16.0,
+   "launch_deg": 75.4,
+   "spray_deg": -179.1,
+   "backspin_rpm": -3595.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 15.6,
+   "launch_deg": 79.3,
+   "spray_deg": -148.5,
+   "backspin_rpm": -3774.0,
+   "carry_m": 9.3
+  },
+  {
+   "exit_velo_mps": 25.6,
+   "launch_deg": 1.3,
+   "spray_deg": -24.8,
+   "backspin_rpm": -799.0,
+   "carry_m": 10.6
+  },
+  {
+   "exit_velo_mps": 20.6,
+   "launch_deg": 30.3,
+   "spray_deg": -60.7,
+   "backspin_rpm": 275.0,
+   "carry_m": 32.7
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": 51.5,
+   "spray_deg": -144.4,
+   "backspin_rpm": -4274.0,
+   "carry_m": 23.1
+  },
+  {
+   "exit_velo_mps": 13.0,
+   "launch_deg": 40.7,
+   "spray_deg": -138.3,
+   "backspin_rpm": -2896.0,
+   "carry_m": 16.0
+  },
+  {
+   "exit_velo_mps": 24.7,
+   "launch_deg": 36.9,
+   "spray_deg": -36.0,
+   "backspin_rpm": 1097.0,
+   "carry_m": 48.5
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 40.8,
+   "spray_deg": -1.7,
+   "backspin_rpm": 751.0,
+   "carry_m": 42.8
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": 55.1,
+   "spray_deg": 69.7,
+   "backspin_rpm": 2028.0,
+   "carry_m": 26.0
+  },
+  {
+   "exit_velo_mps": 18.9,
+   "launch_deg": 58.8,
+   "spray_deg": -109.6,
+   "backspin_rpm": -1774.0,
+   "carry_m": 26.7
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 47.3,
+   "spray_deg": -44.2,
+   "backspin_rpm": 882.0,
+   "carry_m": 36.0
+  },
+  {
+   "exit_velo_mps": 17.5,
+   "launch_deg": 63.7,
+   "spray_deg": -78.6,
+   "backspin_rpm": -442.0,
+   "carry_m": 21.2
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 69.3,
+   "spray_deg": 174.7,
+   "backspin_rpm": -3282.0,
+   "carry_m": 18.2
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 39.7,
+   "spray_deg": -31.5,
+   "backspin_rpm": 1577.0,
+   "carry_m": 44.2
+  },
+  {
+   "exit_velo_mps": 16.5,
+   "launch_deg": 65.0,
+   "spray_deg": 7.9,
+   "backspin_rpm": 2300.0,
+   "carry_m": 18.0
+  },
+  {
+   "exit_velo_mps": 26.4,
+   "launch_deg": 37.6,
+   "spray_deg": 33.7,
+   "backspin_rpm": 552.0,
+   "carry_m": 58.3
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": 0.2,
+   "spray_deg": -175.3,
+   "backspin_rpm": 996.0,
+   "carry_m": 10.1
+  },
+  {
+   "exit_velo_mps": 14.0,
+   "launch_deg": 49.1,
+   "spray_deg": -108.1,
+   "backspin_rpm": -1758.0,
+   "carry_m": 17.9
+  },
+  {
+   "exit_velo_mps": 16.6,
+   "launch_deg": 67.4,
+   "spray_deg": -46.2,
+   "backspin_rpm": 1835.0,
+   "carry_m": 16.8
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": 40.8,
+   "spray_deg": -8.7,
+   "backspin_rpm": 1317.0,
+   "carry_m": 43.0
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": 32.9,
+   "spray_deg": 2.5,
+   "backspin_rpm": 479.0,
+   "carry_m": 57.5
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": 46.0,
+   "spray_deg": -40.1,
+   "backspin_rpm": 764.0,
+   "carry_m": 38.7
+  },
+  {
+   "exit_velo_mps": 15.9,
+   "launch_deg": 76.8,
+   "spray_deg": -92.9,
+   "backspin_rpm": 185.0,
+   "carry_m": 10.2
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": 50.3,
+   "spray_deg": -20.1,
+   "backspin_rpm": 1666.0,
+   "carry_m": 32.6
+  },
+  {
+   "exit_velo_mps": 27.5,
+   "launch_deg": 33.6,
+   "spray_deg": -5.3,
+   "backspin_rpm": 322.0,
+   "carry_m": 58.2
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": 71.8,
+   "spray_deg": -128.7,
+   "backspin_rpm": -2448.0,
+   "carry_m": 15.7
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": 56.5,
+   "spray_deg": -97.2,
+   "backspin_rpm": -826.0,
+   "carry_m": 29.3
+  },
+  {
+   "exit_velo_mps": 19.3,
+   "launch_deg": 51.2,
+   "spray_deg": -24.9,
+   "backspin_rpm": 1501.0,
+   "carry_m": 31.8
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 64.2,
+   "spray_deg": -97.9,
+   "backspin_rpm": -686.0,
+   "carry_m": 21.6
+  },
+  {
+   "exit_velo_mps": 19.5,
+   "launch_deg": 47.1,
+   "spray_deg": 40.9,
+   "backspin_rpm": 1876.0,
+   "carry_m": 34.3
+  },
+  {
+   "exit_velo_mps": 29.7,
+   "launch_deg": 29.8,
+   "spray_deg": -14.7,
+   "backspin_rpm": 761.0,
+   "carry_m": 63.7
+  },
+  {
+   "exit_velo_mps": 22.9,
+   "launch_deg": 43.7,
+   "spray_deg": -55.4,
+   "backspin_rpm": 765.0,
+   "carry_m": 42.7
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 69.1,
+   "spray_deg": -126.2,
+   "backspin_rpm": -3299.0,
+   "carry_m": 19.1
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 59.2,
+   "spray_deg": -106.7,
+   "backspin_rpm": -1003.0,
+   "carry_m": 27.3
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 22.3,
+   "spray_deg": -17.4,
+   "backspin_rpm": -564.0,
+   "carry_m": 37.8
+  },
+  {
+   "exit_velo_mps": 18.3,
+   "launch_deg": 58.8,
+   "spray_deg": -51.5,
+   "backspin_rpm": 1399.0,
+   "carry_m": 25.5
+  },
+  {
+   "exit_velo_mps": 14.2,
+   "launch_deg": 41.3,
+   "spray_deg": -152.5,
+   "backspin_rpm": -3628.0,
+   "carry_m": 18.3
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 66.4,
+   "spray_deg": -93.8,
+   "backspin_rpm": -1139.0,
+   "carry_m": 20.3
+  },
+  {
+   "exit_velo_mps": 18.6,
+   "launch_deg": 55.5,
+   "spray_deg": -25.5,
+   "backspin_rpm": 1692.0,
+   "carry_m": 28.1
+  },
+  {
+   "exit_velo_mps": 17.1,
+   "launch_deg": 64.1,
+   "spray_deg": 23.4,
+   "backspin_rpm": 3613.0,
+   "carry_m": 19.3
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": 38.8,
+   "spray_deg": 40.6,
+   "backspin_rpm": 888.0,
+   "carry_m": 48.0
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 26.5,
+   "spray_deg": -102.0,
+   "backspin_rpm": -223.0,
+   "carry_m": 30.6
+  },
+  {
+   "exit_velo_mps": 18.0,
+   "launch_deg": 69.8,
+   "spray_deg": -132.1,
+   "backspin_rpm": -3206.0,
+   "carry_m": 19.2
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 68.8,
+   "spray_deg": -116.1,
+   "backspin_rpm": -2720.0,
+   "carry_m": 24.7
+  },
+  {
+   "exit_velo_mps": 32.8,
+   "launch_deg": 31.3,
+   "spray_deg": 12.5,
+   "backspin_rpm": -54.0,
+   "carry_m": 71.8
+  },
+  {
+   "exit_velo_mps": 34.9,
+   "launch_deg": 18.9,
+   "spray_deg": -8.2,
+   "backspin_rpm": -765.0,
+   "carry_m": 53.8
+  },
+  {
+   "exit_velo_mps": 18.9,
+   "launch_deg": 52.7,
+   "spray_deg": 65.6,
+   "backspin_rpm": 1795.0,
+   "carry_m": 30.6
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 29.0,
+   "spray_deg": -86.8,
+   "backspin_rpm": 470.0,
+   "carry_m": 28.4
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 73.8,
+   "spray_deg": 23.5,
+   "backspin_rpm": 2599.0,
+   "carry_m": 13.9
+  },
+  {
+   "exit_velo_mps": 22.3,
+   "launch_deg": 46.3,
+   "spray_deg": -46.9,
+   "backspin_rpm": 980.0,
+   "carry_m": 40.8
+  },
+  {
+   "exit_velo_mps": 15.4,
+   "launch_deg": 39.8,
+   "spray_deg": -108.1,
+   "backspin_rpm": -1577.0,
+   "carry_m": 21.0
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 51.7,
+   "spray_deg": -4.0,
+   "backspin_rpm": 1912.0,
+   "carry_m": 39.0
+  },
+  {
+   "exit_velo_mps": 19.3,
+   "launch_deg": 56.6,
+   "spray_deg": -47.7,
+   "backspin_rpm": 1559.0,
+   "carry_m": 28.8
+  },
+  {
+   "exit_velo_mps": 23.1,
+   "launch_deg": 41.9,
+   "spray_deg": 32.2,
+   "backspin_rpm": 497.0,
+   "carry_m": 46.9
+  },
+  {
+   "exit_velo_mps": 28.6,
+   "launch_deg": 33.5,
+   "spray_deg": -19.7,
+   "backspin_rpm": 822.0,
+   "carry_m": 61.0
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": 49.5,
+   "spray_deg": -60.0,
+   "backspin_rpm": 951.0,
+   "carry_m": 37.7
+  },
+  {
+   "exit_velo_mps": 31.4,
+   "launch_deg": 29.5,
+   "spray_deg": 13.5,
+   "backspin_rpm": 435.0,
+   "carry_m": 70.5
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 47.2,
+   "spray_deg": -50.4,
+   "backspin_rpm": 717.0,
+   "carry_m": 40.9
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 55.5,
+   "spray_deg": -74.0,
+   "backspin_rpm": 225.0,
+   "carry_m": 32.0
+  },
+  {
+   "exit_velo_mps": 16.8,
+   "launch_deg": 71.6,
+   "spray_deg": 56.9,
+   "backspin_rpm": 2298.0,
+   "carry_m": 14.1
+  },
+  {
+   "exit_velo_mps": 21.3,
+   "launch_deg": 47.1,
+   "spray_deg": 33.7,
+   "backspin_rpm": 753.0,
+   "carry_m": 39.9
+  },
+  {
+   "exit_velo_mps": 14.9,
+   "launch_deg": 41.9,
+   "spray_deg": -163.6,
+   "backspin_rpm": -2999.0,
+   "carry_m": 19.9
+  },
+  {
+   "exit_velo_mps": 18.1,
+   "launch_deg": 71.3,
+   "spray_deg": -130.6,
+   "backspin_rpm": -3385.0,
+   "carry_m": 18.5
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 52.1,
+   "spray_deg": -2.3,
+   "backspin_rpm": 2028.0,
+   "carry_m": 32.8
+  },
+  {
+   "exit_velo_mps": 25.8,
+   "launch_deg": 26.3,
+   "spray_deg": -4.9,
+   "backspin_rpm": 218.0,
+   "carry_m": 46.4
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": 42.5,
+   "spray_deg": 1.9,
+   "backspin_rpm": 1099.0,
+   "carry_m": 44.9
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 50.4,
+   "spray_deg": 47.6,
+   "backspin_rpm": 1473.0,
+   "carry_m": 34.5
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 49.9,
+   "spray_deg": -32.3,
+   "backspin_rpm": 2329.0,
+   "carry_m": 35.9
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 25.9,
+   "spray_deg": -43.2,
+   "backspin_rpm": 259.0,
+   "carry_m": 35.5
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": 34.2,
+   "spray_deg": 26.7,
+   "backspin_rpm": 623.0,
+   "carry_m": 59.6
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 60.6,
+   "spray_deg": 6.9,
+   "backspin_rpm": 3015.0,
+   "carry_m": 23.8
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": 60.3,
+   "spray_deg": -108.3,
+   "backspin_rpm": -1754.0,
+   "carry_m": 29.5
+  },
+  {
+   "exit_velo_mps": 27.4,
+   "launch_deg": 40.3,
+   "spray_deg": -13.2,
+   "backspin_rpm": 1124.0,
+   "carry_m": 59.6
+  },
+  {
+   "exit_velo_mps": 27.1,
+   "launch_deg": 38.2,
+   "spray_deg": -28.7,
+   "backspin_rpm": 438.0,
+   "carry_m": 56.6
+  },
+  {
+   "exit_velo_mps": 16.8,
+   "launch_deg": 36.0,
+   "spray_deg": -60.6,
+   "backspin_rpm": 73.0,
+   "carry_m": 24.6
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 52.6,
+   "spray_deg": -31.6,
+   "backspin_rpm": 1555.0,
+   "carry_m": 41.0
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 55.6,
+   "spray_deg": -36.4,
+   "backspin_rpm": 1285.0,
+   "carry_m": 31.8
+  },
+  {
+   "exit_velo_mps": 23.7,
+   "launch_deg": 44.8,
+   "spray_deg": -36.6,
+   "backspin_rpm": 964.0,
+   "carry_m": 45.7
+  },
+  {
+   "exit_velo_mps": 28.9,
+   "launch_deg": 6.9,
+   "spray_deg": 20.4,
+   "backspin_rpm": -1503.0,
+   "carry_m": 19.4
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": 63.8,
+   "spray_deg": -128.8,
+   "backspin_rpm": -3217.0,
+   "carry_m": 27.4
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 61.4,
+   "spray_deg": -32.3,
+   "backspin_rpm": 2499.0,
+   "carry_m": 24.8
+  },
+  {
+   "exit_velo_mps": 17.8,
+   "launch_deg": 78.0,
+   "spray_deg": -130.0,
+   "backspin_rpm": -3640.0,
+   "carry_m": 12.8
+  },
+  {
+   "exit_velo_mps": 21.1,
+   "launch_deg": 60.0,
+   "spray_deg": -119.7,
+   "backspin_rpm": -2036.0,
+   "carry_m": 31.2
+  },
+  {
+   "exit_velo_mps": 22.6,
+   "launch_deg": 51.5,
+   "spray_deg": 56.4,
+   "backspin_rpm": 1449.0,
+   "carry_m": 41.6
+  },
+  {
+   "exit_velo_mps": 25.7,
+   "launch_deg": 27.1,
+   "spray_deg": -19.2,
+   "backspin_rpm": 262.0,
+   "carry_m": 46.4
+  },
+  {
+   "exit_velo_mps": 17.0,
+   "launch_deg": 88.0,
+   "spray_deg": 131.4,
+   "backspin_rpm": 2307.0,
+   "carry_m": 1.4
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 84.1,
+   "spray_deg": -104.2,
+   "backspin_rpm": -481.0,
+   "carry_m": 6.1
+  },
+  {
+   "exit_velo_mps": 20.6,
+   "launch_deg": 31.8,
+   "spray_deg": 20.5,
+   "backspin_rpm": -766.0,
+   "carry_m": 32.7
+  },
+  {
+   "exit_velo_mps": 21.7,
+   "launch_deg": 46.2,
+   "spray_deg": 25.7,
+   "backspin_rpm": 1262.0,
+   "carry_m": 41.7
+  },
+  {
+   "exit_velo_mps": 25.8,
+   "launch_deg": 39.9,
+   "spray_deg": -37.2,
+   "backspin_rpm": 1176.0,
+   "carry_m": 53.0
+  },
+  {
+   "exit_velo_mps": 17.2,
+   "launch_deg": 76.6,
+   "spray_deg": 35.3,
+   "backspin_rpm": 2698.0,
+   "carry_m": 10.1
+  },
+  {
+   "exit_velo_mps": 16.9,
+   "launch_deg": 41.6,
+   "spray_deg": -152.5,
+   "backspin_rpm": -3468.0,
+   "carry_m": 24.3
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": 59.4,
+   "spray_deg": -40.6,
+   "backspin_rpm": 1499.0,
+   "carry_m": 28.4
+  },
+  {
+   "exit_velo_mps": 17.7,
+   "launch_deg": 73.4,
+   "spray_deg": -34.5,
+   "backspin_rpm": 1336.0,
+   "carry_m": 14.2
+  },
+  {
+   "exit_velo_mps": 17.3,
+   "launch_deg": 87.9,
+   "spray_deg": 142.8,
+   "backspin_rpm": 1769.0,
+   "carry_m": 2.0
+  },
+  {
+   "exit_velo_mps": 29.3,
+   "launch_deg": 36.5,
+   "spray_deg": 23.5,
+   "backspin_rpm": 820.0,
+   "carry_m": 68.9
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": 38.8,
+   "spray_deg": -13.5,
+   "backspin_rpm": 616.0,
+   "carry_m": 57.4
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": 56.5,
+   "spray_deg": 35.9,
+   "backspin_rpm": 2174.0,
+   "carry_m": 35.1
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": 79.3,
+   "spray_deg": -63.2,
+   "backspin_rpm": 1383.0,
+   "carry_m": 11.2
+  },
+  {
+   "exit_velo_mps": 21.0,
+   "launch_deg": 33.8,
+   "spray_deg": -36.0,
+   "backspin_rpm": 1097.0,
+   "carry_m": 36.7
+  },
+  {
+   "exit_velo_mps": 22.4,
+   "launch_deg": 52.3,
+   "spray_deg": -63.1,
+   "backspin_rpm": 1076.0,
+   "carry_m": 38.0
+  },
+  {
+   "exit_velo_mps": 12.6,
+   "launch_deg": 37.5,
+   "spray_deg": -165.3,
+   "backspin_rpm": -3282.0,
+   "carry_m": 14.9
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": 43.3,
+   "spray_deg": -10.9,
+   "backspin_rpm": 1086.0,
+   "carry_m": 48.4
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 76.9,
+   "spray_deg": -123.2,
+   "backspin_rpm": -2893.0,
+   "carry_m": 14.3
+  },
+  {
+   "exit_velo_mps": 13.2,
+   "launch_deg": 55.0,
+   "spray_deg": -161.3,
+   "backspin_rpm": -3895.0,
+   "carry_m": 15.5
+  },
+  {
+   "exit_velo_mps": 21.5,
+   "launch_deg": 29.4,
+   "spray_deg": -63.0,
+   "backspin_rpm": 472.0,
+   "carry_m": 35.1
+  },
+  {
+   "exit_velo_mps": 22.2,
+   "launch_deg": 49.9,
+   "spray_deg": -32.0,
+   "backspin_rpm": 1275.0,
+   "carry_m": 40.5
+  },
+  {
+   "exit_velo_mps": 26.0,
+   "launch_deg": 40.4,
+   "spray_deg": -4.4,
+   "backspin_rpm": 555.0,
+   "carry_m": 55.7
+  },
+  {
+   "exit_velo_mps": 19.8,
+   "launch_deg": 56.1,
+   "spray_deg": 38.5,
+   "backspin_rpm": 1715.0,
+   "carry_m": 31.2
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 52.9,
+   "spray_deg": -19.4,
+   "backspin_rpm": 2559.0,
+   "carry_m": 35.5
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": 47.1,
+   "spray_deg": -32.4,
+   "backspin_rpm": 1951.0,
+   "carry_m": 43.9
+  },
+  {
+   "exit_velo_mps": 11.7,
+   "launch_deg": 65.8,
+   "spray_deg": -72.2,
+   "backspin_rpm": -171.0,
+   "carry_m": 10.0
+  },
+  {
+   "exit_velo_mps": 20.8,
+   "launch_deg": 35.1,
+   "spray_deg": -5.7,
+   "backspin_rpm": 714.0,
+   "carry_m": 37.7
+  },
+  {
+   "exit_velo_mps": 27.0,
+   "launch_deg": 37.0,
+   "spray_deg": 30.9,
+   "backspin_rpm": 821.0,
+   "carry_m": 60.4
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": 68.4,
+   "spray_deg": -59.0,
+   "backspin_rpm": 1137.0,
+   "carry_m": 25.2
+  },
+  {
+   "exit_velo_mps": 21.2,
+   "launch_deg": 60.2,
+   "spray_deg": -79.9,
+   "backspin_rpm": -51.0,
+   "carry_m": 31.5
+  },
+  {
+   "exit_velo_mps": 18.8,
+   "launch_deg": 71.7,
+   "spray_deg": -44.9,
+   "backspin_rpm": 1819.0,
+   "carry_m": 17.1
+  },
+  {
+   "exit_velo_mps": 18.3,
+   "launch_deg": 78.1,
+   "spray_deg": -38.8,
+   "backspin_rpm": 2286.0,
+   "carry_m": 10.2
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": 63.7,
+   "spray_deg": -61.7,
+   "backspin_rpm": 1149.0,
+   "carry_m": 26.4
+  },
+  {
+   "exit_velo_mps": 22.5,
+   "launch_deg": 53.1,
+   "spray_deg": -58.6,
+   "backspin_rpm": 924.0,
+   "carry_m": 39.1
+  },
+  {
+   "exit_velo_mps": 18.7,
+   "launch_deg": 69.6,
+   "spray_deg": -2.1,
+   "backspin_rpm": 1976.0,
+   "carry_m": 18.3
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 57.2,
+   "spray_deg": -63.9,
+   "backspin_rpm": 984.0,
+   "carry_m": 34.6
+  },
+  {
+   "exit_velo_mps": 19.7,
+   "launch_deg": 72.3,
+   "spray_deg": 140.2,
+   "backspin_rpm": -1281.0,
+   "carry_m": 20.0
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 62.2,
+   "spray_deg": -100.9,
+   "backspin_rpm": -1408.0,
+   "carry_m": 32.1
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 58.3,
+   "spray_deg": -8.0,
+   "backspin_rpm": 3337.0,
+   "carry_m": 30.1
+  },
+  {
+   "exit_velo_mps": 14.2,
+   "launch_deg": 55.9,
+   "spray_deg": -147.9,
+   "backspin_rpm": -3828.0,
+   "carry_m": 17.3
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 43.5,
+   "spray_deg": 5.0,
+   "backspin_rpm": 1298.0,
+   "carry_m": 50.2
+  },
+  {
+   "exit_velo_mps": 18.9,
+   "launch_deg": 70.9,
+   "spray_deg": 71.9,
+   "backspin_rpm": 2212.0,
+   "carry_m": 17.5
+  },
+  {
+   "exit_velo_mps": 23.6,
+   "launch_deg": -16.9,
+   "spray_deg": -15.2,
+   "backspin_rpm": -2560.0,
+   "carry_m": 2.3
+  },
+  {
+   "exit_velo_mps": 20.3,
+   "launch_deg": 67.1,
+   "spray_deg": -67.4,
+   "backspin_rpm": 347.0,
+   "carry_m": 24.3
+  },
+  {
+   "exit_velo_mps": 23.5,
+   "launch_deg": 49.7,
+   "spray_deg": -30.7,
+   "backspin_rpm": 1475.0,
+   "carry_m": 43.7
+  },
+  {
+   "exit_velo_mps": 24.2,
+   "launch_deg": 12.0,
+   "spray_deg": 29.6,
+   "backspin_rpm": -1255.0,
+   "carry_m": 22.5
+  },
+  {
+   "exit_velo_mps": 22.0,
+   "launch_deg": 50.9,
+   "spray_deg": 28.8,
+   "backspin_rpm": 1188.0,
+   "carry_m": 40.7
+  },
+  {
+   "exit_velo_mps": 20.0,
+   "launch_deg": 19.9,
+   "spray_deg": -56.9,
+   "backspin_rpm": 58.0,
+   "carry_m": 24.9
+  },
+  {
+   "exit_velo_mps": 20.1,
+   "launch_deg": 61.6,
+   "spray_deg": 8.2,
+   "backspin_rpm": 3386.0,
+   "carry_m": 26.8
+  },
+  {
+   "exit_velo_mps": 24.4,
+   "launch_deg": 45.7,
+   "spray_deg": -15.3,
+   "backspin_rpm": 1833.0,
+   "carry_m": 48.5
+  },
+  {
+   "exit_velo_mps": 20.0,
+   "launch_deg": 67.0,
+   "spray_deg": -38.7,
+   "backspin_rpm": 1751.0,
+   "carry_m": 23.0
+  },
+  {
+   "exit_velo_mps": 17.6,
+   "launch_deg": -38.4,
+   "spray_deg": 23.4,
+   "backspin_rpm": -4770.0,
+   "carry_m": 1.0
+  },
+  {
+   "exit_velo_mps": 20.6,
+   "launch_deg": 64.0,
+   "spray_deg": -35.2,
+   "backspin_rpm": 2260.0,
+   "carry_m": 26.4
+  },
+  {
+   "exit_velo_mps": 20.7,
+   "launch_deg": 60.3,
+   "spray_deg": -13.6,
+   "backspin_rpm": 2621.0,
+   "carry_m": 29.6
+  },
+  {
+   "exit_velo_mps": 27.9,
+   "launch_deg": 40.6,
+   "spray_deg": -29.5,
+   "backspin_rpm": 1107.0,
+   "carry_m": 59.6
+  },
+  {
+   "exit_velo_mps": 20.2,
+   "launch_deg": 35.2,
+   "spray_deg": -28.7,
+   "backspin_rpm": 585.0,
+   "carry_m": 34.4
+  },
+  {
+   "exit_velo_mps": 19.9,
+   "launch_deg": 73.3,
+   "spray_deg": -78.0,
+   "backspin_rpm": -25.0,
+   "carry_m": 18.5
+  },
+  {
+   "exit_velo_mps": 23.3,
+   "launch_deg": 50.4,
+   "spray_deg": -21.7,
+   "backspin_rpm": 2032.0,
+   "carry_m": 42.7
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": -34.5,
+   "spray_deg": 66.3,
+   "backspin_rpm": -2748.0,
+   "carry_m": 1.1
+  },
+  {
+   "exit_velo_mps": 17.4,
+   "launch_deg": 47.0,
+   "spray_deg": -160.4,
+   "backspin_rpm": -3557.0,
+   "carry_m": 25.9
+  },
+  {
+   "exit_velo_mps": 29.5,
+   "launch_deg": 23.7,
+   "spray_deg": 5.9,
+   "backspin_rpm": 163.0,
+   "carry_m": 55.1
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 62.1,
+   "spray_deg": -11.9,
+   "backspin_rpm": 1839.0,
+   "carry_m": 28.3
+  },
+  {
+   "exit_velo_mps": 25.2,
+   "launch_deg": 41.9,
+   "spray_deg": 23.9,
+   "backspin_rpm": 1365.0,
+   "carry_m": 54.6
+  },
+  {
+   "exit_velo_mps": 20.4,
+   "launch_deg": 71.2,
+   "spray_deg": -68.2,
+   "backspin_rpm": 846.0,
+   "carry_m": 20.4
+  },
+  {
+   "exit_velo_mps": 20.9,
+   "launch_deg": 65.4,
+   "spray_deg": -51.9,
+   "backspin_rpm": 1302.0,
+   "carry_m": 26.5
+  },
+  {
+   "exit_velo_mps": 23.2,
+   "launch_deg": 68.1,
+   "spray_deg": -68.1,
+   "backspin_rpm": 1130.0,
+   "carry_m": 28.1
+  },
+  {
+   "exit_velo_mps": 18.5,
+   "launch_deg": 45.7,
+   "spray_deg": -156.0,
+   "backspin_rpm": -3746.0,
+   "carry_m": 28.1
+  },
+  {
+   "exit_velo_mps": 21.6,
+   "launch_deg": 33.9,
+   "spray_deg": -63.3,
+   "backspin_rpm": 517.0,
+   "carry_m": 37.1
+  },
+  {
+   "exit_velo_mps": 13.3,
+   "launch_deg": 66.7,
+   "spray_deg": -148.6,
+   "backspin_rpm": -4262.0,
+   "carry_m": 12.4
+  },
+  {
+   "exit_velo_mps": 19.2,
+   "launch_deg": 81.8,
+   "spray_deg": 2.1,
+   "backspin_rpm": 3209.0,
+   "carry_m": 6.0
+  },
+  {
+   "exit_velo_mps": 18.2,
+   "launch_deg": 18.5,
+   "spray_deg": -160.4,
+   "backspin_rpm": -1651.0,
+   "carry_m": 18.9
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 43.5,
+   "spray_deg": 15.5,
+   "backspin_rpm": 1755.0,
+   "carry_m": 52.9
+  },
+  {
+   "exit_velo_mps": 20.0,
+   "launch_deg": 68.2,
+   "spray_deg": 26.1,
+   "backspin_rpm": 3381.0,
+   "carry_m": 20.8
+  },
+  {
+   "exit_velo_mps": 26.3,
+   "launch_deg": 47.0,
+   "spray_deg": -39.4,
+   "backspin_rpm": 1206.0,
+   "carry_m": 51.9
+  },
+  {
+   "exit_velo_mps": 21.4,
+   "launch_deg": 63.2,
+   "spray_deg": -41.7,
+   "backspin_rpm": 1432.0,
+   "carry_m": 29.3
+  },
+  {
+   "exit_velo_mps": 20.5,
+   "launch_deg": 64.6,
+   "spray_deg": 52.0,
+   "backspin_rpm": 2289.0,
+   "carry_m": 25.7
+  },
+  {
+   "exit_velo_mps": 20.0,
+   "launch_deg": 15.5,
+   "spray_deg": -13.3,
+   "backspin_rpm": -548.0,
+   "carry_m": 21.1
+  },
+  {
+   "exit_velo_mps": 23.8,
+   "launch_deg": 50.4,
+   "spray_deg": -23.0,
+   "backspin_rpm": 1628.0,
+   "carry_m": 45.0
+  },
+  {
+   "exit_velo_mps": 28.7,
+   "launch_deg": 25.1,
+   "spray_deg": 19.1,
+   "backspin_rpm": 108.0,
+   "carry_m": 54.3
+  },
+  {
+   "exit_velo_mps": 22.1,
+   "launch_deg": 61.5,
+   "spray_deg": -61.5,
+   "backspin_rpm": 1740.0,
+   "carry_m": 31.5
+  },
+  {
+   "exit_velo_mps": 19.6,
+   "launch_deg": 76.2,
+   "spray_deg": 23.5,
+   "backspin_rpm": 2529.0,
+   "carry_m": 12.6
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 56.4,
+   "spray_deg": 25.8,
+   "backspin_rpm": 2468.0,
+   "carry_m": 35.4
+  },
+  {
+   "exit_velo_mps": 18.3,
+   "launch_deg": 45.5,
+   "spray_deg": -100.3,
+   "backspin_rpm": -687.0,
+   "carry_m": 28.7
+  },
+  {
+   "exit_velo_mps": 27.7,
+   "launch_deg": 28.1,
+   "spray_deg": -12.0,
+   "backspin_rpm": 24.0,
+   "carry_m": 52.1
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": 53.5,
+   "spray_deg": -29.2,
+   "backspin_rpm": 1469.0,
+   "carry_m": 42.8
+  },
+  {
+   "exit_velo_mps": 23.0,
+   "launch_deg": 59.0,
+   "spray_deg": -48.5,
+   "backspin_rpm": 1000.0,
+   "carry_m": 36.4
+  },
+  {
+   "exit_velo_mps": 25.1,
+   "launch_deg": 47.7,
+   "spray_deg": -23.6,
+   "backspin_rpm": 1817.0,
+   "carry_m": 49.6
+  },
+  {
+   "exit_velo_mps": 23.9,
+   "launch_deg": 15.5,
+   "spray_deg": -9.5,
+   "backspin_rpm": -989.0,
+   "carry_m": 26.1
+  },
+  {
+   "exit_velo_mps": 19.1,
+   "launch_deg": 53.2,
+   "spray_deg": -92.3,
+   "backspin_rpm": -493.0,
+   "carry_m": 29.0
+  },
+  {
+   "exit_velo_mps": 15.3,
+   "launch_deg": 57.1,
+   "spray_deg": -95.2,
+   "backspin_rpm": -767.0,
+   "carry_m": 19.3
+  },
+  {
+   "exit_velo_mps": 17.9,
+   "launch_deg": 51.9,
+   "spray_deg": -166.6,
+   "backspin_rpm": -4535.0,
+   "carry_m": 26.2
+  },
+  {
+   "exit_velo_mps": 21.8,
+   "launch_deg": 74.3,
+   "spray_deg": -123.1,
+   "backspin_rpm": -2619.0,
+   "carry_m": 21.7
+  },
+  {
+   "exit_velo_mps": 19.0,
+   "launch_deg": 51.7,
+   "spray_deg": -57.5,
+   "backspin_rpm": 737.0,
+   "carry_m": 29.9
+  },
+  {
+   "exit_velo_mps": 24.0,
+   "launch_deg": 49.8,
+   "spray_deg": 17.4,
+   "backspin_rpm": 1286.0,
+   "carry_m": 47.1
+  },
+  {
+   "exit_velo_mps": 16.4,
+   "launch_deg": 67.6,
+   "spray_deg": -158.1,
+   "backspin_rpm": -3772.0,
+   "carry_m": 17.8
+  }
+ ]
+}
