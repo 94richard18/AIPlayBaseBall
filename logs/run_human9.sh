@@ -5,6 +5,7 @@
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export IMAGEIO_FFMPEG_EXE='C:\Users\User\anaconda3\envs\isaaclab_env\lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe'
+export SAVE_EVERY=50  # decision session 10-25: yield both slots at the next checkpoint when the pitcher starts training
 date +"%H:%M start Human9"
 $P -u scripts/train.py --task AIB-PitchedBatting-Human9-v0 --headless --num_envs 2048 --max_iterations 600 --run_name human_pitched9 --resume True --load_run 2026-10-22_22-46-49_human_pitched7 --checkpoint model_12095.pt > logs/train_human9.txt 2>&1 &
 TP=$!
