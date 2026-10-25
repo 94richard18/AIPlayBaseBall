@@ -1,0 +1,2 @@
+20:04 Human13 done
+Human14 start: 2026-10-25_13-56-51_human_pitched9b/model_12500.pt (fall at 88-112: 57%)
