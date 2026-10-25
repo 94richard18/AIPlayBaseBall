@@ -1721,6 +1721,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
+    """ho2 (planning session 2026-10-25): TW2PL with the ball term doubled (train.py has no --set). ho 7400 / 7500:
+    identical plate |y| -6.70 -> -6.10 -> -5.50 m (0.6 m per 100 its), too slow for T3 (|y| <= 0.5 m) in 600 its."""
+
+    w_stage_ball_rest: float = 100.0
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5HTEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
     """H5 trained with the heading release trigger (ONE OUTS pitcher step 1, 2026-10-23): the fingers open when the
     throwing hand moves within +-10 deg of the plate line; the policy's release time is off (it overrides the trigger).
