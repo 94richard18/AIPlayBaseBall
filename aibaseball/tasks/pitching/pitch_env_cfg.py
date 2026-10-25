@@ -1729,6 +1729,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg(Stage1dK70GW2MBASVRT1SYW110
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100Y7EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
+    """ho3 (planning session 2026-10-25): W100 with the plate y scale 20 -> 7 m. ho2 7600: |y| 5.3 m, z 0.2 m - the y
+    slope 1 / 20 was 8x below the z slope 1 / 2.5 and |y| improved only 0.21 m per 100 its; 20 m was for hn's -40 deg."""
+
+    ball_plate_y_scale_m: float = 7.0
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5HTEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5EnvCfg):
     """H5 trained with the heading release trigger (ONE OUTS pitcher step 1, 2026-10-23): the fingers open when the
     throwing hand moves within +-10 deg of the plate line; the policy's release time is off (it overrides the trigger).
