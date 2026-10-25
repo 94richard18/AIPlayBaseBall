@@ -1,6 +1,6 @@
 # 訓練交接：目前目標、進度與待辦
 
-最後更新：2026-10-25 12:47（使用者授權到 10-26 20:00，規劃 session 自行決定）
+最後更新：2026-10-25 13:20（使用者授權到 10-26 20:00，規劃 session 自行決定）
 
 完整歷程在 `PITCHER_TRAINING_LOG.md`（投手）與 `SupporttraningLog.md`（打者、引擎、決策）。這份只記「現在的目標、現在在哪裡、接下來要做什麼」。
 
@@ -54,7 +54,7 @@
 
 ## 3. 打者目前狀態
 
-**交付版**：Human7 model_12095（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-22_22-46-49_human_pitched7/model_12095.pt`）+ aim_offset_z -0.12（不訓練）。
+**交付版（10-25 起）**：Human9 model_12300 + aim_offset_z -0.12（ONE OUTS 打者勝 13.1%、diag 擊中率 0.691）。之前是 Human7 model_12095（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-22_22-46-49_human_pitched7/model_12095.pt`）+ aim_offset_z -0.12。
 
 - 比賽時機（使用者 10-21）：揮棒起動用引擎算出的真實到達時間；揮棒起動 = 球到本壘時間 − 參考擊球時間 − 0.055 s。
 - 實測（±0.03 s 抖動）：擊中率 0.73；仰角四分位 -12 / +8 / +30°；初速中位數 21.8 m/s（≥ 28 m/s 5.9%）；界內 46%（界內落點中位數 4.0 m）。
@@ -74,6 +74,8 @@
 | 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
 | 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
 | 用量 | 每週用量 99%（10-24 06:55）。狀態列 + `~/.claude/hooks/usage_handoff_hook.py` 在 99% 時提醒寫交接（每個用量週期一次） |
+
+**10-25 13:20**：(1) 打者交付換成 Human9 model_12300 + aim -0.12（426f66d；`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_12-31-03_human_pitched9/model_12300.pt`）：ONE OUTS 1000 場打者勝 13.1%（Human7 8.0%），diag 擊中率 0.691（門檻 0.68）；表 `assets/game/batter_h9_12300_aim012.json`（200 球，續練那輪改 1024 球）。剩下 395 次排在 ho 結束後（約 15:30），要 ONE OUTS ≥ 13.1% 且 diag ≥ 0.68 才取代。(2) 投手 ho 13:04 開練（1bcdd66，run ho_tw2pl，`logs/train_ho.txt`），預計 15:20–15:30 結束，結果由投手 session 回報。(3) ONE OUTS 影片換新打者表重錄：`videos/one_outs_h9_1025.mp4`（10 場、149 s、白畫面 0%），render 預設改成 Human9 表。
 
 **10-25 12:47 檢查**：GPU 上只有打者 Human9（12:30 起，任務 AIB-PitchedBatting-Human9-v0 = Human7 + target_distance 29 m，從 model_12095 起，存檔每 50 次，`logs/run_human9.txt`）。投手 ho 零樣本否證通過（TW2PL：61/64、方向 -17°、仰角 +11°、分數標準差 11% / 29% 最大值、與 |y| 相關 -0.87），已核可開練：打者跑完第 12295 次自動檢查、在 model_12300（約 13:03）停掉並讓出，ho 立刻從 hf_avg3 7300 起練 600 次（約 2.5 小時）；打者同時在 B 槽跑 showcase --eval_envs 256（≤ 10 分鐘），再算 CPU ONE OUTS 1000 場。影片下次最晚 10-25 23:10（投手）/ 23:28（打者），ho 在跑時不錄。
 
