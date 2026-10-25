@@ -1736,6 +1736,17 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg(Stage1dK70GW2MBASVRT1SYW110
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
+    """C (planning session 2026-10-25, ONE OUTS stage 2 - independent starts): W100 at the P3c settings, release 2.5 ms
+    earlier and the pitcher turned 18 deg toward first base (the ball scored in that plate frame). ho2 7600 here, zero-
+    shot: identical 52/64 at rest, drag T3+ 48/64, strikes 34/64; noisy 53/128, T3+ 5/128. The training start noise is
+    0.02 as in ho / ho2 (Stage1dN); now the ball term pays near the zone, so the noisy starts get a slope too."""
+
+    release_action_shift_s: float = 0.0025
+    plate_yaw_deg: float = 18.0
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100Y7EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
     """ho3 (planning session 2026-10-25): W100 with the plate y scale 20 -> 7 m. ho2 7600: |y| 5.3 m, z 0.2 m - the y
     slope 1 / 20 was 8x below the z slope 1 / 2.5 and |y| improved only 0.21 m per 100 its; 20 m was for hn's -40 deg."""
