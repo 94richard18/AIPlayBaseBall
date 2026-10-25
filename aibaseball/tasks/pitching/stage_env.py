@@ -528,6 +528,11 @@ class StageEnv(PitchEnv):
             a = ((fh + fs + fd) / 3.0 if c.ball_rest_additive else fh * fs * fd) * (v[:, 0] > 0).float()
         y = p[:, 1] + v[:, 1] * t_p - c.zone_center_y
         z = p[:, 2] + v[:, 2] * t_p - 0.5 * g * t_p**2 - self.field_z
+        if c.ball_rest_plate_lin:
+            fy = 1.0 - (y.abs() / c.ball_plate_y_scale_m).clamp(max=1.0)
+            fz = 1.0 - ((z - c.ball_plate_z_target_m).abs() / c.ball_plate_z_scale_m).clamp(max=1.0)
+            t3 = air & (head.abs() <= 10.0) & (y.abs() <= 0.5) & (z >= 0.2) & (z <= 1.5)
+            return ((fy + fz) / 2.0 + c.ball_plate_t3_bonus * t3.float()) * (v[:, 0] > 0).float()
         b = air.float() * torch.exp(-((y / 0.5) ** 2)) * torch.exp(-(((z - 0.8) / 0.6) ** 2))
         return 0.4 * a + 0.6 * b
 

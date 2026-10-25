@@ -274,6 +274,27 @@ def main():
                                               + [((tier == t) & m).sum() for t in range(1, 5)]))
         say(f"  release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s, heading median "
             f"{np.median(head[rel]) if rel.any() else 0:+.1f} deg (+ toward 1B); crossed in the air {int((cr & air_cross).sum())}/{n}")
+        if getattr(cfg, "w_stage_ball_rest", 0) > 0:  # the ball term per episode where it pays (at rest + released)
+            sc = base.release_score().cpu().numpy(); pm = ok & rel
+            if pm.any():
+                say(f"  ball score (x {cfg.w_stage_ball_rest:g}) over at rest + released {int(pm.sum())}: mean "
+                    f"{sc[pm].mean():.3f}, std {sc[pm].std():.3f}, p10/50/90 {np.percentile(sc[pm], 10):.3f}/"
+                    f"{np.median(sc[pm]):.3f}/{np.percentile(sc[pm], 90):.3f}, max {sc[pm].max():.3f}; not released "
+                    f"{int((~rel).sum())}, released not at rest {int((rel & ~ok).sum())} (both left out)")
+                vr = base.rel_vel.cpu().numpy(); pr = (base.rel_pos - base.scene.env_origins).cpu().numpy()
+                el = np.degrees(np.arctan2(vr[:, 2], np.linalg.norm(vr[:, :2], axis=1)))
+                tp = np.clip((cfg.plate_distance - pr[:, 0]) / np.maximum(vr[:, 0], 1e-3), 0, None)
+                ly = np.abs(pr[:, 1] + vr[:, 1] * tp - cfg.zone_center_y)
+                lz = np.abs(pr[:, 2] + vr[:, 2] * tp - 4.905 * tp**2 - base.field_z
+                            - getattr(cfg, "ball_plate_z_target_m", 0.85))
+                if pm.sum() > 2 and sc[pm].std() > 0:
+                    say(f"  ball score correlation (same episodes): elevation {np.corrcoef(sc[pm], el[pm])[0, 1]:+.2f}, "
+                        f"line |y| at the plate {np.corrcoef(sc[pm], ly[pm])[0, 1]:+.2f}, |z - target| "
+                        f"{np.corrcoef(sc[pm], lz[pm])[0, 1]:+.2f} (want - / -); |z - target| p10/50/90 {np.percentile(lz[pm], 10):.2f}/"
+                        f"{np.median(lz[pm]):.2f}/{np.percentile(lz[pm], 90):.2f} m, elevation <= +15 deg {int((el[pm] <= 15).sum())}, corr "
+                        f"there {np.corrcoef(sc[pm & (el <= 15)], el[pm & (el <= 15)])[0, 1] if (pm & (el <= 15)).sum() > 2 else float('nan'):+.2f}; elevation p10/50/90 "
+                        f"{np.percentile(el[pm], 10):+.1f}/{np.median(el[pm]):+.1f}/{np.percentile(el[pm], 90):+.1f} deg, |y| "
+                        f"{np.percentile(ly[pm], 10):.1f}/{np.median(ly[pm]):.1f}/{np.percentile(ly[pm], 90):.1f} m")
         drop = base.s_drop.cpu().numpy() if hasattr(base, "s_drop") else np.zeros(n, dtype=bool)
         if arm_n.sum() > 0:
             say(f"  arm action |a| mean over 0.9-1.0 s {(arm_abs.sum() / arm_n.sum()):.3f} (freeze_arms {cfg.freeze_arms}, "

@@ -702,6 +702,14 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     ball_rest_additive: bool = False  # release_score(): A = (heading + speed + distance factors) / 3, not their product
     ball_rest_set_only: bool = False  # release_score() paid only on set starts (t0 <= 0, where s_drop applies)
     ball_rest_no_dist: bool = False  # release_score(): drop the distance factor (additive A = (heading + speed) / 2)
+    # release_score(): linear plate miss instead - (1 - |y| / y_scale) and (1 - |z - z_target| / z_scale), each clamped at
+    # 0, averaged, + t3_bonus if T3 (gravity-only line from the release; z can go below the ground, so a rolling ball
+    # still has a slope toward a higher release)
+    ball_rest_plate_lin: bool = False
+    ball_plate_y_scale_m: float = 20.0
+    ball_plate_z_scale_m: float = 2.5
+    ball_plate_z_target_m: float = 0.85
+    ball_plate_t3_bonus: float = 1.0
     release_window: tuple = (0.85, 1.3)  # ... from this athlete time; forced open at the second
     w_stage_ball: float = 0.0  # arm + ball: once when the ball's flight ends, x progress toward the plate (0..1) x this
     ball_aim_sigma_m: float = 0.0  # > 0: ball progress weighted by exp(-(distance from the zone centre / this)^2)
@@ -1700,6 +1708,16 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW
     """TW1 starting later (in over -0.12 -> -0.06): a smaller counter-rotation before the turn to the plate."""
 
     trunk_window_times: tuple | None = (-0.12, -0.06, 0.0, 0.05)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2EnvCfg):
+    """ho (planning session 2026-10-25, ONE OUTS): TW2 with the policy's own release time (no trigger) and the ball term
+    (w_stage_ball_rest 50, same pay condition) scored on the plate miss from the release. TW2 zero-shot: 61/64, +11 deg,
+    -17 deg (plate y ~ -6 m). The old score's heading bell and air-only zone term were ~flat that far off (hl / hm / hn
+    never moved the heading or the elevation together); here y and z both pay linearly out to 20 m / 2.5 m."""
+
+    ball_rest_plate_lin: bool = True
 
 
 @configclass
