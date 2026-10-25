@@ -1,6 +1,6 @@
 # 訓練交接：目前目標、進度與待辦
 
-最後更新：2026-10-25 20:10（使用者授權到 10-26 20:00，規劃 session 自行決定）
+最後更新：2026-10-25 20:15（交接：用量 99%；使用者授權規劃 session 自行決定到 10-26 20:00）
 
 完整歷程在 `PITCHER_TRAINING_LOG.md`（投手）與 `SupporttraningLog.md`（打者、引擎、決策）。這份只記「現在的目標、現在在哪裡、接下來要做什麼」。
 
@@ -66,16 +66,27 @@
 
 ---
 
-## 4. 正在執行（10-24 06:55）
+## 4. 正在執行（10-25 20:15 交接，最新，先讀這段）
 
-| 項目 | 狀態 |
-|---|---|
-| **訓練暫停（使用者 10-24 08:16）** | hn 已停（存檔到 `model_8450.pt`：7500 eval 被 telemetry 卡住，train_live 沒在 7900 收尾）。只有 7400 有評估。不要啟動任何訓練，等使用者指示；3 小時檢查只錄影 / 更新紀錄 |
-| 投手 hn（已停） | `logs/oo_step3_hn.sh`：任務 `AIB-Stage1dK70GW2MBASVRT1SYW110R5H5HTEL-v0`（9bc9866，放球在手速仰角 +5～+25° 且方向 ±30° 內，方向交給策略；aim 10/30 手臂 + waist pitch 0.7 + 仰角獎勵 50）。hf_avg3 7300 起 600 次（到 7900），run `logs/rsl_rl/aib1_stage/2026-10-24_03-43-06_hn_h5htel/`，輸出 `logs/train_hn.txt`，評估 `logs/eval_hn_h5htel_*.txt`，監看 live_rules_loop（noisy）+ 投手 session 的 `logs/watch_hn.sh`（`logs/watch_hn.txt`）。零樣本：48/64、39/128，仰角 +11.5 / +13.4°，方向 -36 / -41°，本壘 y -14.6 m，級 3 = 0。7400：56/64，方向 -35.9°，仰角 +13.0°；7500：54/64，方向 -35.9°，仰角 +15.0°，本壘 y -14.5 m；級 3 都是 0（仰角夠了，方向沒學起來）|
-| **卡住問題（10-25 已修）** | `scripts/train_live.sh` 的 eval 改成先寫檔再 sed（`ev` / `evv`，stdin 接 /dev/null），之後不會再被 transmitter 卡住管線；下次訓練時驗證。原紀錄： eval_stage 結束時留下 `omni.telemetry.transmitter.exe`，佔住 train_live.sh 的 eval 管線（`| sed`），之後的存檔都不評估。06:47 卡在 7500（transmitter PID 126324，sed 121472）。我停 transmitter 被權限擋下；使用者用 `! taskkill //PID <pid> //F` 解（05:21 解過一次 7400）。hn 結束後要改 train_live.sh：eval 先寫暫存檔再 sed（不改執行中的腳本） |
-| 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
-| 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
-| 用量 | 每週用量 99%（10-24 06:55）。狀態列 + `~/.claude/hooks/usage_handoff_hook.py` 在 99% 時提醒寫交接（每個用量週期一次） |
+**分工**：規劃 session（本檔作者，10-25 是 aiplaybaseball-10）評估投手 / 打者 session 的提案、分配 GPU、做 ONE OUTS 引擎與影片；投手 session（aiplaybaseball-08）負責投手與 PITCHER_TRAINING_LOG.md，投手結果由它直接回報使用者；打者 session（aiplaybaseball-d0）負責打者，訓練前先送提案，結果寫 SupporttraningLog.md 第 3 節。使用者授權到 10-26 20:00，期間規劃 session 自行決定（規格不動）；之後新設計 / 規格 / 排程要先問。
+
+**交付候選**
+- 投手：P3c = ho2 model_7600（run ho2_tw2plw100）+ 放球提早 2.5 ms + 投手斜站 θ 18°（評估時本壘線繞投手板轉 -θ，物理等價）。阻力 + 馬格努斯力的飛行：相同起始站穩 52/64、級 3+ 48/64、好球帶 34/64、觸身 1/64，球速約 17.4 m/s（64 km/h）；noisy 站穩約 53/128、級 3+ 5/128（第 2 段沒過）。球路表：`assets/game/p3c_identical_t18_pitches.csv` / `_release.csv`（noisy 同名）。
+- 打者：Human9b model_12500 + aim_offset_z -0.08（表 `assets/game/batter_h9b_12500_aim008.json`、hit_rate 0.684，diag 1024 球）。對 88–112 km/h 的球 ONE OUTS 18.5%，但對 P3c 的球擊中率只有 0.140（ONE OUTS 17.5%，多半是四壞 / 觸身，外野安打 0.7%）。打中後跌倒 54–61%。
+- ONE OUTS 影片（CPU 版）：`videos/one_outs_p3c_t18_1025.mp4`（RL 投手球路 vs 打者表）、`videos/one_outs_h9b_1025.mp4`（備案投手）。`scripts/render_one_outs.py`，showcase 要設 IMAGEIO_FFMPEG_EXE。
+
+**現在（20:15）**：20:04 GPU 當機（打者的串接腳本誤判 Human13 已結束，提早開 Human14，GPU 上 3 個 Isaac）。Human13 停在 12650（12549：88–112 km/h 擊中率 0.711、跌倒 54%，沒過 ≤ 37%），12650 的 diag 正在跑。投手的 ball_aero_sim 驗證被一起帶掉。
+
+**排程（照這個順序，一次最多 2 個 Isaac，trainer 旁不錄影）**
+1. 打者 12650 diag 跑完。
+2. 投手單獨重跑 ball_aero_sim 驗證（P3c 相同起始 64，開 / 關各一次；模擬裡的本壘 y / z 跟 release_csv 差 ≤ 0.05 m 才在影片開它）。
+3. Human14（打者練慢球：一半訓練球照 P3c 的出手、55–75 km/h，一半 88–112 km/h；起點 12650 若過 Human13 判定，否則 12500；400 次，約 2 小時，`logs/run_human14.sh`）。否證 +100 次：對 P3c diag1024 ≥ 0.25、88–112 km/h ≥ 0.60、跌倒不比起點高 10 點以上。判定：ONE OUTS vs P3c > 17.5% 且外野安打 ≥ 5%（只差這條先回報）、對 P3c diag ≥ 0.5、88–112 km/h diag ≥ 0.60。
+4. 12 小時影片：投手 P3c（`logs/film_p3c.sh`，說明註明球路只算重力，除非 ball_aero_sim 已驗證）、打者（交付版或 Human14 新交付）。最晚 23:10 / 23:28，可延到 Human14 之後。
+5. 投手 C（TW2PLW100P3C，從 ho2 7600 用訓練雜訊 0.02 練 300 次，`logs/oo_c_train.sh` / `watch_c.sh`）：停止 = noisy 站穩連兩次 < 45/128、相同起始級 3 連兩次 < 32/64、相同起始站穩連兩次 < 48/64、第 1–5 次 value loss > 405。成功機會低（ho 系列本來就用訓練雜訊 0.02）。
+
+**今天定下的規則**：級數與比賽一律用阻力 + 馬格努斯力的飛行（eval_stage 的 simulate_to_plane t_max 要 3 s）；打者 diag 用 1024 球（seed 0）、ONE OUTS 用 1000 場同 seed；投手 trainer 在跑時打者不用 GPU；「投手優先」不是絕對，依 11-26 交付需要和成功機會排；投球前停頓（A）不能拿來過 noisy 門檻。
+
+### 10-25 經過（新到舊）
 
 **10-25 20:10**：打者對 P3c 的球（約 64 km/h，飛行約 1.05 s）：交付版 12500 / -0.08 的 diag1024 擊中率 0.140（88–112 km/h 時 0.684），揮空多半是時機（823/881）、球在棒子上方 692；ONE OUTS（投手 = p3c_identical_t18）打者勝 17.5%，但多半是四壞 10.1% + 觸身 6.7%，三振 73.2%，外野安打 0.7%。零樣本 timing_bias × aim 掃描最好只有 0.212，救不回來。決定：Human14（一半訓練球照 P3c t18 的出手、球速 55–75 km/h，一半 88–112 km/h；從 Human13 最好的存檔起練 400 次，81fb9ae / `logs/run_human14.sh`）核可，排在 Human13 之後、投手 C 之前（約 21:00–23:00）。判定：ONE OUTS vs P3c > 17.5% 且外野安打 ≥ 5%（若只差這條，先回報）、對 P3c diag ≥ 0.5、88–112 km/h diag ≥ 0.60；否證 +100 次對 P3c ≥ 0.25。投手：P3 剩下的組取消，交付候選確定為 P3c（ho2 7600、提早 2.5 ms、θ 18°；提早 5 ms 相同起始站穩少 10）。B 平均不如單一 7600。C 排到 Human14 之後；影片（投手 23:10 / 打者 23:28）排在 Human14 與 C 之間。ball_aero_sim（只在錄影時對球加阻力 + 馬格努斯力）已實作，驗證中。
 

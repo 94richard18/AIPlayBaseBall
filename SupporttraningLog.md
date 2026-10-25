@@ -191,7 +191,9 @@
 
 ## 4. 執行中
 
-**2026-10-24 06:55 交接（最新，優先讀這段）**：投手 hn 執行中，詳細狀態、卡住問題與下一步見 trainingLog.md 第 4、5 節。投手 10-23～10-24 的嘗試與結論：方向可修（觸發 ±5° + 中心 +6°，本壘 y ±0.3 m），但出手仰角卡在 -26°（方向對時手已在下揮）；兩輪訓練 hl、hm 都把仰角壓更低（hm 7900 -33°、站穩 63 → 43）；hn 改用仰角觸發，仰角 +13～+15° 但方向 -36°（7400、7500 一樣），級 3 = 0。**10-24 08:16 使用者要求暫停訓練**：hn 停在 model_8450.pt，不要啟動任何訓練，等使用者指示（候選：續練 hn、備案球路做 ONE OUTS 影片、提高力量、放寬規則）。交付不變：hf_avg3 7300 + H5。
+**2026-10-25 20:15 交接（最新）**：見 trainingLog.md 第 4 節（三個 session 分工、投手交付候選 P3c、打者 12500 / -0.08、排程：aero 驗證 → Human14 → 影片 → C）。
+
+**2026-10-24 06:55 交接（舊）**：投手 hn 執行中，詳細狀態、卡住問題與下一步見 trainingLog.md 第 4、5 節。投手 10-23～10-24 的嘗試與結論：方向可修（觸發 ±5° + 中心 +6°，本壘 y ±0.3 m），但出手仰角卡在 -26°（方向對時手已在下揮）；兩輪訓練 hl、hm 都把仰角壓更低（hm 7900 -33°、站穩 63 → 43）；hn 改用仰角觸發，仰角 +13～+15° 但方向 -36°（7400、7500 一樣），級 3 = 0。**10-24 08:16 使用者要求暫停訓練**：hn 停在 model_8450.pt，不要啟動任何訓練，等使用者指示（候選：續練 hn、備案球路做 ONE OUTS 影片、提高力量、放寬規則）。交付不變：hf_avg3 7300 + H5。
 
 | 項目 | 狀態 |
 |---|---|
@@ -258,7 +260,7 @@
 - 10-24 補充：(1) eval_stage 結束後的 `omni.telemetry.transmitter.exe` 會卡住 train_live 的 eval 管線，停它需要使用者 `! taskkill //PID <pid> //F`（auto mode 擋下 Stop-Process）。(2) 投手錄影：`eval_stage --video` 預設側面 + 本壘視角並排，關鍵畫面第二張是放球那一刻。(3) 每 3 小時檢查是 session-only cron，重開 session 要重設。(4) 使用量 hook：`~/.claude/settings.json` 的 statusLine + PostToolUse / UserPromptSubmit，99% 時提醒寫交接。
 
 1. 先讀記憶（MEMORY.md，特別是 one-outs-goal、game-rules-2026-10-23、act-before-ending-turn、video-every-12h、token-saving-workflow），再讀本檔第 0、1、5 節，以及 trainingLog.md、PITCHER_TRAINING_LOG.md 最後幾段。
-2. 重新設定每 3 小時檢查（CronCreate "17 */3 * * *"，prompt 照上一個 session：看進度、GPU 閒置就排下一步、影片超過 11 小時就錄並檢查白畫面、更新紀錄並 push、回簡短進度）。
+2. 重新設定每 3 小時檢查（10-25 起 prompt 寫明授權到 10-26 20:00；CronCreate "17 */3 * * *"，prompt 照上一個 session：看進度、GPU 閒置就排下一步、影片超過 11 小時就錄並檢查白畫面、更新紀錄並 push、回簡短進度）。
 3. 分工（使用者 10-25 更新）：
    - 規劃 session（決策，10-25 是 aiplaybaseball-10）：評估投手與打者 session 的提案、分配 GPU 時間、遊戲引擎、ONE OUTS 對決影片、交接文件（trainingLog.md、本檔第 4–6 節）。只回報自己的決定，不轉述訓練數字。
    - 投手 session（10-25 是 aiplaybaseball-08）：投手提案、投手訓練與評估的執行、PITCHER_TRAINING_LOG.md；投手結果由它直接回報使用者。
