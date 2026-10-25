@@ -33,6 +33,8 @@ parser.add_argument("--min_noise_std", type=float, default=None,
                     help="hold the action noise std at least at this (exploration floor)")
 parser.add_argument("--critic_warmup", type=int, default=0,
                     help="first N PPO updates train the critic only (actor and noise frozen)")
+parser.add_argument("--critic_warmup_lr", type=float, default=None,
+                    help="learning rate during the critic warm-up (default: the loaded rate, held)")
 parser.add_argument("--zero_arm_actions", action="store_true", default=False,
                     help="zero the actor's output rows of the arm joints (arms were frozen in the previous stage)")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
@@ -233,15 +235,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         actor_params = list(ac0.actor.parameters()) + [ac0.std]
         update0 = runner.alg.update
         lr0 = runner.alg.learning_rate
+        sched0 = runner.alg.schedule
         n_done = [0]
 
         def update_warm(*a, **k):
             frozen = n_done[0] < args_cli.critic_warmup
             for prm in actor_params:
                 prm.requires_grad_(not frozen)
+            if frozen and args_cli.critic_warmup_lr:
+                # ho3b warmed up at the restored 3e-7 floor; one param group, but the frozen actor has no grads
+                # (zero_grad sets them to None), so this rate moves the critic only. The adaptive schedule would
+                # still raise it x1.5 per mini-batch (frozen KL = the 1e-5 log offset x action dims, > 0 and below
+                # desired / 2), so it is off for the warm-up update
+                runner.alg.learning_rate = args_cli.critic_warmup_lr
+                runner.alg.schedule = "fixed"
+                for g in runner.alg.optimizer.param_groups:
+                    g["lr"] = args_cli.critic_warmup_lr
             out = update0(*a, **k)
             n_done[0] += 1
             if frozen:  # the adaptive schedule reads KL 0 while frozen and would raise the learning rate to 1e-2
+                runner.alg.schedule = sched0
                 runner.alg.learning_rate = lr0
                 for g in runner.alg.optimizer.param_groups:
                     g["lr"] = lr0
@@ -250,7 +263,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             return out
 
         runner.alg.update = update_warm
-        print(f"[INFO]: critic warm-up: actor frozen for {args_cli.critic_warmup} updates", flush=True)
+        print(f"[INFO]: critic warm-up: actor frozen for {args_cli.critic_warmup} updates"
+              + (f", critic lr {args_cli.critic_warmup_lr:.1e}" if args_cli.critic_warmup_lr else ""), flush=True)
     # cap the action noise (agent cfg max_noise_std): clamp the policy std at load and after every PPO update
     max_std = args_cli.max_noise_std or getattr(agent_cfg, "max_noise_std", None)
     # floor (--min_noise_std): fq NR70 std drifted 0.039 -> 0.034 with the learning rate pinned at its 1e-5 floor (KL
