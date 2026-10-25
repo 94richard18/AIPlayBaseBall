@@ -1,0 +1,12 @@
+19:43 sweep starts (cap 20 min)
+baseline (bias 0.055, aim -0.08): hit 0.140, ball above bat 692/881, misses early (timing < 0) see p3ct_12500
+19:46 aim 0 bias 0.025: hit 0.212 | misses 807: early 569 late 224 ball above bat 484 | fell after hit 41/217
+19:47 aim 0 bias -0.005: hit 0.208 | misses 811: early 422 late 376 ball above bat 290 | fell after hit 12/213
+19:49 aim 0 bias -0.035: hit 0.125 | misses 896: early 624 late 259 ball above bat 141 | fell after hit 1/128
+19:52 aim -0.04 bias 0.025: hit 0.192 | misses 827: early 579 late 234 ball above bat 533 | fell after hit 42/197
+19:54 aim -0.04 bias -0.005: hit 0.211 | misses 808: early 424 late 371 ball above bat 323 | fell after hit 9/216
+19:55 aim -0.04 bias -0.035: hit 0.129 | misses 892: early 621 late 258 ball above bat 152 | fell after hit 0/132
+19:58 aim -0.08 bias 0.025: hit 0.190 | misses 829: early 585 late 230 ball above bat 563 | fell after hit 29/195
+20:00 aim -0.08 bias -0.005: hit 0.184 | misses 836: early 431 late 392 ball above bat 365 | fell after hit 13/188
+20:01 aim -0.08 bias -0.035: hit 0.127 | misses 894: early 611 late 270 ball above bat 166 | fell after hit 2/130
+20:01 done

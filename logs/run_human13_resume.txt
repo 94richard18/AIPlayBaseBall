@@ -1,0 +1,10 @@
+19:34 Human13 first segment done; P3c t18 eval
+19:34 release assets/game/p3c_identical_t18_release.csv | pitch table assets/game/p3c_identical_t18_pitches.csv
+19:37 diag1024 vs P3c: hit rate 0.140 | fell 59/143, miss dominant {'timing': 823, 'height': 55, 'reach': 3}, ball above bat 692/881
+logs/b_table_p3ct_12500.json: balls 591  fair 42.8%  fair and >= 29 m 5.8% of 1024  ev med 15.3
+ONE OUTS vs P3c (assets/game/p3c_identical_t18_pitches.csv): 1000 matches: batter 17.5%, pitcher 82.5%; 4.1 pitches each how: strikeout 73.2%, walk 10.1%, infield_ball 9.3%, hit_by_pitch 6.7%, outfield_hit 0.7% 
+ONE OUTS same table vs the fallback pitcher: 1000 matches: batter 10.8%, pitcher 89.2%; 3.9 pitches each how: strikeout 79.5%, infield_ball 9.7%, walk 5.7%, hit_by_pitch 4.9%, outfield_hit 0.2% 
+19:41 done
+19:41 P3c eval done; Human13 resumes
+19:45 12549 diag1024 0.711 fall 54% (stop if diag < 0.66)
+19:45 Human13 second segment starts

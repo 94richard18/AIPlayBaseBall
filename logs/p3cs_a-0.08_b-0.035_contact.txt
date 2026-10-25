@@ -1,0 +1,347 @@
+[INFO][AppLauncher]: Loading experience file: C:\Users\User\IsaacLab\apps\isaaclab.python.headless.kit
+[Warning] [simulation_app.simulation_app] Modules: ['omni.kit_app'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [simulation_app.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+Loading user config located at: 'c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/data/Kit/Isaac-Sim/4.5/user.config.json'
+[Info] [carb] Logging to file: c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/logs/Kit/Isaac-Sim/4.5/kit_20261025_200006.log
+2026-10-25 12:00:06 [0ms] [Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+2026-10-25 12:00:06 [13ms] [Warning] [omni.ext.plugin] [ext: src] Extensions config 'extension.toml' doesn't exist 'c:/users/user/isaaclab/source/src' or 'c:/users/user/isaaclab/source/src/config'
+2026-10-25 12:00:07 [370ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+2026-10-25 12:00:07 [909ms] [Warning] [omni.datastore] OmniHub is inaccessible
+2026-10-25 12:00:07 [1,061ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 560.94        | Graphics API: D3D12
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3080 Ti       | Yes: 0 |     | 12086   MB | 10de      | 6fbf0000.. |
+|     |                                  |        |     |            | 2208      | 0          |
+|     |                                  |        |     |            | 2d        |            |
+|=============================================================================================|
+| OS: Windows 11 Home, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9711
+| Processor: AMD Ryzen 7 5800X3D 8-Core Processor           
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 65461 | Free Memory: 44671
+| Total Page/Swap (MB): 69557 | Free Page/Swap: 37853
+|---------------------------------------------------------------------------------------------|
+2026-10-25 12:00:15 [9,025ms] [Warning] [omni.kvdb.plugin] Disabling key-value database because another kit process is locking it
+Setting seed: 0
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 0
+	Physics step-size     : 0.0025
+	Rendering step-size   : 0.01
+	Environment step-size : 0.01
+2026-10-25 12:00:17 [10,221ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPreviewSurface.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,221ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdUVTexture.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,222ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,222ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float2.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,222ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float3.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,223ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float4.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,223ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_int.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,223ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_string.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,224ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_normal.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,224ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_point.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,224ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_vector.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,224ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_matrix.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-10-25 12:00:17 [10,225ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdTransform2d.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+[INFO]: Time taken for scene creation : 2.993447 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 1024
+	Environment spacing   : 4.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-10-25 12:00:20 [13,332ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/Robot/top_hand_grip
+[INFO]: Time taken for simulation start : 3.516591 seconds
+[INFO]: Completed setting up the environment...
+Actor MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+[play] env 263: carry    0.3 m | EV  23.6 m/s ( 52.7 mph) | LA -64.4 deg | spray  +3.0 deg | spin  4252 rpm (backspin -4194) 
+[play] env 988: carry    0.3 m | EV  17.9 m/s ( 40.1 mph) | LA -57.7 deg | spray -10.7 deg | spin  3881 rpm (backspin -3616) 
+[play] env 810: carry    0.7 m | EV  22.4 m/s ( 50.0 mph) | LA -45.5 deg | spray -30.2 deg | spin  3691 rpm (backspin -2364) 
+[play] env 602: carry    0.1 m | EV  17.6 m/s ( 39.3 mph) | LA -76.0 deg | spray  -3.5 deg | spin  4644 rpm (backspin -4515) 
+[play] env 56: carry    0.5 m | EV  18.8 m/s ( 42.0 mph) | LA -54.7 deg | spray -66.9 deg | spin  4082 rpm (backspin -1391) 
+[play] env 250: carry    0.2 m | EV  15.1 m/s ( 33.8 mph) | LA -72.3 deg | spray -121.2 deg | spin  4775 rpm (backspin +2478) 
+[play] env 460: carry    0.6 m | EV  21.8 m/s ( 48.8 mph) | LA -51.0 deg | spray -50.4 deg | spin  4260 rpm (backspin -2115) 
+[play] env 578: carry    0.3 m | EV  18.4 m/s ( 41.1 mph) | LA -66.6 deg | spray -14.5 deg | spin  4968 rpm (backspin -4572) 
+[play] env 861: carry    0.4 m | EV  19.5 m/s ( 43.7 mph) | LA -60.4 deg | spray -84.3 deg | spin  4712 rpm (backspin  -556) 
+[play] env 187: carry    0.0 m | EV  15.6 m/s ( 34.8 mph) | LA -86.7 deg | spray -74.4 deg | spin  5182 rpm (backspin  -845) 
+[play] env 261: carry    0.7 m | EV  23.5 m/s ( 52.5 mph) | LA -39.1 deg | spray -58.6 deg | spin  4279 rpm (backspin -1801) 
+[play] env 404: carry    0.3 m | EV  15.7 m/s ( 35.2 mph) | LA -69.5 deg | spray -141.9 deg | spin  4317 rpm (backspin +3399) 
+[play] env 509: carry    0.6 m | EV  15.8 m/s ( 35.4 mph) | LA -49.0 deg | spray -174.0 deg | spin  2482 rpm (backspin +2460) 
+[play] env 668: carry    1.2 m | EV  23.7 m/s ( 53.1 mph) | LA -28.5 deg | spray -55.3 deg | spin  3926 rpm (backspin -1117) 
+[play] env 731: carry    0.3 m | EV  16.3 m/s ( 36.4 mph) | LA -67.9 deg | spray -140.1 deg | spin  4261 rpm (backspin +3125) 
+[play] env 107: carry    0.5 m | EV  20.1 m/s ( 44.9 mph) | LA -54.8 deg | spray -76.2 deg | spin  4214 rpm (backspin -1020) 
+[play] env 379: carry    0.8 m | EV  17.3 m/s ( 38.6 mph) | LA -42.3 deg | spray -60.7 deg | spin  3633 rpm (backspin -1042) 
+[play] env 638: carry    0.4 m | EV  15.5 m/s ( 34.7 mph) | LA -64.8 deg | spray -30.9 deg | spin  3831 rpm (backspin -2826) 
+[play] env 829: carry    0.6 m | EV  21.7 m/s ( 48.5 mph) | LA -48.0 deg | spray -74.9 deg | spin  4464 rpm (backspin  -988) 
+[play] env 351: carry    0.2 m | EV  16.2 m/s ( 36.3 mph) | LA -78.3 deg | spray  +0.3 deg | spin  4581 rpm (backspin -4466) 
+[play] env 714: carry    0.9 m | EV  22.0 m/s ( 49.1 mph) | LA -31.1 deg | spray -42.8 deg | spin  3403 rpm (backspin -1305) 
+[play] env 761: carry    0.2 m | EV  13.3 m/s ( 29.9 mph) | LA -73.6 deg | spray -171.2 deg | spin  4213 rpm (backspin +4205) 
+[play] env 856: carry    0.2 m | EV  18.7 m/s ( 41.8 mph) | LA -72.6 deg | spray -60.3 deg | spin  4526 rpm (backspin -2262) 
+[play] env 1014: carry    0.3 m | EV  16.1 m/s ( 36.0 mph) | LA -70.4 deg | spray -128.0 deg | spin  4620 rpm (backspin +2674) 
+[play] env 15: carry    0.6 m | EV  13.9 m/s ( 31.0 mph) | LA -51.1 deg | spray -107.1 deg | spin  4467 rpm (backspin  +956) 
+[play] env 472: carry    0.7 m | EV  22.3 m/s ( 49.8 mph) | LA -45.1 deg | spray -75.2 deg | spin  4377 rpm (backspin -1026) 
+[play] env 587: carry    1.2 m | EV  21.8 m/s ( 48.8 mph) | LA -31.8 deg | spray -74.0 deg | spin  4373 rpm (backspin  -324) 
+[play] env 726: carry    0.9 m | EV  20.9 m/s ( 46.7 mph) | LA -42.8 deg | spray -89.8 deg | spin  4524 rpm (backspin  -141) 
+[play] env 172: carry    0.3 m | EV  14.4 m/s ( 32.1 mph) | LA -68.2 deg | spray -83.9 deg | spin  4253 rpm (backspin   +33) 
+[play] env 920: carry    0.5 m | EV  16.3 m/s ( 36.4 mph) | LA -59.1 deg | spray -113.6 deg | spin  4710 rpm (backspin +1422) 
+[play] env 94: carry    0.8 m | EV  18.5 m/s ( 41.3 mph) | LA -43.9 deg | spray -67.8 deg | spin  4138 rpm (backspin  -883) 
+[play] env 159: carry    0.6 m | EV  15.9 m/s ( 35.6 mph) | LA -42.9 deg | spray +177.4 deg | spin  2036 rpm (backspin +1777) 
+[play] env 866: carry    0.8 m | EV  16.3 m/s ( 36.5 mph) | LA -45.6 deg | spray -173.8 deg | spin  2224 rpm (backspin +2211) 
+[play] env 539: carry    0.9 m | EV  22.4 m/s ( 50.1 mph) | LA -37.3 deg | spray -67.1 deg | spin  3794 rpm (backspin -1053) 
+[play] env 648: carry    0.8 m | EV  16.0 m/s ( 35.7 mph) | LA -39.2 deg | spray +177.5 deg | spin  1773 rpm (backspin +1446) 
+[play] env 847: carry    0.6 m | EV  17.2 m/s ( 38.6 mph) | LA -51.5 deg | spray -41.6 deg | spin  4031 rpm (backspin -2254) 
+[play] env 324: carry    0.5 m | EV  18.4 m/s ( 41.1 mph) | LA -63.3 deg | spray -97.1 deg | spin  4720 rpm (backspin  +362) 
+[play] env 367: carry    1.6 m | EV  23.3 m/s ( 52.0 mph) | LA -26.3 deg | spray -25.7 deg | spin  3324 rpm (backspin -2166) 
+[play] env 712: carry    0.6 m | EV  14.3 m/s ( 32.1 mph) | LA -54.9 deg | spray -98.4 deg | spin  4216 rpm (backspin  +542) 
+[play] env 50: carry    1.0 m | EV  21.3 m/s ( 47.7 mph) | LA -41.7 deg | spray -51.3 deg | spin  4024 rpm (backspin -1732) 
+[play] env 343: carry    0.1 m | EV  15.5 m/s ( 34.7 mph) | LA -84.6 deg | spray -56.6 deg | spin  4725 rpm (backspin -2057) 
+[play] env 476: carry    1.0 m | EV  17.7 m/s ( 39.5 mph) | LA -38.7 deg | spray -103.1 deg | spin  4313 rpm (backspin  +245) 
+[play] env 690: carry    0.8 m | EV  16.1 m/s ( 36.1 mph) | LA -45.4 deg | spray -69.8 deg | spin  4029 rpm (backspin  -908) 
+[play] env 822: carry    1.7 m | EV  22.6 m/s ( 50.6 mph) | LA -20.0 deg | spray -37.5 deg | spin  3307 rpm (backspin -1322) 
+[play] env 947: carry    1.1 m | EV  16.8 m/s ( 37.6 mph) | LA -36.8 deg | spray -88.9 deg | spin  4355 rpm (backspin  -203) 
+[play] env 876: carry    1.4 m | EV  23.0 m/s ( 51.5 mph) | LA -24.6 deg | spray -73.3 deg | spin  4079 rpm (backspin  -630) 
+[play] env 231: carry    1.2 m | EV  20.3 m/s ( 45.5 mph) | LA -28.6 deg | spray -81.3 deg | spin  4419 rpm (backspin   -50) 
+[play] env 441: carry    2.2 m | EV  24.0 m/s ( 53.8 mph) | LA -16.1 deg | spray -35.3 deg | spin  3308 rpm (backspin -1108) 
+[play] env 6: carry    1.4 m | EV  18.1 m/s ( 40.4 mph) | LA -29.2 deg | spray -89.2 deg | spin  4596 rpm (backspin   -86) 
+[play] env 619: carry    1.3 m | EV  18.8 m/s ( 42.1 mph) | LA -28.6 deg | spray -63.6 deg | spin  3854 rpm (backspin  -715) 
+[play] env 550: carry    1.1 m | EV  13.2 m/s ( 29.4 mph) | LA -39.6 deg | spray -112.9 deg | spin  3929 rpm (backspin  +925) 
+[play] env 701: carry    1.1 m | EV  18.1 m/s ( 40.6 mph) | LA -29.0 deg | spray -87.9 deg | spin  4517 rpm (backspin   -78) 
+[play] env 447: carry    1.6 m | EV  17.8 m/s ( 39.8 mph) | LA -22.1 deg | spray -52.8 deg | spin  3844 rpm (backspin -1039) 
+[play] env 588: carry    1.9 m | EV  21.0 m/s ( 46.9 mph) | LA -16.2 deg | spray -49.2 deg | spin  3974 rpm (backspin  -659) 
+[play] env 758: carry    0.6 m | EV  10.6 m/s ( 23.6 mph) | LA -53.3 deg | spray -145.1 deg | spin  3181 rpm (backspin +2480) 
+[play] env 277: carry    2.3 m | EV  22.2 m/s ( 49.6 mph) | LA -17.4 deg | spray -51.6 deg | spin  3761 rpm (backspin  -400) 
+[play] env 644: carry    1.5 m | EV  19.6 m/s ( 43.7 mph) | LA -26.3 deg | spray -65.9 deg | spin  3973 rpm (backspin  -682) 
+[play] env 391: carry    1.3 m | EV  15.9 m/s ( 35.6 mph) | LA -32.7 deg | spray -177.6 deg | spin  1321 rpm (backspin +1089) 
+[play] env 3: carry    1.6 m | EV  16.9 m/s ( 37.9 mph) | LA -25.3 deg | spray -72.6 deg | spin  4037 rpm (backspin  -773) 
+[play] env 625: carry    1.4 m | EV  15.5 m/s ( 34.7 mph) | LA -31.6 deg | spray -165.1 deg | spin  1411 rpm (backspin +1184) 
+[play] env 129: carry    0.9 m | EV  15.5 m/s ( 34.7 mph) | LA -47.2 deg | spray -128.1 deg | spin  3767 rpm (backspin +1699) 
+[play] env 540: carry    1.2 m | EV  18.7 m/s ( 41.9 mph) | LA -37.6 deg | spray -115.4 deg | spin  4321 rpm (backspin  +595) 
+[play] env 823: carry    1.7 m | EV  17.0 m/s ( 38.1 mph) | LA -21.4 deg | spray -177.0 deg | spin   832 rpm (backspin   +97) 
+[play] env 909: carry    1.5 m | EV  16.0 m/s ( 35.8 mph) | LA -29.2 deg | spray -178.6 deg | spin  1133 rpm (backspin  +791) 
+[play] env 414: carry    1.0 m | EV  11.4 m/s ( 25.5 mph) | LA -42.0 deg | spray -154.4 deg | spin  2430 rpm (backspin +1758) 
+[play] env 825: carry    2.4 m | EV  20.8 m/s ( 46.6 mph) | LA -17.3 deg | spray -51.9 deg | spin  3463 rpm (backspin  -530) 
+[play] env 516: carry    1.8 m | EV  16.8 m/s ( 37.6 mph) | LA -23.9 deg | spray -31.9 deg | spin  2992 rpm (backspin -1618) 
+[play] env 936: carry    1.2 m | EV  14.0 m/s ( 31.3 mph) | LA -36.0 deg | spray -143.5 deg | spin  2626 rpm (backspin +1379) 
+[play] env 269: carry    1.0 m | EV   9.9 m/s ( 22.0 mph) | LA -39.6 deg | spray +135.3 deg | spin  3843 rpm (backspin   -90) 
+[play] env 53: carry    2.2 m | EV  18.5 m/s ( 41.3 mph) | LA -15.1 deg | spray -96.2 deg | spin  4585 rpm (backspin   +50) 
+[play] env 561: carry    2.2 m | EV  17.7 m/s ( 39.5 mph) | LA -17.2 deg | spray -78.8 deg | spin  3942 rpm (backspin   +75) 
+[play] env 433: carry    1.9 m | EV  14.6 m/s ( 32.7 mph) | LA -24.7 deg | spray +170.6 deg | spin  1527 rpm (backspin   +60) 
+[play] env 87: carry    2.8 m | EV  17.9 m/s ( 40.0 mph) | LA -14.4 deg | spray -87.4 deg | spin  4027 rpm (backspin  -190) 
+[play] env 775: carry    2.5 m | EV  17.6 m/s ( 39.5 mph) | LA -13.7 deg | spray -81.0 deg | spin  4354 rpm (backspin  -359) 
+[play] env 157: carry    2.7 m | EV  19.2 m/s ( 42.9 mph) | LA -11.9 deg | spray -75.3 deg | spin  3976 rpm (backspin  -218) 
+[play] env 986: carry    0.6 m | EV   6.5 m/s ( 14.5 mph) | LA -55.9 deg | spray -90.1 deg | spin  4304 rpm (backspin  +169) 
+[play] env 956: carry    2.8 m | EV  19.6 m/s ( 43.9 mph) | LA -11.6 deg | spray -86.3 deg | spin  4112 rpm (backspin   -30) 
+[play] env 55: carry    2.0 m | EV  15.8 m/s ( 35.3 mph) | LA -24.8 deg | spray -130.2 deg | spin  3392 rpm (backspin  +559) 
+[play] env 839: carry    1.8 m | EV  11.9 m/s ( 26.5 mph) | LA -23.1 deg | spray -137.6 deg | spin  2780 rpm (backspin  +350) 
+[play] env 19: carry    1.8 m | EV  13.2 m/s ( 29.4 mph) | LA -24.6 deg | spray -143.2 deg | spin  2456 rpm (backspin  +531) 
+[play] env 676: carry    3.2 m | EV  19.9 m/s ( 44.6 mph) | LA -11.5 deg | spray -70.0 deg | spin  3743 rpm (backspin   -79) 
+[play] env 883: carry    2.7 m | EV  16.4 m/s ( 36.7 mph) | LA -13.7 deg | spray -85.6 deg | spin  3904 rpm (backspin  -115) 
+[play] env 604: carry    3.7 m | EV  22.4 m/s ( 50.0 mph) | LA  -8.4 deg | spray -55.4 deg | spin  3811 rpm (backspin  -404) 
+[play] env 428: carry    2.9 m | EV  15.5 m/s ( 34.7 mph) | LA -14.8 deg | spray -174.8 deg | spin   993 rpm (backspin  -547) 
+[play] env 210: carry    3.6 m | EV  17.3 m/s ( 38.6 mph) | LA -11.0 deg | spray -81.6 deg | spin  4151 rpm (backspin  -214) 
+[play] env 237: carry    2.3 m | EV  12.0 m/s ( 26.8 mph) | LA -18.3 deg | spray -157.6 deg | spin  1599 rpm (backspin   -67) 
+[play] env 639: carry    3.1 m | EV  16.4 m/s ( 36.7 mph) | LA  -9.3 deg | spray -68.8 deg | spin  3892 rpm (backspin   +23) 
+[play] env 868: carry    1.9 m | EV   9.6 m/s ( 21.5 mph) | LA -21.0 deg | spray -91.8 deg | spin  3744 rpm (backspin  -310) 
+[play] env 119: carry    4.5 m | EV  21.3 m/s ( 47.6 mph) | LA  -5.7 deg | spray -70.3 deg | spin  4259 rpm (backspin   -13) 
+[play] env 459: carry    3.2 m | EV  15.3 m/s ( 34.1 mph) | LA -11.1 deg | spray -81.3 deg | spin  4123 rpm (backspin  +595) 
+[play] env 389: carry    3.4 m | EV  14.6 m/s ( 32.6 mph) | LA -10.7 deg | spray -68.7 deg | spin  3576 rpm (backspin  -239) 
+[play] env 621: carry    2.6 m | EV  10.6 m/s ( 23.7 mph) | LA -12.1 deg | spray -102.9 deg | spin  3919 rpm (backspin  -289) 
+[play] env 86: carry    3.9 m | EV  15.9 m/s ( 35.7 mph) | LA  -7.0 deg | spray -66.7 deg | spin  4009 rpm (backspin  -317) 
+[play] env 917: carry    4.5 m | EV  18.6 m/s ( 41.6 mph) | LA  -6.7 deg | spray -58.6 deg | spin  3723 rpm (backspin  -337) 
+[play] env 650: carry    3.3 m | EV  14.8 m/s ( 33.1 mph) | LA -12.2 deg | spray -166.1 deg | spin  1335 rpm (backspin  -558) 
+[play] env 58: carry    3.1 m | EV  12.8 m/s ( 28.6 mph) | LA -12.0 deg | spray +169.5 deg | spin  1860 rpm (backspin -1168) 
+[play] env 795: carry    3.0 m | EV  10.8 m/s ( 24.1 mph) | LA -10.4 deg | spray -106.7 deg | spin  4155 rpm (backspin  -286) 
+[play] env 138: carry    1.9 m | EV   7.2 m/s ( 16.1 mph) | LA -17.1 deg | spray +108.3 deg | spin  3302 rpm (backspin  -988) 
+[play] env 151: carry    3.2 m | EV  14.0 m/s ( 31.3 mph) | LA -10.1 deg | spray -110.5 deg | spin  4258 rpm (backspin  -155) 
+[play] env 544: carry    2.7 m | EV   9.5 m/s ( 21.3 mph) | LA -11.5 deg | spray -138.7 deg | spin  2941 rpm (backspin  -514) 
+[play] env 188: carry    3.1 m | EV  11.1 m/s ( 24.7 mph) | LA  -9.7 deg | spray -108.9 deg | spin  4295 rpm (backspin  -242) 
+[play] env 327: carry    3.5 m | EV  12.4 m/s ( 27.8 mph) | LA  -9.3 deg | spray -93.4 deg | spin  3660 rpm (backspin  -266) 
+[play] env 879: carry    2.3 m | EV   7.4 m/s ( 16.6 mph) | LA -12.4 deg | spray -18.1 deg | spin  2588 rpm (backspin +1631) 
+[play] env 897: carry    6.2 m | EV  19.9 m/s ( 44.4 mph) | LA  -3.8 deg | spray -65.6 deg | spin  3798 rpm (backspin   +60) 
+[play] env 415: carry    4.9 m | EV  15.5 m/s ( 34.7 mph) | LA  -1.7 deg | spray -94.3 deg | spin  4307 rpm (backspin  -238) 
+[play] env 365: carry    4.3 m | EV  13.1 m/s ( 29.3 mph) | LA  -3.4 deg | spray -132.9 deg | spin  3439 rpm (backspin  -618) 
+[play] env 145: carry    4.8 m | EV  12.8 m/s ( 28.7 mph) | LA  -0.7 deg | spray -122.6 deg | spin  4071 rpm (backspin  -588) 
+[play] env 413: carry    4.3 m | EV  10.6 m/s ( 23.6 mph) | LA   1.5 deg | spray -103.7 deg | spin  4758 rpm (backspin  -667) 
+[play] env 340: carry    4.7 m | EV  12.3 m/s ( 27.5 mph) | LA  -2.5 deg | spray -134.8 deg | spin  3347 rpm (backspin  -692) 
+[play] env 471: carry    4.3 m | EV  10.2 m/s ( 22.7 mph) | LA  -0.9 deg | spray -144.6 deg | spin  2855 rpm (backspin -1249) 
+[play] env 403: carry    4.3 m | EV   9.8 m/s ( 21.9 mph) | LA   2.0 deg | spray -124.9 deg | spin  3945 rpm (backspin  -893) 
+[play] env 57: carry    5.3 m | EV  11.6 m/s ( 25.9 mph) | LA   2.4 deg | spray -142.9 deg | spin  3057 rpm (backspin -1326) 
+[play] env 218: carry    5.6 m | EV  12.0 m/s ( 26.8 mph) | LA   2.4 deg | spray -139.0 deg | spin  3205 rpm (backspin -1236) 
+[play] env 862: carry    6.0 m | EV  14.2 m/s ( 31.7 mph) | LA  -0.0 deg | spray -121.9 deg | spin  4346 rpm (backspin  -194) 
+[play] env 452: carry    5.5 m | EV  11.8 m/s ( 26.5 mph) | LA   2.6 deg | spray -152.9 deg | spin  2485 rpm (backspin -1585) 
+[play] env 380: carry    7.4 m | EV  14.9 m/s ( 33.4 mph) | LA   3.3 deg | spray -95.0 deg | spin  4198 rpm (backspin  -156) 
+[play] env 899: carry   10.2 m | EV  21.2 m/s ( 47.5 mph) | LA   2.5 deg | spray -71.6 deg | spin  4330 rpm (backspin  +134) 
+[play] env 514: carry    5.0 m | EV  10.0 m/s ( 22.5 mph) | LA   3.1 deg | spray +75.4 deg | spin  2804 rpm (backspin  -378) 
+[play] env 88: carry    6.0 m | EV  11.3 m/s ( 25.3 mph) | LA   6.6 deg | spray -100.3 deg | spin  4359 rpm (backspin  -483) 
+[play] env 83: carry    7.1 m | EV  13.0 m/s ( 29.0 mph) | LA   5.6 deg | spray -81.4 deg | spin  3741 rpm (backspin  -328) 
+[play] env 662: carry    6.1 m | EV  11.0 m/s ( 24.5 mph) | LA   5.9 deg | spray -69.9 deg | spin  3709 rpm (backspin   -44) 
+[play] env 385: carry    8.0 m | EV  13.7 m/s ( 30.7 mph) | LA   8.1 deg | spray -93.4 deg | spin  4689 rpm (backspin  -284) 
+[play] env 111: carry    5.9 m | EV   9.7 m/s ( 21.8 mph) | LA  10.6 deg | spray -131.8 deg | spin  3783 rpm (backspin -1603) 
+[play] env 675: carry   11.1 m | EV  17.9 m/s ( 40.1 mph) | LA   5.9 deg | spray -82.8 deg | spin  4588 rpm (backspin   +44) 
+[play] env 266: carry    5.6 m | EV   8.6 m/s ( 19.2 mph) | LA  15.8 deg | spray -125.9 deg | spin  4100 rpm (backspin -1616) 
+[play] env 63: carry    8.4 m | EV  12.4 m/s ( 27.7 mph) | LA  11.4 deg | spray -99.3 deg | spin  4717 rpm (backspin  +105) 
+[play] env 677: carry    4.5 m | EV   6.6 m/s ( 14.8 mph) | LA  23.2 deg | spray -110.4 deg | spin  4553 rpm (backspin -1560) 
+[play] env 773: carry   14.5 m | EV  15.4 m/s ( 34.5 mph) | LA  16.0 deg | spray -75.2 deg | spin  4213 rpm (backspin  +345) 
+[play] env 398: carry   12.1 m | EV  13.0 m/s ( 29.2 mph) | LA  18.1 deg | spray -82.5 deg | spin  4124 rpm (backspin  +361) 
+[play] env 61: carry    0.1 m | EV  17.6 m/s ( 39.3 mph) | LA -77.5 deg | spray -163.8 deg | spin  4720 rpm (backspin +4326) 
+[play] env 450: carry    0.2 m | EV  21.9 m/s ( 48.9 mph) | LA -68.8 deg | spray  -7.8 deg | spin  4586 rpm (backspin -4345) 
+[play] env 612: carry    0.3 m | EV  19.4 m/s ( 43.4 mph) | LA -67.6 deg | spray -14.0 deg | spin  4598 rpm (backspin -4205) 
+[play] env 999: carry    0.7 m | EV  21.1 m/s ( 47.3 mph) | LA -47.6 deg | spray -31.2 deg | spin  4162 rpm (backspin -2877) 
+[play] env 849: carry    0.1 m | EV  16.8 m/s ( 37.6 mph) | LA -80.0 deg | spray -92.7 deg | spin  4848 rpm (backspin  +604) 
+[play] env 47: carry    0.6 m | EV  17.7 m/s ( 39.6 mph) | LA -49.7 deg | spray -40.3 deg | spin  3579 rpm (backspin -2144) 
+[play] env 179: carry    0.2 m | EV  19.6 m/s ( 43.7 mph) | LA -74.0 deg | spray -32.7 deg | spin  5050 rpm (backspin -3815) 
+[play] env 799: carry    0.1 m | EV  15.9 m/s ( 35.5 mph) | LA -83.4 deg | spray -115.5 deg | spin  4840 rpm (backspin +2272) 
+[play] env 276: carry    0.4 m | EV  19.7 m/s ( 44.0 mph) | LA -63.9 deg | spray -96.6 deg | spin  4644 rpm (backspin  +531) 
+[play] env 479: carry    0.5 m | EV  15.0 m/s ( 33.6 mph) | LA -49.4 deg | spray +178.5 deg | spin  2510 rpm (backspin +2283) 
+[play] env 132: carry    0.6 m | EV  23.3 m/s ( 52.2 mph) | LA -42.5 deg | spray -27.7 deg | spin  3457 rpm (backspin -2613) 
+[play] env 144: carry    0.2 m | EV  15.2 m/s ( 34.1 mph) | LA -73.3 deg | spray -81.2 deg | spin  4468 rpm (backspin  -111) 
+[play] env 347: carry    1.2 m | EV  17.2 m/s ( 38.4 mph) | LA -30.2 deg | spray -56.9 deg | spin  3372 rpm (backspin  -674) 
+[play] env 1: carry    0.6 m | EV  16.0 m/s ( 35.8 mph) | LA -43.7 deg | spray +177.5 deg | spin  2115 rpm (backspin +1870) 
+[play] env 131: carry    0.5 m | EV  17.1 m/s ( 38.2 mph) | LA -57.4 deg | spray -142.0 deg | spin  3735 rpm (backspin +2758) 
+[play] env 329: carry    0.9 m | EV  21.1 m/s ( 47.2 mph) | LA -38.6 deg | spray -75.8 deg | spin  4365 rpm (backspin  -348) 
+[play] env 319: carry    0.4 m | EV  15.1 m/s ( 33.7 mph) | LA -62.2 deg | spray -97.0 deg | spin  4564 rpm (backspin  +430) 
+[play] env 361: carry    0.8 m | EV  19.0 m/s ( 42.5 mph) | LA -47.6 deg | spray -33.9 deg | spin  3818 rpm (backspin -2459) 
+[play] env 692: carry    0.4 m | EV  16.6 m/s ( 37.1 mph) | LA -59.2 deg | spray -167.5 deg | spin  3233 rpm (backspin +3074) 
+[play] env 722: carry    0.1 m | EV  17.7 m/s ( 39.7 mph) | LA -84.8 deg | spray +12.9 deg | spin  5114 rpm (backspin -5054) 
+[play] env 767: carry    0.3 m | EV  14.6 m/s ( 32.6 mph) | LA -67.1 deg | spray +170.4 deg | spin  3824 rpm (backspin +3455) 
+[play] env 808: carry    0.0 m | EV  17.1 m/s ( 38.1 mph) | LA -88.9 deg | spray -115.6 deg | spin  5239 rpm (backspin +2319) 
+[play] env 939: carry    0.8 m | EV  16.5 m/s ( 37.0 mph) | LA -47.7 deg | spray -160.2 deg | spin  2539 rpm (backspin +2371) 
+[play] env 28: carry    0.3 m | EV  15.3 m/s ( 34.2 mph) | LA -65.7 deg | spray -155.9 deg | spin  3773 rpm (backspin +3407) 
+[play] env 711: carry    0.8 m | EV  16.1 m/s ( 36.0 mph) | LA -38.6 deg | spray +177.7 deg | spin  1726 rpm (backspin +1453) 
+[play] env 954: carry    0.7 m | EV  22.7 m/s ( 50.8 mph) | LA -52.7 deg | spray -72.5 deg | spin  4398 rpm (backspin -1055) 
+[play] env 325: carry    0.8 m | EV  21.7 m/s ( 48.5 mph) | LA -42.2 deg | spray -73.6 deg | spin  4023 rpm (backspin  -657) 
+[play] env 464: carry    0.3 m | EV  15.5 m/s ( 34.7 mph) | LA -70.9 deg | spray  +5.1 deg | spin  4253 rpm (backspin -4205) 
+[play] env 563: carry    1.1 m | EV  18.1 m/s ( 40.6 mph) | LA -36.9 deg | spray -86.5 deg | spin  4371 rpm (backspin  -264) 
+[play] env 596: carry    1.0 m | EV  16.5 m/s ( 36.9 mph) | LA -33.7 deg | spray -166.6 deg | spin  1333 rpm (backspin +1226) 
+[play] env 861: carry    1.3 m | EV  24.2 m/s ( 54.1 mph) | LA -32.7 deg | spray -64.4 deg | spin  4077 rpm (backspin  -970) 
+[play] env 971: carry    0.7 m | EV  18.0 m/s ( 40.2 mph) | LA -48.8 deg | spray -95.4 deg | spin  4204 rpm (backspin  +251) 
+[play] env 170: carry    0.8 m | EV  18.9 m/s ( 42.2 mph) | LA -50.3 deg | spray -69.9 deg | spin  3891 rpm (backspin  -832) 
+[play] env 489: carry    0.5 m | EV  17.0 m/s ( 38.1 mph) | LA -57.5 deg | spray -17.2 deg | spin  3952 rpm (backspin -3307) 
+[play] env 792: carry    0.6 m | EV  15.5 m/s ( 34.7 mph) | LA -53.8 deg | spray -104.0 deg | spin  4436 rpm (backspin  +675) 
+[play] env 569: carry    0.4 m | EV  18.5 m/s ( 41.4 mph) | LA -62.9 deg | spray -108.4 deg | spin  4621 rpm (backspin  +900) 
+[play] env 810: carry    1.6 m | EV  17.3 m/s ( 38.6 mph) | LA -24.5 deg | spray -77.8 deg | spin  4044 rpm (backspin  -444) 
+[play] env 77: carry    1.3 m | EV  16.3 m/s ( 36.4 mph) | LA -32.5 deg | spray -103.2 deg | spin  4702 rpm (backspin  +403) 
+[play] env 368: carry    1.3 m | EV  18.4 m/s ( 41.1 mph) | LA -28.0 deg | spray -73.0 deg | spin  4121 rpm (backspin  -559) 
+[play] env 286: carry    1.3 m | EV  14.7 m/s ( 32.8 mph) | LA -34.2 deg | spray -101.9 deg | spin  4192 rpm (backspin  +348) 
+[play] env 957: carry    1.1 m | EV  14.2 m/s ( 31.7 mph) | LA -38.6 deg | spray -107.3 deg | spin  4162 rpm (backspin  +570) 
+[play] env 318: carry    0.9 m | EV  19.4 m/s ( 43.4 mph) | LA -36.6 deg | spray -77.1 deg | spin  3934 rpm (backspin  -560) 
+[play] env 422: carry    0.1 m | EV  15.5 m/s ( 34.7 mph) | LA -75.6 deg | spray -156.3 deg | spin  4436 rpm (backspin +3977) 
+[play] env 723: carry    1.0 m | EV  12.9 m/s ( 28.9 mph) | LA -40.8 deg | spray -164.8 deg | spin  2076 rpm (backspin +1843) 
+[play] env 206: carry    0.7 m | EV  13.6 m/s ( 30.5 mph) | LA -52.0 deg | spray -132.2 deg | spin  3630 rpm (backspin +2110) 
+[play] env 438: carry    1.5 m | EV  17.0 m/s ( 38.0 mph) | LA -21.9 deg | spray -177.0 deg | spin   813 rpm (backspin   +93) 
+[play] env 517: carry    1.4 m | EV  13.8 m/s ( 30.8 mph) | LA -32.3 deg | spray -179.8 deg | spin  1665 rpm (backspin +1378) 
+[play] env 935: carry    0.7 m | EV  11.9 m/s ( 26.7 mph) | LA -47.7 deg | spray -137.1 deg | spin  3107 rpm (backspin +1904) 
+[play] env 275: carry    1.6 m | EV  16.9 m/s ( 37.8 mph) | LA -21.6 deg | spray -177.1 deg | spin   760 rpm (backspin  +169) 
+[play] env 900: carry    2.0 m | EV  21.4 m/s ( 47.8 mph) | LA -21.5 deg | spray -24.7 deg | spin  3120 rpm (backspin -1732) 
+[play] env 938: carry    0.2 m | EV  15.3 m/s ( 34.3 mph) | LA -72.9 deg | spray -137.8 deg | spin  4532 rpm (backspin +3470) 
+[play] env 490: carry    1.4 m | EV  16.0 m/s ( 35.7 mph) | LA -26.4 deg | spray -152.7 deg | spin  1724 rpm (backspin  +595) 
+[play] env 387: carry    1.2 m | EV  12.6 m/s ( 28.2 mph) | LA -35.8 deg | spray -179.0 deg | spin  1991 rpm (backspin +1771) 
+[play] env 635: carry    0.8 m | EV  10.4 m/s ( 23.3 mph) | LA -44.4 deg | spray +124.9 deg | spin  4319 rpm (backspin  -106) 
+[play] env 860: carry    1.1 m | EV  13.4 m/s ( 29.9 mph) | LA -39.3 deg | spray +164.7 deg | spin  2475 rpm (backspin +1270) 
+[play] env 233: carry    0.5 m | EV  10.1 m/s ( 22.5 mph) | LA -55.7 deg | spray -124.4 deg | spin  3734 rpm (backspin +1864) 
+[play] env 664: carry    1.9 m | EV  21.7 m/s ( 48.4 mph) | LA -17.2 deg | spray -92.1 deg | spin  4600 rpm (backspin   +91) 
+[play] env 531: carry    1.3 m | EV  14.2 m/s ( 31.8 mph) | LA -33.3 deg | spray -103.4 deg | spin  4098 rpm (backspin  +241) 
+[play] env 822: carry    0.5 m | EV  20.9 m/s ( 46.6 mph) | LA -60.5 deg | spray -92.5 deg | spin  4810 rpm (backspin  -467) 
+[play] env 314: carry    1.6 m | EV  18.2 m/s ( 40.8 mph) | LA -26.4 deg | spray -88.2 deg | spin  4309 rpm (backspin   -35) 
+[play] env 715: carry    2.0 m | EV  19.3 m/s ( 43.2 mph) | LA -20.2 deg | spray -64.0 deg | spin  3712 rpm (backspin  -760) 
+[play] env 369: carry    1.1 m | EV  21.4 m/s ( 47.9 mph) | LA -37.3 deg | spray -85.9 deg | spin  4392 rpm (backspin  -541) 
+[play] env 809: carry    1.8 m | EV  16.4 m/s ( 36.6 mph) | LA -19.4 deg | spray -175.5 deg | spin   752 rpm (backspin   -11) 
+[play] env 759: carry    2.1 m | EV  16.7 m/s ( 37.4 mph) | LA -22.3 deg | spray -81.5 deg | spin  3645 rpm (backspin    -5) 
+[play] env 162: carry    2.1 m | EV  16.4 m/s ( 36.7 mph) | LA -19.0 deg | spray -86.2 deg | spin  3671 rpm (backspin  -227) 
+[play] env 607: carry    2.0 m | EV  16.5 m/s ( 36.8 mph) | LA -18.6 deg | spray -86.3 deg | spin  4112 rpm (backspin  -175) 
+[play] env 942: carry    1.8 m | EV  18.3 m/s ( 40.9 mph) | LA -22.2 deg | spray -47.8 deg | spin  3518 rpm (backspin -1200) 
+[play] env 163: carry    1.2 m | EV  22.5 m/s ( 50.3 mph) | LA -36.4 deg | spray -65.5 deg | spin  4150 rpm (backspin -1139) 
+[play] env 470: carry    1.3 m | EV  20.8 m/s ( 46.5 mph) | LA -36.6 deg | spray -109.8 deg | spin  4508 rpm (backspin  +600) 
+[play] env 989: carry    0.8 m | EV   8.0 m/s ( 17.9 mph) | LA -45.9 deg | spray -137.4 deg | spin  3275 rpm (backspin +1720) 
+[play] env 503: carry    1.1 m | EV  13.3 m/s ( 29.7 mph) | LA -35.9 deg | spray -67.9 deg | spin  3935 rpm (backspin  -901) 
+[play] env 172: carry    1.8 m | EV  17.0 m/s ( 38.0 mph) | LA -21.3 deg | spray -176.9 deg | spin   796 rpm (backspin  +172) 
+[play] env 554: carry    2.2 m | EV  17.0 m/s ( 38.0 mph) | LA -15.8 deg | spray -61.2 deg | spin  3486 rpm (backspin  -491) 
+[play] env 614: carry    1.5 m | EV  11.7 m/s ( 26.1 mph) | LA -29.9 deg | spray -93.3 deg | spin  3830 rpm (backspin  -229) 
+[play] env 32: carry    2.4 m | EV  16.7 m/s ( 37.3 mph) | LA -15.4 deg | spray -67.6 deg | spin  3757 rpm (backspin  -369) 
+[play] env 676: carry    1.5 m | EV  25.0 m/s ( 55.9 mph) | LA -24.6 deg | spray -37.6 deg | spin  3551 rpm (backspin -1706) 
+[play] env 135: carry    2.0 m | EV  13.3 m/s ( 29.8 mph) | LA -20.6 deg | spray -109.6 deg | spin  4144 rpm (backspin  +130) 
+[play] env 198: carry    2.6 m | EV  16.8 m/s ( 37.6 mph) | LA -12.4 deg | spray -53.5 deg | spin  3926 rpm (backspin  +190) 
+[play] env 338: carry    3.8 m | EV  19.0 m/s ( 42.4 mph) | LA  -8.5 deg | spray -68.5 deg | spin  3597 rpm (backspin  -378) 
+[play] env 613: carry    3.1 m | EV  14.8 m/s ( 33.0 mph) | LA -12.0 deg | spray -171.5 deg | spin  1056 rpm (backspin  -677) 
+[play] env 283: carry    2.6 m | EV  13.1 m/s ( 29.4 mph) | LA -16.5 deg | spray -99.4 deg | spin  4274 rpm (backspin  -251) 
+[play] env 706: carry    1.0 m | EV   5.2 m/s ( 11.6 mph) | LA -34.4 deg | spray +170.2 deg | spin  3368 rpm (backspin +1649) 
+[play] env 357: carry    2.2 m | EV   9.9 m/s ( 22.1 mph) | LA -18.0 deg | spray -130.3 deg | spin  3259 rpm (backspin  -141) 
+[play] env 23: carry    1.7 m | EV   8.2 m/s ( 18.4 mph) | LA -21.7 deg | spray -142.6 deg | spin  2739 rpm (backspin  +179) 
+[play] env 797: carry    3.4 m | EV  14.7 m/s ( 33.0 mph) | LA -12.0 deg | spray -178.2 deg | spin  1063 rpm (backspin  -749) 
+[play] env 229: carry    3.7 m | EV  14.2 m/s ( 31.7 mph) | LA  -8.7 deg | spray -169.9 deg | spin  1296 rpm (backspin  -991) 
+[play] env 7: carry    4.0 m | EV  15.0 m/s ( 33.5 mph) | LA  -5.8 deg | spray -77.2 deg | spin  4158 rpm (backspin  +181) 
+[play] env 185: carry    3.4 m | EV  12.4 m/s ( 27.8 mph) | LA  -8.1 deg | spray -73.5 deg | spin  3984 rpm (backspin  -226) 
+[play] env 290: carry    3.1 m | EV  12.3 m/s ( 27.6 mph) | LA -10.6 deg | spray -101.9 deg | spin  4248 rpm (backspin  -168) 
+[play] env 355: carry    3.5 m | EV  13.8 m/s ( 30.9 mph) | LA -10.2 deg | spray -136.6 deg | spin  3100 rpm (backspin  -217) 
+[play] env 280: carry    3.7 m | EV  12.5 m/s ( 28.0 mph) | LA  -9.9 deg | spray +173.6 deg | spin  1817 rpm (backspin -1309) 
+[play] env 1006: carry    3.5 m | EV  10.7 m/s ( 24.0 mph) | LA  -3.4 deg | spray -137.2 deg | spin  3276 rpm (backspin  -947) 
+[play] env 610: carry    6.2 m | EV  19.2 m/s ( 42.9 mph) | LA  -3.4 deg | spray -52.8 deg | spin  3261 rpm (backspin  +133) 
+[play] env 481: carry    4.8 m | EV  12.8 m/s ( 28.5 mph) | LA  -0.6 deg | spray -83.3 deg | spin  4397 rpm (backspin  -379) 
+[play] env 587: carry    4.9 m | EV  13.2 m/s ( 29.5 mph) | LA  -1.2 deg | spray -144.7 deg | spin  2926 rpm (backspin -1061) 
+[play] env 787: carry    5.7 m | EV  14.3 m/s ( 31.9 mph) | LA  -0.1 deg | spray -92.9 deg | spin  4545 rpm (backspin   -38) 
+[play] env 859: carry    4.6 m | EV  11.9 m/s ( 26.5 mph) | LA   1.3 deg | spray -132.1 deg | spin  3596 rpm (backspin -1021) 
+[play] env 868: carry    5.3 m | EV  20.6 m/s ( 46.0 mph) | LA  -5.9 deg | spray -65.6 deg | spin  3962 rpm (backspin  +218) 
+[play] env 114: carry    5.3 m | EV  12.3 m/s ( 27.5 mph) | LA   0.7 deg | spray -160.9 deg | spin  2266 rpm (backspin -1585) 
+[play] env 680: carry    3.9 m | EV   8.8 m/s ( 19.6 mph) | LA   2.8 deg | spray -96.7 deg | spin  5030 rpm (backspin   -36) 
+[play] env 758: carry    4.8 m | EV  12.3 m/s ( 27.5 mph) | LA  -0.1 deg | spray -159.1 deg | spin  2269 rpm (backspin -1599) 
+[play] env 175: carry    4.9 m | EV  11.6 m/s ( 26.0 mph) | LA  -1.2 deg | spray -152.5 deg | spin  2436 rpm (backspin -1237) 
+[play] env 87: carry    3.3 m | EV   9.1 m/s ( 20.4 mph) | LA  -3.0 deg | spray -150.3 deg | spin  2841 rpm (backspin -1706) 
+[play] env 835: carry    7.9 m | EV  16.9 m/s ( 37.8 mph) | LA   2.0 deg | spray -80.3 deg | spin  3911 rpm (backspin  -120) 
+[play] env 45: carry    5.2 m | EV  11.2 m/s ( 25.1 mph) | LA   1.9 deg | spray -109.8 deg | spin  4215 rpm (backspin  -622) 
+[play] env 53: carry    5.5 m | EV  13.6 m/s ( 30.4 mph) | LA  -0.0 deg | spray -88.1 deg | spin  4304 rpm (backspin   -99) 
+[play] env 381: carry    5.2 m | EV  10.4 m/s ( 23.4 mph) | LA   5.3 deg | spray -96.4 deg | spin  3910 rpm (backspin  -392) 
+[play] env 522: carry    5.5 m | EV  11.7 m/s ( 26.1 mph) | LA   5.3 deg | spray -140.8 deg | spin  3271 rpm (backspin -1505) 
+[play] env 601: carry    1.7 m | EV   3.4 m/s (  7.6 mph) | LA  10.4 deg | spray +32.1 deg | spin  2844 rpm (backspin +2310) 
+[play] env 899: carry    0.6 m | EV  13.3 m/s ( 29.7 mph) | LA -53.1 deg | spray -71.8 deg | spin  4280 rpm (backspin  -596) 
+[play] env 201: carry    4.5 m | EV   9.0 m/s ( 20.0 mph) | LA   7.9 deg | spray -99.6 deg | spin  4558 rpm (backspin  -285) 
+[play] env 96: carry    5.5 m | EV  10.8 m/s ( 24.1 mph) | LA   4.2 deg | spray -133.2 deg | spin  3575 rpm (backspin -1246) 
+[play] env 657: carry    5.6 m | EV  10.0 m/s ( 22.3 mph) | LA   7.3 deg | spray -139.3 deg | spin  3397 rpm (backspin -1632) 
+[play] env 662: carry    0.8 m | EV  19.1 m/s ( 42.7 mph) | LA -40.9 deg | spray -52.1 deg | spin  3554 rpm (backspin -1509) 
+[play] env 88: carry    0.6 m | EV  15.4 m/s ( 34.5 mph) | LA -43.5 deg | spray +175.5 deg | spin  2126 rpm (backspin +1785) 
+[play] env 243: carry    9.4 m | EV  16.6 m/s ( 37.0 mph) | LA   4.8 deg | spray -82.5 deg | spin  4063 rpm (backspin   -77) 
+[play] env 855: carry    6.0 m | EV  10.0 m/s ( 22.4 mph) | LA  10.6 deg | spray -110.3 deg | spin  4408 rpm (backspin -1068) 
+[play] env 34: carry    9.2 m | EV  15.5 m/s ( 34.6 mph) | LA   6.0 deg | spray -71.6 deg | spin  3663 rpm (backspin   -58) 
+[play] env 632: carry   17.9 m | EV  13.7 m/s ( 30.7 mph) | LA  42.9 deg | spray -97.9 deg | spin  4650 rpm (backspin  -968) 
+[play] env 232: carry    5.5 m | EV   9.4 m/s ( 21.0 mph) | LA   8.0 deg | spray +164.2 deg | spin  2606 rpm (backspin -2370) 
+[bat] pitches 1024  hit rate 0.127  (quartiles 25/50/75)
+[bat] hits: {"n": 130, "gap_m": [-0.025, -0.011, -0.001], "dz_m": [-0.031, -0.007, 0.014], "dperp_m": [0.017, 0.034, 0.055], "x_minus_sweet_m": [-0.226, -0.07, 0.046], "timing_s": [-0.103, -0.089, -0.077], "ss_speed_max": [16.897, 17.612, 18.503], "fell": 2, "fall_t_s": [2.15, 2.16, 2.17, 2.18, 2.19], "fall_after_hit_s": [0.93, 0.94, 0.95, 0.97, 0.98]}
+[bat] misses: {"n": 894, "gap_m": [0.096, 0.207, 0.366], "dz_m": [-0.302, -0.168, -0.053], "dperp_m": [-0.021, 0.038, 0.12], "x_minus_sweet_m": [-0.391, 0.152, 0.152], "timing_s": [-0.08, -0.057, 0.033], "ss_speed_max": [18.685, 19.805, 20.834], "fell": 0}
+[bat] miss dominant error: {"timing": 874, "height": 9, "reach": 11}  late 270/894  ball above bat 166/894
+[bat] wrote D:\MyProject\AIPlayBaseBall\logs\diag_bat_contact_p3cs_a-0.08_b-0.035.json
+[INFO]: Simulation is stopped. Shutting down the app.
