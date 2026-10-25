@@ -169,6 +169,8 @@ def main():
 
     base._apply_action = hooked_apply
     obs, _ = wrapped.reset()
+    # the pitch of each env's (first) episode: read now - finished envs are reset to a new pitch before the end
+    kmh0, plate0 = base.pitch_kmh.clone(), base.pitch_plate.clone()
     prev.clear()
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
@@ -185,8 +187,8 @@ def main():
 
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
-    r["kmh"] = base.pitch_kmh.cpu().numpy()
-    r["plate_y"], r["plate_z"] = (v.cpu().numpy() for v in base.pitch_plate.unbind(-1))
+    r["kmh"] = kmh0.cpu().numpy()
+    r["plate_y"], r["plate_z"] = (v.cpu().numpy() for v in plate0.unbind(-1))
     ss = float(geom.sweet_spot_x)
 
     def summary(name, m):
