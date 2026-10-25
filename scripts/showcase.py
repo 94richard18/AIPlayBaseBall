@@ -32,6 +32,8 @@ parser.add_argument("--aim_offset_z", type=float, default=None, help="batter: cf
 parser.add_argument("--aim_offset_y", type=float, default=None, help="batter: cfg.aim_offset_y (m, lateral aim offset, world y)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
+parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
+parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 if args.eval_envs == 0:
@@ -257,6 +259,8 @@ def run_eval(ckpt: str):
             cfg.aim_offset_z = args.aim_offset_z
         if args.phase_horizon is not None:
             cfg.phase_horizon_s = args.phase_horizon
+        cfg.clamp_ref_phase = args.clamp_ref_phase
+        cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
@@ -313,6 +317,8 @@ def run_pitched_video(ckpt: str):
         cfg.aim_offset_z = args.aim_offset_z
     if args.phase_horizon is not None:
         cfg.phase_horizon_s = args.phase_horizon
+    cfg.clamp_ref_phase = args.clamp_ref_phase
+    cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
     if args.aim_offset_y is not None:
         cfg.aim_offset_y = args.aim_offset_y
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
