@@ -1,0 +1,7 @@
+18:28 start Human11
+18:50 12599 diag1024 0.553 fall 65% (stop above 47%)
+falsifier: stop at 12599
+18:50 Human11 training ended: logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_18-29-02_human_pitched11/model_12599.pt
+18:50 model_12599 diag1024 0.553 | fall 65% (no showcase)
+gate: fall <= 37%, diag1024 >= 0.68, ONE OUTS >= 17.0%, fair >= 29 m >= 14.8%; lowest fall, within 5 points the higher win
+18:50 done
