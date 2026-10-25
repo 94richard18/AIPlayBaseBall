@@ -1,6 +1,6 @@
 # 訓練交接：目前目標、進度與待辦
 
-最後更新：2026-10-25 11:05（訓練暫停中）
+最後更新：2026-10-25 11:45（使用者授權到 10-26 20:00，規劃 session 自行決定）
 
 完整歷程在 `PITCHER_TRAINING_LOG.md`（投手）與 `SupporttraningLog.md`（打者、引擎、決策）。這份只記「現在的目標、現在在哪裡、接下來要做什麼」。
 
@@ -74,6 +74,8 @@
 | 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
 | 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
 | 用量 | 每週用量 99%（10-24 06:55）。狀態列 + `~/.claude/hooks/usage_handoff_hook.py` 在 99% 時提醒寫交接（每個用量週期一次） |
+
+**10-25 11:45**：(1) 使用者授權到 10-26 20:00，期間全部由規劃 session 決定（含恢復訓練、新設計），規格不動。(2) 分工：投手 session（aiplaybaseball-08）的提案先由規劃 session 評估。(3) P1（修改後通過）：hn 7700 / 7900 / 8150 / 8450 補評估，再零樣本掃 arm_ref_lead_s L = 0.01 / 0.02 / 0.03（aimL 7/25 + 觸發 ±5°，手肘 L + 0.03）+ L = 0.02 的 ±10° 對照；成功 = 仰角 ≥ +10°、|方向| ≤ 5°、相同起始站穩 ≥ 40/64；8450 方向在 -20° 以內就先停 P1、改考慮續練 hn。(4) 影片 10-25：投手 `videos/deliverable_h5_identical_1025.mp4`、`pitcher_aim10_30h5_identical_1025.mp4`（11:10 / 11:21）；打者 `videos/batter_h7_aim012_1025.mp4`（11:28），白畫面都是 0%。打者第一次在 Isaac 裡找不到 ffmpeg，要設 `IMAGEIO_FFMPEG_EXE`（`logs/film_batter_1025.sh`）。下次最晚 10-25 23:10。3 小時檢查已改成新授權的內容。
 
 **10-25 11:00**：新 session 重設每 3 小時檢查（:17，session-only）；過期影片 `logs/film_1025.sh` 錄製中（投手交付 + aim 10/30、打者 Human7，輸出 `videos/*_1025.mp4`）。仍不啟動訓練。
 
