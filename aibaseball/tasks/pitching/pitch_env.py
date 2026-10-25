@@ -301,6 +301,10 @@ class PitchEnv(DirectRLEnv):
             idx += [0, 0, 0, 0]
         pts.append([x + 0.215, c.zone_center_y, self.field_z + 0.005])
         idx.append(1)
+        th = -math.radians(getattr(c, "plate_yaw_deg", 0.0))  # stage plate_yaw_deg: the plate drawn at -theta (sim frame)
+        if th != 0.0:
+            ct, st = math.cos(th), math.sin(th)
+            pts = [[ct * q[0] - st * q[1], st * q[0] + ct * q[1], q[2]] for q in pts]
         pts.append([-0.075, 0.0, c.mound_top_z + 0.005])
         idx.append(2)
         origin = self.scene.env_origins[0]

@@ -463,7 +463,9 @@ def film(w, base, pol, T, fps=30):
                 # this frame and back for the next side-view grab (one stale render dropped after each move)
                 g = base.scene.env_origins[0].cpu().numpy() + [0.0, 0.0, base.field_z]
                 pd = base.cfg.plate_distance
-                base.sim.set_camera_view(eye=(g + [pd + 1.0, base.cfg.zone_center_y, 1.5]).tolist(),
+                th = -np.radians(getattr(base.cfg, "plate_yaw_deg", 0.0))  # the turned plate (stage plate_yaw_deg)
+                ex, ey = pd + 1.0, base.cfg.zone_center_y
+                base.sim.set_camera_view(eye=(g + [np.cos(th) * ex - np.sin(th) * ey, np.sin(th) * ex + np.cos(th) * ey, 1.5]).tolist(),
                                          target=(g + [0.0, 0.0, 1.3]).tolist())
                 base.render()
                 pv = grab()
