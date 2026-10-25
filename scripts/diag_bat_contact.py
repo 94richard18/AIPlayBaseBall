@@ -28,6 +28,7 @@ parser.add_argument("--tag", type=str, default="human3")
 parser.add_argument("--timing_bias", type=float, default=None, help="override cfg.timing_bias_s (s, + = pitch later)")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
+parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True  # diagnostics only: a GUI window also keeps the app alive after the run
@@ -71,6 +72,8 @@ def main():
     if hasattr(cfg, "tee_noise_ramp_steps"):
         cfg.tee_noise_ramp_steps = 0
     cfg.scene.num_envs = args.envs
+    if args.seed is not None:
+        cfg.seed = args.seed
     env = gym.make("AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     agent = TeeBattingMimicPPORunnerCfg()
