@@ -135,11 +135,11 @@ class PitchedBattingHuman9EnvCfg(PitchedBattingHuman7EnvCfg):
     """2026-10-25 ONE OUTS (Human7 model_12095 + aim_offset_z -0.12, 1000 matches): batter wins 8.0%, infield balls 52.5%.
     With the 150.3 m target the distance term is ~0 at ONE OUTS distances: on the 256 evaluated balls an infield out
     scores 1.90 on average, a fair ball past 29 m 2.19, a foul 1.49 - training was paid to hit grounders. With a 29 m
-    target: 3.10 / 26.1 / 2.07. Changes: target 29 m (95 ft, ONE OUTS infield edge), and train in the game's aim
-    (aim_offset_z -0.12) instead of adding it afterwards. Start from Human7 model_12095."""
+    target: 3.10 / 26.1 / 2.07. Only change (decision session: one change per round; Human8 failed training under an aim
+    offset): target 29 m (95 ft, ONE OUTS infield edge). Training aim stays Human7's (0); eval / game use -0.12.
+    Start from Human7 model_12095."""
 
     target_distance: float = 29.0
-    aim_offset_z: float = -0.12
 
 
 @configclass

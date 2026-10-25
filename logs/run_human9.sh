@@ -1,6 +1,7 @@
 #!/bin/bash
-# Human9 (ONE OUTS target 29 m + train at aim_offset_z -0.12) from Human7 model_12095: 600 its, early stop at +200,
-# then the ONE OUTS gate (decision session 10-25): CPU 1000 matches, same seed, measured hit rate; base 8.0%, improve >= 11%, fail < 8.0%.
+# Human9 (ONE OUTS target 29 m only; trains at aim 0 like Human7, evaluated at aim_offset_z -0.12) from Human7 model_12095: 600 its, early stop at +200,
+# then the ONE OUTS gate (decision session 10-25): CPU 1000 matches, same seed, measured hit rate; base 8.0%, improve >= 11%, fail < 8.0%;
+# adopt only if the diag hit rate is also >= 0.68 (Human7 0.73 - 0.05).
 # NOT started automatically - needs the decision session's go-ahead and a slot (pitcher first).
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
@@ -38,4 +39,5 @@ for m in PAT.finditer(open("logs/b_aimy_h9.txt", errors="ignore").read()):
 json.dump(dict(source="logs/b_aimy_h9.txt", swings=sw), open("logs/b_aimy_table_h9.json", "w"))
 PY
 $P scripts/one_outs.py --matches 1000 --batter_table logs/b_aimy_table_h9.json --hit_rate $HR --show 0 2>&1 | tail -2
+echo "gate: adopt if win >= 11% and hit rate $HR >= 0.68; fail if win < 8.0%"
 date +"%H:%M done"
