@@ -1,5 +1,5 @@
 #!/bin/bash
-# Human14 (Human13 + half the pitches shaped like P3c t18 at 55-75 km/h) - NOT started; after pitcher C (decision session).
+# Human14 (Human9 + half the pitches shaped like P3c t18 at 55-75 km/h; decision session: base Human9, not Human13) - NOT started; after pitcher C (decision session).
 # START_RUN / START_CKPT: Human13's best checkpoint (default: the delivery Human9b 12500). 400 its, checkpoint every 50,
 # one batter Isaac at a time. Falsifier at +100: diag1024 vs P3c >= 0.25 (delivery 0.140, best zero-shot 0.212) and
 # diag1024 at 88-112 km/h >= 0.60, else stop. Gate per checkpoint (decision session): ONE OUTS vs p3c_identical_t18 >
@@ -9,7 +9,7 @@ P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=50
 START_RUN=${START_RUN:-2026-10-25_13-56-51_human_pitched9b}; START_CKPT=${START_CKPT:-model_12500.pt}
 R=assets/game/p3c_identical_t18_release.csv; T=assets/game/p3c_identical_t18_pitches.csv
-PF="--clamp_ref_phase"
+PF=""  # Human14 is based on Human9 (no reference clamp in training)
 last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; echo ${L%.pt}; }
 hr() { grep -o "hit rate [0-9.]*" $1 | grep -o "[0-9.]*$"; }
 d() {  # $1 ckpt $2 tag $3 aim $4.. extra -> hit rate
