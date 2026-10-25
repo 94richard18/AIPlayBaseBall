@@ -1,8 +1,8 @@
 """ONE OUTS match video (CPU only): play N matches with the engine and render them one after another.
 
-    python scripts/render_one_outs.py [--matches 10] [--seed 0] [--batter_table assets/game/batter_h9_12300_aim012.json]
+    python scripts/render_one_outs.py [--matches 10] [--seed 0] [--batter_table assets/game/batter_h9b_12500_aim008.json]
         [--pitches <eval_stage --pitch_csv>] [--out videos/one_outs_fallback.mp4]
-Default pitcher: the fallback pitch (FallbackPitcher); default batter: the RL batter table (Human9 model_12300 + aim -0.12, hit rate 0.691, 10-25).
+Default pitcher: the fallback pitch (FallbackPitcher); default batter: the RL batter table (Human9b model_12500 + aim -0.08, hit rate 0.684, 10-25 17:40).
 """
 
 import argparse
@@ -21,8 +21,8 @@ from aibaseball.game.one_outs_replay import render_matches  # noqa: E402
 parser = argparse.ArgumentParser()
 parser.add_argument("--matches", type=int, default=10)
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--batter_table", default="assets/game/batter_h9_12300_aim012.json")
-parser.add_argument("--hit_rate", type=float, default=0.691)
+parser.add_argument("--batter_table", default="assets/game/batter_h9b_12500_aim008.json")
+parser.add_argument("--hit_rate", type=float, default=0.684)
 parser.add_argument("--pitches", default=None, help="the RL pitcher's evaluated pitches (eval_stage --pitch_csv); default: the fallback pitch")
 parser.add_argument("--fps", type=int, default=30)
 parser.add_argument("--out", default="videos/one_outs_fallback.mp4")

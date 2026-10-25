@@ -1,6 +1,6 @@
 # 訓練交接：目前目標、進度與待辦
 
-最後更新：2026-10-25 15:47（使用者授權到 10-26 20:00，規劃 session 自行決定）
+最後更新：2026-10-25 17:55（使用者授權到 10-26 20:00，規劃 session 自行決定）
 
 完整歷程在 `PITCHER_TRAINING_LOG.md`（投手）與 `SupporttraningLog.md`（打者、引擎、決策）。這份只記「現在的目標、現在在哪裡、接下來要做什麼」。
 
@@ -54,7 +54,7 @@
 
 ## 3. 打者目前狀態
 
-**交付版（10-25 起）**：Human9 model_12300 + aim_offset_z -0.12（ONE OUTS 打者勝 13.1%、diag 擊中率 0.691）。之前是 Human7 model_12095（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-22_22-46-49_human_pitched7/model_12095.pt`）+ aim_offset_z -0.12。
+**交付版（10-25 17:40 起）**：Human9b model_12500 + aim_offset_z -0.08（ONE OUTS 打者勝 18.5%、diag 擊中率 0.684，待重測）。前一版是 Human9 model_12300 + aim_offset_z -0.12（13.1%、0.691）。之前是 Human7 model_12095（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-22_22-46-49_human_pitched7/model_12095.pt`）+ aim_offset_z -0.12。
 
 - 比賽時機（使用者 10-21）：揮棒起動用引擎算出的真實到達時間；揮棒起動 = 球到本壘時間 − 參考擊球時間 − 0.055 s。
 - 實測（±0.03 s 抖動）：擊中率 0.73；仰角四分位 -12 / +8 / +30°；初速中位數 21.8 m/s（≥ 28 m/s 5.9%）；界內 46%（界內落點中位數 4.0 m）。
@@ -74,6 +74,8 @@
 | 停止規則（hn） | noisy 連兩次 < 30/64，或兩個連續存檔級 3 = 0 且本壘 \|y\| ≥ 14.61 m（watch_hn 印 STOP → 投手 session 傳給規劃 session → 規劃 session 停 trainer） |
 | 影片 | 打者 `videos/batter_h7_aim012_1024am.mp4`（10-23 23:33，下次最晚 10-24 11:33）；投手 `videos/deliverable_h5_identical_1024am.mp4`、`pitcher_aim10_30h5_identical_1024am.mp4`（02:41，下次 14:40）。trainer 在跑時不錄 |
 | 用量 | 每週用量 99%（10-24 06:55）。狀態列 + `~/.claude/hooks/usage_handoff_hook.py` 在 99% 時提醒寫交接（每個用量週期一次） |
+
+**10-25 17:55**：(1) 投手：ho2（W100）16:06 停、ho3（y 尺度 7 m）17:09 停，|y| 都沒改善（ho3 -5.29 → -7.57 m）；ho3b（ho3 + critic 暖機 50 次，`--critic_warmup`，train_live.sh 的 WARMUP）17:39 開，暖機後 value loss 沒降一半就停，預計 19:50–20:00 結束。投手結果由投手 session 回報。(2) 打者：Human10（w_miss 40）12350 擊中率 0.500，失敗。發現「下切兩次」：Human9 在 aim 0 下學會往球下揮，比賽再加 aim -0.12 就揮空（12500 在 aim 0 擊中率 0.793 vs -0.12 0.539）。瞄準掃描後交付改為 Human9b model_12500 + aim_offset_z -0.08（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt`）：diag 0.684、ONE OUTS 18.5%、界內且 ≥ 29 m 15.9%、打中後跌倒 61%。擊中率太接近門檻，ho3b 結束後換 seed 1、2 重測（`logs/b_diag_retest_12500.sh`），三次平均 < 0.68 就退回 12300 + aim -0.12。打中後跌倒 54–61% 要在對決影片前處理。(3) ONE OUTS 影片換新表重錄：`videos/one_outs_h9b_1025.mp4`（10 場、142 s、白畫面 0%），render 預設改成 `assets/game/batter_h9b_12500_aim008.json`、hit_rate 0.684。
 
 **10-25 15:47 檢查**：GPU 上是投手 ho2 trainer（14:41 起，`AIB-Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100-v0`，ho 7500 → 8100，預計 16:55–17:05）+ 打者補評估的 showcase（B 槽），VRAM 11.8 GB（接近上限）。打者 Human9b（12300 → 12694）：12400 / 12500 / 12600 的 ONE OUTS 勝率 15.8 / 17.4 / 16.3%，但 diag 擊中率 0.484 / 0.539 / 0.586 都 < 0.68，不換交付（門檻不調）；補評估 12350、12694，都沒過就排 w_miss 20 → 40 的提案在 ho2 之後。影片下次最晚 23:10（投手）/ 23:28（打者）。
 
