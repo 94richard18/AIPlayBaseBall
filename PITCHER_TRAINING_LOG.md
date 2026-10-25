@@ -2139,3 +2139,14 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
 - **P3 停在半途**（19:43，規劃 session 要讓 GPU 給打者）：ho2 提早 2.5 ms 的 noisy 48/128；提早 5 ms 相同起始 42/64、仰角 +14.7°，站穩比 2.5 ms 的 52/64 少 10，所以提早超過 2.5 ms 開始傷到站穩。hf 7300 四組和 ho2 7.5 ms 沒跑。
 - 第 2 段提案：A（固定姿勢停頓）規劃 session 判斷會讓 noisy 評估退化回相同起始、改變過關條件的意義，不採用（只留作比賽 / 影片做法或診斷）；B 如上；C（P3c 設定、訓練雜訊 0.02、300 次，35ccf1c，logs/oo_c_train.sh、logs/watch_c.sh）排在打者 Human13 之後（約 21:00）。ho / ho2 / ho3 本來就是用訓練雜訊 0.02 練的，C 跟 ho2 只差在放球時間和 θ。
 - 影片：plate_yaw_deg 時本壘、好球帶標記和本壘視角相機轉到斜站後的方向（2275a96）。`ball_aero_sim`（0019395）讓模擬裡的球也受阻力 + 馬格努斯力，供影片 / 比賽用，驗證排在打者時機掃描之後。
+- **ball_aero_sim 驗證通過**（10-25 20:1x，P3c 相同起始 64）：模擬裡實際穿過本壘的位置減 simulate_to_plane，|dy| 中位數 0.001 m（最大 0.017），|dz| 中位數 0.016 m（最大 0.047），都 ≤ 0.05 m。之後的影片和比賽球路可以加 `--set ball_aero_sim=True`，球在畫面上就是阻力版。20:04 的 GPU 當機是打者的串接腳本同時開了 3 個 Isaac，跟 ball_aero_sim 無關。
+
+## 投手 session 交接（10-25 20:15，用量 99%）
+- **目前目標**：ONE OUTS 投手過關（相同起始和 noisy 都要阻力級 3 ≥ 32/64、站穩 ≥ 48/64）。10-26 20:00 前由規劃 session（aiplaybaseball-10）決定一切；投手結果直接回報使用者，也寫在這裡、摘要傳規劃 session。
+- **交付候選 P3c**：ho2 model_7600（logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt）+ 任務 TW2PL + `--set release_action_shift_s=0.0025 plate_yaw_deg=18`（或任務 TW2PLW100P3C）。相同起始已過關（52/64、阻力級 3+ 48/64、好球 34、觸身 1），noisy 還沒（53/128、5/128）。球路表 assets/game/p3c_*_t18_*.csv（ff4471a）。
+- **沒在跑任何投手工作**。GPU 排程（規劃 session 定）：打者 Human14（約 20:15–22:15）→ 23:10 投手影片 → C。
+- **待辦**：
+  1. Human14 結束（打者 session aiplaybaseball-d0 會通知）→ 跑 `bash logs/film_p3c.sh`（會等到沒有 trainer；影片說明要寫「球路只算重力」，或先在 film_p3c.sh 的 --set 加 ball_aero_sim=True 改成阻力版）→ 打者影片由打者 session 錄。
+  2. 影片後開 C：先通知規劃 session 與打者，然後 `bash logs/oo_c_train.sh > logs/oo_c_train.txt 2>&1`（背景），確認 train.py 起來後跑 `bash logs/watch_c.sh > logs/watch_c.txt 2>&1`（背景），報開始與預計結束時間（300 次約 1h45m）。停止 / 成功規則在 watch_c.sh 檔頭；STOP 時停掉所有含 c_p3c 的行程，通知打者「槽空了」。
+  3. 規劃 session 沒回時，照 trainingLog.md 第 4、5 節的排程和規則執行。
+- **工具**：`scripts/release_csv_tiers.py`（離線算任意 θ 的阻力級數、好球 / 觸身，`--write` 輸出新球路表）；`eval_stage.py --release_csv / --pitch_csv`（阻力版，不覆蓋）。GPU 規則：總數最多 2 個 Isaac，每次開新行程前先數。
