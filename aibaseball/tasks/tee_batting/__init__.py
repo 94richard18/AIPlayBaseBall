@@ -243,6 +243,16 @@ gym.register(
 )
 
 gym.register(
+    id="AIB-PitchedBatting-Human9-v0",
+    entry_point=f"{__name__}.pitched_env:PitchedBattingEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitched_env_cfg:PitchedBattingHuman9EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg",
+    },
+)
+
+gym.register(
     id="AIB-PitchedBatting-Human-Play-v0",
     entry_point=f"{__name__}.pitched_env:PitchedBattingEnv",
     disable_env_checker=True,
