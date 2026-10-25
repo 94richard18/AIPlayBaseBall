@@ -328,7 +328,10 @@ class TeeBattingEnv(DirectRLEnv):
         ss_p, ss_v = self._sweet_spot(knob, axis, cm, v_cm, w)
         jp = d.joint_pos[:, self.body_joint_ids] - d.default_joint_pos[:, self.body_joint_ids]
         jv = d.joint_vel[:, self.body_joint_ids]
-        phase = (self.episode_length_buf.float() * self.step_dt / self.max_episode_length_s).unsqueeze(-1)
+        # phase input: time over the training episode length; play / eval episodes run longer (to see the ball land),
+        # so phase_horizon_s keeps the input on the scale the policy was trained on (held at 1 past the horizon)
+        horizon = self.cfg.phase_horizon_s or self.max_episode_length_s
+        phase = (self.episode_length_buf.float() * self.step_dt / horizon).clamp(max=1.0).unsqueeze(-1)
         ball_seen = self._perceived_ball()
         obs = torch.cat([
             jp,

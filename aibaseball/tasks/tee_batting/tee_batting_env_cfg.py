@@ -104,6 +104,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     ball_obs_bias_std: float = 0.0  # m, per-episode estimation error
     aim_offset_z: float = 0.0  # m, constant added to the perceived ball height (< 0: swing under the ball -> lift)
     aim_offset_y: float = 0.0  # m, constant added to the perceived ball's lateral (world y) position
+    phase_horizon_s: float | None = None  # phase input = t / this (None: the episode length); clamped at 1
     ball_obs_noise_std: float = 0.0  # m, per-step noise
     ball_obs_delay_s: float = 0.0  # s, visuomotor latency
     ball_obs_clip: float = 100.0  # m, clip of the ball-relative observation vectors (pitched balls start ~17 m away)

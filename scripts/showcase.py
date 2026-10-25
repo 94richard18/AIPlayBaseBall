@@ -27,6 +27,7 @@ parser.add_argument("--pitch_kmh", type=float, nargs=2, default=None, help="pitc
 parser.add_argument("--timing_noise", type=float, default=None, help="pitched task: +- arrival-time offset (s)")
 parser.add_argument("--timing_bias", type=float, default=None, help="pitched task: cfg.timing_bias_s (s, + = pitch later)")
 parser.add_argument("--tee_offset_z", type=float, default=None, help="pitched task eval: cfg.tee_offset_z (m, + = pitch aimed above the sweet-spot path)")
+parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="batter: cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="batter: cfg.aim_offset_y (m, lateral aim offset, world y)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
@@ -254,6 +255,8 @@ def run_eval(ckpt: str):
             cfg.tee_offset_z = args.tee_offset_z
         if args.aim_offset_z is not None:
             cfg.aim_offset_z = args.aim_offset_z
+        if args.phase_horizon is not None:
+            cfg.phase_horizon_s = args.phase_horizon
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
@@ -308,6 +311,8 @@ def run_pitched_video(ckpt: str):
         cfg.timing_bias_s = args.timing_bias
     if args.aim_offset_z is not None:
         cfg.aim_offset_z = args.aim_offset_z
+    if args.phase_horizon is not None:
+        cfg.phase_horizon_s = args.phase_horizon
     if args.aim_offset_y is not None:
         cfg.aim_offset_y = args.aim_offset_y
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
