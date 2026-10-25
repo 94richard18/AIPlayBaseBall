@@ -22,7 +22,9 @@ parser.add_argument("--video_episodes", type=int, default=2)
 parser.add_argument("--no_plate_view", action="store_true",
                     help="video: side view only (default: side view + a view from home plate toward the pitcher, side by side)")
 parser.add_argument("--pitch_csv", type=str, default=None,
-                    help="arm + ball step: one row per episode 'speed_mps,plate_y,plate_z,crossed' for the game engine")
+                    help="arm + ball step: one row per released episode speed_mps,plate_y,plate_z,crossed,flight (drag + Magnus plate location) for the game engine; never overwrites")
+parser.add_argument("--release_csv", type=str, default=None,
+                    help="arm + ball step: one row per episode - release state in the plate frame, rest, aero plate y / z")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
@@ -237,14 +239,6 @@ def main():
             say(f"  ball at release (median): velocity ({np.median(vv[:, 0]):+.1f}, {np.median(vv[:, 1]):+.1f}, "
                 f"{np.median(vv[:, 2]):+.1f}) m/s, position ({np.median(rp[:, 0]):+.2f}, {np.median(rp[:, 1]):+.2f}, "
                 f"{np.median(rp[:, 2]):.2f}) m, at {np.median(base.rel_ref_t.cpu().numpy()[rel]):.2f} s")
-        if args.pitch_csv:  # release speed; y + toward FIRST base (the pitcher's left, facing +x), z above the plate ground
-            os.makedirs(os.path.dirname(os.path.abspath(args.pitch_csv)), exist_ok=True)
-            with open(args.pitch_csv, "w", encoding="utf-8") as f:
-                f.write("speed_mps,plate_y,plate_z,crossed" + chr(10))
-                for i in range(n):
-                    if rel[i]:
-                        f.write(f"{v[i]:.3f},{yz[i, 0] - cfg.zone_center_y:.4f},{yz[i, 1]:.4f},{int(cr[i])}" + chr(10))
-            say(f"  pitch table: {args.pitch_csv} ({int(rel.sum())} rows)")
         # a dropped ball is not a throw: A25/A50 "passed" with the ball slipping out at 0.65 s (1-2 m/s), fe A75 from
         # 3550 on dropped it at 0.83 s - keep-best must not pick a checkpoint that stands because it never throws
         thrown = rel & (v >= args.gate_min_speed) & (base.rel_ref_t.cpu().numpy() >= args.gate_min_release_t)
@@ -288,6 +282,11 @@ def main():
                 ly = np.abs(pr[:, 1] + vr[:, 1] * tp - cfg.zone_center_y)
                 lz = np.abs(pr[:, 2] + vr[:, 2] * tp - 4.905 * tp**2 - base.field_z
                             - getattr(cfg, "ball_plate_z_target_m", 0.85))
+                hd = np.degrees(np.arctan2(vr[:, 1], vr[:, 0]))
+                if rel.sum() > 2 and hd[rel].std() > 0:  # P3 check: across releases, elevation per degree of heading
+                    say(f"  across releases ({int(rel.sum())}): elevation vs heading slope "
+                        f"{np.polyfit(hd[rel], el[rel], 1)[0]:+.2f} deg/deg, corr {np.corrcoef(hd[rel], el[rel])[0, 1]:+.2f}; "
+                        f"release time vs heading slope {np.polyfit(base.rel_ref_t.cpu().numpy()[rel], hd[rel], 1)[0] / 1000:+.2f} deg/ms")
                 if pm.sum() > 2 and sc[pm].std() > 0:
                     say(f"  ball score correlation (same episodes): elevation {np.corrcoef(sc[pm], el[pm])[0, 1]:+.2f}, "
                         f"line |y| at the plate {np.corrcoef(sc[pm], ly[pm])[0, 1]:+.2f}, |z - target| "
@@ -344,7 +343,9 @@ def main():
             tp_ = getattr(base, "to_plate", lambda x: x)  # plate frame, the spin axis turned with the velocity
             pl = tp_(base.rel_pos - base.scene.env_origins).cpu().double()
             cr_a, v_a, _, re_a = simulate_to_plane(pl, tp_(base.rel_vel).cpu().double(), tp_(base.rel_omega).cpu().double(), base.phys,
-                                                   cfg.plate_distance, dt=0.005, ground_z=base.field_z)
+                                                   cfg.plate_distance, dt=0.005, t_max=3.0, ground_z=base.field_z)
+            # t_max 3 s (default 1 s): a 16.8 m/s pitch with drag needs ~1.1-1.2 s to the plate, so every ONE OUTS pitch
+            # was cut off in flight and counted as not reaching the plate (P2, 2026-10-25)
             v_a, re_a = v_a.numpy(), re_a.numpy() & rel
             ya, za = cr_a[:, 1].numpy() - cfg.zone_center_y, cr_a[:, 2].numpy() - base.field_z
             fast = re_a & (v_a >= 80.0 / 3.6)
@@ -357,6 +358,29 @@ def main():
             say(f"  W1 gate (aero, >= 80 km/h = 22.2 m/s over the plate): 1. at rest and in the air and fast "
                 f"{int((rest & fast).sum())}/{n} (>= 60/64); 2. and T3 (aero location) {int((rest & fast & t3a).sum())}/{n} "
                 f"(>= 32/64); at rest and aero T3 any speed {int((rest & t3a).sum())}/{n}")
+        if args.pitch_csv and rel.any():
+            # release speed; plate y + toward FIRST base (the pitcher's left, facing +x), z above the plate ground. The
+            # plate location is the drag + Magnus flight (planning session 2026-10-25: the gate and the match use the same
+            # flight; it was the gravity-only crossing of the eval episode before) - flight=drag marks the new tables
+            if os.path.exists(args.pitch_csv):
+                raise SystemExit(f"--pitch_csv {args.pitch_csv} exists - not overwriting (old tables are gravity-only)")
+            os.makedirs(os.path.dirname(os.path.abspath(args.pitch_csv)), exist_ok=True)
+            with open(args.pitch_csv, "w", encoding="utf-8") as f:
+                f.write("speed_mps,plate_y,plate_z,crossed,flight" + chr(10))
+                for i in range(n):
+                    if rel[i]:
+                        f.write(f"{v[i]:.3f},{ya[i]:.4f},{za[i]:.4f},{int(re_a[i])},drag" + chr(10))
+            say(f"  pitch table (drag flight): {args.pitch_csv} ({int(rel.sum())} rows)")
+        if args.release_csv and rel.any():  # P3 (2026-10-25): per-episode release state for offline fits (plate frame, deg / m / s)
+            vr_ = vv_all; el_ = np.degrees(np.arctan2(vr_[:, 2], np.linalg.norm(vr_[:, :2], axis=1)))
+            pr_ = pl.numpy()
+            with open(args.release_csv, "w", encoding="utf-8") as f:
+                f.write("released,at_rest,thrown,release_t,speed,heading,elevation,x,y,z,aero_reached,aero_y,aero_z,tier" + chr(10))
+                for i in range(n):
+                    f.write(f"{int(rel[i])},{int(rest[i])},{int(thrown[i])},{rt[i]:.4f},{v[i]:.3f},{head[i]:.2f},{el_[i]:.2f},"
+                            f"{pr_[i, 0]:.3f},{pr_[i, 1]:.3f},{pr_[i, 2] - base.field_z:.3f},{int(re_a[i])},{ya[i]:.3f},{za[i]:.3f},"
+                            f"{int(tier[i])}" + chr(10))
+            say(f"  release table: {args.release_csv} ({n} rows)")
         ok = ok & thrown
     if lift_stage:
         say(f"  leg lift (lead foot >= {cfg.lift_min_m} m up on the back leg alone >= {cfg.lift_hold_min_s} s): "
