@@ -175,6 +175,17 @@ class PitchedBattingHuman12EnvCfg(PitchedBattingHuman9EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman13EnvCfg(PitchedBattingHuman12EnvCfg):
+    """2026-10-25 Human12 zero-shot (scripts/diag_episode_end.py, delivery 12500): fell + lost only 1.0-1.5% of the
+    hit episodes - 98% end as time_out because the reference clip ends (ref_end), before any post-contact fall; play
+    holds the last pose and goes on, and the batter falls (diag 57%). Change: the training episode also holds the last
+    pose (ref_hold_end) with the reference-time input held at 1 (clamp_ref_phase, also in play). Start from 12500."""
+
+    ref_hold_end: bool = True
+    clamp_ref_phase: bool = True
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0

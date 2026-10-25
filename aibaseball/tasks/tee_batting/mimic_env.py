@@ -71,7 +71,10 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.joint_targets[:, self.body_joint_ids] = torch.clamp(tgt, self.q_lo, self.q_hi)
         # velocity feed-forward: the PD damping tracks the reference joint velocity instead of
         # braking toward zero (removes most of the tracking lag of a 30+ m/s swing)
-        self.joint_vel_targets[:, self.body_joint_ids] = nxt["joint_vel"] * self.cfg.vel_feedforward
+        ff = nxt["joint_vel"] * self.cfg.vel_feedforward
+        if self.cfg.zero_ff_after_ref_end:  # the held final pose has no velocity (the sampler repeats the last frame's)
+            ff = torch.where((self._ref_time(1) >= self.ref.duration[self.clip]).unsqueeze(-1), torch.zeros_like(ff), ff)
+        self.joint_vel_targets[:, self.body_joint_ids] = ff
         self.new_hit[:] = False
         self.hit_reward[:] = 0.0
 
@@ -91,7 +94,7 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         knob, axis, *_ = self._bat_state()
         tip = knob + axis * self.bat_geom.length
         extra = torch.cat([
-            (t / self.ref.duration[self.clip]).unsqueeze(-1),
+            (t / self.ref.duration[self.clip]).clamp(max=1.0 if self.cfg.clamp_ref_phase else float("inf")).unsqueeze(-1),
             nxt["joint_pos"] - q,
             quat_rotate_inverse(d.root_link_quat_w, nxt["root_pos"] - d.root_link_pos_w),
             quat_rotate_inverse(d.root_link_quat_w, nxt["key_pos"][:, -1] - tip),
@@ -157,6 +160,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         if self.cfg.lost_after_hit_is_fall:  # drifting off the follow-through is how a fall starts: penalise it as one
             self.fallen = self.fallen | (lost & self.hit)
         ref_end = self._ref_time(1) >= self.ref.duration[self.clip]
+        if self.cfg.ref_hold_end:  # like play: the reference holds its last pose and the episode goes on
+            return terminated | lost, time_out
         return terminated | lost, time_out | ref_end
 
     # ------------------------------------------------------------------ reset (reference state initialisation)

@@ -30,6 +30,8 @@ parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
+parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
+parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True  # diagnostics only: a GUI window also keeps the app alive after the run
@@ -77,6 +79,8 @@ def main():
     cfg.scene.num_envs = args.envs
     if args.seed is not None:
         cfg.seed = args.seed
+    cfg.clamp_ref_phase = args.clamp_ref_phase
+    cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
     env = gym.make("AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     agent = TeeBattingMimicPPORunnerCfg()

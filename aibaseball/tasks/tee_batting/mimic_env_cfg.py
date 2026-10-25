@@ -70,6 +70,9 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     contact_window_s: float = 0.04
     max_key_err: float = 0.45  # terminate when key bodies drift this far (m RMS)
     lost_after_hit_is_fall: bool = False  # True: losing the reference after contact counts as a fall (w_fall_after_hit)
+    ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)
+    clamp_ref_phase: bool = False  # True: the reference-time input t / duration is held at 1 past the clip end
+    zero_ff_after_ref_end: bool = False  # True: no joint-velocity feed-forward once the reference holds its last pose
 
     # task shaping: tracking replaces the hand-made swing shaping
     w_bat_speed: float = 0.0
