@@ -31,6 +31,9 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     tempo_scale: float = 0.3  # tempo action -> reference playback rate x (1 +- 0.3)
     w_tempo: float = 0.01
     w_miss: float = 2.0
+    # eval / game: pitches from the RL pitcher's eval_stage --pitch_csv table instead of the analytic library
+    pitch_table_csv: str | None = None
+    pitch_table_center_z: float = 0.80  # m, the table's plate z that maps onto the swing's nominal contact height
 
 
 @configclass

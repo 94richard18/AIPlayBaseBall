@@ -92,3 +92,41 @@ def build_library(n: int, spec: PhysicsSpec, speed_kmh=(75.0, 155.0), backspin_r
     order = torch.argsort(speed)
     return PitchLibrary(release=release[order], target=target[order], v0=v0[order], omega=omega[order],
                         flight_time=t_hit[order], speed_kmh=(speed * 3.6)[order])
+
+
+GAME_RELEASE_POINT = (17.51, 1.17, 1.86)  # the RL pitcher's release (hf_avg3 7300 + H5) in this frame, as for the fallback
+
+
+def read_pitch_table(path: str):
+    """Rows of an eval_stage --pitch_csv table that reached the plate: (speed_mps, plate_y, plate_z) in the batting frame.
+    The pitching frame's +y is the first-base side; the batting frame's +y is the third-base side (TablePitcher's flip)."""
+    import csv
+
+    with open(path, newline="") as f:
+        rows = [(float(r["speed_mps"]), -float(r["plate_y"]), float(r["plate_z"]))
+                for r in csv.DictReader(f) if int(float(r.get("crossed", 1)))]
+    assert rows, f"no pitches that reached the plate in {path}"
+    return rows
+
+
+def build_library_from_table(rows, spec: PhysicsSpec, release_point=GAME_RELEASE_POINT, backspin_rpm: float = 2000.0,
+                             iters: int = 5) -> PitchLibrary:
+    """One aimed pitch per table row (release speed, plate y / z) from the game's release point, with the same drag +
+    Magnus flight as build_library; flight_time is the release -> plate time of that flight."""
+    t = torch.tensor(rows, dtype=torch.float32)
+    n = t.shape[0]
+    release = torch.tensor(release_point, dtype=torch.float32).expand(n, 3).clone()
+    target = torch.stack([torch.zeros(n), t[:, 1], t[:, 2]], -1)
+    speed = t[:, 0]
+    omega = torch.stack([torch.zeros(n), torch.ones(n), torch.zeros(n)], -1) * (backspin_rpm * 2 * math.pi / 60)
+    aim = target.clone()
+    for _ in range(iters):
+        d = torch.nn.functional.normalize(aim - release, dim=-1)
+        p_hit, _, t_hit = fly_to_x(release, d * speed.unsqueeze(-1), omega, spec, 0.0)
+        aim[:, 1:] += target[:, 1:] - p_hit[:, 1:]
+    d = torch.nn.functional.normalize(aim - release, dim=-1)
+    v0 = d * speed.unsqueeze(-1)
+    p_hit, _, t_hit = fly_to_x(release, v0, omega, spec, 0.0)
+    err = (p_hit[:, 1:] - target[:, 1:]).norm(dim=-1)
+    assert float(err.max()) < 0.02, f"table pitch aiming did not converge (max miss {float(err.max()):.3f} m)"
+    return PitchLibrary(release=release, target=target, v0=v0, omega=omega, flight_time=t_hit, speed_kmh=speed * 3.6)
