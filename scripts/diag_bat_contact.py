@@ -26,6 +26,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=256)
 parser.add_argument("--tag", type=str, default="human3")
 parser.add_argument("--timing_bias", type=float, default=None, help="override cfg.timing_bias_s (s, + = pitch later)")
+parser.add_argument("--mix_release_csv", type=str, default=None, help="training mix: cfg.pitch_mix_release_csv (half the pitches shaped like these releases)")
 parser.add_argument("--release_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --release_csv (own release state each)")
 parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --pitch_csv table (speed_mps, plate_y, plate_z, crossed)")
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
@@ -78,6 +79,8 @@ def main():
         cfg.pitch_table_csv = args.pitch_csv
     if args.release_csv:
         cfg.pitch_release_csv = args.release_csv
+    if args.mix_release_csv:
+        cfg.pitch_mix_release_csv = args.mix_release_csv
     if args.timing_noise is not None:
         cfg.timing_noise_s = args.timing_noise
     if hasattr(cfg, "tee_noise_ramp_steps"):
@@ -102,7 +105,9 @@ def main():
                t_plane=torch.full((n,), float("nan"), device=dev), sq_ax=torch.ones(n, device=dev),
                t_square=torch.full((n,), float("nan"), device=dev), ss_speed_max=torch.zeros(n, device=dev),
                hit=torch.zeros(n, dtype=torch.bool, device=dev), fell=torch.zeros(n, dtype=torch.bool, device=dev),
-               t_fall=torch.full((n,), float("nan"), device=dev), t_hit=torch.full((n,), float("nan"), device=dev))
+               t_fall=torch.full((n,), float("nan"), device=dev), t_hit=torch.full((n,), float("nan"), device=dev),
+               tempo_sum=torch.zeros(n, device=dev), tempo_n=torch.zeros(n, device=dev),
+               ref_err=torch.full((n,), float("nan"), device=dev))
     finished = torch.zeros(n, dtype=torch.bool, device=dev)
     prev = {}
     orig_apply = base._apply_action
@@ -138,6 +143,12 @@ def main():
             cross = live & (prev["ball"][:, 0] >= xr) & (ball[:, 0] < xr) & torch.isnan(rec["t_plane"])
             frac = (prev["ball"][:, 0] - xr) / (prev["ball"][:, 0] - ball[:, 0]).clamp_min(1e-6)
             rec["t_plane"] = torch.where(cross, prev["t"] + (t - prev["t"]) * frac, rec["t_plane"])
+            # reference clock when the ball crosses: + = the swing reference is already past its contact frame (early)
+            rec["ref_err"] = torch.where(cross, base.ref_t - base.ref.contact_time[base.clip], rec["ref_err"])
+            # tempo action while the ball is in flight, before contact
+            fl = live & (t >= base.release_t)
+            rec["tempo_sum"] += torch.where(fl, base.actions[:, -1].clamp(-1.0, 1.0), torch.zeros_like(t))
+            rec["tempo_n"] += fl.float()
         _, v_ss = base._sweet_spot(knob, axis, cm, v_cm, w)
         sp = v_ss.norm(dim=-1)
         rec["ss_speed_max"] = torch.where(live, torch.maximum(rec["ss_speed_max"], sp), rec["ss_speed_max"])
@@ -200,6 +211,20 @@ def main():
     print("[bat] miss dominant error: " + json.dumps(out["miss_dominant"])
           + f"  late {out['miss_late']}/{int(miss.sum())}  ball above bat {out['miss_ball_above']}/{int(miss.sum())}",
           flush=True)
+    # by pitch speed (mixed libraries / the RL pitcher's slow pitches): hit rate, early / late misses, tempo, reference clock
+    tempo = r["tempo_sum"] / np.maximum(r["tempo_n"], 1)
+    out["by_speed"] = {}
+    for name, m in (("slow < 80 km/h", done & (r["kmh"] < 80)), ("fast >= 80 km/h", done & (r["kmh"] >= 80))):
+        if not m.any():
+            continue
+        mm = m & ~r["hit"]
+        g = dict(n=int(m.sum()), hit_rate=round(float(r["hit"][m].mean()), 3), misses=int(mm.sum()),
+                 early=int((mm & (r["timing"] < 0)).sum()), late=int((mm & (r["timing"] > 0)).sum()),
+                 tempo_q=np.nanpercentile(tempo[m], [25, 50, 75]).round(3).tolist(),
+                 ref_err_s_q=np.nanpercentile(r["ref_err"][m], [25, 50, 75]).round(3).tolist(),
+                 kmh_q=np.nanpercentile(r["kmh"][m], [10, 50, 90]).round(1).tolist())
+        out["by_speed"][name] = g
+        print(f"[bat] {name}: " + json.dumps(g), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
