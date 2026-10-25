@@ -15,6 +15,18 @@ RUN=$4
 EVERY=${5:-50}
 GOAL=${6:-60}
 PY=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
+# eval_stage.py output goes to a file first, then filtered: piping it straight into sed hung on the
+# omni.telemetry.transmitter.exe that eval_stage leaves behind (it inherits the pipe, sed never sees EOF; hn 7500, 2026-10-24)
+ev() {  # <out.txt> <eval_stage args...>: summary from "== eval_stage" on, without INFO / warnings
+    OUT=$1; shift
+    $PY -u scripts/eval_stage.py --headless "$@" > "$OUT.raw" 2>&1 < /dev/null
+    sed -n '/^== eval_stage/,$p' "$OUT.raw" | grep -v "^\[INFO\]\|Warning\|^$" > "$OUT"; rm -f "$OUT.raw"
+}
+evv() {  # <eval_stage args...>: render only, print the [video] lines
+    R=$(mktemp)
+    $PY -u scripts/eval_stage.py --headless "$@" > "$R" 2>&1 < /dev/null
+    grep -E "^\[video\]|CUDA error|out of memory" "$R" | head -3; rm -f "$R"
+}
 EXP_DIR=$(dirname "$(dirname "$CKPT")")
 IT0=$(basename "$CKPT" .pt | sed 's/model_//')
 [ $((IT0 % EVERY)) -ne 0 ] && { echo "[cycles] start $IT0 not on the checkpoint interval $EVERY - stopped"; exit 1; }
@@ -45,12 +57,11 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         while [ "$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'scripts' -and \$_.CommandLine -notmatch 'live_rules' }).Count" | tr -d '\r')" -ge 2 ]; do sleep 20; done
     fi
     # identical starts (start noise forced off: the Stage1dN tasks train with it on)
-    $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0 2>&1 \
-        | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_$IT.txt"
+    ev "logs/eval_${RUN}_$IT.txt" --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0
     # no video here: a 1-env render next to training stalled both (fp 3550: one training iteration 1586 s, the render
     # ~50 min); user 2026-10-17 "等70%結束再錄就好" - the best checkpoint is filmed when the task ends
     if [ -n "${LIVE_VIDEO:-}" ] && [ $(((IT - IT0) % 150)) -eq 0 ]; then
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 1 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0             --video "videos/${RUN}_iter_$IT.mp4" --video_episodes 1 2>&1 | grep -E "^\[video\]|CUDA error|out of memory" | head -3
+        evv --task "$TASK" --envs 1 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0 --video "videos/${RUN}_iter_$IT.mp4" --video_episodes 1
     fi
     UP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_$IT.txt" | head -1 | cut -d' ' -f2)
     echo "[cycles] $IT: ${UP:-?} up ($NEW)"
@@ -63,7 +74,7 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         # NOISY_ENVS=128: two draws' worth of independent starts in one launch, the score scaled back to /64 (a single
         # 64-run draw spreads ~+-4: fy r1 3875 drew 20, then 13)
         NE=${NOISY_ENVS:-64}
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs $NE --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_noise.txt"
+        ev "logs/eval_${RUN}_${IT}_noise.txt" --task "$TASK" --envs $NE --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0
         SCORE=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
         [ -n "$SCORE" ] && SCORE=$(((SCORE * 64 + NE / 2) / NE))
         echo "[cycles] $IT with start noise 0.02: ${SCORE:-?} up"
@@ -78,7 +89,7 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     if [ -n "$UP" ] && [ "$UP" -ge "$GOAL" ]; then
         # user 2026-10-17 "兩次都要過": a crossing counts only if the eval with independent starts (start joint noise
         # 0.02 rad) passes too - the identical-start eval is 64 copies of one pitch up to solver noise
-        $PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 2>&1             | sed -n '/^== eval_stage/,$p' | grep -v "^\[INFO\]\|Warning\|^$" > "logs/eval_${RUN}_${IT}_goalcheck.txt"
+        ev "logs/eval_${RUN}_${IT}_goalcheck.txt" --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0
         NUP=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_goalcheck.txt" | head -1 | cut -d' ' -f2)
         echo "[cycles] $IT with start noise 0.02: ${NUP:-?} up"
         grep -E "^  (falls:|thrown)" "logs/eval_${RUN}_${IT}_goalcheck.txt" | sed 's/^/    /'
@@ -86,7 +97,6 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     fi
 done
 kill $PID 2>/dev/null; wait $PID 2>/dev/null; sleep 10
-$PY -u scripts/eval_stage.py --headless --task "$TASK" --envs 64 --checkpoint "$BESTCK" --set start_joint_noise=0.0 start_noise_ramp_steps=0 --video "videos/${RUN}_best.mp4" 2>&1 \
-    | grep -E "^\[video\]" | head -3
+evv --task "$TASK" --envs 64 --checkpoint "$BESTCK" --set start_joint_noise=0.0 start_noise_ramp_steps=0 --video "videos/${RUN}_best.mp4"
 echo "[cycles] next: $BESTCK"
 exit $RESULT
