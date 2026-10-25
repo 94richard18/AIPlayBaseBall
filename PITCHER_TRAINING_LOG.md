@@ -2150,3 +2150,4 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
   2. 影片後開 C：先通知規劃 session 與打者，然後 `bash logs/oo_c_train.sh > logs/oo_c_train.txt 2>&1`（背景），確認 train.py 起來後跑 `bash logs/watch_c.sh > logs/watch_c.txt 2>&1`（背景），報開始與預計結束時間（300 次約 1h45m）。停止 / 成功規則在 watch_c.sh 檔頭；STOP 時停掉所有含 c_p3c 的行程，通知打者「槽空了」。
   3. 規劃 session 沒回時，照 trainingLog.md 第 4、5 節的排程和規則執行。
 - **工具**：`scripts/release_csv_tiers.py`（離線算任意 θ 的阻力級數、好球 / 觸身，`--write` 輸出新球路表）；`eval_stage.py --release_csv / --pitch_csv`（阻力版，不覆蓋）。GPU 規則：總數最多 2 個 Isaac，每次開新行程前先數。
+- **10-25 20:35 更新**：Human14 在 20:31 結束（否證點停）。`logs/film_p3c.sh` 20:32 開始在背景錄（輸出 videos/pitcher_p3c_t18_identical_1025pm.mp4，阻力版）。用量到上限：**C 還沒開**。下一個 session：確認影片已錄好、白畫面檢查過（scripts/check_video_frames.py），通知規劃 session 和打者後開 C（見上面待辦 2）。
