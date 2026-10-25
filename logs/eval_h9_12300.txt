@@ -1,0 +1,5 @@
+y=h9_12300: hit 0.781  fair 45.5% of batted (35.5% of pitches)  fair carry med  12.0 m  ev>=28  3.5%  ev med 19.6  spray q [-112.0, -36.0, 1.0]  1B-side foul 45.0%
+fair and >= 29 m: 29/256 = 11.3% (Human7 4.7%)
+1000 matches: batter 13.1%, pitcher 86.9%; 3.4 pitches each
+how: infield_ball 51.1%, strikeout 35.8%, outfield_hit 6.2%, walk 4.2%, hit_by_pitch 2.7%
+13:07 done
