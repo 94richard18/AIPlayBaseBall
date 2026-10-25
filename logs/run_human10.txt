@@ -1,0 +1,6 @@
+16:06 start Human10
+16:15 12350 diag 0.500 (stop below 0.66)
+falsifier: stop at 12350
+16:16 Human10 ended: model_12300.pt model_12350.pt 
+gate: diag >= 0.68, ONE OUTS >= 13.1% and fair >= 29 m >= 11.3%; best win replaces model_12300
+16:16 done
