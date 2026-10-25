@@ -24,9 +24,11 @@ date +"%H:%M start Human14 from $START_RUN/$START_CKPT"
 train 100 human_pitched14 $START_RUN $START_CKPT
 D=$(ls -td logs/rsl_rl/aib1_tee_batting_mimic/*human_pitched14 | head -1); I1=$(last $D)
 H1=$(d $D/model_$I1.pt ${I1}_p3c 0 --release_csv $R); H2=$(d $D/model_$I1.pt ${I1}_fast -0.08)
-echo "$(date +%H:%M) $I1 diag1024 vs P3c (aim 0) ${H1:-none}, 88-112 km/h (aim -0.08) ${H2:-none} (stop if < 0.25 / < 0.60)"
+fall() { $P -c "import json; h=json.load(open('logs/diag_bat_contact_h14_$1.json'))['summary']['hits']; print(round(h['fell']/max(h['n'],1)*100))"; }
+F1=$(fall ${I1}_p3c); F2=$(fall ${I1}_fast); SF=${START_FALL:-57}
+echo "$(date +%H:%M) $I1 diag1024 vs P3c (aim 0) ${H1:-none} fall ${F1:-?}%, 88-112 km/h (aim -0.08) ${H2:-none} fall ${F2:-?}% (stop if < 0.25 / < 0.60 / fall 88-112 > $SF + 10)"
 LIST="$D/model_$I1.pt"
-if [ -z "$H1" ] || [ -z "$H2" ] || $P -c "import sys; sys.exit(0 if float('$H1') < 0.25 or float('$H2') < 0.60 else 1)"; then echo "falsifier: stop at $I1"; else
+if [ -z "$H1" ] || [ -z "$H2" ] || $P -c "import sys; sys.exit(0 if float('$H1') < 0.25 or float('$H2') < 0.60 or ${F2:-100} > $SF + 10 else 1)"; then echo "falsifier: stop at $I1"; else
     train 300 human_pitched14b $(basename $D) model_$I1.pt
     D2=$(ls -td logs/rsl_rl/aib1_tee_batting_mimic/*human_pitched14b | head -1)
     for it in $(ls $D2 | grep model | sed 's/model_//; s/.pt//' | sort -n | awk 'NR%2==0'); do LIST="$LIST $D2/model_$it.pt"; done
@@ -44,5 +46,5 @@ for M in $LIST; do
     W=$($P scripts/one_outs.py --matches 1000 --batter_table logs/b_table_h14_$it.json --hit_rate ${HP:-0} --pitches $T --show 0 2>&1 | tail -2 | tr '\n' ' ')
     echo "$(date +%H:%M) model_$it vs P3c: diag aim 0 ${A0:-none} / aim -0.08 ${A8:-none} (eval aim $a) | 88-112 km/h ${HF:-none} | ONE OUTS vs P3c: $W"
 done
-echo "gate: ONE OUTS vs P3c > 17.5% with outfield_hit >= 5%; diag vs P3c >= 0.5; diag 88-112 >= 0.60"
+echo "gate: ONE OUTS vs P3c > 17.5% with outfield_hit >= 5% (if this is the only miss: report, decision session decides); diag vs P3c >= 0.5; diag 88-112 >= 0.60"
 date +"%H:%M done"
