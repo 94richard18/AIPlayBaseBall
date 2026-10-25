@@ -79,9 +79,9 @@
 
 **排程（照這個順序，一次最多 2 個 Isaac，trainer 旁不錄影）**
 1. 打者 12650 diag 跑完。
-2. 投手單獨重跑 ball_aero_sim 驗證（P3c 相同起始 64，開 / 關各一次；模擬裡的本壘 y / z 跟 release_csv 差 ≤ 0.05 m 才在影片開它）。
+2. ~~ball_aero_sim 驗證~~ 已通過（20:3x）：模擬裡穿過本壘的位置與 simulate_to_plane 差 |dy| 中位數 0.001 m、|dz| 0.016 m（最大 0.047）。之後投手影片用 --set ball_aero_sim=True。
 3. Human14（打者練慢球：一半訓練球照 P3c 的出手、55–75 km/h，一半 88–112 km/h；設定基底是 Human9，不帶 Human13 的改動；起點交付版 12500（Human13 沒過：12650 擊中率 0.632、跌倒 54%）；400 次，約 2 小時，`logs/run_human14.sh`）。否證 +100 次：對 P3c diag1024 ≥ 0.25、88–112 km/h ≥ 0.60、跌倒不比起點高 10 點以上。判定：ONE OUTS vs P3c > 17.5% 且外野安打 ≥ 5%（只差這條先回報）、對 P3c diag ≥ 0.5、88–112 km/h diag ≥ 0.60。
-4. 12 小時影片：投手 P3c（`logs/film_p3c.sh`，說明註明球路只算重力，除非 ball_aero_sim 已驗證）、打者（交付版或 Human14 新交付）。最晚 23:10 / 23:28，可延到 Human14 之後。
+4. 12 小時影片：投手 P3c（`logs/film_p3c.sh`，ball_aero_sim=True）、打者（交付版或 Human14 新交付）。最晚 23:10 / 23:28，可延到 Human14 之後。
 5. 投手 C（TW2PLW100P3C，從 ho2 7600 用訓練雜訊 0.02 練 300 次，`logs/oo_c_train.sh` / `watch_c.sh`）：停止 = noisy 站穩連兩次 < 45/128、相同起始級 3 連兩次 < 32/64、相同起始站穩連兩次 < 48/64、第 1–5 次 value loss > 405。成功機會低（ho 系列本來就用訓練雜訊 0.02）。
 
 **今天定下的規則**：級數與比賽一律用阻力 + 馬格努斯力的飛行（eval_stage 的 simulate_to_plane t_max 要 3 s）；打者 diag 用 1024 球（seed 0）、ONE OUTS 用 1000 場同 seed；投手 trainer 在跑時打者不用 GPU；「投手優先」不是絕對，依 11-26 交付需要和成功機會排；投球前停頓（A）不能拿來過 noisy 門檻。
