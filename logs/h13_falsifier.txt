@@ -1,0 +1,6 @@
+19:09 train env Human13 aim 0: [end] {"checkpoint": "logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt", "task": "AIB-PitchedBatting-Human13-v0", "episodes": 1024, "hits": 791, "fell": 777, "lost": 0, "follow_end": 14, "time_out": 0, "episode_s": 3.5, "follow_through_s": 2.0, "lost_plus_fell_share": 0.9823008849557522}
+19:10 train env Human13 aim -0.08: [end] {"checkpoint": "logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt", "task": "AIB-PitchedBatting-Human13-v0", "episodes": 1024, "hits": 695, "fell": 683, "lost": 0, "follow_end": 12, "time_out": 0, "episode_s": 3.5, "follow_through_s": 2.0, "lost_plus_fell_share": 0.9827338129496402}
+19:14 play play_clamp_12500: hit rate 0.684 | fell 412/700 = 59%  fall after hit s [0.93, 1.06, 1.26, 1.5, 1.87]
+19:18 play play_clampff_12500: hit rate 0.684 | fell 412/700 = 59%  fall after hit s [0.93, 1.06, 1.26, 1.5, 1.87]
+falsifier: Human13 train-env fell + lost >= 40% of hit episodes; play baseline 12500 -0.08: hit 0.684, fell 401/700 = 57%
+19:18 done
