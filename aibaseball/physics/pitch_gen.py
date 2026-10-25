@@ -130,3 +130,36 @@ def build_library_from_table(rows, spec: PhysicsSpec, release_point=GAME_RELEASE
     err = (p_hit[:, 1:] - target[:, 1:]).norm(dim=-1)
     assert float(err.max()) < 0.02, f"table pitch aiming did not converge (max miss {float(err.max()):.3f} m)"
     return PitchLibrary(release=release, target=target, v0=v0, omega=omega, flight_time=t_hit, speed_kmh=speed * 3.6)
+
+
+PITCH_PLATE_DISTANCE = 18.44  # m, rubber -> plate in the pitching env's plate frame
+
+
+def build_library_from_release(path: str, spec: PhysicsSpec, plate_distance: float = PITCH_PLATE_DISTANCE) -> PitchLibrary:
+    """One pitch per released + thrown row of an eval_stage --release_csv table, flown from its own release state.
+    The pitching plate frame has the rubber at the origin, +x toward the plate (at plate_distance), +y the first-base side,
+    z above the ground; this frame has the plate at x = 0, the ball travelling -x and +y the third-base side: a 180 deg
+    turn about the vertical (x -> plate_distance - x, y -> -y; vectors flip x and y). Rows whose flight does not reach
+    the plate are dropped."""
+    import csv
+
+    with open(path, newline="") as f:
+        rows = [r for r in csv.DictReader(f) if int(float(r["released"])) and int(float(r["thrown"]))]
+    assert rows, f"no released + thrown pitches in {path}"
+    g = lambda k: torch.tensor([float(r[k]) for r in rows], dtype=torch.float32)  # noqa: E731
+    release = torch.stack([plate_distance - g("x"), -g("y"), g("z")], -1)
+    if "vx" in rows[0]:
+        v0 = torch.stack([-g("vx"), -g("vy"), g("vz")], -1)
+        omega = torch.stack([-g("wx"), -g("wy"), g("wz")], -1)
+    else:  # older tables (before the full release state): velocity from speed / heading / elevation, no spin
+        print(f"[pitch_gen] {path}: no vx..wz columns - velocity from speed/heading/elevation, spin 0", flush=True)
+        sp, hd, el = g("speed"), torch.deg2rad(g("heading")), torch.deg2rad(g("elevation"))
+        v0 = torch.stack([-sp * torch.cos(el) * torch.cos(hd), -sp * torch.cos(el) * torch.sin(hd), sp * torch.sin(el)], -1)
+        omega = torch.zeros_like(v0)
+    p_hit, _, t_hit = fly_to_x(release, v0, omega, spec, 0.0)
+    ok = (p_hit[:, 0] <= 0.01) & (p_hit[:, 2] > 0.0)
+    assert ok.any(), f"no pitch in {path} reaches the plate"
+    k = ok.nonzero(as_tuple=False).squeeze(-1)
+    target = torch.stack([torch.zeros(len(k)), p_hit[k, 1], p_hit[k, 2]], -1)
+    return PitchLibrary(release=release[k], target=target, v0=v0[k], omega=omega[k], flight_time=t_hit[k],
+                        speed_kmh=v0[k].norm(dim=-1) * 3.6)

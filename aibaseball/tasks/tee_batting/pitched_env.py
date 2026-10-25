@@ -17,7 +17,7 @@ from collections.abc import Sequence
 import torch
 
 from aibaseball.physics.ball_flight import _deriv
-from aibaseball.physics.pitch_gen import build_library, build_library_from_table, read_pitch_table
+from aibaseball.physics.pitch_gen import build_library, build_library_from_release, build_library_from_table, read_pitch_table
 from isaaclab.utils.math import quat_rotate_inverse
 
 from .mimic_env import TeeBattingMimicEnv
@@ -33,7 +33,9 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         dev, n = self.device, self.num_envs
         lo = min(cfg.pitch_speed_range_start[0], cfg.pitch_speed_range_final[0])
         hi = max(cfg.pitch_speed_range_start[1], cfg.pitch_speed_range_final[1])
-        if cfg.pitch_table_csv:  # the RL pitcher's evaluated pitches (eval / game only)
+        if cfg.pitch_release_csv:  # the RL pitcher's evaluated releases, each flown from its own state (eval / game only)
+            self.lib = build_library_from_release(cfg.pitch_release_csv, self.phys).to(dev)
+        elif cfg.pitch_table_csv:  # quick version: speed + plate location only, from the game release point
             self.lib = build_library_from_table(read_pitch_table(cfg.pitch_table_csv), self.phys).to(dev)
         else:
             self.lib = build_library(cfg.pitch_library_size, self.phys, speed_kmh=(lo, hi)).to(dev)  # whole curriculum
@@ -176,7 +178,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         prog = self._progress()
         lo = c.pitch_speed_range_start[0] + (c.pitch_speed_range_final[0] - c.pitch_speed_range_start[0]) * prog
         hi = c.pitch_speed_range_start[1] + (c.pitch_speed_range_final[1] - c.pitch_speed_range_start[1]) * prog
-        if c.pitch_table_csv:  # any row of the table; location = its plate offset from mid-zone, at the swing's contact point
+        if c.pitch_table_csv or c.pitch_release_csv:  # any row of the table; location = its plate offset from mid-zone, at the swing's contact point
             k = torch.randint(0, len(self.lib.speed_kmh), (n,), device=dev)
             target = self.scene.env_origins[env_ids] + self.ref.tee_pos[self.clip[env_ids]]
             target[:, 2] += c.tee_offset_z

@@ -27,6 +27,7 @@ parser.add_argument("--pitch_kmh", type=float, nargs=2, default=None, help="pitc
 parser.add_argument("--timing_noise", type=float, default=None, help="pitched task: +- arrival-time offset (s)")
 parser.add_argument("--timing_bias", type=float, default=None, help="pitched task: cfg.timing_bias_s (s, + = pitch later)")
 parser.add_argument("--tee_offset_z", type=float, default=None, help="pitched task eval: cfg.tee_offset_z (m, + = pitch aimed above the sweet-spot path)")
+parser.add_argument("--release_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --release_csv (own release state each)")
 parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --pitch_csv table (speed_mps, plate_y, plate_z, crossed)")
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="batter: cfg.aim_offset_z (m, < 0 = aim under the ball)")
@@ -262,6 +263,8 @@ def run_eval(ckpt: str):
             cfg.phase_horizon_s = args.phase_horizon
         if args.pitch_csv:
             cfg.pitch_table_csv = args.pitch_csv
+        if args.release_csv:
+            cfg.pitch_release_csv = args.release_csv
         cfg.clamp_ref_phase = args.clamp_ref_phase
         cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
         if args.aim_offset_y is not None:
@@ -322,6 +325,8 @@ def run_pitched_video(ckpt: str):
         cfg.phase_horizon_s = args.phase_horizon
     if args.pitch_csv:
         cfg.pitch_table_csv = args.pitch_csv
+    if args.release_csv:
+        cfg.pitch_release_csv = args.release_csv
     cfg.clamp_ref_phase = args.clamp_ref_phase
     cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
     if args.aim_offset_y is not None:

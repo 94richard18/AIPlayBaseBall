@@ -33,6 +33,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     w_miss: float = 2.0
     # eval / game: pitches from the RL pitcher's eval_stage --pitch_csv table instead of the analytic library
     pitch_table_csv: str | None = None
+    pitch_release_csv: str | None = None  # eval_stage --release_csv: every pitch from its own release state (preferred)
     pitch_table_center_z: float = 0.80  # m, the table's plate z that maps onto the swing's nominal contact height
 
 
