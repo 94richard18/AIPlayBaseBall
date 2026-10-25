@@ -152,6 +152,16 @@ class PitchedBattingHuman10EnvCfg(PitchedBattingHuman9EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman11EnvCfg(PitchedBattingHuman9EnvCfg):
+    """2026-10-25 delivery Human9b model_12500 + aim -0.08 (1024-pitch diag 0.684, ONE OUTS 18.5%) falls after 57% of
+    its hits in diag / the match video, but training ends the episode follow_through_s = 0.4 s after contact, so a later
+    fall is never penalised. Only change: follow through 0.4 -> 1.2 s (contact ~0.8-1.0 s into the 2.6 s episode, so
+    1.2 s fits without a longer episode). Start from Human9b model_12500."""
+
+    follow_through_s: float = 1.2
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
