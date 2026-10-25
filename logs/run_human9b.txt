@@ -1,0 +1,18 @@
+13:56 start Human9b
+14:40 Human9b ended logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b: model_12300.pt model_12350.pt model_12400.pt model_12450.pt model_12500.pt model_12550.pt model_12600.pt model_12650.pt model_12694.pt 
+ bat/hit_rate: 0.8126
+ bat/carry: 20.3916
+ bat/success_rate: 0.2386
+ bat/fair_rate: 0.6005
+logs/b_aimy_table_h9b_12400.json: balls 835  fair 44.0%  fair and >= 29 m 15.2% of 1024  ev med 19.6
+logs/b_aimy_table_h9b_12500.json: balls 856  fair 38.0%  fair and >= 29 m 14.5% of 1024  ev med 19.8
+logs/b_aimy_table_h9b_12600.json: balls 820  fair 43.9%  fair and >= 29 m 15.6% of 1024  ev med 19.8
+model_12400 ONE OUTS at 0.691: 17.5%
+model_12500 ONE OUTS at 0.691: 17.7%
+model_12600 ONE OUTS at 0.691: 16.9%
+best model_12500 (17.7%)
+model_12500 diag hit rate 0.539
+1000 matches: batter 17.4%, pitcher 82.6%; 3.6 pitches each
+how: strikeout 52.7%, infield_ball 29.9%, outfield_hit 8.1%, walk 5.3%, hit_by_pitch 4.0%
+gate: replace 12300 if win >= 13.1% and hit rate 0.539 >= 0.68
+15:10 done
