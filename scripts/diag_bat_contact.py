@@ -88,7 +88,8 @@ def main():
                dperp=torch.zeros(n, device=dev), t_gap=torch.zeros(n, device=dev),
                t_plane=torch.full((n,), float("nan"), device=dev), sq_ax=torch.ones(n, device=dev),
                t_square=torch.full((n,), float("nan"), device=dev), ss_speed_max=torch.zeros(n, device=dev),
-               hit=torch.zeros(n, dtype=torch.bool, device=dev), fell=torch.zeros(n, dtype=torch.bool, device=dev))
+               hit=torch.zeros(n, dtype=torch.bool, device=dev), fell=torch.zeros(n, dtype=torch.bool, device=dev),
+               t_fall=torch.full((n,), float("nan"), device=dev), t_hit=torch.full((n,), float("nan"), device=dev))
     finished = torch.zeros(n, dtype=torch.bool, device=dev)
     prev = {}
     orig_apply = base._apply_action
@@ -140,6 +141,11 @@ def main():
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
             obs, _, dones, _ = wrapped.step(policy(obs))
+        t_now = (base.episode_length_buf.float() * base.step_dt)
+        new_hit = base.hit & ~finished & torch.isnan(rec["t_hit"])
+        rec["t_hit"] = torch.where(new_hit, t_now, rec["t_hit"])
+        new_fall = base.fallen & ~finished & ~rec["fell"]
+        rec["t_fall"] = torch.where(new_fall, t_now, rec["t_fall"])  # time into the episode of the first fall
         rec["fell"] |= base.fallen & ~finished
         finished |= dones.bool()
         if finished.all():
@@ -158,6 +164,10 @@ def main():
         s = dict(n=int(m.sum()), gap_m=q(r["gap"]), dz_m=q(r["dz"]), dperp_m=q(r["dperp"]),
                  x_minus_sweet_m=q(r["x_on_bat"] - ss), timing_s=q(r["timing"]),
                  ss_speed_max=q(r["ss_speed_max"]), fell=int(r["fell"][m].sum()))
+        mf = m & r["fell"]
+        if mf.any():  # when the falls happen: into the episode, and after contact (hits only)
+            s["fall_t_s"] = np.nanpercentile(r["t_fall"][mf], [10, 25, 50, 75, 90]).round(2).tolist()
+            s["fall_after_hit_s"] = np.nanpercentile((r["t_fall"] - r["t_hit"])[mf], [10, 25, 50, 75, 90]).round(2).tolist()
         print(f"[bat] {name}: " + json.dumps(s), flush=True)
         return s
 
