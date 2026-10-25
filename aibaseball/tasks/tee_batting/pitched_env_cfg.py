@@ -143,6 +143,15 @@ class PitchedBattingHuman9EnvCfg(PitchedBattingHuman7EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman10EnvCfg(PitchedBattingHuman9EnvCfg):
+    """2026-10-25 Human9 continuation (12300 -> 12694): fair and >= 29 m 11.3 -> ~15% of pitches and ONE OUTS 13.1 ->
+    16-17%, but diag hit rate (+-0.03 s, aim -0.12) 0.691 -> 0.48 / 0.54 / 0.59 at 12400 / 12500 / 12600: the 29 m reward
+    (fair ball past 29 m ~26) outweighs a miss (20). Only change: miss penalty 20 -> 40. Start from Human9 model_12300."""
+
+    w_miss: float = 40.0
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
