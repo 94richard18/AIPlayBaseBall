@@ -31,7 +31,7 @@ class StageEnv(PitchEnv):
         self.stage_stats = {k: torch.zeros((), device=self.device)
                             for k in ("fall_rate", "stand_ok", "tilt_deg", "com_speed", "head_z", "both_feet",
                                       "landed", "stride_m", "lift_s", "back_slide_m",
-                                      "fall_rate_set", "success_set", "fall_rate_rsi", "success_rsi", "drop_rate_set",
+                                      "fall_rate_set", "success_set", "success_curr", "fall_rate_rsi", "success_rsi", "drop_rate_set",
                                       "drop_rate_rsi")}
         n, dev = self.num_envs, self.device
         self.s_lifted = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b: lead foot off the ground since 0.1 s
@@ -714,6 +714,7 @@ class StageEnv(PitchEnv):
         set_start = self.t0 <= 0.0
         win = (ok & self.reset_time_outs & ~self.fallen).float()
         for k, v, m in (("fall_rate_set", self.fallen.float(), done & set_start), ("success_set", win, done & set_start),
+                        ("success_curr", win, done & set_start & ~getattr(self, "vel_anchor", torch.zeros_like(done))),
                         ("fall_rate_rsi", self.fallen.float(), done & ~set_start), ("success_rsi", win, done & ~set_start),
                         ("drop_rate_set", self.s_drop.float(), done & set_start),
                         ("drop_rate_rsi", self.s_drop.float(), done & ~set_start),
@@ -732,7 +733,7 @@ class StageEnv(PitchEnv):
             k0, kstep, k_end, kthr, kgap = c.start_vel_curriculum
             if not hasattr(self, "vel_k"):
                 self.vel_k, self._vel_moved = k0, self.common_step_counter
-            if (self.vel_k > k_end + 1e-6 and float(self.stage_stats["success_set"]) > kthr
+            if (self.vel_k > k_end + 1e-6 and float(self.stage_stats["success_curr" if c.start_vel_anchor > 0 else "success_set"]) > kthr
                     and self.common_step_counter - self._vel_moved >= kgap):
                 self.vel_k, self._vel_moved = max(k_end, round(self.vel_k - kstep, 4)), self.common_step_counter
                 print(f"[StageEnv] start momentum curriculum: k {self.vel_k:.2f} at step {self.common_step_counter}", flush=True)

@@ -1204,6 +1204,10 @@ class PitchEnv(DirectRLEnv):
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = r[k] * still
         vk = getattr(self, "vel_k", c.start_vel_curriculum[0]) if c.start_vel_curriculum else c.start_vel_scale
+        if not hasattr(self, "vel_anchor"):
+            self.vel_anchor = torch.zeros(self.num_envs, dtype=torch.bool, device=dev)
+        self.vel_anchor[env_ids] = torch.rand(n, device=dev) < c.start_vel_anchor  # B: these set starts stay at k 1
+        vk = torch.where(self.vel_anchor[env_ids], 1.0, vk)
         vscale = torch.where(self.t0[env_ids] <= 0.0, vk, 1.0).unsqueeze(-1)  # set starts: k x frame-0 momentum
         for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
             r[k] = r[k] * vscale

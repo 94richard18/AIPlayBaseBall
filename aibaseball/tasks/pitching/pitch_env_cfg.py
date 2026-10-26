@@ -81,6 +81,9 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # success, min_steps) lowers it like set_pause_curriculum; the pause curriculum waits (P 0) until k reaches k_end
     start_vel_scale: float = 1.0
     start_vel_curriculum: tuple | None = None
+    # B (planning session 10-27, after P3CPC forgot the 7600 motion: 8400 at k 1 / P 0 stood 0/64): this share of set
+    # starts always keeps k 1 (anchor against forgetting); the k curriculum reads success_curr, the other set starts only
+    start_vel_anchor: float = 0.0
     # rocker start (planning session 10-27, C falsifier): set starts begin at rest at t0 = -set_rocker_s; over [-R, 0] the
     # reference ramps the athlete's frame-0 velocities up from 0 (pose extrapolated back by -v R / 2), body actions held
     # at 0 (PD + feed-forward alone), so the robot reaches t = 0 carrying its own frame-0 momentum. Not with a set pause
@@ -1797,6 +1800,16 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPCEnvCfg(Stage1dK70GW2MBASVRT1S
     set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 1280)
     start_vel_curriculum: tuple | None = (1.0, 0.05, 0.0, 0.1, 1280)
     episode_length_s = 4.3
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPBEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """B (planning session 2026-10-27): P3CPC stalled at k 0.35 (success_set ~0.02) and its 8400 forgot the 7600 motion
+    (k 1 / P 0: 0/64 standing). Half the set starts keep k 1 (start_vel_anchor), the other half lower k from 1.0 in
+    0.025 steps once their own success (success_curr) is above 0.05, 20 iterations apart; no pause yet (P 0)."""
+
+    start_vel_curriculum: tuple | None = (1.0, 0.025, 0.0, 0.05, 1280)
+    start_vel_anchor: float = 0.5
 
 
 @configclass
