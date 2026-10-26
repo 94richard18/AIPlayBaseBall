@@ -275,11 +275,6 @@ def run_eval(ckpt: str):
         if args.post_ref_pose:
             cfg.post_ref_pose = args.post_ref_pose
         cfg.post_ref_keep_residual = args.post_ref_keep_residual
-    if args.post_ref_blend is not None:
-        cfg.post_ref_blend_s = args.post_ref_blend
-    if args.post_ref_pose:
-        cfg.post_ref_pose = args.post_ref_pose
-    cfg.post_ref_keep_residual = args.post_ref_keep_residual
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
