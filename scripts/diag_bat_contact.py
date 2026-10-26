@@ -170,6 +170,7 @@ def main():
         hand_body = {sd: rob.find_bodies(f"{sd}_hand")[0][0] for sd in "lr"}
         fixed = rob.is_fixed_base
         wrench = dict(fl=[], fr=[])
+        pd_err = dict(ref=[], res=[], tot=[])  # wait-phase PD target error split: reference part / policy residual part
         pair_tl = torch.zeros(len(pairs), device=dev)
         pair_tr = torch.zeros(len(pairs), device=dev)
         swing_on = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -300,11 +301,19 @@ def main():
                 ph_sat[k] += (sat & masks[k].unsqueeze(-1)).float().sum(0)
                 ph_n[k] += masks[k].float().sum()
             w = masks["wait"].float()
+            if masks["wait"].any() and base.episode_length_buf[0] % 5 == 0:
+                wi2 = masks["wait"].nonzero(as_tuple=False).squeeze(-1)
+                qn = d.joint_pos[wi2][:, pj]
+                q_ref = base._ref(base.ref_t)["joint_pos"][wi2]
+                res_part = base.actions[wi2, :-1] * base.action_scale * base.cfg.residual_scale
+                pd_err["ref"].append((q_ref - qn).abs().cpu())
+                pd_err["res"].append(res_part.abs().cpu())
+                pd_err["tot"].append((base.joint_targets[wi2][:, pj] - qn).abs().cpu())
             if masks["wait"].any() and base.episode_length_buf[0] % 5 == 0:  # every 5th control step is enough
                 J = rob.root_physx_view.get_jacobians()
                 wi = masks["wait"].nonzero(as_tuple=False).squeeze(-1)
                 for sd in "lr":
-                    cols = [pj[i] + (0 if fixed else 6) for i in arm[sd]]
+                    cols = pj[arm[sd]] + (0 if fixed else 6)
                     Jh = J[wi][:, hand_body[sd] - (1 if fixed else 0)][:, :, cols]  # (m, 6, k)
                     tau = tq_a[wi][:, arm[sd]]  # (m, k): tau = J^T F  ->  least-squares F (6)
                     F = torch.linalg.lstsq(Jh.transpose(1, 2), tau.unsqueeze(-1)).solution.squeeze(-1)
@@ -410,6 +419,11 @@ def main():
         nw = float(ph_n["wait"].clamp_min(1))
         ps["wait_lr_pairs"] = {nm: dict(opp_sign_frac=round(float(pair_opp[i]) / nw, 3), tau_l=round(float(pair_tl[i]) / nw, 1),
                                         tau_r=round(float(pair_tr[i]) / nw, 1)) for i, (_, _, nm) in enumerate(pairs)}
+        if pd_err["ref"]:
+            ref_e, res_e, tot_e = (torch.cat(pd_err[k]).median(0).values.numpy() for k in ("ref", "res", "tot"))
+            show = sorted(range(len(pnames)), key=lambda i: -tot_e[i])[:10]
+            ps["wait_pd_err_rad"] = {pnames[i]: dict(total=round(float(tot_e[i]), 3), ref_minus_q=round(float(ref_e[i]), 3),
+                                                     residual=round(float(res_e[i]), 3)) for i in show}
         if wrench["fl"]:
             fl, fr = torch.cat(wrench["fl"]).numpy(), torch.cat(wrench["fr"]).numpy()
             nl, nr = np.linalg.norm(fl, axis=1), np.linalg.norm(fr, axis=1)
