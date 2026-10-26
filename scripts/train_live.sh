@@ -54,7 +54,7 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     # EVAL_WAIT_FREE=1: the GPU is shared (2 Isaac processes at most, 2026-10-20 the batter runs on the other slot) - hold
     # this eval until only our trainer is running
     if [ -n "${EVAL_WAIT_FREE:-}" ]; then
-        # count Isaac processes only (python.exe running scripts/*.py other than live_rules.py; 'scripts/' with the slash: an unrelated D:....venvScriptspython.exe streamlit app matched 'scripts' and held the F evals forever, 2026-10-27): a resident live_rules.py
+        # count Isaac processes only (python.exe running scripts/*.py other than live_rules.py; 'scripts/' with the slash: an unrelated .venv/Scripts/python.exe streamlit app matched 'scripts' and held the F evals forever, 2026-10-27): a resident live_rules.py
         # watcher blocked every eval of hi from 7400 (2026-10-20)
         while [ "$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'scripts/' -and \$_.CommandLine -notmatch 'live_rules' }).Count" | tr -d '\r')" -ge 2 ]; do sleep 20; done
     fi
