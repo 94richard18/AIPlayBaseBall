@@ -47,7 +47,9 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
     done
     # EVAL_EVERY (a multiple of <every>): evaluate only every EVAL_EVERY iterations - two evals (64 + 128 envs) per
     # 25-iteration checkpoint fell ~200 iterations behind the training (gj)
-    [ $(((IT - IT0) % ${EVAL_EVERY:-$EVERY})) -ne 0 ] && continue
+    # logs/eval_every_<run>.txt, if present, overrides it mid-run (a watcher sets it, e.g. curricula: sparse evals first)
+    EE=$(cat logs/eval_every_$RUN.txt 2>/dev/null || echo ${EVAL_EVERY:-$EVERY})
+    [ $(((IT - IT0) % EE)) -ne 0 ] && continue
     sleep 10  # let the checkpoint finish writing
     # EVAL_WAIT_FREE=1: the GPU is shared (2 Isaac processes at most, 2026-10-20 the batter runs on the other slot) - hold
     # this eval until only our trainer is running

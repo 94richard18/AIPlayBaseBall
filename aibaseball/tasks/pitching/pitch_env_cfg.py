@@ -1783,11 +1783,11 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPCEnvCfg(Stage1dK70GW2MBASVRT1S
     iterations (success_set 0.0000; ho2 had 0.14-0.22) and identical 0/64 all along - the paused start is too far from
     the moving frame-0 start 7600 knows. P from U(0, hi), hi 0.05 -> 0.3 in 0.05 steps, each once success_set > 0.1 and
     20 iterations (1280 env steps, 64 per iteration) after the last raise. Before that, the start momentum: any pause
-    zeroes the frame-0 velocities, so first P 0 with k x those velocities, k 1.0 -> 0 in 0.1 steps on the same rule."""
+    zeroes the frame-0 velocities, so first P 0 with k x those velocities, k 1.0 -> 0 in 0.05 steps on the same rule (diag_ppw4: 7600 at k 1.0 / 0.8 / 0.5 stands 52 / 18 / 0 of 64)."""
 
     set_pause_range: tuple | None = (0.0, 0.3)
     set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 1280)
-    start_vel_curriculum: tuple | None = (1.0, 0.1, 0.0, 0.1, 1280)
+    start_vel_curriculum: tuple | None = (1.0, 0.05, 0.0, 0.1, 1280)
     episode_length_s = 4.3
 
 
