@@ -418,7 +418,8 @@ def main():
             qq = lambda v: [round(float(x), 2) for x in np.percentile(v, [25, 50, 75])]
             # force each arm exerts on its hand (world, N, least-squares from the arm torques): a fight = similar size,
             # opposite direction (cos ~ -1), net force much smaller than either
-            ps["wait_hand_force"] = dict(samples=len(nl), F_l_N=qq(nl), F_r_N=qq(nr), cos_lr=qq(cos), net_over_mean=qq(net))
+            ps["wait_hand_force"] = dict(samples=len(nl), F_l_N=qq(nl), F_r_N=qq(nr), cos_lr=qq(cos), net_over_mean=qq(net),
+                                          F_l_mean=[round(float(x), 1) for x in fl.mean(0)], F_r_mean=[round(float(x), 1) for x in fr.mean(0)])
         hm = r["hit"].astype(bool)
         q = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if np.isfinite(v).any() else None
         ps["contact"] = dict(n=int(hm.sum()), n_dot_v=q(r["n_dot_v"][hm]), vz_frac=q(r["vz_frac"][hm]), normal_z=q(r["normal_z"][hm]))
