@@ -1816,6 +1816,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPBEnvCfg(Stage1dK70GW2MBASVRT1S
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPFEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPBEnvCfg):
+    """F step 1 (planning session 2026-10-27): B + arm teacher resumed from its 7850, where the k curriculum had reached
+    0.65 - the curriculum is not stored in the checkpoint, so it restarts at 0.65 instead of 1.0."""
+
+    start_vel_curriculum: tuple | None = (0.65, 0.025, 0.0, 0.05, 1280)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100Y7EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
     """ho3 (planning session 2026-10-25): W100 with the plate y scale 20 -> 7 m. ho2 7600: |y| 5.3 m, z 0.2 m - the y
     slope 1 / 20 was 8x below the z slope 1 / 2.5 and |y| improved only 0.21 m per 100 its; 20 m was for hn's -40 deg."""
