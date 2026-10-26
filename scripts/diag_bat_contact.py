@@ -17,6 +17,7 @@ Output: one summary line per group + logs/diag_bat_contact_<tag>.json
 import argparse
 import json
 import os
+import re
 import sys
 
 from isaaclab.app import AppLauncher
@@ -49,6 +50,8 @@ parser.add_argument("--sat_log", action="store_true",
 parser.add_argument("--phase_log", action="store_true",
                     help="torque saturation split into wait / downswing / after contact, l-r torque signs while waiting, "
                          "contact normal vs sweet-spot velocity")
+parser.add_argument("--release_top_hand", action="store_true",
+                    help="control run: a copy of the robot USD with the top-hand loop joint (top_hand_grip) disabled")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
@@ -118,6 +121,18 @@ def main():
         cfg.seed = args.seed
     cfg.clamp_ref_phase = args.clamp_ref_phase
     cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
+    if args.release_top_hand:
+        from pxr import Usd, UsdPhysics  # noqa: E402
+
+        src = cfg.robot.spawn.usd_path
+        stage = Usd.Stage.Open(src)
+        jp = [p for p in stage.Traverse() if p.GetName() == "top_hand_grip"]
+        assert len(jp) == 1, "top_hand_grip not found"
+        UsdPhysics.Joint(jp[0]).GetJointEnabledAttr().Set(False)
+        dst = os.path.join(os.path.dirname(src), "aib1_diag_no_top_hand.usd")  # same folder: relative references still resolve
+        stage.GetRootLayer().Export(dst)
+        cfg.robot.spawn.usd_path = dst
+        print(f"[bat] top hand released: {dst}", flush=True)
     env = gym.make("AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     agent = TeeBattingMimicPPORunnerCfg()
@@ -150,6 +165,11 @@ def main():
         pairs = [(pnames.index(nm), pnames.index("r_" + nm[2:]), nm[2:]) for nm in pnames
                  if nm.startswith("l_") and ("r_" + nm[2:]) in pnames]
         pair_opp = torch.zeros(len(pairs), device=dev)
+        rob = base.robot
+        arm = {sd: [i for i, nm in enumerate(pnames) if re.match(rf"{sd}_(shoulder|elbow|wrist)", nm)] for sd in "lr"}
+        hand_body = {sd: rob.find_bodies(f"{sd}_hand")[0][0] for sd in "lr"}
+        fixed = rob.is_fixed_base
+        wrench = dict(fl=[], fr=[])
         pair_tl = torch.zeros(len(pairs), device=dev)
         pair_tr = torch.zeros(len(pairs), device=dev)
         swing_on = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -280,6 +300,15 @@ def main():
                 ph_sat[k] += (sat & masks[k].unsqueeze(-1)).float().sum(0)
                 ph_n[k] += masks[k].float().sum()
             w = masks["wait"].float()
+            if masks["wait"].any() and base.episode_length_buf[0] % 5 == 0:  # every 5th control step is enough
+                J = rob.root_physx_view.get_jacobians()
+                wi = masks["wait"].nonzero(as_tuple=False).squeeze(-1)
+                for sd in "lr":
+                    cols = [pj[i] + (0 if fixed else 6) for i in arm[sd]]
+                    Jh = J[wi][:, hand_body[sd] - (1 if fixed else 0)][:, :, cols]  # (m, 6, k)
+                    tau = tq_a[wi][:, arm[sd]]  # (m, k): tau = J^T F  ->  least-squares F (6)
+                    F = torch.linalg.lstsq(Jh.transpose(1, 2), tau.unsqueeze(-1)).solution.squeeze(-1)
+                    wrench["f" + sd].append(F[:, :3].cpu())
             for i, (a, b, _) in enumerate(pairs):
                 pair_opp[i] += ((tq_a[:, a] * tq_a[:, b] < 0).float() * w).sum()
                 pair_tl[i] += (tq_a[:, a] * w).sum()
@@ -381,6 +410,15 @@ def main():
         nw = float(ph_n["wait"].clamp_min(1))
         ps["wait_lr_pairs"] = {nm: dict(opp_sign_frac=round(float(pair_opp[i]) / nw, 3), tau_l=round(float(pair_tl[i]) / nw, 1),
                                         tau_r=round(float(pair_tr[i]) / nw, 1)) for i, (_, _, nm) in enumerate(pairs)}
+        if wrench["fl"]:
+            fl, fr = torch.cat(wrench["fl"]).numpy(), torch.cat(wrench["fr"]).numpy()
+            nl, nr = np.linalg.norm(fl, axis=1), np.linalg.norm(fr, axis=1)
+            cos = (fl * fr).sum(1) / np.maximum(nl * nr, 1e-6)
+            net = np.linalg.norm(fl + fr, axis=1) / np.maximum((nl + nr) / 2, 1e-6)
+            qq = lambda v: [round(float(x), 2) for x in np.percentile(v, [25, 50, 75])]
+            # force each arm exerts on its hand (world, N, least-squares from the arm torques): a fight = similar size,
+            # opposite direction (cos ~ -1), net force much smaller than either
+            ps["wait_hand_force"] = dict(samples=len(nl), F_l_N=qq(nl), F_r_N=qq(nr), cos_lr=qq(cos), net_over_mean=qq(net))
         hm = r["hit"].astype(bool)
         q = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if np.isfinite(v).any() else None
         ps["contact"] = dict(n=int(hm.sum()), n_dot_v=q(r["n_dot_v"][hm]), vz_frac=q(r["vz_frac"][hm]), normal_z=q(r["normal_z"][hm]))
