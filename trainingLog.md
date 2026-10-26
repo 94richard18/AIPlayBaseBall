@@ -169,3 +169,8 @@
 - GPU 閒置超過 1 小時且沒人排工作：先錄到期影片，再跑最新打者的品質檢查（`showcase.py --eval_envs 256` + `diag_bat_contact.py`），跑完回報。
 - 一次只改一件事；每個設計至少 600 iterations，除非已明顯失敗；停訓練前先評估最新存檔。
 - 每次改動都 commit 並 push；不上傳 `data/`、`assets/motions/`、`ref_videos/`、logs、影片。
+
+### 10-26 20:05 決策
+- 投手的 Pp' 在 7750 停止：7650–7750 三個檢查點，P = 0.3 相同起始都是 0/64，雜訊評估 0/128，航向約 +84°。改為查原因，不重開訓練。
+- 交給投手的反證測試：(1) 用 TW2PLW100P3CP 評估 7600，P = 0，看能否重現 52/64；(2) 7600 在 P = 0.3 的 zero-shot 對照 7650，並確認訓練 reset 時真的有套用暫停；(3) 暫停結束時的 phase / 參考幀 / release 計時器；(4) plate_yaw 的旋轉是否被套兩次。
+- GPU：投手丘短片錄影中（1 個 Isaac）。打者的跌倒 zero-shot 要等錄影結束才開始；啟動條件要多檢查 eval_stage.py 和 showcase.py。
