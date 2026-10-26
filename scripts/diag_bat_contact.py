@@ -46,6 +46,9 @@ parser.add_argument("--contact_log", action="store_true",
                     help="per hit, at the contact step: sweet-spot speed, contact station dx, swing-vs-pitch angle, exit speed")
 parser.add_argument("--sat_log", action="store_true",
                     help="per body joint: fraction of swing steps (ball in flight, before contact) with the torque at its limit")
+parser.add_argument("--phase_log", action="store_true",
+                    help="torque saturation split into wait / downswing / after contact, l-r torque signs while waiting, "
+                         "contact normal vs sweet-spot velocity")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
@@ -138,6 +141,21 @@ def main():
         jids = base.body_joint_ids
         sat_n = torch.zeros(len(jids), device=dev)
         sat_steps = torch.zeros((), device=dev)
+    if args.phase_log:
+        pj = base.body_joint_ids
+        pnames = list(base.body_joint_names)
+        PH = ("wait", "down", "after")
+        ph_sat = {k: torch.zeros(len(pj), device=dev) for k in PH}
+        ph_n = {k: torch.zeros((), device=dev) for k in PH}
+        pairs = [(pnames.index(nm), pnames.index("r_" + nm[2:]), nm[2:]) for nm in pnames
+                 if nm.startswith("l_") and ("r_" + nm[2:]) in pnames]
+        pair_opp = torch.zeros(len(pairs), device=dev)
+        pair_tl = torch.zeros(len(pairs), device=dev)
+        pair_tr = torch.zeros(len(pairs), device=dev)
+        swing_on = torch.zeros(n, dtype=torch.bool, device=dev)
+        t_hit_phys = torch.full((n,), float("inf"), device=dev)
+        for k in ("n_dot_v", "vz_frac", "normal_z"):
+            rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.contact_log:
         for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
@@ -207,9 +225,20 @@ def main():
         rec["sq_ax"] = torch.where(sq, axis[:, 0].abs(), rec["sq_ax"])
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
-        if args.contact_log:
+        if args.contact_log or args.phase_log:
             was_hit, v_in = base.hit.clone(), base.pitch_vel.clone()
         orig_apply()
+        if args.phase_log:
+            nh2 = base.hit & ~was_hit & ~finished
+            swing_on |= live & (sp > 5.0) & (t >= base.release_t)
+            t_hit_phys = torch.where(nh2, t, t_hit_phys)
+            # contact normal: ball centre at first contact minus the closest bat-axis point (bat at the start of the step)
+            xc = ((base.launch_pos - knob) * axis).sum(-1).clamp(0.0, geom.length)
+            nrm = base.launch_pos - (knob + axis * xc.unsqueeze(-1))
+            nrm = nrm / nrm.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+            vhat = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
+            for k, val in (("n_dot_v", (nrm * vhat).sum(-1)), ("vz_frac", vhat[:, 2]), ("normal_z", nrm[:, 2])):
+                rec[k] = torch.where(nh2, val, rec[k])
         if args.contact_log:
             nh = base.hit & ~was_hit & ~finished
             # angle between the sweet spot's velocity and the reversed pitch direction (0 = swinging straight back up the pitch)
@@ -240,6 +269,21 @@ def main():
             for k in FS:
                 rec[f"{k}_hit"] = torch.where(new_hit, bs[k], rec[f"{k}_hit"])
                 rec[f"{k}_end"] = torch.where(at_end, bs[k], rec[f"{k}_end"])
+        if args.phase_log:
+            d = base.robot.data
+            tq_c, tq_a = d.computed_torque[:, pj], d.applied_torque[:, pj]
+            sat = tq_c.abs() > tq_a.abs() + 1e-3
+            released = ~finished & (base.phys_t >= base.release_t)
+            masks = dict(wait=released & ~swing_on & ~base.hit, down=released & swing_on & ~base.hit,
+                         after=~finished & base.hit & (base.phys_t - t_hit_phys < 0.3))
+            for k in PH:
+                ph_sat[k] += (sat & masks[k].unsqueeze(-1)).float().sum(0)
+                ph_n[k] += masks[k].float().sum()
+            w = masks["wait"].float()
+            for i, (a, b, _) in enumerate(pairs):
+                pair_opp[i] += ((tq_a[:, a] * tq_a[:, b] < 0).float() * w).sum()
+                pair_tl[i] += (tq_a[:, a] * w).sum()
+                pair_tr[i] += (tq_a[:, b] * w).sum()
         if args.sat_log:
             d = base.robot.data
             sw = ~finished & ~base.hit & (base.phys_t >= base.release_t)  # swinging: ball in flight, no contact yet
@@ -328,6 +372,21 @@ def main():
         top = sorted(zip(frac.tolist(), names), reverse=True)[:10]
         out["torque_sat"] = {nm: round(f, 3) for f, nm in top}
         print("[bat] torque_sat (frac of swing steps, top 10): " + json.dumps(out["torque_sat"]), flush=True)
+    if args.phase_log:
+        ps = {}
+        for k in PH:
+            f = (ph_sat[k] / ph_n[k].clamp_min(1)).cpu().numpy()
+            top = sorted(zip(f.tolist(), pnames), reverse=True)[:8]
+            ps[k] = dict(steps=int(ph_n[k]), mean_all=round(float(f.mean()), 3), top={nm: round(v, 3) for v, nm in top})
+        nw = float(ph_n["wait"].clamp_min(1))
+        ps["wait_lr_pairs"] = {nm: dict(opp_sign_frac=round(float(pair_opp[i]) / nw, 3), tau_l=round(float(pair_tl[i]) / nw, 1),
+                                        tau_r=round(float(pair_tr[i]) / nw, 1)) for i, (_, _, nm) in enumerate(pairs)}
+        hm = r["hit"].astype(bool)
+        q = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if np.isfinite(v).any() else None
+        ps["contact"] = dict(n=int(hm.sum()), n_dot_v=q(r["n_dot_v"][hm]), vz_frac=q(r["vz_frac"][hm]), normal_z=q(r["normal_z"][hm]))
+        out["phase_log"] = ps
+        for k, v in ps.items():
+            print(f"[bat] phase_log {k}: " + json.dumps(v), flush=True)
     if args.contact_log:
         hm = r["hit"].astype(bool)
         dzh, dxh = np.abs(r["dz"][hm]), np.abs(r["dx_contact"][hm])
