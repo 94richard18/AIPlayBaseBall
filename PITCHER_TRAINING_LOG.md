@@ -2215,3 +2215,59 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
 - 判讀：7600 是靠運動員起始的角動量把身體轉過去（k ≤ 0.5 時放球時骨盆 yaw 還在 -13° 到 -29°），也靠 3 cm 的落地那一下。只要 P > 0，reset 就把速度全部歸零，所以 Pp' 從第一局就面對「從靜止起步」，一次成功都沒看過。
 - 下一步（規劃 session 核可，還沒開練）：任務 P3CPC，兩段課程（0205a12）。先 P = 0、起始速度乘 k，k 從 1.0 往 0 降；k 到 0 後再讓停頓上限 hi 從 0.05 加到 0.3。每次調整的條件是 success_set > 0.1 且離上次調整 ≥ 20 次迭代。k 和 hi 連續 300 次迭代都沒動就停。
 - 錄影：投手丘轉正後的檢查影片 videos/pitcher_p3c_t18_mound_check2.mp4。本壘視角 3 倍光學變焦原本沒生效（相機在 session layer），1996b1e 修好後投手約 390 px 高；f95038a 的 crf 0 播放全黑，規劃 session 在 e36e4fa 改回 High / yuv420p，check_video_frames.py 現在也會檢查格式。
+
+## 交接（10-26 21:05，投手 session 重開前；新 session 只讀這段就能接手）
+**角色**：投手 session 負責提案和訓練投手。真的要訓練前，先問規劃 session（決策者，用 ListAgents 找名字，10-26 是 aiplaybaseball-10）。到 10-27 20:00 前，規劃 session 可以決定所有事（規格不動：人類力量上限、四縫線握法、ONE OUTS 規則）。訓練結果由投手 session 直接回報使用者，寫進本檔，commit + push，再把摘要傳給規劃 session。打者 session 是 aiplaybaseball-d0。
+
+**目前狀態（21:05）**
+- P3CPC 還沒開跑。等打者跑完 4 組跌倒測試，再錄一支打者影片（約 10 分鐘），傳「槽空了」之後才開。
+- 開跑指令（兩個都用 run_in_background）：
+  - `bash logs/oo_ppc_train.sh > logs/oo_ppc_train.txt 2>&1`
+  - `bash logs/watch_ppc.sh > logs/watch_ppc.txt 2>&1`
+- 開跑前先告訴規劃 session 和打者。之後由 watcher 的通知叫醒，不要輪詢。
+- run 名稱 ppc_p3cpc，任務 AIB-Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPC-v0，起點 ho2 `logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt`，critic 暖身 50 次更新（lr 1e-4）。
+  - 檢查點在 `logs/rsl_rl/aib1_stage/<日期>_ppc_p3cpc/`，評估 log 是 `logs/eval_ppc_p3cpc_<it>[_noise].txt`，訓練輸出在 `logs/train_ppc.txt` 和 `logs_pitch_stand.txt`。
+- 交付候選照舊是 P3c（ho2 7600 + release_action_shift_s 0.0025 + plate_yaw_deg 18），數字見上面「P3c 完整數字」那段。
+
+**P3CPC 課程（0205a12、626c2d5）**
+1. 起始動量：start_vel_curriculum = (1.0, 0.05, 0.0, 0.1, 1280)。
+   - 先 P = 0，固定姿勢起始的速度（root、關節、球）乘 k。k 從 1.0 開始，每次減 0.05，減到 0。
+   - 條件是 success_set > 0.1，而且離上次調整 ≥ 1280 env steps（20 次迭代 × 64 步）。
+2. 停頓：set_pause_curriculum = (0.05, 0.05, 0.3, 0.1, 1280)。
+   - k 到 0 之後才開始，P ~ U(0, hi)，hi 從 0.05 加到 0.3，條件跟 k 一樣。
+- 每次調整，trainer 輸出會印一行 `[StageEnv] start momentum curriculum: k …` 或 `set pause curriculum: P up to …`，並記成 stage/vel_k、stage/pause_hi。
+
+**停止與成功規則（logs/watch_ppc.sh）**
+- 進度檢查：第 250 次迭代（含暖身）k 還 ≥ 0.8，就停下來回報規劃 session。
+- k 和 hi 連續 300 次迭代都沒變動，就停。
+- value loss：51–55 平均 > 3 × 暖身 46–50 平均，就停。
+- 評估都用 P = 0.3（EVAL_SET）。hi 到 0.3 之前，評估只當參考。到 0.3 之後才開始算：
+  - noisy 連兩次低於最佳 − 8：停。
+  - 相同起始級 3 達到 32 之後，連兩次 < 32：停。
+  - 站穩達到 48 之後，連兩次 < 48：停。
+  - **SUCCESS**：同一個檢查點相同起始 ≥ 48 且級 3 ≥ 32，noisy ≥ 96 且級 3 ≥ 64。
+- 評估間隔檔 `logs/eval_every_ppc_p3cpc.txt`：watcher 啟動時寫 100，hi 到 0.3 時改 50。train_live.sh 每次評估前都會讀它。
+- 停止或結束時要做：
+  1. 停掉 CommandLine 含 ppc_p3cpc 的程序。
+  2. 傳打者「槽空了」，並告訴規劃 session。
+  3. 對選出的檢查點另外評估 P = 0，--set 要加 `set_pause_range=None set_pause_s=0.0 start_vel_curriculum=None`。
+  4. 寫進本檔，commit + push，回報使用者。
+
+**Pp' 失敗原因（見上一段）**：只要 P > 0，reset 時速度就全部歸零。7600 是靠運動員起始的動量（重心 0.6 m/s、骨盆 yaw -2.1 rad/s）和 3 cm 落地那一下起步。從靜止起步時，同樣的動作會讓支撐腳把人往反方向轉，然後倒下。
+- 掃描（P = 0，相同起始 64，站穩 / 級 3）：
+  - 起始速度倍率 k：1.0 → 52 / 48；0.8 → 18 / 0；0.5、0.3、0 → 0 / 0。
+  - 抬高量：0.03 m → 52 / 48；0.015 m → 24 / 5；0 → 0 / 0。
+
+**GPU 和錄影規則**
+- GPU 上最多 2 個 Isaac 程序。投手 trainer 在跑時，打者完全不能用 GPU。開訓練前要先告訴規劃 session 和打者；結束時傳打者「槽空了」。
+- 錄影時只能有那一個 Isaac 程序，連短的 diag 也不行。不要在 trainer 旁邊錄影。至少每 12 小時錄一次投手影片（上一支是 20:36 的 mound_check2）。
+- 錄完跑 `scripts/check_video_frames.py`：
+  - 白畫面要 ≤ 2%。
+  - 格式要是 h264 High / yuv420p，不是的話會回傳 exit 1。crf 0 編出的 High 4:4:4 播放是全黑的，已在 e36e4fa 修好。
+  - 本壘視角用 3 倍光學變焦（焦距要從 18.1 變成 54.4 mm，eval_stage 會印出來）。投手大約 390 px 高。
+
+**待辦**
+1. 收到打者「槽空了」→ 告訴規劃 session 和打者 → 開 P3CPC（上面兩條指令）。
+2. 看 watcher 通知：k、hi 的進度和評估，照規則處理。
+3. 結束後照「停止或結束時要做」那幾步收尾。
+4. 下一支投手影片 10-27 08:36 前要錄，但要等沒有 trainer 時才能錄。如果到時訓練還在跑，先問規劃 session。
