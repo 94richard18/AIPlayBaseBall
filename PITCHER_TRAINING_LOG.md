@@ -2271,3 +2271,8 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
 2. 看 watcher 通知：k、hi 的進度和評估，照規則處理。
 3. 結束後照「停止或結束時要做」那幾步收尾。
 4. 下一支投手影片 10-27 08:36 前要錄，但要等沒有 trainer 時才能錄。如果到時訓練還在跑，先問規劃 session。
+
+## P3CPC 開跑（10-26 21:22，投手 session aiplaybaseball-20）
+- session 重開後的名字：投手 aiplaybaseball-20、規劃 aiplaybaseball-14、打者 aiplaybaseball-15（d0 是舊 session，不再收發通知）。
+- 21:20 打者傳「槽空了」（1026b、跌倒檢驗、力量 ×1.5 / ×2.0 零樣本都跑完了）。21:22 確認 Isaac = 0，通知規劃 session 和打者後，開 `oo_ppc_train.sh` 和 `watch_ppc.sh`。
+- 21:27 watcher：起始動量 k 0.95（第 +20 次迭代）。課程有在動。
