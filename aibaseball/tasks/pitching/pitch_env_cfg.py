@@ -69,6 +69,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # the reference clock starts at -set_pause_s, the reference holds frame 0 with zero velocities until 0, and the
     # phase observation is clamped at >= 0. Set starts stay t0 <= 0 (drop rule, set-only ball term)
     set_pause_s: float = 0.0
+    set_pause_range: tuple | None = None  # (lo, hi): each set start draws its pause uniformly instead (training, Pp)
     set_pause_mode: str = "zero"  # body actions in the pause: "policy" (live), "zero" (PD alone), "first" (held first output)
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
@@ -1752,6 +1753,18 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg(Stage1dK70GW2MBASVRT1SYW
 
     release_action_shift_s: float = 0.0025
     plate_yaw_deg: float = 18.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Pp (planning session 2026-10-26, user-approved set pause): C trained with a set pause of 0.2-0.6 s per episode, PD
+    alone in the pause (mode zero). Zero-shot P 0.3 s on ho2 7600: identical 0/64 in every mode - the policy only starts
+    from frame 0 with the athlete's velocities. Evaluated at a fixed P 0.3 (EVAL_SET in train_live.sh); the episode is
+    4.6 s so the longest pause still leaves the usual time after the release."""
+
+    set_pause_range: tuple | None = (0.2, 0.6)
+    set_pause_mode: str = "zero"
+    episode_length_s = 4.6
 
 
 @configclass

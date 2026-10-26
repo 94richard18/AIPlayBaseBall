@@ -317,7 +317,7 @@ class PitchEnv(DirectRLEnv):
 
     def _ref(self, t):
         r = self.ref.sample(t)
-        if self.cfg.set_pause_s > 0:  # set pause: frame 0 held still before the clock reaches 0
+        if self.cfg.set_pause_s > 0 or self.cfg.set_pause_range:  # set pause: frame 0 held still before the clock reaches 0
             still = (t >= 0.0).float().unsqueeze(-1)
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = r[k] * still
@@ -1142,8 +1142,11 @@ class PitchEnv(DirectRLEnv):
         t_max = max(c.rsi_min_s, self.release_ref - c.rsi_margin_before_release)
         self.t0[env_ids] = torch.where(rsi, c.rsi_min_s + torch.rand(n, device=dev) * (t_max - c.rsi_min_s),
                                        torch.full((n,), -c.set_pause_s, device=dev))
+        if c.set_pause_range:  # a pause per set start drawn from the range (rsi starts keep their t0 > 0)
+            lo, hi = c.set_pause_range
+            self.t0[env_ids] = torch.where(rsi, self.t0[env_ids], -(lo + torch.rand(n, device=dev) * (hi - lo)))
         r = self.ref.sample(self.t0[env_ids])
-        if c.set_pause_s > 0:  # set pause: start still in frame 0
+        if c.set_pause_s > 0 or c.set_pause_range:  # set pause: start still in frame 0
             still = (self.t0[env_ids] >= 0.0).float().unsqueeze(-1)
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = r[k] * still
