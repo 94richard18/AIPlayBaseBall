@@ -68,7 +68,7 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
-**10-26 21:10 新規劃 session 接手**：名稱 aiplaybaseball-14（舊 10）；3 小時檢查 cron 已重建（:17）。GPU 上是打者跌倒測試第 3 組（fall_start_0.6）；前 2 組都沒過（命中率 0.684、跌倒 56%）。`b_film_after_fall.sh` 在等，結束後錄 1026b。投手 session 還沒重新上線；錄影結束時若仍不在，P3CPC 由規劃 session 用 `logs/oo_ppc_train.sh` + `logs/watch_ppc.sh` 啟動。殘留的 10-25 `b_eval_p3c_t.sh`（19:41 已完成，不佔 GPU）沒清（自動模式不允許結束行程），無害。第 3 組 fall_start_0.6 也沒過（0.684、跌倒 57%），第 4 組 keepres 在跑。
+**10-26 21:10 新規劃 session 接手**：名稱 aiplaybaseball-14（舊 10）；3 小時檢查 cron 已重建（:17）。GPU 上是打者跌倒測試第 3 組（fall_start_0.6）；前 2 組都沒過（命中率 0.684、跌倒 56%）。`b_film_after_fall.sh` 在等，結束後錄 1026b。投手 session 已上線（aiplaybaseball-20），1026b 錄完由打者通知它開 P3CPC。殘留的 10-25 `b_eval_p3c_t.sh`（19:41 已完成，不佔 GPU）沒清（自動模式不允許結束行程），無害。第 3 組 fall_start_0.6 也沒過（0.684、跌倒 57%），第 4 組 keepres 在跑。
 
 **10-26 21:30 交接（三個 session 都要重開，讓自動壓縮 30% ≈ 30 萬 tokens 生效）**
 
