@@ -50,6 +50,9 @@ parser.add_argument("--sat_log", action="store_true",
 parser.add_argument("--phase_log", action="store_true",
                     help="torque saturation split into wait / downswing / after contact, l-r torque signs while waiting, "
                          "contact normal vs sweet-spot velocity")
+parser.add_argument("--chain_log", action="store_true",
+                    help="(implies --phase_log) per hit at contact: each body joint's share of the sweet-spot velocity "
+                         "(bat Jacobian x joint velocity), robot vs reference joint velocity; downswing joint power sign")
 parser.add_argument("--release_top_hand", action="store_true",
                     help="control run: a copy of the robot USD with the top-hand loop joint (top_hand_grip) disabled")
 parser.add_argument("--action_clip", type=float, default=None, help="override cfg.action_clip (zero-shot: limit the policy's residual)")
@@ -57,6 +60,7 @@ parser.add_argument("--aim_offset_y", type=float, default=None, help="override c
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+args.phase_log = args.phase_log or args.chain_log
 args.headless = True  # diagnostics only: a GUI window also keeps the app alive after the run
 app = AppLauncher(args).app
 
@@ -180,6 +184,11 @@ def main():
         t_hit_phys = torch.full((n,), float("inf"), device=dev)
         for k in ("n_dot_v", "vz_frac", "normal_z"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
+    if args.chain_log:
+        nj = len(pj)
+        chain = {k: torch.full((n, nj), float("nan"), device=dev) for k in ("cc", "qd", "qdr")}
+        chain_chk = {k: torch.full((n,), float("nan"), device=dev) for k in ("v", "joints", "res_link", "res_com")}
+        pw_pos, pw_neg = torch.zeros(nj, device=dev), torch.zeros(nj, device=dev)
     if args.contact_log:
         for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
@@ -251,6 +260,31 @@ def main():
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
         if args.contact_log or args.phase_log:
             was_hit, v_in = base.hit.clone(), base.pitch_vel.clone()
+        if args.chain_log:
+            # sweet-spot velocity split by joint, bat state before this physics step (the one the hit test uses)
+            d = rob.data
+            J = rob.root_physx_view.get_jacobians()[:, base.bat_id - (1 if fixed else 0)]  # (n, 6, 6 + dofs)
+            cols = pj + (0 if fixed else 6)
+            p_ss = knob + axis * geom.sweet_spot_x
+            qd_all = d.joint_vel[:, pj]
+            Jl, Ja = J[:, :3][:, :, cols], J[:, 3:][:, :, cols]
+            cc_l = Jl + torch.cross(Ja, (p_ss - knob).unsqueeze(-1).expand_as(Ja), dim=1)  # link origin = knob
+            v_j = (cc_l * qd_all.unsqueeze(1))  # (n, 3, nj)
+            vh = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
+            cc_now = (v_j * vh.unsqueeze(-1)).sum(1)
+            if not fixed:  # check: the floating-base columns with the root twist close the sum (two origin conventions)
+                tw = torch.cat([d.root_link_lin_vel_w, d.root_link_ang_vel_w], -1).unsqueeze(-1)
+                Jb = J[:, :, :6]
+                vb = (Jb[:, :3] @ tw).squeeze(-1) + torch.cross((Jb[:, 3:] @ tw).squeeze(-1), p_ss - knob, dim=-1)
+                res_link = (vb + v_j.sum(-1) - v_ss).norm(dim=-1)
+                cm_b = d.body_com_pos_w[:, base.bat_id]
+                cc_c = Jl + torch.cross(Ja, (p_ss - cm_b).unsqueeze(-1).expand_as(Ja), dim=1)
+                vb_c = (Jb[:, :3] @ tw).squeeze(-1) + torch.cross((Jb[:, 3:] @ tw).squeeze(-1), p_ss - cm_b, dim=-1)
+                res_com = (vb_c + (cc_c * qd_all.unsqueeze(1)).sum(-1) - v_ss).norm(dim=-1)
+            else:
+                res_link = res_com = torch.zeros_like(sp)
+            qdr_now = base._ref(base.ref_t)["joint_vel"] * (base.rate / base.speed).unsqueeze(-1)
+            ch_pre = dict(cc=cc_now, qd=qd_all.clone(), qdr=qdr_now, v=sp, joints=cc_now.sum(-1), res_link=res_link, res_com=res_com)
         orig_apply()
         if args.phase_log:
             nh2 = base.hit & ~was_hit & ~finished
@@ -263,6 +297,11 @@ def main():
             vhat = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
             for k, val in (("n_dot_v", (nrm * vhat).sum(-1)), ("vz_frac", vhat[:, 2]), ("normal_z", nrm[:, 2])):
                 rec[k] = torch.where(nh2, val, rec[k])
+            if args.chain_log:
+                for k in chain:
+                    chain[k].copy_(torch.where(nh2.unsqueeze(-1), ch_pre[k], chain[k]))
+                for k in chain_chk:
+                    chain_chk[k].copy_(torch.where(nh2, ch_pre[k], chain_chk[k]))
         if args.contact_log:
             nh = base.hit & ~was_hit & ~finished
             # angle between the sweet spot's velocity and the reversed pitch direction (0 = swinging straight back up the pitch)
@@ -303,6 +342,10 @@ def main():
             for k in PH:
                 ph_sat[k] += (sat & masks[k].unsqueeze(-1)).float().sum(0)
                 ph_n[k] += masks[k].float().sum()
+            if args.chain_log:  # downswing joint power: + = the motor drives the motion, - = it brakes / absorbs
+                pw = tq_a * d.joint_vel[:, pj] * masks["down"].float().unsqueeze(-1)
+                pw_pos += pw.clamp_min(0.0).sum(0)
+                pw_neg += (-pw).clamp_min(0.0).sum(0)
             w = masks["wait"].float()
             if masks["wait"].any() and base.episode_length_buf[0] % 5 == 0:
                 wi2 = masks["wait"].nonzero(as_tuple=False).squeeze(-1)
@@ -443,6 +486,36 @@ def main():
         out["phase_log"] = ps
         for k, v in ps.items():
             print(f"[bat] phase_log {k}: " + json.dumps(v), flush=True)
+    if args.chain_log:
+        hm = r["hit"].astype(bool)
+        cc, qd, qdr = (chain[k].cpu().numpy()[hm] for k in ("cc", "qd", "qdr"))
+        med = lambda v: round(float(np.nanmedian(v)), 2) if np.isfinite(v).any() else None
+        cmed = {nm: med(cc[:, i]) for i, nm in enumerate(pnames)}
+        top = sorted((nm for nm in pnames if cmed[nm] is not None), key=lambda nm: -abs(cmed[nm]))[:12]
+        groups = {"legs": [i for i, nm in enumerate(pnames) if re.search("hip|knee|ankle", nm)],
+                  "waist": [i for i, nm in enumerate(pnames) if nm.startswith("waist")]}
+        for sd in "lr":
+            for part in ("shoulder", "elbow", "wrist"):
+                groups[f"{sd}_{part}"] = [i for i, nm in enumerate(pnames) if nm.startswith(f"{sd}_{part}")]
+        chk = {k: v.cpu().numpy()[hm] for k, v in chain_chk.items()}
+        key = ("l_elbow", "l_wrist_yaw", "waist_yaw", "l_shoulder_roll", "l_shoulder_pitch", "l_shoulder_yaw",
+               "r_elbow", "r_shoulder_roll", "r_shoulder_pitch", "r_wrist_yaw")
+        qrat = {}
+        for nm in key:
+            i = pnames.index(nm)
+            qrat[nm] = dict(qd=med(qd[:, i]), qd_ref=med(qdr[:, i]), ratio=med(qd[:, i] / np.where(np.abs(qdr[:, i]) > 0.5, qdr[:, i], np.nan)))
+        pp, pn = pw_pos.cpu().numpy(), pw_neg.cpu().numpy()
+        nd = max(float(ph_n["down"]), 1.0)
+        arm_ids = [i for i, nm in enumerate(pnames) if re.match(r"(l|r)_(shoulder|elbow|wrist)|waist", nm)]
+        power = {pnames[i]: dict(pos_frac=round(float(pp[i] / max(pp[i] + pn[i], 1e-6)), 3), mean_W=round(float((pp[i] - pn[i]) / nd), 1))
+                 for i in arm_ids}
+        out["chain_log"] = dict(n=int(hm.sum()), v_ss=med(chk["v"]), joints_sum=med(chk["joints"]),
+                                residual_link=med(chk["res_link"]), residual_com=med(chk["res_com"]),
+                                contrib_top={nm: cmed[nm] for nm in top},
+                                contrib_groups={g: med(np.nansum(cc[:, ids], 1)) for g, ids in groups.items()},
+                                qd_vs_ref=qrat, down_power=power)
+        for k, v in out["chain_log"].items():
+            print(f"[bat] chain_log {k}: " + json.dumps(v), flush=True)
     if args.contact_log:
         hm = r["hit"].astype(bool)
         dzh, dxh = np.abs(r["dz"][hm]), np.abs(r["dx_contact"][hm])
