@@ -256,18 +256,32 @@ class PitchEnv(DirectRLEnv):
                                              friction_combine_mode="max")
         look = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.55, 0.38, 0.24))
         x0, w = c.mound_slope_start_x, c.mound_width
-        top = sim_utils.CuboidCfg(size=(x0 + 1.2, w, h), collision_props=sim_utils.CollisionPropertiesCfg(),
-                                  physics_material=mat, visual_material=look)
-        top.func(f"{env_path}/MoundTop", top, translation=((x0 - 1.2) / 2, 0.0, c.mound_top_z - h / 2))
         run = h / c.mound_slope
         th = math.atan(c.mound_slope)
         length, thick = math.hypot(run, h), 0.3
-        slope = sim_utils.CuboidCfg(size=(length, w, thick), collision_props=sim_utils.CollisionPropertiesCfg(),
-                                    physics_material=mat, visual_material=look)
         mid = (x0 + run / 2, c.mound_top_z - h / 2)  # middle of the top surface
         n = (math.sin(th), math.cos(th))  # its normal
-        slope.func(f"{env_path}/MoundSlope", slope, translation=(mid[0] - n[0] * thick / 2, 0.0, mid[1] - n[1] * thick / 2),
-                   orientation=(math.cos(th / 2), 0.0, math.sin(th / 2), 0.0))
+        top_pos = ((x0 - 1.2) / 2, 0.0, c.mound_top_z - h / 2)
+        slope_pos = (mid[0] - n[0] * thick / 2, 0.0, mid[1] - n[1] * thick / 2)
+        slope_q = (math.cos(th / 2), 0.0, math.sin(th / 2), 0.0)
+        # stage plate_yaw_deg (the pitcher turned toward first base): the colliding mound stays along +x (the robot's
+        # stride - the physics is unchanged) but is hidden, and a visual-only copy turned -theta about the rubber lines up
+        # with the plate, so the picture shows the mound facing the plate and the pitcher turned on it (2026-10-26)
+        yaw = -math.radians(getattr(c, "plate_yaw_deg", 0.0))
+        show = yaw == 0.0
+        for name, size, pos, q, coll in (("MoundTop", (x0 + 1.2, w, h), top_pos, (1.0, 0.0, 0.0, 0.0), True),
+                                         ("MoundSlope", (length, w, thick), slope_pos, slope_q, True)):
+            cfg = sim_utils.CuboidCfg(size=size, collision_props=sim_utils.CollisionPropertiesCfg(), physics_material=mat,
+                                      visual_material=look, visible=show)
+            cfg.func(f"{env_path}/{name}", cfg, translation=pos, orientation=q)
+            if not show:
+                cz, sz = math.cos(yaw / 2), math.sin(yaw / 2)
+                qz = (cz, 0.0, 0.0, sz)  # about +z, then the mound's own orientation
+                qq = (qz[0] * q[0] - qz[3] * q[3], qz[0] * q[1] - qz[3] * q[2], qz[0] * q[2] + qz[3] * q[1],
+                      qz[0] * q[3] + qz[3] * q[0])
+                rp = (math.cos(yaw) * pos[0] - math.sin(yaw) * pos[1], math.sin(yaw) * pos[0] + math.cos(yaw) * pos[1], pos[2])
+                vis = sim_utils.CuboidCfg(size=size, visual_material=look)  # no collision, no physics
+                vis.func(f"{env_path}/{name}Shown", vis, translation=rp, orientation=qq)
 
     def _spawn_zone_markers(self):
         """Strike-zone frame (yellow) at the plate plane, home plate (white), crossing points (red)."""
@@ -301,15 +315,18 @@ class PitchEnv(DirectRLEnv):
             idx += [0, 0, 0, 0]
         pts.append([x + 0.215, c.zone_center_y, self.field_z + 0.005])
         idx.append(1)
-        th = -math.radians(getattr(c, "plate_yaw_deg", 0.0))  # stage plate_yaw_deg: the plate drawn at -theta (sim frame)
-        if th != 0.0:
-            ct, st = math.cos(th), math.sin(th)
-            pts = [[ct * q[0] - st * q[1], st * q[0] + ct * q[1], q[2]] for q in pts]
         pts.append([-0.075, 0.0, c.mound_top_z + 0.005])
         idx.append(2)
+        # stage plate_yaw_deg: the plate, zone and rubber drawn turned -theta about the rubber (sim frame), the plate and
+        # rubber boxes turned with them (the visual mound is turned the same way in _spawn_mound)
+        th = -math.radians(getattr(c, "plate_yaw_deg", 0.0))
+        ct, st = math.cos(th), math.sin(th)
+        pts = [[ct * q[0] - st * q[1], st * q[0] + ct * q[1], q[2]] for q in pts]
+        rot = [[math.cos(th / 2), 0.0, 0.0, math.sin(th / 2)]] * len(pts)
         origin = self.scene.env_origins[0]
         P = torch.tensor(pts, device=self.device) + origin
-        self.zone_markers.visualize(translations=P, marker_indices=torch.tensor(idx, device=self.device))
+        self.zone_markers.visualize(translations=P, orientations=torch.tensor(rot, device=self.device),
+                                    marker_indices=torch.tensor(idx, device=self.device))
 
     # ------------------------------------------------------------------ reference helpers
     def _ref_time(self, extra: int = 0) -> torch.Tensor:
