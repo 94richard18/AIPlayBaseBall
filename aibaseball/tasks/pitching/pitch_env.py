@@ -1163,12 +1163,18 @@ class PitchEnv(DirectRLEnv):
             lo, hi = c.set_pause_range
             if c.set_pause_curriculum:  # the curriculum's current upper end (StageEnv raises it)
                 hi = getattr(self, "pause_hi", c.set_pause_curriculum[0])
+                if c.start_vel_curriculum and getattr(self, "vel_k", c.start_vel_curriculum[0]) > c.start_vel_curriculum[2] + 1e-6:
+                    lo = hi = 0.0  # start momentum first: no pause until k reaches its end
             self.t0[env_ids] = torch.where(rsi, self.t0[env_ids], -(lo + torch.rand(n, device=dev) * (hi - lo)))
         r = self.ref.sample(self.t0[env_ids])
         if c.set_pause_s > 0 or c.set_pause_range:  # set pause: start still in frame 0
             still = (self.t0[env_ids] >= 0.0).float().unsqueeze(-1)
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
                 r[k] = r[k] * still
+        vk = getattr(self, "vel_k", c.start_vel_curriculum[0]) if c.start_vel_curriculum else c.start_vel_scale
+        vscale = torch.where(self.t0[env_ids] <= 0.0, vk, 1.0).unsqueeze(-1)  # set starts: k x frame-0 momentum
+        for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
+            r[k] = r[k] * vscale
         o = self.scene.env_origins[env_ids] + torch.tensor([0.0, 0.0, c.reset_lift_m], device=dev)
         root = torch.cat([r["root_pos"] + o, r["root_quat"], r["root_lin_vel"] * self.speed, r["root_ang_vel"] * self.speed], -1)
         self.robot.write_root_state_to_sim(root, env_ids)
@@ -1186,7 +1192,7 @@ class PitchEnv(DirectRLEnv):
         # ball in the grip: reference ball position / velocity (last key point)
         t = self.t0[env_ids]
         r2 = self.ref.sample(t + 1e-3)
-        ball_v = (r2["key_pos"][:, -1] - r["key_pos"][:, -1]) / 1e-3 * self.speed
+        ball_v = (r2["key_pos"][:, -1] - r["key_pos"][:, -1]) / 1e-3 * self.speed * vscale
         ball = torch.cat([r["key_pos"][:, -1] + o, torch.tensor([1.0, 0, 0, 0], device=dev).expand(n, 4), ball_v,
                           torch.zeros(n, 3, device=dev)], -1)
         self.ball.write_root_state_to_sim(ball, env_ids)

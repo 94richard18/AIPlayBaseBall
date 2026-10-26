@@ -75,6 +75,12 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # min_steps) - set starts draw P from U(set_pause_range lo, hi), hi starts at hi0 and grows by step whenever the
     # set-start success (stage/success_set) is above success and min_steps env steps passed since the last raise
     set_pause_curriculum: tuple | None = None
+    # start momentum (planning session 10-26): set starts (t0 <= 0) begin with start_vel_scale x the athlete's frame-0
+    # velocities (root, joints, ball). A paused start has none (Pp' trace: 7600 rides the athlete's 0.6 m/s COM and
+    # -2.1 rad/s pelvis yaw; from rest the same actions spin it the other way). start_vel_curriculum (k0, step, k_end,
+    # success, min_steps) lowers it like set_pause_curriculum; the pause curriculum waits (P 0) until k reaches k_end
+    start_vel_scale: float = 1.0
+    start_vel_curriculum: tuple | None = None
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
@@ -1776,10 +1782,12 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPCEnvCfg(Stage1dK70GW2MBASVRT1S
     """Pp curriculum (planning session 2026-10-26): Pp' (P 0.2-0.6 from the start) never had a set-start success in 350
     iterations (success_set 0.0000; ho2 had 0.14-0.22) and identical 0/64 all along - the paused start is too far from
     the moving frame-0 start 7600 knows. P from U(0, hi), hi 0.05 -> 0.3 in 0.05 steps, each once success_set > 0.1 and
-    20 iterations (1280 env steps, 64 per iteration) after the last raise."""
+    20 iterations (1280 env steps, 64 per iteration) after the last raise. Before that, the start momentum: any pause
+    zeroes the frame-0 velocities, so first P 0 with k x those velocities, k 1.0 -> 0 in 0.1 steps on the same rule."""
 
     set_pause_range: tuple | None = (0.0, 0.3)
     set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 1280)
+    start_vel_curriculum: tuple | None = (1.0, 0.1, 0.0, 0.1, 1280)
     episode_length_s = 4.3
 
 

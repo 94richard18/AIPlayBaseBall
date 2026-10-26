@@ -727,11 +727,24 @@ class StageEnv(PitchEnv):
             mean = (v * m.float()).sum() / n.clamp_min(1.0)
             self.stage_stats[k] = torch.where(n > 0, (1 - a) * self.stage_stats[k] + a * mean, self.stage_stats[k])
         self.extras["log"] = {f"stage/{k}": v.clone() for k, v in self.stage_stats.items()}
+        vel_done = True
+        if c.start_vel_curriculum:
+            k0, kstep, k_end, kthr, kgap = c.start_vel_curriculum
+            if not hasattr(self, "vel_k"):
+                self.vel_k, self._vel_moved = k0, self.common_step_counter
+            if (self.vel_k > k_end + 1e-6 and float(self.stage_stats["success_set"]) > kthr
+                    and self.common_step_counter - self._vel_moved >= kgap):
+                self.vel_k, self._vel_moved = max(k_end, round(self.vel_k - kstep, 4)), self.common_step_counter
+                print(f"[StageEnv] start momentum curriculum: k {self.vel_k:.2f} at step {self.common_step_counter}", flush=True)
+            vel_done = self.vel_k <= k_end + 1e-6
+            self.extras["log"]["stage/vel_k"] = torch.tensor(self.vel_k, device=self.device)
         if c.set_pause_curriculum:
             hi0, step, hi_end, thr, gap = c.set_pause_curriculum
             if not hasattr(self, "pause_hi"):
                 self.pause_hi, self._pause_raised = hi0, self.common_step_counter
-            if (self.pause_hi < hi_end - 1e-6 and float(self.stage_stats["success_set"]) > thr
+            if not vel_done:  # the pause waits for the momentum curriculum (its gap counts from k's last step)
+                self._pause_raised = self.common_step_counter
+            if (vel_done and self.pause_hi < hi_end - 1e-6 and float(self.stage_stats["success_set"]) > thr
                     and self.common_step_counter - self._pause_raised >= gap):
                 self.pause_hi, self._pause_raised = min(hi_end, self.pause_hi + step), self.common_step_counter
                 print(f"[StageEnv] set pause curriculum: P up to {self.pause_hi:.2f} s at step {self.common_step_counter}", flush=True)
