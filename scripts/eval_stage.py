@@ -128,6 +128,7 @@ def main():
     prev_rel = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     pause_dev = {}  # set pause (cfg set_pause_s): body-joint deviation from the reference's frame 0, at the start / the pause end
+    t0_state = None  # COM horizontal speed / pelvis yaw rate / left-foot force share at the first step all envs reach t >= 0
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
@@ -150,6 +151,12 @@ def main():
                     q0 = base.ref.sample(torch.zeros(n, device=base.device))["joint_pos"][:, base.ref_cols]
                     dq = (base.robot.data.joint_pos[:, base.body_ids] - q0).abs()
                     pause_dev["start" if "start" not in pause_dev else "end"] = (dq.mean(-1).cpu().numpy(), dq.max(-1).values.cpu().numpy())
+            if t0_state is None and hasattr(base, "_com") and bool((base._ref_time() >= 0.0).all()):
+                # the robot's own state at reference time 0 (rocker C, 10-27: did the start carry the athlete's 0.6 m/s
+                # COM / -2 rad/s pelvis yaw?); with P 0 this is the reset state itself
+                fz = base.feet.data.net_forces_w_history[:, :, base.foot_sensor_ids].norm(dim=-1).max(1).values
+                t0_state = (base._com()[1][:, :2].norm(dim=-1).cpu().numpy(), base.robot.data.root_ang_vel_w[:, 2].cpu().numpy(),
+                            (fz[:, 0] / fz.sum(-1).clamp_min(1e-6)).cpu().numpy(), float(base._ref_time().max()))
             obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
             if args.trace and (k % 40 == 0 or abs(float(base._ref_time()[0])) < 0.026):
@@ -243,6 +250,11 @@ def main():
     if stride_stage:
         say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
             f"{(up & ~landed).sum()}")
+    if t0_state is not None:
+        cv, yr, lf, tt = t0_state
+        say(f"  state at ref t {tt:+.3f} s (median / p10 / p90): COM horizontal speed {np.median(cv):.2f} / {np.percentile(cv, 10):.2f} / "
+            f"{np.percentile(cv, 90):.2f} m/s, pelvis yaw rate {np.median(yr):+.2f} / {np.percentile(yr, 10):+.2f} / {np.percentile(yr, 90):+.2f} "
+            f"rad/s, left-foot force share {np.median(lf):.2f}")
     if pause_dev:
         say("  set pause " + f"{cfg.set_pause_s:.2f} s: body-joint |q - frame 0| per episode (median over episodes of the joint mean / max), "
             + ", ".join(f"{k} {np.median(v[0]):.4f} / {np.median(v[1]):.4f} rad" for k, v in pause_dev.items()))

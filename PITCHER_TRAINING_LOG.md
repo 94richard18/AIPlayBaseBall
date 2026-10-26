@@ -2284,3 +2284,16 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
 - **8400 在 P = 0、完整起始動量**（`set_pause_range=None set_pause_s=0.0 start_vel_curriculum=None`）：相同起始 站穩 0/64（倒 57）、aero T3 0/64；noisy 128 站穩 1/128、T3 0/128。起點 7600 在同樣條件是 52 / 48 → **課程把原本會的動作也洗掉了**（災難性遺忘），8400 不能用。
 - 交付候選不變：P3c（ho2 7600 + release_action_shift_s 0.0025 + plate_yaw_deg 18）。
 - 00:5x 收尾：trainer / eval 已停，Isaac = 0，傳打者「槽空了」，提案送規劃 session。評估檔：`logs/eval_ppc_p3cpc_8400_p0_n0.0.txt`、`logs/eval_ppc_p3cpc_8400_p0_n0.02.txt`。
+
+## 投手 12 小時影片（10-27 01:24）
+- `videos/pitcher_p3c_t18_1027am.mp4`（P3c、P = 0、相同起始、阻力 + 馬格努斯）：1.00 s 出手，球飛 37.9 m，最後站穩沒倒。白畫面 0%，h264 High / yuv420p。腳本 `logs/film_p3c_1027am.sh`。下一支在 10-27 13:24 前要錄。
+
+## C：rocker 起始否證（10-27 01:30–01:53，判定：關掉）
+- 規劃 session 01:0x 判定：交付照 P3c、P = 0（noisy 站穩還沒到 ≥ 48/64，gate 沒過，11-12 前繼續試）；先做 C 否證，再看要不要跑 B。
+- rocker（cfg `set_rocker_s` = R，預設 0）：set 起始從 t0 = −R、靜止開始；[−R, 0] 參考速度從 0 線性升到運動員 frame 0 的速度，姿勢往回推 −vR/2；這段身體動作歸零，只靠 PD + feed-forward。`eval_stage.py` 另外會印出所有 env 到 ref t ≥ 0 那一步的重心水平速度、骨盆 yaw rate、左腳受力比例。
+- **第一次（無效）**：0/64、0/128，但跌倒時間中位數 0.13 s，倒在 rocker 段裡。原因：運動員 frame 0 前腳已經在抬（l_knee 7 rad/s、l_foot 向上 0.74 m/s），往回推讓左腳跑到地面下約 11 cm，機器人被地面彈飛（0.1 s 兩腳 0 N，重心 1.8 m/s）。
+- 修法：`set_rocker_hold`（預設 `^l_(hip|knee|ankle)`），rocker 段前腳固定在 frame 0、速度 0。
+- **第二次（正式）**：R 0.3、7600、P3C 任務。相同起始 站穩 0/64、aero T3 0/64；noisy 0/128、0/128；跌倒時間中位數都是 0.99 s。t = 0 狀態：重心水平速度 0.12 m/s（frame 0 是 0.6，約 20%），骨盆 yaw rate −1.14 rad/s（frame 0 是 −2.12），左腳受力比例 0.20。
+- 判讀：動量帶不到，而且是結構性的。前腳固定又撐在地上，骨盆平移不了；運動員的重心速度主要來自正在抬起的前腳，要帶到就得在 rocker 段開始抬腿，等於要訓練起步動作。C 關掉。
+- 評估檔：`logs/eval_c_rocker_r0.3_n0.0.txt`、`logs/eval_c_rocker_r0.3_n0.02.txt`、trace `logs/c_rocker_trace2.raw`。
+- 下一步：B（防遺忘版課程，200 次迭代的否證），等打者 diag256 跑完再開。

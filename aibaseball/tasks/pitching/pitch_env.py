@@ -25,7 +25,7 @@ from isaaclab.envs import DirectRLEnv
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import ContactSensor, ContactSensorCfg
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
-from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_rotate_inverse, yaw_quat
+from isaaclab.utils.math import quat_apply, quat_error_magnitude, quat_mul, quat_rotate_inverse, yaw_quat
 
 from aibaseball.mocap.centroidal import mound_z, reference_centroidal
 from aibaseball.mocap.motion import PITCH_KEY_BODIES, MotionRef
@@ -332,8 +332,35 @@ class PitchEnv(DirectRLEnv):
     def _ref_time(self, extra: int = 0) -> torch.Tensor:
         return self.t0 + self.speed * (self.episode_length_buf.float() + extra) * self.step_dt
 
+    def _rocker(self, r, t):
+        """Rocker start (cfg set_rocker_s = R): before t = 0 the clamped frame-0 sample r becomes a ramp from rest -
+        velocities v0 (t + R) / R, positions frame 0 + v0 (t^2 / 2 + R t) / R (first order: planted feet stay put)."""
+        R = self.cfg.set_rocker_s
+        tt = t.clamp(-R, 0.0).unsqueeze(-1)
+        d, s = (tt * tt / 2 + R * tt) / R, (tt + R) / R
+        if not hasattr(self, "_key_v0"):
+            z = torch.zeros(1, device=t.device)
+            self._key_v0 = (self.ref.sample(z + 1e-3)["key_pos"] - self.ref.sample(z)["key_pos"])[0] / 1e-3
+            self._key_v0[PITCH_KEY_BODIES.index("l_foot")] = 0.0
+            self._rock_move = torch.tensor([0.0 if re.search(self.cfg.set_rocker_hold, j) else 1.0 for j in self.ref.joint_names],
+                                           device=t.device)
+        before = (t < 0.0).float().unsqueeze(-1)  # held joints: frame 0, still, until t = 0
+        r["joint_vel"] = r["joint_vel"] * (1.0 - before * (1.0 - self._rock_move))
+        r["joint_pos"] = r["joint_pos"] + r["joint_vel"] * d
+        r["root_pos"] = r["root_pos"] + r["root_lin_vel"] * d
+        r["key_pos"] = r["key_pos"] + self._key_v0.unsqueeze(0) * d.unsqueeze(-1)
+        rot = r["root_ang_vel"] * d  # world-frame rotation vector back from frame 0
+        ang = rot.norm(dim=-1, keepdim=True).clamp_min(1e-9)
+        dq = torch.cat([torch.cos(ang / 2), torch.sin(ang / 2) * rot / ang], -1)
+        r["root_quat"] = torch.nn.functional.normalize(quat_mul(dq, r["root_quat"]), dim=-1)
+        for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
+            r[k] = r[k] * s
+        return r
+
     def _ref(self, t):
         r = self.ref.sample(t)
+        if self.cfg.set_rocker_s > 0:
+            r = self._rocker(r, t)
         if self.cfg.set_pause_s > 0 or self.cfg.set_pause_range:  # set pause: frame 0 held still before the clock reaches 0
             still = (t >= 0.0).float().unsqueeze(-1)
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
@@ -1166,7 +1193,12 @@ class PitchEnv(DirectRLEnv):
                 if c.start_vel_curriculum and getattr(self, "vel_k", c.start_vel_curriculum[0]) > c.start_vel_curriculum[2] + 1e-6:
                     lo = hi = 0.0  # start momentum first: no pause until k reaches its end
             self.t0[env_ids] = torch.where(rsi, self.t0[env_ids], -(lo + torch.rand(n, device=dev) * (hi - lo)))
+        if c.set_rocker_s > 0:  # rocker start: set starts at rest, R before frame 0
+            assert not (c.set_pause_s > 0 or c.set_pause_range), "set_rocker_s does not combine with a set pause"
+            self.t0[env_ids] = torch.where(rsi, self.t0[env_ids], torch.full((n,), -c.set_rocker_s, device=dev))
         r = self.ref.sample(self.t0[env_ids])
+        if c.set_rocker_s > 0:
+            r = self._rocker(r, self.t0[env_ids])
         if c.set_pause_s > 0 or c.set_pause_range:  # set pause: start still in frame 0
             still = (self.t0[env_ids] >= 0.0).float().unsqueeze(-1)
             for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
@@ -1192,6 +1224,8 @@ class PitchEnv(DirectRLEnv):
         # ball in the grip: reference ball position / velocity (last key point)
         t = self.t0[env_ids]
         r2 = self.ref.sample(t + 1e-3)
+        if c.set_rocker_s > 0:
+            r2 = self._rocker(r2, t + 1e-3)
         ball_v = (r2["key_pos"][:, -1] - r["key_pos"][:, -1]) / 1e-3 * self.speed * vscale
         ball = torch.cat([r["key_pos"][:, -1] + o, torch.tensor([1.0, 0, 0, 0], device=dev).expand(n, 4), ball_v,
                           torch.zeros(n, 3, device=dev)], -1)

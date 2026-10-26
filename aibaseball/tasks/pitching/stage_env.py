@@ -375,7 +375,7 @@ class StageEnv(PitchEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
-        if self.cfg.set_pause_s > 0 or self.cfg.set_pause_range:
+        if self.cfg.set_pause_s > 0 or self.cfg.set_pause_range or self.cfg.set_rocker_s > 0:  # rocker: same hold (mode)
             # set pause: until the clock reaches 0 the body actions are held at the policy's first output of the episode.
             # Policy on through the pause (phase 0 all along): it kept pushing toward its first move, joints 0.08 rad off
             # at the end of P 0.3 s and 0/64; PD alone (actions 0): the set pose sagged, 0.09 rad max, 0/64

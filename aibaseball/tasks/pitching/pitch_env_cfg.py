@@ -81,6 +81,14 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # success, min_steps) lowers it like set_pause_curriculum; the pause curriculum waits (P 0) until k reaches k_end
     start_vel_scale: float = 1.0
     start_vel_curriculum: tuple | None = None
+    # rocker start (planning session 10-27, C falsifier): set starts begin at rest at t0 = -set_rocker_s; over [-R, 0] the
+    # reference ramps the athlete's frame-0 velocities up from 0 (pose extrapolated back by -v R / 2), body actions held
+    # at 0 (PD + feed-forward alone), so the robot reaches t = 0 carrying its own frame-0 momentum. Not with a set pause
+    set_rocker_s: float = 0.0
+    # joints (regex on the reference joint names) held at frame 0 with zero velocity through the rocker: the athlete's
+    # frame 0 already lifts the lead leg (l_knee 7 rad/s, l_foot up 0.74 m/s), extrapolated back it sank 0.11 m into the
+    # ground and the start popped the robot into the air (both feet 0 N at 0.1 s, fell at 0.13 s; first C run 10-27)
+    set_rocker_hold: str = r"^l_(hip|knee|ankle)"
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
