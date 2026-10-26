@@ -52,6 +52,7 @@ parser.add_argument("--phase_log", action="store_true",
                          "contact normal vs sweet-spot velocity")
 parser.add_argument("--release_top_hand", action="store_true",
                     help="control run: a copy of the robot USD with the top-hand loop joint (top_hand_grip) disabled")
+parser.add_argument("--action_clip", type=float, default=None, help="override cfg.action_clip (zero-shot: limit the policy's residual)")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
@@ -94,6 +95,8 @@ def main():
         cfg.aim_offset_z = args.aim_offset_z
     if args.aim_offset_y is not None:
         cfg.aim_offset_y = args.aim_offset_y
+    if args.action_clip is not None:
+        cfg.action_clip = args.action_clip
     if args.phase_horizon is not None:
         cfg.phase_horizon_s = args.phase_horizon
     if args.pitch_csv:

@@ -60,6 +60,8 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-27 01:55：等待時的 PD 誤差**（`logs/b_pderr_check.txt`）：**飽和的原因是策略修正量頂在 action clip 上（bang-bang）**。等待時修正量的中位數 = action_clip 2.0 × action_scale × residual_scale 0.5 的上限，肩 / 肘 1.5 rad、腕 1.2 rad，是飽和門檻的 7–9 倍。參考追蹤誤差只有門檻的 0.35–0.8 倍（r_wrist_pitch 1.35）。所以降 stiffness 或加大力量倍數都解決不了，要處理的是修正量。決定 session 核可：B 之後跑零樣本 action_clip 0.25 / 0.5 / 1.0（`NOWAIT=1 bash logs/b_clip_zs.sh`，結束標記 BCLIPZS_END，各 diag256、同一個 seed）。判定：擊中率 ≥ 基準 0.176 − 0.02，而且初速或打得正有改善 → 送訓練提案（降 clip 或 residual_scale，或加修正量懲罰，一次只改一項）；擊中率大掉 → 回報。力量倍數等這個結果再問使用者。
+
 > **打者 10-27 02:0x：閉鏈的原因（CPU）**
 > - **參考本身的閉鏈是合的**：用 FK 算 9 個 clip，右手握點到棒上 top_hand_x 點的距離中位數 0.1–0.4 mm、最大 2.1 mm（握把是球形接頭，可以自由轉）。「把參考投影到同一支棒」改不到東西，所以沒做。
 > - **等待姿勢的靜態需求力矩 / 人類上限**：最高 waist_pitch 0.23、l_wrist_yaw 0.23，其他 ≤ 0.19。姿勢本身沒有超出上限。
