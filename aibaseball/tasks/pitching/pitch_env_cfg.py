@@ -695,6 +695,9 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     release_elev_deg: tuple | None = None  # stage: ... and the hand's velocity elevation (deg) within (lo, hi)
     release_action_window_s: float | None = None  # stage: the policy picks the release in release_ref +- this (s)
     release_action_shift_s: float = 0.0  # ... and its choice (and the forced end) moved this much earlier (P3, 2026-10-25)
+    # ... or a fixed release action instead of the policy's (10-27: B / P3CPC / 10-25 C all lost T3 in the first 50 its
+    # because the release slipped one 2.5 ms step, +16.9 -> +19.4 ms after release_ref; 7650 already had p90 at +19.4)
+    release_fixed_a: float | None = None
     release_action_col: int = 0  # ... with this finger column (0 = action 29; the fingers are zeroed otherwise)
     w_stage_ball_rest: float = 0.0  # stage: release_score() x this, once at the time-out, only if at rest at the end
     # stage: finish shaping - COM >= margin behind / inboard of the lead foot over [release + t0, release + t1]; the

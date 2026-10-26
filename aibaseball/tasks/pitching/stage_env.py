@@ -389,6 +389,8 @@ class StageEnv(PitchEnv):
             elif self.cfg.set_pause_mode == "first":
                 actions[hold, :29] = self._pause_a[hold]
         rel_a = actions[:, 29 + self.cfg.release_action_col].clamp(-1.0, 1.0)  # release action (a finger column)
+        if self.cfg.release_fixed_a is not None:  # release time held (the policy's release column is ignored)
+            rel_a = torch.full_like(rel_a, self.cfg.release_fixed_a)
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
         if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise
             actions[:, self._arm_cols] = 0.0
