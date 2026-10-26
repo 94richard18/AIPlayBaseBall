@@ -29,6 +29,7 @@ parser.add_argument("--timing_bias", type=float, default=None, help="override cf
 parser.add_argument("--tempo_zero_after_release", action="store_true", help="cfg.tempo_zero_after_release: no tempo correction once the ball is in the air")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
+parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
 parser.add_argument("--mix_frac", type=float, default=None, help="cfg.pitch_mix_frac")
 parser.add_argument("--mix_speed", type=float, nargs=2, default=None, help="cfg.pitch_mix_speed_kmh")
 parser.add_argument("--mix_release_csv", type=str, default=None, help="training mix: cfg.pitch_mix_release_csv (half the pitches shaped like these releases)")
@@ -95,6 +96,7 @@ def main():
         cfg.post_ref_blend_s = args.post_ref_blend
     if args.post_ref_pose:
         cfg.post_ref_pose = args.post_ref_pose
+    cfg.post_ref_keep_residual = args.post_ref_keep_residual
     if args.timing_noise is not None:
         cfg.timing_noise_s = args.timing_noise
     if hasattr(cfg, "tee_noise_ramp_steps"):

@@ -93,7 +93,10 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             w = ((self.ref_t - self.ref.duration[self.clip]) / c.post_ref_blend_s).clamp(0.0, 1.0).unsqueeze(-1)
             t_pose = self.ref.contact_time[self.clip] if c.post_ref_pose == "contact" else torch.zeros_like(self.ref_t)
             pose = self._ref(t_pose)["joint_pos"]
-            tgt = (1.0 - w) * tgt + w * pose
+            if c.post_ref_keep_residual:  # only the reference part blends; the policy's correction stays on
+                tgt = tgt + w * (pose - nxt["joint_pos"])
+            else:
+                tgt = (1.0 - w) * tgt + w * pose
             ff = (1.0 - w) * ff
         self.joint_targets[:, self.body_joint_ids] = torch.clamp(tgt, self.q_lo, self.q_hi)
         if c.zero_ff_after_ref_end:  # the held final pose has no velocity (the sampler repeats the last frame's)

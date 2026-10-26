@@ -36,6 +36,7 @@ parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one 
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
+parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
@@ -273,10 +274,12 @@ def run_eval(ckpt: str):
             cfg.post_ref_blend_s = args.post_ref_blend
         if args.post_ref_pose:
             cfg.post_ref_pose = args.post_ref_pose
+        cfg.post_ref_keep_residual = args.post_ref_keep_residual
     if args.post_ref_blend is not None:
         cfg.post_ref_blend_s = args.post_ref_blend
     if args.post_ref_pose:
         cfg.post_ref_pose = args.post_ref_pose
+    cfg.post_ref_keep_residual = args.post_ref_keep_residual
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
@@ -343,6 +346,7 @@ def run_pitched_video(ckpt: str):
         cfg.post_ref_blend_s = args.post_ref_blend
     if args.post_ref_pose:
         cfg.post_ref_pose = args.post_ref_pose
+    cfg.post_ref_keep_residual = args.post_ref_keep_residual
     if args.aim_offset_y is not None:
         cfg.aim_offset_y = args.aim_offset_y
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")

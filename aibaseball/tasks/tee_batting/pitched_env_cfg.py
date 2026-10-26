@@ -43,6 +43,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # feed-forward faded out. 0 = off (hold the last frame, as before)
     post_ref_blend_s: float = 0.0
     post_ref_pose: str = "contact"
+    post_ref_keep_residual: bool = False  # True: blend only the reference; the policy residual is not faded out
     pitch_mix_frac: float = 0.5
     pitch_mix_speed_kmh: tuple = (55.0, 75.0)
     pitch_mix_zone_y: float = 0.5  # m, mix pitches are aimed within |y| <= this
