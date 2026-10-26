@@ -38,6 +38,11 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # table rows, speed drawn in pitch_mix_speed_kmh, near-zone only); the rest from the analytic library
     pitch_mix_release_csv: str | None = None
     tempo_zero_after_release: bool = False  # eval: tempo action held at 0 once the pitch is released
+    # after the reference clip ends (~0.4 s after contact): blend the joint targets over this many seconds to a balanced
+    # pose ("contact": the clip's contact frame - feet already in the stride; "start": frame 0), residual and
+    # feed-forward faded out. 0 = off (hold the last frame, as before)
+    post_ref_blend_s: float = 0.0
+    post_ref_pose: str = "contact"
     pitch_mix_frac: float = 0.5
     pitch_mix_speed_kmh: tuple = (55.0, 75.0)
     pitch_mix_zone_y: float = 0.5  # m, mix pitches are aimed within |y| <= this
