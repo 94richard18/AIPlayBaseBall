@@ -17,6 +17,7 @@ parser.add_argument("--task", type=str, default="AIB-Stage1a-v0")
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
+parser.add_argument("--arm_teacher", type=str, default=None, help="checkpoint whose frozen actor drives the arm + release columns (F)")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
 parser.add_argument("--no_plate_view", action="store_true",
@@ -108,6 +109,10 @@ def main():
     r = OnPolicyRunner(w, ag.to_dict(), log_dir=None, device=ag.device)
     r.load(args.checkpoint)
     r.eval_mode()
+    if args.arm_teacher:  # F: arm + release columns from this checkpoint's frozen actor (as in train.py --arm_teacher)
+        from aibaseball.rl.arm_teacher import attach_arm_teacher
+
+        attach_arm_teacher(r.alg, args.arm_teacher, list(base._arm_cols) + [29 + base.cfg.release_action_col], base.device)
     pol = r.get_inference_policy(device=base.device)
     if args.stochastic:
         pol = lambda x: r.alg.actor_critic.act(r.obs_normalizer(x))  # noqa: E731
