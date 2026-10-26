@@ -40,6 +40,8 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     tempo_zero_after_release: bool = False  # eval: tempo action held at 0 once the pitch is released
     pitch_mix_frac: float = 0.5
     pitch_mix_speed_kmh: tuple = (55.0, 75.0)
+    pitch_mix_zone_y: float = 0.5  # m, mix pitches are aimed within |y| <= this
+    pitch_mix_zone_z: tuple = (0.3, 1.3)  # m, and this height band
     pitch_table_center_z: float = 0.80  # m, the table's plate z that maps onto the swing's nominal contact height
 
 
@@ -205,6 +207,18 @@ class PitchedBattingHuman14EnvCfg(PitchedBattingHuman9EnvCfg):
     pitch_mix_release_csv: str = "assets/game/p3c_identical_t18_release.csv"
     pitch_mix_frac: float = 0.5
     pitch_mix_speed_kmh: tuple = (55.0, 75.0)
+
+
+@configclass
+class PitchedBattingHuman15EnvCfg(PitchedBattingHuman14EnvCfg):
+    """2026-10-25/26 slow-pitch diagnosis (delivery 12500, 1024-pitch diag, groups fixed): fast 0.795, slow 0.194; vs P3c
+    in-zone 0.327 (aim 0); misses are early swings (reference past contact ~0.04 s at the plate); the tempo action is not
+    the cause. Human14 (half slow) in-zone 0.339 after 100 its - the fast half may drown the slow one. Change (decision
+    session): all training pitches P3c-shaped 55-75 km/h inside the StrikeZone. Base Human9 (via Human14). From 12500."""
+
+    pitch_mix_frac: float = 1.0
+    pitch_mix_zone_y: float = 0.2525
+    pitch_mix_zone_z: tuple = (0.50, 1.10)
 
 
 @configclass

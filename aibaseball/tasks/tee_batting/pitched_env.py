@@ -43,7 +43,8 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.mix_lib = None
         if cfg.pitch_mix_release_csv:  # training: a share of the pitches shaped like the RL pitcher's releases
             self.mix_lib = build_library_like_release(cfg.pitch_mix_release_csv, cfg.pitch_library_size, self.phys,
-                                                      speed_kmh=cfg.pitch_mix_speed_kmh).to(dev)
+                                                      speed_kmh=cfg.pitch_mix_speed_kmh, zone_y=cfg.pitch_mix_zone_y,
+                                                      zone_z=cfg.pitch_mix_zone_z).to(dev)
         self.ref_t = torch.zeros(n, device=dev)
         self.rate = torch.full((n,), self.speed, device=dev)
         self.phys_t = torch.zeros(n, device=dev)  # physical time since episode start
@@ -61,7 +62,8 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.t_arrive = torch.zeros(n, device=dev)
         self.v_seen = torch.zeros(n, 3, device=dev)
         self.released_seen = torch.zeros(n, dtype=torch.bool, device=dev)
-        self.track_stats.update({k: torch.zeros((), device=dev) for k in ("pitch_kmh", "timing_err_s", "tempo")})
+        self.track_stats.update({k: torch.zeros((), device=dev) for k in ("pitch_kmh", "timing_err_s", "tempo", "ref_err_plate_s")})
+        self.plate_crossed = torch.zeros(n, dtype=torch.bool, device=dev)
 
     # ------------------------------------------------------------------ curriculum
     def _progress(self) -> float:
@@ -175,7 +177,13 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         if self.new_hit.any():
             # timing error: physical time of contact vs. when the ball reached the reference contact point
             self.track_stats["pitch_kmh"] = 0.95 * self.track_stats["pitch_kmh"] + 0.05 * self.pitch_kmh[self.new_hit].mean()
-        self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("pitch_kmh", "tempo")})
+        # reference clock when the ball reaches the contact plane: + = the swing reference is already past contact (early)
+        cross = ~self.plate_crossed & (self.pitch_pos[:, 0] < self.contact_x_ref)
+        if cross.any():
+            err = (self.ref_t - self.ref.contact_time[self.clip])[cross].mean()
+            self.track_stats["ref_err_plate_s"] = 0.98 * self.track_stats["ref_err_plate_s"] + 0.02 * err
+        self.plate_crossed |= cross
+        self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("pitch_kmh", "tempo", "ref_err_plate_s")})
         return rew
 
     # ------------------------------------------------------------------ reset: new pitch
@@ -238,6 +246,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.ref_t[env_ids] = self.t0[env_ids] - wait * self.speed
         self.rate[env_ids] = self.speed
         self.passed[env_ids] = False
+        self.plate_crossed[env_ids] = False
         # hide the tee (the ball is pitched)
         hidden = self.tee_pos[env_ids].clone()
         hidden[:, 2] = -3.0
