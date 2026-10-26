@@ -268,7 +268,9 @@ def main():
             p_ss = knob + axis * geom.sweet_spot_x
             qd_all = d.joint_vel[:, pj]
             Jl, Ja = J[:, :3][:, :, cols], J[:, 3:][:, :, cols]
-            cc_l = Jl + torch.cross(Ja, (p_ss - knob).unsqueeze(-1).expand_as(Ja), dim=1)  # link origin = knob
+            # PhysX gives the linear rows at the bat's centre of mass (10-27 check: residual 0.17 m/s at the COM, 14.9 at the knob)
+            cm_b = d.body_com_pos_w[:, base.bat_id]
+            cc_l = Jl + torch.cross(Ja, (p_ss - cm_b).unsqueeze(-1).expand_as(Ja), dim=1)
             v_j = (cc_l * qd_all.unsqueeze(1))  # (n, 3, nj)
             vh = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
             cc_now = (v_j * vh.unsqueeze(-1)).sum(1)
@@ -277,7 +279,6 @@ def main():
                 Jb = J[:, :, :6]
                 vb = (Jb[:, :3] @ tw).squeeze(-1) + torch.cross((Jb[:, 3:] @ tw).squeeze(-1), p_ss - knob, dim=-1)
                 res_link = (vb + v_j.sum(-1) - v_ss).norm(dim=-1)
-                cm_b = d.body_com_pos_w[:, base.bat_id]
                 cc_c = Jl + torch.cross(Ja, (p_ss - cm_b).unsqueeze(-1).expand_as(Ja), dim=1)
                 vb_c = (Jb[:, :3] @ tw).squeeze(-1) + torch.cross((Jb[:, 3:] @ tw).squeeze(-1), p_ss - cm_b, dim=-1)
                 res_com = (vb_c + (cc_c * qd_all.unsqueeze(1)).sum(-1) - v_ss).norm(dim=-1)
@@ -512,7 +513,7 @@ def main():
         out["chain_log"] = dict(n=int(hm.sum()), v_ss=med(chk["v"]), joints_sum=med(chk["joints"]),
                                 residual_link=med(chk["res_link"]), residual_com=med(chk["res_com"]),
                                 contrib_top={nm: cmed[nm] for nm in top},
-                                contrib_groups={g: med(np.nansum(cc[:, ids], 1)) for g, ids in groups.items()},
+                                contrib_groups={g: med(cc[:, ids].sum(1)) for g, ids in groups.items()},
                                 qd_vs_ref=qrat, down_power=power)
         for k, v in out["chain_log"].items():
             print(f"[bat] chain_log {k}: " + json.dumps(v), flush=True)
