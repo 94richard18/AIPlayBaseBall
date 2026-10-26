@@ -375,6 +375,19 @@ class StageEnv(PitchEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor):
         actions = actions.clone()
+        if self.cfg.set_pause_s > 0:
+            # set pause: until the clock reaches 0 the body actions are held at the policy's first output of the episode.
+            # Policy on through the pause (phase 0 all along): it kept pushing toward its first move, joints 0.08 rad off
+            # at the end of P 0.3 s and 0/64; PD alone (actions 0): the set pose sagged, 0.09 rad max, 0/64
+            hold = self._ref_time() < 0.0
+            if not hasattr(self, "_pause_a"):
+                self._pause_a = torch.zeros(self.num_envs, 29, device=self.device)
+            first = hold & (self.episode_length_buf == 0)
+            self._pause_a[first] = actions[first, :29]
+            if self.cfg.set_pause_mode == "zero":
+                actions[hold, :29] = 0.0
+            elif self.cfg.set_pause_mode == "first":
+                actions[hold, :29] = self._pause_a[hold]
         rel_a = actions[:, 29 + self.cfg.release_action_col].clamp(-1.0, 1.0)  # release action (a finger column)
         actions[:, 29:] = 0.0  # fingers keep the grip (no release in 1a)
         if self.cfg.freeze_arms:  # arms on their PD reference (the set position): no policy action, no action noise

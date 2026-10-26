@@ -69,6 +69,7 @@ class PitchEnvCfg(DirectRLEnvCfg):
     # the reference clock starts at -set_pause_s, the reference holds frame 0 with zero velocities until 0, and the
     # phase observation is clamped at >= 0. Set starts stay t0 <= 0 (drop rule, set-only ball term)
     set_pause_s: float = 0.0
+    set_pause_mode: str = "zero"  # body actions in the pause: "policy" (live), "zero" (PD alone), "first" (held first output)
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
