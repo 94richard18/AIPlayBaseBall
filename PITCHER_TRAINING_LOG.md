@@ -2276,3 +2276,11 @@ AIB-1 人形機器人（1.85 m、88.6 kg、兩隻 16 自由度五指手）在 Is
 - session 重開後的名字：投手 aiplaybaseball-20、規劃 aiplaybaseball-14、打者 aiplaybaseball-15（d0 是舊 session，不再收發通知）。
 - 21:20 打者傳「槽空了」（1026b、跌倒檢驗、力量 ×1.5 / ×2.0 零樣本都跑完了）。21:22 確認 Isaac = 0，通知規劃 session 和打者後，開 `oo_ppc_train.sh` 和 `watch_ppc.sh`。
 - 21:27 watcher：起始動量 k 0.95（第 +20 次迭代）。課程有在動。
+
+## P3CPC 結果（10-27 00:45 STOP，失敗）
+- watcher 00:45 停：k 0.35、hi 0.05 連續 300 次迭代沒動（停在 +824，檢查點到 8400）。
+- k 進度：+20 0.95 → +100 0.75 → +220 0.45 → +457 0.40 → +523 0.35，之後卡住。success_set 從 k 0.45 附近的 0.03–0.06，掉到 k 0.35 的約 0.01–0.03（門檻 0.1）。value loss 約 126–178，沒觸發停止規則。
+- P = 0.3 參考評估（7700–8300，相同 64 + noisy 128）：站穩 + 投出 全部 0、aero T3 全部 0。這段時間 hi 一直沒離開 0.05，評估只當參考。
+- **8400 在 P = 0、完整起始動量**（`set_pause_range=None set_pause_s=0.0 start_vel_curriculum=None`）：相同起始 站穩 0/64（倒 57）、aero T3 0/64；noisy 128 站穩 1/128、T3 0/128。起點 7600 在同樣條件是 52 / 48 → **課程把原本會的動作也洗掉了**（災難性遺忘），8400 不能用。
+- 交付候選不變：P3c（ho2 7600 + release_action_shift_s 0.0025 + plate_yaw_deg 18）。
+- 00:5x 收尾：trainer / eval 已停，Isaac = 0，傳打者「槽空了」，提案送規劃 session。評估檔：`logs/eval_ppc_p3cpc_8400_p0_n0.0.txt`、`logs/eval_ppc_p3cpc_8400_p0_n0.02.txt`。
