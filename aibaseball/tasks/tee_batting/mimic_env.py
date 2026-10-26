@@ -39,8 +39,10 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.joint_vel_targets = torch.zeros_like(self.joint_targets)
         self.speed = float(cfg.speed)
         self.track_stats = {k: torch.zeros((), device=dev) for k in
-                            ("track_reward", "key_err_m", "pose_err_rad", "t0", "min_ball_dist_m")}
+                            ("track_reward", "key_err_m", "pose_err_rad", "t0", "min_ball_dist_m",
+                             "ss_speed_win", "ss_ref_speed_win")}
         self.min_ball_dist = torch.full((self.num_envs,), 9.0, device=dev)
+        self.ss_ref_contact_speed = None
 
     # ------------------------------------------------------------------ reference time
     def _ref_time(self, extra_steps: int = 0) -> torch.Tensor:
@@ -132,6 +134,27 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.min_ball_dist = torch.minimum(self.min_ball_dist, dist)
         window = torch.exp(-(((self._ref_time() - self.ref.contact_time[self.clip]) / self.cfg.contact_window_s) ** 2))
         contact_r = window * torch.exp(-((dist / self.cfg.sigma_contact) ** 2)) * (~self.hit | self.new_hit).float()
+        # bat speed before contact: the sweet-spot velocity along the reference's, capped at the reference speed
+        ss_r = torch.zeros_like(dist)
+        if self.cfg.w_ss_speed > 0:
+            t = self._ref_time()
+            win = ((t >= self.ref.contact_time[self.clip] - self.cfg.ss_speed_window_s) & (t < self.ref.contact_time[self.clip])
+                   & (~self.hit | self.new_hit))
+            if win.any():
+                h = 0.005
+                ss_ref = [self._ref_sweet_spot(t + s * h) for s in (-1, 1)]
+                v_ref = (ss_ref[1] - ss_ref[0]) / (2 * h) * self.speed
+                v_ref_n = v_ref.norm(dim=-1).clamp_min(1.0)
+                _, v_ss = self._sweet_spot(knob, axis, cm, v_cm, w)
+                along = (v_ss * v_ref).sum(-1) / v_ref_n
+                if self.ss_ref_contact_speed is None:  # per clip, the reference sweet-spot speed at contact (~31 m/s)
+                    tc, cl = self.ref.contact_time, torch.arange(self.ref.num_clips, device=self.device)
+                    r = [self.ref.sample(tc + s * h, cl)["key_pos"] for s in (-1, 1)]
+                    self.ss_ref_contact_speed = ((self._sweet_spot_of(r[1]) - self._sweet_spot_of(r[0])) / (2 * h)).norm(dim=-1)
+                v_c = self.ss_ref_contact_speed[self.clip] * self.speed
+                ss_r = torch.where(win, along.clamp(0.0).minimum(v_ref_n) / v_c, ss_r)
+                self.track_stats["ss_speed_win"] = 0.99 * self.track_stats["ss_speed_win"] + 0.01 * v_ss.norm(dim=-1)[win].mean()
+                self.track_stats["ss_ref_speed_win"] = 0.99 * self.track_stats["ss_ref_speed_win"] + 0.01 * v_ref_n[win].mean()
         done = self.reset_terminated | self.reset_time_outs
         a = 0.01
         if done.any():
@@ -141,7 +164,17 @@ class TeeBattingMimicEnv(TeeBattingEnv):
             self.track_stats[k] = (1 - a) * self.track_stats[k] + a * v
         self.extras["log"].update({f"mimic/{k}": v.clone() for k, v in self.track_stats.items()})
         self.extras["log"]["mimic/speed"] = torch.tensor(self.speed, device=self.device)
-        return rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r
+        return rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r + self.cfg.w_ss_speed * ss_r
+
+    def _ref_sweet_spot(self, t: torch.Tensor) -> torch.Tensor:
+        return self._sweet_spot_of(self._ref(t)["key_pos"])
+
+    def _sweet_spot_of(self, key: torch.Tensor) -> torch.Tensor:
+        """Reference sweet spot: on the bottom-hand -> bat-tip line, sweet_spot_x from the knob end."""
+        tip, hand = key[:, -1], key[:, KEY_BODIES.index("l_hand")]
+        u = tip - hand
+        u = u / u.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+        return tip - u * (self.bat_geom.length - self.bat_geom.sweet_spot_x)
 
     # ------------------------------------------------------------------ dones
     def _get_dones(self):

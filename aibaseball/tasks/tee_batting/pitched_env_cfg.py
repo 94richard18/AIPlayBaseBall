@@ -228,6 +228,19 @@ class PitchedBattingHuman15EnvCfg(PitchedBattingHuman14EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman16EnvCfg(PitchedBattingHuman9EnvCfg):
+    """2026-10-26/27 bat-speed diagnosis (delivery 12500): the reference sweet spot reaches ~31 m/s at contact, the robot
+    20.5 m/s (exit speed median 17 m/s; ~25 m/s needed for the outfield); the impact model is fine (head-on 20.5 m/s ->
+    29.9 m/s). Effort 1.5 / 2.0x zero-shot and action_clip 0.25-1.0 zero-shot did not help. Change (decision session, one
+    change per round, strength stays 1.0x): a sweet-spot speed reward in the last 0.1 s of reference time before contact,
+    the speed along the reference sweet spot's velocity capped at the reference speed, over its speed at contact. Window
+    sum ~4.5 x w at the reference profile, ~3 x w at the robot's 66% (hit rewards ~2-26, miss 20). Base Human9. From 12500."""
+
+    w_ss_speed: float = 2.0
+    ss_speed_window_s: float = 0.1
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0

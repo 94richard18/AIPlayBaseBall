@@ -68,6 +68,11 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     w_contact: float = 2.0
     sigma_contact: float = 0.08  # m
     contact_window_s: float = 0.04
+    # bat speed shaping: in the last ss_speed_window_s of reference time before contact (until the hit), per step
+    # w_ss_speed * (sweet-spot speed along the reference sweet spot's velocity, capped at its speed) / the reference's
+    # speed at contact (the reference ramps ~6 -> 31 m/s over the window, so the sum follows the speed profile)
+    w_ss_speed: float = 0.0
+    ss_speed_window_s: float = 0.1
     max_key_err: float = 0.45  # terminate when key bodies drift this far (m RMS)
     lost_after_hit_is_fall: bool = False  # True: losing the reference after contact counts as a fall (w_fall_after_hit)
     ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)
