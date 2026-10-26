@@ -71,6 +71,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     set_pause_s: float = 0.0
     set_pause_range: tuple | None = None  # (lo, hi): each set start draws its pause uniformly instead (training, Pp)
     set_pause_mode: str = "zero"  # body actions in the pause: "policy" (live), "zero" (PD alone), "first" (held first output)
+    # pause curriculum (planning session 10-26, after Pp' never saw a success at P 0.2-0.6): (hi0, step, hi_end, success,
+    # min_steps) - set starts draw P from U(set_pause_range lo, hi), hi starts at hi0 and grows by step whenever the
+    # set-start success (stage/success_set) is above success and min_steps env steps passed since the last raise
+    set_pause_curriculum: tuple | None = None
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5
@@ -1765,6 +1769,18 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPEnvCfg(Stage1dK70GW2MBASVRT1SY
     set_pause_range: tuple | None = (0.2, 0.6)
     set_pause_mode: str = "zero"
     episode_length_s = 4.6
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPCEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPEnvCfg):
+    """Pp curriculum (planning session 2026-10-26): Pp' (P 0.2-0.6 from the start) never had a set-start success in 350
+    iterations (success_set 0.0000; ho2 had 0.14-0.22) and identical 0/64 all along - the paused start is too far from
+    the moving frame-0 start 7600 knows. P from U(0, hi), hi 0.05 -> 0.3 in 0.05 steps, each once success_set > 0.1 and
+    20 iterations (480 env steps) after the last raise."""
+
+    set_pause_range: tuple | None = (0.0, 0.3)
+    set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 480)
+    episode_length_s = 4.3
 
 
 @configclass

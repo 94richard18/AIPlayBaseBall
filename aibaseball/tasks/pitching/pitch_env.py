@@ -1161,6 +1161,8 @@ class PitchEnv(DirectRLEnv):
                                        torch.full((n,), -c.set_pause_s, device=dev))
         if c.set_pause_range:  # a pause per set start drawn from the range (rsi starts keep their t0 > 0)
             lo, hi = c.set_pause_range
+            if c.set_pause_curriculum:  # the curriculum's current upper end (StageEnv raises it)
+                hi = getattr(self, "pause_hi", c.set_pause_curriculum[0])
             self.t0[env_ids] = torch.where(rsi, self.t0[env_ids], -(lo + torch.rand(n, device=dev) * (hi - lo)))
         r = self.ref.sample(self.t0[env_ids])
         if c.set_pause_s > 0 or c.set_pause_range:  # set pause: start still in frame 0
