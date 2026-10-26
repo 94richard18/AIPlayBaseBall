@@ -1776,10 +1776,10 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPCEnvCfg(Stage1dK70GW2MBASVRT1S
     """Pp curriculum (planning session 2026-10-26): Pp' (P 0.2-0.6 from the start) never had a set-start success in 350
     iterations (success_set 0.0000; ho2 had 0.14-0.22) and identical 0/64 all along - the paused start is too far from
     the moving frame-0 start 7600 knows. P from U(0, hi), hi 0.05 -> 0.3 in 0.05 steps, each once success_set > 0.1 and
-    20 iterations (480 env steps) after the last raise."""
+    20 iterations (1280 env steps, 64 per iteration) after the last raise."""
 
     set_pause_range: tuple | None = (0.0, 0.3)
-    set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 480)
+    set_pause_curriculum: tuple | None = (0.05, 0.05, 0.3, 0.1, 1280)
     episode_length_s = 4.3
 
 
