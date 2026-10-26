@@ -1824,6 +1824,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPFEnvCfg(Stage1dK70GW2MBASVRT1S
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPGEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPFEnvCfg):
+    """F step 1 restart: the pf1 trainer died in a GPU crash at 06:48 (killing its deadlocked 7900 eval), with k at 0.60;
+    resumed from its 7900 with the curriculum continuing from 0.60."""
+
+    start_vel_curriculum: tuple | None = (0.60, 0.025, 0.0, 0.05, 1280)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100Y7EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
     """ho3 (planning session 2026-10-25): W100 with the plate y scale 20 -> 7 m. ho2 7600: |y| 5.3 m, z 0.2 m - the y
     slope 1 / 20 was 8x below the z slope 1 / 2.5 and |y| improved only 0.21 m per 100 its; 20 m was for hn's -40 deg."""
