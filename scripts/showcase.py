@@ -153,7 +153,9 @@ def run_video(ckpt: str):
     cfg.scene.num_envs = 1
     cfg.terminate_on_land = False
     cfg.episode_length_s = 30.0
-    cfg.viewer.resolution = (1280, 720)
+    cfg.viewer.resolution = (1600, 900)  # sharper video (user 2026-10-26): larger frame + DLAA instead of the default DLSS
+    if hasattr(cfg.sim, "render"):
+        cfg.sim.render.antialiasing_mode = "DLAA"
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
     wrapped = RslRlVecEnvWrapper(env)
     policy = load_policy(wrapped, ckpt)
@@ -233,7 +235,7 @@ def run_video(ckpt: str):
     if best is None:
         raise RuntimeError("no swing landed")
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    imageio.mimwrite(args.out, best[1], fps=30, quality=8, macro_block_size=1)
+    imageio.mimwrite(args.out, best[1], fps=30, quality=10, macro_block_size=1)
     print(f"[showcase] wrote {args.out} ({len(best[1])} frames), best carry {best[2]['carry_m']:.1f} m", flush=True)
     for r in results:
         print("[showcase]", json.dumps(r), flush=True)
@@ -319,7 +321,9 @@ def run_pitched_video(ckpt: str):
     cfg.scene.num_envs = 1
     cfg.terminate_on_land = False
     cfg.episode_length_s = 30.0
-    cfg.viewer.resolution = (1280, 720)
+    cfg.viewer.resolution = (1600, 900)  # sharper video (user 2026-10-26): larger frame + DLAA instead of the default DLSS
+    if hasattr(cfg.sim, "render"):
+        cfg.sim.render.antialiasing_mode = "DLAA"
     if args.pitch_kmh:
         cfg.pitch_speed_range_start = tuple(args.pitch_kmh)
         cfg.pitch_speed_range_final = tuple(args.pitch_kmh)
@@ -408,7 +412,7 @@ def run_pitched_video(ckpt: str):
             frames.append(overlay(grab(base), [title, (f"pitch {k + 1}/{args.swings}: {kmh:.0f} km/h", (200, 200, 200))],
                                   big=outcome))
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    imageio.mimwrite(args.out, frames, fps=30, quality=8, macro_block_size=1)
+    imageio.mimwrite(args.out, frames, fps=30, quality=10, macro_block_size=1)
     print(f"[pitched] wrote {args.out} ({len(frames)} frames)", flush=True)
 
 

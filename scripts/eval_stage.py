@@ -89,7 +89,11 @@ def main():
     if hasattr(cfg, "assist_force_n") and not args.assist:
         cfg.assist_force_n = 0.0  # judged on full physics (the training assist starts at full strength in a new env)
     if args.video:
-        cfg.viewer.resolution = (1280, 720)
+        # user 2026-10-26 "畫面有點糊": 1600 x 900 per view, DLAA (native-resolution anti-aliasing; the default DLSS
+        # renders below the output size and upscales)
+        cfg.viewer.resolution = (1600, 900)
+        if hasattr(cfg.sim, "render"):
+            cfg.sim.render.antialiasing_mode = "DLAA"
     env = gym.make(args.task, cfg=cfg, render_mode="rgb_array" if args.video else None)
     base = env.unwrapped
     orig = base._get_dones
@@ -435,6 +439,11 @@ def film(w, base, pol, T, fps=30):
     from pxr import UsdGeom
 
     stage = omni.usd.get_context().get_stage()
+    # plate view: optical zoom (the viewport camera's focal length x PLATE_ZOOM) instead of the old 3x crop of the
+    # rendered frame, which upscaled a 1/3-size region and blurred the pitcher (user 2026-10-26)
+    PLATE_ZOOM = 3.0
+    cam = UsdGeom.Camera(stage.GetPrimAtPath("/OmniverseKit_Persp"))
+    focal0 = cam.GetFocalLengthAttr().Get() if cam else None
     for i in range(1, base.num_envs):
         UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/envs/env_{i}")).MakeInvisible()
 
@@ -481,18 +490,24 @@ def film(w, base, pol, T, fps=30):
                 pd = base.cfg.plate_distance
                 th = -np.radians(getattr(base.cfg, "plate_yaw_deg", 0.0))  # the turned plate (stage plate_yaw_deg)
                 ex, ey = pd + 1.0, base.cfg.zone_center_y
+                # aimed at 1.0 m above the field: the old crop was centred at 55 % of the frame height, about 0.6 m
+                # below the 1.3 m target at this distance
                 base.sim.set_camera_view(eye=(g + [np.cos(th) * ex - np.sin(th) * ey, np.sin(th) * ex + np.cos(th) * ey, 1.5]).tolist(),
-                                         target=(g + [0.0, 0.0, 1.3]).tolist())
+                                         target=(g + [0.0, 0.0, 1.0]).tolist())
+                if focal0:
+                    cam.GetFocalLengthAttr().Set(focal0 * PLATE_ZOOM)
                 base.render()
                 pv = grab()
+                if focal0:
+                    cam.GetFocalLengthAttr().Set(focal0)
                 base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
                 base.render()
                 if pv is not None:
-                    # the pitcher is ~19 m away (2x crop: ~27% of the frame height): 3x crop, centred at 55% of the
-                    # height where the pitcher stands, back to full size
-                    hh, ww = pv.shape[:2]
-                    y0 = int(hh * 0.55 - hh / 6)
-                    pv = cv2.resize(pv[y0: y0 + hh // 3, ww // 3: ww - ww // 3], (ww, hh))
+                    if not focal0:  # no camera prim: fall back to the old 3x crop
+                        hh, ww = pv.shape[:2]
+                        y0 = int(hh * 0.55 - hh / 6)
+                        pv = cv2.resize(pv[y0: y0 + hh // 3, ww // 3: ww - ww // 3], (ww, hh))
+                    pv = pv.copy()
                     cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
                     cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2,
                                 cv2.LINE_AA)
@@ -510,7 +525,7 @@ def film(w, base, pol, T, fps=30):
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
         say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
     os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
-    imageio.mimwrite(args.video, frames, fps=fps, quality=8, macro_block_size=1)
+    imageio.mimwrite(args.video, frames, fps=fps, quality=10, macro_block_size=1)  # 10 = least compression
     if kf:
         png = os.path.splitext(args.video)[0] + "_keyframes.png"
         imageio.imwrite(png, np.concatenate([np.concatenate(kf[:2], 1), np.concatenate(kf[2:4], 1)], 0)
