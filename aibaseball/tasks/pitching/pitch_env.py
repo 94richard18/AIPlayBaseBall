@@ -317,6 +317,10 @@ class PitchEnv(DirectRLEnv):
 
     def _ref(self, t):
         r = self.ref.sample(t)
+        if self.cfg.set_pause_s > 0:  # set pause: frame 0 held still before the clock reaches 0
+            still = (t >= 0.0).float().unsqueeze(-1)
+            for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
+                r[k] = r[k] * still
         r["joint_pos"] = r["joint_pos"][:, self.ref_cols]
         r["joint_vel"] = r["joint_vel"][:, self.ref_cols] * self.speed
         r["root_lin_vel"] = r["root_lin_vel"] * self.speed
@@ -639,7 +643,7 @@ class PitchEnv(DirectRLEnv):
             ball_vrel * 0.1,
             self.ball.data.root_ang_vel_w * 0.01,
             self.released.float().unsqueeze(-1),
-            (t / self.cfg.phase_duration_s).unsqueeze(-1),
+            (t.clamp_min(0.0) / self.cfg.phase_duration_s).unsqueeze(-1),  # >= 0: the set pause looks like t = 0
             nxt["joint_pos"] - q[:, self.body_ids],
             quat_rotate_inverse(d.root_link_quat_w, nxt["root_pos"] - d.root_link_pos_w),
             quat_rotate_inverse(d.root_link_quat_w, nxt["key_pos"][:, -1] - self.ball.data.root_pos_w),
@@ -1137,8 +1141,12 @@ class PitchEnv(DirectRLEnv):
         rsi = torch.rand(n, device=dev) < c.rsi_prob
         t_max = max(c.rsi_min_s, self.release_ref - c.rsi_margin_before_release)
         self.t0[env_ids] = torch.where(rsi, c.rsi_min_s + torch.rand(n, device=dev) * (t_max - c.rsi_min_s),
-                                       torch.zeros(n, device=dev))
+                                       torch.full((n,), -c.set_pause_s, device=dev))
         r = self.ref.sample(self.t0[env_ids])
+        if c.set_pause_s > 0:  # set pause: start still in frame 0
+            still = (self.t0[env_ids] >= 0.0).float().unsqueeze(-1)
+            for k in ("joint_vel", "root_lin_vel", "root_ang_vel"):
+                r[k] = r[k] * still
         o = self.scene.env_origins[env_ids] + torch.tensor([0.0, 0.0, c.reset_lift_m], device=dev)
         root = torch.cat([r["root_pos"] + o, r["root_quat"], r["root_lin_vel"] * self.speed, r["root_ang_vel"] * self.speed], -1)
         self.robot.write_root_state_to_sim(root, env_ids)

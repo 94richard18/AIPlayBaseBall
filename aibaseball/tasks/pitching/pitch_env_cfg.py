@@ -65,6 +65,10 @@ class PitchEnvCfg(DirectRLEnvCfg):
     speed_end: float = 1.0
     speed_ramp_steps: int = 0
     rsi_prob: float = 0.2  # mostly full pitches from the set position (what is evaluated)
+    # set starts hold the set position this long first (user 2026-10-26, ONE OUTS: a pause in the set, as MLB requires):
+    # the reference clock starts at -set_pause_s, the reference holds frame 0 with zero velocities until 0, and the
+    # phase observation is clamped at >= 0. Set starts stay t0 <= 0 (drop rule, set-only ball term)
+    set_pause_s: float = 0.0
     rsi_margin_before_release: float = 0.12
     rsi_min_s: float = 0.0  # earliest reference-state start (s); later starts skip the already-learned wind-up
     residual_scale: float = 0.5

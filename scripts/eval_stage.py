@@ -123,6 +123,7 @@ def main():
     rel_jv = np.full((n, 2), np.nan)  # right elbow / shoulder yaw (internal rotation) velocity at the release, deg/s
     prev_rel = np.zeros(n, dtype=bool)
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
+    pause_dev = {}  # set pause (cfg set_pause_s): body-joint deviation from the reference's frame 0, at the start / the pause end
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
@@ -139,6 +140,12 @@ def main():
                     for gi, (g0, g1) in enumerate(((0, 12), (12, 15), (15, 29))):
                         grp_abs[gi] += float((aa[:, g0:g1].mean(-1) * win).sum())
                     grp_n += float(win.sum())
+            if getattr(cfg, "set_pause_s", 0.0) > 0 and len(pause_dev) < 2:
+                tr_p = base._ref_time()
+                if ("start" not in pause_dev) or (bool((tr_p >= 0.0).all()) and "end" not in pause_dev):
+                    q0 = base.ref.sample(torch.zeros(n, device=base.device))["joint_pos"][:, base.ref_cols]
+                    dq = (base.robot.data.joint_pos[:, base.body_ids] - q0).abs()
+                    pause_dev["start" if "start" not in pause_dev else "end"] = (dq.mean(-1).cpu().numpy(), dq.max(-1).values.cpu().numpy())
             obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
             if args.trace and k % 40 == 0:
@@ -228,6 +235,9 @@ def main():
     if stride_stage:
         say(f"  stride landed (lead foot >= {cfg.lead_stride_min_m} m ahead): {landed.sum()}/{n}, not fallen without a stride "
             f"{(up & ~landed).sum()}")
+    if pause_dev:
+        say("  set pause " + f"{cfg.set_pause_s:.2f} s: body-joint |q - frame 0| per episode (median over episodes of the joint mean / max), "
+            + ", ".join(f"{k} {np.median(v[0]):.4f} / {np.median(v[1]):.4f} rad" for k, v in pause_dev.items()))
     if getattr(cfg, "throw_upper", False):
         rel = base.released.cpu().numpy(); cr = base.s_crossed.cpu().numpy(); zone = base.in_zone().cpu().numpy()
         v = base.rel_vel.norm(dim=-1).cpu().numpy(); mx = base.s_ball_maxx.cpu().numpy(); yz = base.s_cross_yz.cpu().numpy()
