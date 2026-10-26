@@ -250,8 +250,8 @@ def main():
         orig_apply()
         if args.phase_log:
             nh2 = base.hit & ~was_hit & ~finished
-            swing_on |= live & (sp > 5.0) & (t >= base.release_t)
-            t_hit_phys = torch.where(nh2, t, t_hit_phys)
+            swing_on.logical_or_(live & (sp > 5.0) & (t >= base.release_t))
+            t_hit_phys.copy_(torch.where(nh2, t, t_hit_phys))
             # contact normal: ball centre at first contact minus the closest bat-axis point (bat at the start of the step)
             xc = ((base.launch_pos - knob) * axis).sum(-1).clamp(0.0, geom.length)
             nrm = base.launch_pos - (knob + axis * xc.unsqueeze(-1))
