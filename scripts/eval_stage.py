@@ -535,7 +535,7 @@ def film(w, base, pol, T, fps=30):
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
         say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
     os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
-    imageio.mimwrite(args.video, frames, fps=fps, quality=10, macro_block_size=1)  # 10 = least compression
+    imageio.mimwrite(args.video, frames, fps=fps, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])  # crf 16 high profile: quality=10 gave crf 0 = High 4:4:4, which most players show black
     if kf:
         png = os.path.splitext(args.video)[0] + "_keyframes.png"
         imageio.imwrite(png, np.concatenate([np.concatenate(kf[:2], 1), np.concatenate(kf[2:4], 1)], 0)

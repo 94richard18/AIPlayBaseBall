@@ -235,7 +235,7 @@ def run_video(ckpt: str):
     if best is None:
         raise RuntimeError("no swing landed")
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    imageio.mimwrite(args.out, best[1], fps=30, quality=10, macro_block_size=1)
+    imageio.mimwrite(args.out, best[1], fps=30, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
     print(f"[showcase] wrote {args.out} ({len(best[1])} frames), best carry {best[2]['carry_m']:.1f} m", flush=True)
     for r in results:
         print("[showcase]", json.dumps(r), flush=True)
@@ -412,7 +412,7 @@ def run_pitched_video(ckpt: str):
             frames.append(overlay(grab(base), [title, (f"pitch {k + 1}/{args.swings}: {kmh:.0f} km/h", (200, 200, 200))],
                                   big=outcome))
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
-    imageio.mimwrite(args.out, frames, fps=30, quality=10, macro_block_size=1)
+    imageio.mimwrite(args.out, frames, fps=30, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
     print(f"[pitched] wrote {args.out} ({len(frames)} frames)", flush=True)
 
 
