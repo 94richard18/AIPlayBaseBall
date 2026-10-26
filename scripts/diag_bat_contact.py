@@ -42,6 +42,11 @@ parser.add_argument("--seed", type=int, default=None, help="env seed (repeat mea
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
+parser.add_argument("--contact_log", action="store_true",
+                    help="per hit, at the contact step: sweet-spot speed, contact station dx, swing-vs-pitch angle, exit speed")
+parser.add_argument("--sat_log", action="store_true",
+                    help="per body joint: fraction of swing steps (ball in flight, before contact) with the torque at its limit")
+parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -81,6 +86,8 @@ def main():
         cfg.timing_bias_s = args.timing_bias
     if args.aim_offset_z is not None:
         cfg.aim_offset_z = args.aim_offset_z
+    if args.aim_offset_y is not None:
+        cfg.aim_offset_y = args.aim_offset_y
     if args.phase_horizon is not None:
         cfg.phase_horizon_s = args.phase_horizon
     if args.pitch_csv:
@@ -127,6 +134,13 @@ def main():
                tempo_sum=torch.zeros(n, device=dev), tempo_n=torch.zeros(n, device=dev),
                ref_err=torch.full((n,), float("nan"), device=dev))
     finished = torch.zeros(n, dtype=torch.bool, device=dev)
+    if args.sat_log:
+        jids = base.body_joint_ids
+        sat_n = torch.zeros(len(jids), device=dev)
+        sat_steps = torch.zeros((), device=dev)
+    if args.contact_log:
+        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact"):
+            rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.fall_state:
         rob = base.robot
         mass = rob.root_physx_view.get_masses().to(dev)  # (n, bodies)
@@ -193,7 +207,17 @@ def main():
         rec["sq_ax"] = torch.where(sq, axis[:, 0].abs(), rec["sq_ax"])
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
+        if args.contact_log:
+            was_hit, v_in = base.hit.clone(), base.pitch_vel.clone()
         orig_apply()
+        if args.contact_log:
+            nh = base.hit & ~was_hit & ~finished
+            # angle between the sweet spot's velocity and the reversed pitch direction (0 = swinging straight back up the pitch)
+            cosang = (v_ss * -v_in).sum(-1) / (sp * v_in.norm(dim=-1)).clamp_min(1e-6)
+            for k, val in (("ss_contact", sp), ("dx_contact", base.contact_x - geom.sweet_spot_x),
+                           ("swing_pitch_deg", torch.rad2deg(torch.acos(cosang.clamp(-1.0, 1.0)))),
+                           ("ev_contact", base.launch_vel.norm(dim=-1))):
+                rec[k] = torch.where(nh, val, rec[k])
         rec["hit"] |= base.hit & ~finished
 
     base._apply_action = hooked_apply
@@ -216,6 +240,12 @@ def main():
             for k in FS:
                 rec[f"{k}_hit"] = torch.where(new_hit, bs[k], rec[f"{k}_hit"])
                 rec[f"{k}_end"] = torch.where(at_end, bs[k], rec[f"{k}_end"])
+        if args.sat_log:
+            d = base.robot.data
+            sw = ~finished & ~base.hit & (base.phys_t >= base.release_t)  # swinging: ball in flight, no contact yet
+            sat = (d.computed_torque[:, jids].abs() > d.applied_torque[:, jids].abs() + 1e-3)
+            sat_n += (sat & sw.unsqueeze(-1)).float().sum(0)
+            sat_steps += sw.float().sum()
         finished |= dones.bool()
         if finished.all():
             break
@@ -292,6 +322,20 @@ def main():
                                              stood_med=round(float(np.median(x[~y])), 3))
         out["fall_auc"] = fall_auc
         print("[bat] fall_auc: " + json.dumps(fall_auc), flush=True)
+    if args.sat_log:
+        frac = (sat_n / sat_steps.clamp_min(1)).cpu().numpy()
+        names = [base.body_joint_names[i] for i in range(len(jids))]
+        top = sorted(zip(frac.tolist(), names), reverse=True)[:10]
+        out["torque_sat"] = {nm: round(f, 3) for f, nm in top}
+        print("[bat] torque_sat (frac of swing steps, top 10): " + json.dumps(out["torque_sat"]), flush=True)
+    if args.contact_log:
+        hm = r["hit"].astype(bool)
+        dzh, dxh = np.abs(r["dz"][hm]), np.abs(r["dx_contact"][hm])
+        q = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if len(v) else None
+        out["contact_log"] = dict(n=int(hm.sum()), ss_contact=q(r["ss_contact"][hm]), ss_max=q(r["ss_speed_max"][hm]),
+                                  dx=q(r["dx_contact"][hm]), abs_dz=q(dzh), swing_pitch_deg=q(r["swing_pitch_deg"][hm]),
+                                  ev=q(r["ev_contact"][hm]), squared_up=round(float(((dzh <= 0.02) & (dxh <= 0.05)).mean()), 3) if hm.any() else None)
+        print("[bat] contact_log: " + json.dumps(out["contact_log"]), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
