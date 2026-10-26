@@ -60,6 +60,15 @@
 
 ## 3. 打者目前進度
 
+> **打者交接（10-26 21:05，重開 session 用；新 session 只讀這段就能接手）**
+> - **角色**：打者 session（原 aiplaybaseball-d0）負責提案和訓練打者。真的要訓練前，先問決定 session（aiplaybaseball-10）。投手是 aiplaybaseball-08。
+> - **交付模型**：`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt`。快球用 aim_offset_z -0.08（表 `assets/game/batter_h9b_12500_aim008.json`，diag1024 擊中率 0.684，打中後跌倒 57%，ONE OUTS 對 fallback 18.5%）；對 P3c 用 aim 0（表 `assets/game/batter_h9b_12500_aim0_p3c.json`，好球帶內擊中率 0.327，ONE OUTS 對 P3c t18 18.1%，外野安打 1.8%）。時機一律用雜訊 0、bias 0.055。
+> - **外野打不到（等使用者決定）**：P3c（約 64 km/h）打出去的初速只有 14–16 m/s。無阻力最遠也只有 20–26 m，外野從本壘算起要 38.9–47.4 m，所以物理上打不出外野。決定 (c)：不再訓練慢球擊球品質。要不要改規格（例如投手球速或打者力量）由使用者決定，目前還沒決定。
+> - **跌倒測試（不訓練，只改參考動作播完後的目標姿勢；決定 session 核准）**：`logs/b_fall_zeroshot_all.sh`，結果寫在 `logs/b_fall_zeroshot_all.txt`，條件是交付模型、快球、aim -0.08、diag1024 seed 0。通過標準：擊中率跟 0.684 相差不超過 0.02，而且打中後跌倒率不超過 37%。21:04 已跑完的兩組：擊球格姿勢 0.6 s，擊中率 0.684，跌倒 56%；擊球格姿勢 0.3 s，擊中率 0.684，跌倒 56%。**兩組都沒過**：跌倒時間點有變，但跌倒的球數完全一樣（394/700），代表最後那個目標姿勢擋不住跌倒。還在跑的兩組：預備站姿 0.6 s；擊球格 0.6 s 加上保留策略修正量（對照組，用來分辨是 PD 撐不住，還是目標姿勢本身有問題）。四組都沒過的話，下一步是提案「訓練時也用同樣的參考後目標，擊中率掉超過 0.03 就在 +50 its 內停」，要先經決定 session 核准。
+> - **影片 1026b**：`logs/b_film_after_fall.sh` 會在跌倒測試印出 FALLZSALL_END 後自動開錄，輸出 `videos/batter_h9b_12500_p3c_1026b.mp4`，用 P3c、aim 0。有一組通過就用那組設定，沒有就用原設定。錄完跑 `scripts/check_video_frames.py`，沒過會重錄一次，紀錄在 `logs/b_film_after_fall.txt`，結束標記是 BFILM_END。影片格式用 e36e4fa 的 crf 16 / yuv420p。
+> - **GPU 規則**：投手 trainer 在跑的時候，打者完全不能用 GPU。打者的 GPU 工作只能在投手傳「槽空了」之後**手動啟動**（`NOWAIT=1`），不要用自動等待腳本：17:26 和 19:59 兩次都因為誤判 GPU 空閒而跟投手撞在一起。Isaac 程序最多 2 個。打者跑完要通知投手「槽空了」，同時告訴決定 session。這一段跑完後，投手就要開始 P3CPC 訓練（十幾個小時）。
+> - **待辦**：(1) 看 FALLZSALL_END 和 BFILM_END 的結果，判定四組跌倒測試。(2) 影片檢查通過後，通知投手「槽空了」，並回報決定 session。(3) 結果寫進這一節，commit + push。(4) 打者影片至少每 12 小時一支，投手 trainer 在跑的時候不能錄。(5) 新的打者評估一律用 ONE OUTS 1000 場勝率加外野安打率，再加上 diag1024 好球帶內擊中率；「≥ 29 m」不是指標。
+
 > **更正（10-26 17:3x，決策 session 指出、打者 session 驗算）：「界內且 ≥ 29 m」不是打者贏的線。** ONE OUTS 的內野是「離投手板 95 ft（28.96 m）內」（`aibaseball/game/one_outs.py` INFIELD_RADIUS_M），投手板在本壘前 18.44 m，所以從本壘量的外野邊界是 **38.9 m（兩條界外線）到 47.4 m（中間）**。下面所有「界內且 ≥ 29 m」的數字都包含內野球，只能當「打得比較遠」的參考；打者贏的指標是 ONE OUTS 的**外野安打率**。Human9 的 target_distance 29 m 也在內野裡；之後若用距離獎勵，目標要改成約 40–47 m（依擊球方向）。物理上，無阻力的最遠距離 v²/g：14 m/s 20 m、16 m/s 26 m、19 m/s 37 m、22 m/s 49 m，所以初速 14–16 m/s 的慢球擊球（vs P3c）打不出外野。
 
 - Human3（`logs/rsl_rl/aib1_tee_batting_mimic/2026-10-20_06-32-20_human_pitched3/model_10298.pt`），人類力量，88-112 km/h。
