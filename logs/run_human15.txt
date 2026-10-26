@@ -1,0 +1,13 @@
+16:12 start Human15 from human_pitched9b/model_12500
+16:31 12599 vs P3c in-zone 0.478 (stop below 0.45); train ref_err_plate_s  mimic/ref_err_plate_s: 0.0106
+17:00 Human15 training ended: logs/rsl_rl/aib1_tee_batting_mimic/2026-10-26_16-13-00_human_pitched15/model_12599.pt logs/rsl_rl/aib1_tee_batting_mimic/2026-10-26_16-31-59_human_pitched15b/model_12700.pt logs/rsl_rl/aib1_tee_batting_mimic/2026-10-26_16-31-59_human_pitched15b/model_12798.pt
+ bat/hit_rate: 0.2049
+ mimic/ref_err_plate_s: 0.0169
+logs/b_table_h15_12599.json: balls 748  fair 47.2%  fair and >= 29 m 3.6% of 1024  ev med 15.9
+17:06 model_12599 vs P3c: in-zone 0.478, all 0.295 | fast 88-112 (aim -0.08) 0.806 | ONE OUTS vs P3c: 1000 matches: batter 16.0%, pitcher 84.0%; 3.8 pitches each how: strikeout 45.8%, infield_ball 38.2%, walk 9.5%, hit_by_pitch 5.8%, outfield_hit 0.7% 
+logs/b_table_h15_12700.json: balls 744  fair 49.7%  fair and >= 29 m 3.4% of 1024  ev med 15.0
+17:15 model_12700 vs P3c: in-zone 0.494, all 0.319 | fast 88-112 (aim -0.08) 0.667 | ONE OUTS vs P3c: 1000 matches: batter 15.9%, pitcher 84.1%; 3.7 pitches each how: strikeout 43.3%, infield_ball 40.8%, walk 9.5%, hit_by_pitch 5.5%, outfield_hit 0.9% 
+logs/b_table_h15_12798.json: balls 699  fair 45.2%  fair and >= 29 m 1.2% of 1024  ev med 14.1
+17:22 model_12798 vs P3c: in-zone 0.289, all 0.211 | fast 88-112 (aim -0.08) 0.207 | ONE OUTS vs P3c: 1000 matches: batter 16.7%, pitcher 83.3%; 3.9 pitches each how: strikeout 59.9%, infield_ball 23.4%, walk 10.2%, hit_by_pitch 6.1%, outfield_hit 0.4% 
+gate: in-zone vs P3c >= 0.5; ONE OUTS vs P3c > 18.1% with outfield_hit >= 5% (only miss -> report)
+HUMAN15_END 17:22
