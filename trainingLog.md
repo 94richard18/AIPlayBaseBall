@@ -68,7 +68,7 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
-**10-26 21:10 新規劃 session 接手**：名稱 aiplaybaseball-14（舊 10）；3 小時檢查 cron 已重建（:17）。GPU 上是打者跌倒測試第 3 組（fall_start_0.6）；前 2 組都沒過（命中率 0.684、跌倒 56%）。`b_film_after_fall.sh` 在等，結束後錄 1026b。投手 session 已上線（aiplaybaseball-20），新的打者 session 是 aiplaybaseball-15（d0 是舊的，已停手；它在 21:08 停掉了錄影等待腳本，改由 15 重新啟動 `b_film_after_fall.sh`）；1026b 錄完由 15 通知投手開 P3CPC，投手開之前會確認 Isaac 數 = 0。殘留的 10-25 `b_eval_p3c_t.sh`（19:41 已完成，不佔 GPU）沒清（自動模式不允許結束行程），無害。第 3 組 fall_start_0.6 也沒過（0.684、跌倒 57%），第 4 組 keepres 在跑。
+**10-26 21:10 新規劃 session 接手**：名稱 aiplaybaseball-14（舊 10）；3 小時檢查 cron 已重建（:17）。GPU 上是打者跌倒測試第 3 組（fall_start_0.6）；前 2 組都沒過（命中率 0.684、跌倒 56%）。`b_film_after_fall.sh` 在等，結束後錄 1026b。投手 session 已上線（aiplaybaseball-20），新的打者 session 是 aiplaybaseball-15（d0 是舊的，已停手；它在 21:08 停掉了錄影等待腳本，改由 15 重新啟動 `b_film_after_fall.sh`）；1026b 錄完由 15 通知投手開 P3CPC，投手開之前會確認 Isaac 數 = 0。殘留的 10-25 `b_eval_p3c_t.sh` 已由 d0 清掉。**跌倒 zero-shot 4 組全部沒過（21:09）**：擊中率都 0.684，跌倒 contact_0.6 56%、contact_0.3 56%、start_0.6 57%、keepres 57%；保留修正量的對照組和淡出結果一樣，問題不在 PD 撐不住最後姿勢，只改參考播完後的目標姿勢解不了跌倒。下一步由打者 15 提案。1026b 用一般設定錄。
 
 **10-26 21:30 交接（三個 session 都要重開，讓自動壓縮 30% ≈ 30 萬 tokens 生效）**
 
