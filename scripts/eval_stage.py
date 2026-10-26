@@ -152,7 +152,7 @@ def main():
                     pause_dev["start" if "start" not in pause_dev else "end"] = (dq.mean(-1).cpu().numpy(), dq.max(-1).values.cpu().numpy())
             obs, _, _, _ = w.step(act)
             f = base.fallen.cpu().numpy()
-            if args.trace and k % 40 == 0:
+            if args.trace and (k % 40 == 0 or abs(float(base._ref_time()[0])) < 0.026):
                 dd = base.robot.data
                 o = base.scene.env_origins[0]
                 fz = base.feet.data.net_forces_w_history[0, :, base.foot_sensor_ids].norm(dim=-1).max(0).values
@@ -162,7 +162,11 @@ def main():
                 qerr = (dd.joint_pos[0, base.body_ids] - base.q_target[0, base.body_ids]).abs()
                 say(f"t {(k + 1) * base.step_dt:.2f} feet N {fz[0]:.0f}/{fz[1]:.0f} z {fp[0, 2]:.3f}/{fp[1, 2]:.3f} "
                     f"x {fp[0, 0]:+.2f}/{fp[1, 0]:+.2f} | pelvis {pel[0]:+.2f} {pel[1]:+.2f} {pel[2]:.2f} | tilt {tl[0]:.0f} "
-                    f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})")
+                    f"| com v {sp[0]:.2f} | max q err {qerr.max():.2f} rad ({base.body_names[int(qerr.argmax())]})"
+                    f" | ref t {float(base._ref_time()[0]):+.2f} yaw {float(torch.rad2deg(2 * torch.atan2(dd.root_link_quat_w[0, 3], dd.root_link_quat_w[0, 0]))):+.0f} rate {float(dd.root_ang_vel_w[0, 2]):+.2f} rad/s"
+                    f" | |a| {float(base.actions[0, :29].abs().max()):.2f}")
+                f0 = (base.q_target[0, base.body_ids] - base._ref(torch.zeros_like(base.t0))["joint_pos"][0]).abs()
+                say(f"       target - ref frame 0: max {f0.max():.3f} rad ({base.body_names[int(f0.argmax())]}), mean {f0.mean():.3f}")
             fell_at[np.isnan(fell_at) & f] = (k + 1) * base.step_dt
             if hasattr(base, "released"):
                 rel_now = base.released.cpu().numpy()
@@ -436,7 +440,7 @@ def film(w, base, pol, T, fps=30):
     import cv2
     import imageio
     import omni.usd
-    from pxr import UsdGeom
+    from pxr import Usd, UsdGeom
 
     stage = omni.usd.get_context().get_stage()
     # plate view: optical zoom (the viewport camera's focal length x PLATE_ZOOM) instead of the old 3x crop of the
@@ -444,6 +448,10 @@ def film(w, base, pol, T, fps=30):
     PLATE_ZOOM = 3.0
     cam = UsdGeom.Camera(stage.GetPrimAtPath("/OmniverseKit_Persp"))
     focal0 = cam.GetFocalLengthAttr().Get() if cam else None
+
+    def set_focal(f):  # the viewport camera lives in the session layer: an edit on the root layer is overridden by it
+        with Usd.EditContext(stage, stage.GetSessionLayer()):
+            cam.GetFocalLengthAttr().Set(f)
     for i in range(1, base.num_envs):
         UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/envs/env_{i}")).MakeInvisible()
 
@@ -495,11 +503,13 @@ def film(w, base, pol, T, fps=30):
                 base.sim.set_camera_view(eye=(g + [np.cos(th) * ex - np.sin(th) * ey, np.sin(th) * ex + np.cos(th) * ey, 1.5]).tolist(),
                                          target=(g + [0.0, 0.0, 1.0]).tolist())
                 if focal0:
-                    cam.GetFocalLengthAttr().Set(focal0 * PLATE_ZOOM)
+                    set_focal(focal0 * PLATE_ZOOM)
+                    if k == 0 and e == 0:
+                        print(f"[video] plate view focal {focal0:.1f} -> {cam.GetFocalLengthAttr().Get():.1f} mm", flush=True)
                 base.render()
                 pv = grab()
                 if focal0:
-                    cam.GetFocalLengthAttr().Set(focal0)
+                    set_focal(focal0)
                 base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
                 base.render()
                 if pv is not None:
