@@ -40,6 +40,8 @@ parser.add_argument("--aim_offset_z", type=float, default=None, help="override c
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
+parser.add_argument("--fall_state", action="store_true",
+                    help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -125,6 +127,25 @@ def main():
                tempo_sum=torch.zeros(n, device=dev), tempo_n=torch.zeros(n, device=dev),
                ref_err=torch.full((n,), float("nan"), device=dev))
     finished = torch.zeros(n, dtype=torch.bool, device=dev)
+    if args.fall_state:
+        rob = base.robot
+        mass = rob.root_physx_view.get_masses().to(dev)  # (n, bodies)
+        foot_ids = rob.find_bodies(".*foot.*")[0] or rob.find_bodies(".*ankle_roll.*")[0]
+        FS = ("com_v", "com_foot", "L_orb", "yaw_rate")
+        for k in FS:
+            for at in ("hit", "end"):
+                rec[f"{k}_{at}"] = torch.full((n,), float("nan"), device=dev)
+
+        def balance_state():
+            d = rob.data
+            m = mass.unsqueeze(-1)
+            com = (d.body_com_pos_w * m).sum(1) / m.sum(1)
+            vcom = (d.body_com_lin_vel_w * m).sum(1) / m.sum(1)
+            # orbital angular momentum about the whole-body CoM, per kg
+            L = (torch.cross(d.body_com_pos_w - com.unsqueeze(1), d.body_com_lin_vel_w - vcom.unsqueeze(1), dim=-1) * m).sum(1)
+            feet = d.body_pos_w[:, foot_ids].mean(1)
+            return dict(com_v=vcom[:, :2].norm(dim=-1), com_foot=(com[:, :2] - feet[:, :2]).norm(dim=-1),
+                        L_orb=L.norm(dim=-1) / m.sum(1).squeeze(-1), yaw_rate=d.root_ang_vel_w[:, 2].abs())
     prev = {}
     orig_apply = base._apply_action
 
@@ -189,6 +210,12 @@ def main():
         new_fall = base.fallen & ~finished & ~rec["fell"]
         rec["t_fall"] = torch.where(new_fall, t_now, rec["t_fall"])  # time into the episode of the first fall
         rec["fell"] |= base.fallen & ~finished
+        if args.fall_state:
+            bs = balance_state()
+            at_end = ~finished & (base.ref_t >= base.ref.duration[base.clip]) & torch.isnan(rec["com_v_end"])
+            for k in FS:
+                rec[f"{k}_hit"] = torch.where(new_hit, bs[k], rec[f"{k}_hit"])
+                rec[f"{k}_end"] = torch.where(at_end, bs[k], rec[f"{k}_end"])
         finished |= dones.bool()
         if finished.all():
             break
@@ -248,6 +275,23 @@ def main():
                  kmh_q=np.nanpercentile(r["kmh"][m], [10, 50, 90]).round(1).tolist())
         out["by_speed"][name] = g
         print(f"[bat] {name}: " + json.dumps(g), flush=True)
+    if args.fall_state:
+        hm = r["hit"].astype(bool)
+        fall_auc = {}
+        for k in FS:
+            for at in ("hit", "end"):
+                x, y = r[f"{k}_{at}"][hm], r["fell"][hm].astype(bool)
+                ok = ~np.isnan(x)
+                x, y = x[ok], y[ok]
+                if y.all() or not y.any():
+                    continue
+                rk = x.argsort().argsort() + 1.0  # rank AUC (fallers have the larger value -> > 0.5)
+                auc = (rk[y].sum() - y.sum() * (y.sum() + 1) / 2) / (y.sum() * (~y).sum())
+                fall_auc[f"{k}_{at}"] = dict(auc=round(float(auc), 3), n=int(ok.sum()),
+                                             fell_med=round(float(np.median(x[y])), 3),
+                                             stood_med=round(float(np.median(x[~y])), 3))
+        out["fall_auc"] = fall_auc
+        print("[bat] fall_auc: " + json.dumps(fall_auc), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
