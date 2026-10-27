@@ -48,6 +48,8 @@ parser.add_argument("--pitcher_release", required=True,
 parser.add_argument("--checkpoint", default="logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt")
 parser.add_argument("--batter_table", default="logs/b_table_e15_12500.json", help="dry run: the delivery's batted balls")
 parser.add_argument("--hit_rate", type=float, default=0.458, help="dry run: the delivery's in-zone hit rate")
+parser.add_argument("--pitcher_layout", choices=["pip", "side_by_side"], default="pip",
+                    help="pitcher film (side view | plate view): pip = side view full frame, plate view inset bottom right")
 parser.add_argument("--variant", choices=["A", "B"], default="A", help="A: ball-follow after contact; B: batter in frame 2 s")
 parser.add_argument("--seed", type=int, default=0, help="the PA rng (take decisions)")
 parser.add_argument("--pas", type=int, default=1, help="plate appearances (pitcher clips are used in order)")
@@ -103,6 +105,20 @@ def fit(fr):
     return out
 
 
+def pip(fr):
+    """eval_stage film frame = side view | plate view (equal halves) -> side view with the plate view inset."""
+    h, w = fr.shape[:2]
+    if args.pitcher_layout != "pip" or w < 2 * h:
+        return fr
+    side, plate = fr[:, : w // 2], fr[:, w // 2:]
+    out = cv2.resize(side, SIZE)
+    iw, ih = SIZE[0] // 3, SIZE[1] // 3
+    x0, y0 = SIZE[0] - iw - 16, SIZE[1] - ih - 16
+    out[y0 - 3:y0 + ih + 3, x0 - 3:x0 + iw + 3] = 255
+    out[y0:y0 + ih, x0:x0 + iw] = cv2.resize(plate, (iw, ih))
+    return out
+
+
 def resampled(frames, fps):
     """Source frames at fps -> FPS (frames repeated / dropped by time)."""
     n = 0
@@ -119,7 +135,7 @@ def pitcher_clips():
         fps, frames = r.get_meta_data()["fps"], [np.asarray(f)[..., :3] for f in r]
         n = len(frames) // args.pitcher_episodes
         assert n * args.pitcher_episodes == len(frames), f"{len(frames)} frames do not split into {args.pitcher_episodes} episodes"
-        return [(frames[i * n:(i + 1) * n], fps) for i in range(args.pitcher_episodes)]
+        return [([pip(f) for f in frames[i * n:(i + 1) * n]], fps) for i in range(args.pitcher_episodes)]
     out = []
     for c in sorted(glob.glob(args.pitcher_video)):
         r = imageio.get_reader(c)
