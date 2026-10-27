@@ -9,6 +9,7 @@ Prints "[goal] k/N" = episodes standing at rest at the end (read by train_cycles
 import argparse
 import os
 import sys
+from types import SimpleNamespace
 
 from isaaclab.app import AppLauncher
 
@@ -31,6 +32,9 @@ parser.add_argument("--pitch_csv", type=str, default=None,
                     help="arm + ball step: one row per released episode speed_mps,plate_y,plate_z,crossed,flight (drag + Magnus plate location) for the game engine; never overwrites")
 parser.add_argument("--release_csv", type=str, default=None,
                     help="arm + ball step: one row per episode - release state in the plate frame, rest, aero plate y / z")
+parser.add_argument("--video_release_csv", type=str, default=None,
+                    help="video: one --release_csv row per FILMED episode (env 0), so a batter clip can face the exact pitch "
+                         "of the pitcher clip; at_rest = not fallen in the clip, tier from the drag + Magnus plate location")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
@@ -470,6 +474,44 @@ def main():
         film(w, base, (lambda x: torch.zeros(x.shape[0], cfg.action_space, device=x.device)) if args.zero else pol, T)
 
 
+def film_release_row(base, snap, path, at_rest):
+    """--video_release_csv (batter request 2026-10-27): append env 0's release state of the filmed episode as one
+    --release_csv row (same columns, plate frame). The filmed episodes are new rollouts after the eval, so the eval's
+    --release_csv rows are not the filmed pitches. at_rest = not fallen in the clip (the stand criteria are an eval
+    statistic); tier and aero_* from the drag + Magnus flight of the release state. snap: env 0's release state copied
+    at the step it was released (a fall resets the env inside the clip and clears it), None = not released."""
+    from aibaseball.physics.ball_flight import simulate_to_plane
+    cfg = base.cfg
+    rel = snap is not None
+    src = snap if rel else base  # not released: the zeroed buffers, written as a released 0 row
+    tp_ = getattr(base, "to_plate", lambda x: x)
+    pl = tp_(src.rel_pos[:1] - base.scene.env_origins[:1]).cpu().double()
+    vp, wp = tp_(src.rel_vel[:1]).cpu().double(), tp_(src.rel_omega[:1]).cpu().double()
+    cr_a, _, _, re_a = simulate_to_plane(pl, vp, wp, base.phys, cfg.plate_distance, dt=0.005, t_max=3.0, ground_z=base.field_z)
+    vp, wp, p = vp[0].numpy(), wp[0].numpy(), pl[0].numpy()
+    rt, v = float(src.rel_ref_t[0]), float(np.linalg.norm(vp))
+    head = np.degrees(np.arctan2(vp[1], vp[0]))
+    el = np.degrees(np.arctan2(vp[2], np.hypot(vp[0], vp[1])))
+    ya, za, re = float(cr_a[0, 1]) - cfg.zone_center_y, float(cr_a[0, 2]) - base.field_z, bool(re_a[0]) and rel
+    thrown = rel and v >= args.gate_min_speed and rt >= args.gate_min_release_t
+    t1 = thrown and abs(head) <= 10.0
+    t2 = t1 and re and abs(ya) <= 1.0
+    t3 = t2 and abs(ya) <= 0.5 and 0.2 <= za <= 1.5
+    t4 = t3 and abs(ya) <= 0.2159 + 0.0366 and 0.50 <= za <= 1.10
+    new = not os.path.exists(path)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        if new:
+            f.write("released,at_rest,thrown,release_t,speed,heading,elevation,x,y,z,aero_reached,aero_y,aero_z,tier,"
+                    "vx,vy,vz,wx,wy,wz,z_sim,field_z,plate_yaw_deg" + chr(10))
+        f.write(f"{int(rel)},{int(at_rest)},{int(thrown)},{rt:.4f},{v:.3f},{head:.2f},{el:.2f},{p[0]:.3f},{p[1]:.3f},"
+                f"{p[2] - base.field_z:.3f},{int(re)},{ya:.3f},{za:.3f},{int(t1) + int(t2) + int(t3) + int(t4)},"
+                f"{vp[0]:.4f},{vp[1]:.4f},{vp[2]:.4f},{wp[0]:.3f},{wp[1]:.3f},{wp[2]:.3f},{p[2]:.4f},{base.field_z:.4f},"
+                f"{getattr(cfg, 'plate_yaw_deg', 0.0)}" + chr(10))
+    say(f"[video] release row -> {path}: released {int(rel)}, {v:.2f} m/s, heading {head:+.1f} deg, plate y {ya:+.2f} z {za:.2f}, tier "
+        f"{int(t1) + int(t2) + int(t3) + int(t4)}")
+
+
 def film(w, base, pol, T, fps=30):
     """Side view of env 0 (others hidden), and next to it a view from behind home plate toward the pitcher (user
     2026-10-23; --no_plate_view drops it); key frames (side view) at 0, 1/3, 2/3 and the end of episode 1 (.png)."""
@@ -507,6 +549,7 @@ def film(w, base, pol, T, fps=30):
         with torch.inference_mode():
             obs, _ = w.reset()
         fell = None
+        snap = None  # --video_release_csv: env 0's release state, copied when it is released
         for k in range(T):
             with torch.inference_mode():
                 obs, _, _, _ = w.step(pol(obs))
@@ -514,6 +557,8 @@ def film(w, base, pol, T, fps=30):
             t = (k + 1) * base.step_dt
             if fell is None and bool(base.fallen[0]):
                 fell = t
+            if snap is None and bool(base.released[0]):
+                snap = SimpleNamespace(**{a: getattr(base, a)[:1].clone() for a in ("rel_pos", "rel_vel", "rel_omega", "rel_ref_t")})
             if e == 0 and rel_k is None and (bool(base.released[0]) or k == T // 3):
                 rel_k = k
             key = e == 0 and (k in keys or k == rel_k)
@@ -570,6 +615,8 @@ def film(w, base, pol, T, fps=30):
         gap = float((base.ball.data.root_pos_w[0] - base._grip_point()[0]).norm())
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
         say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
+        if args.video_release_csv:
+            film_release_row(base, snap, args.video_release_csv, fell is None)
     os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
     imageio.mimwrite(args.video, frames, fps=fps, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])  # crf 16 high profile: quality=10 gave crf 0 = High 4:4:4, which most players show black
     if kf:
