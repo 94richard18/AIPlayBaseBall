@@ -281,3 +281,18 @@ class PitchedBattingHuman19EnvCfg(PitchedBattingHuman15EnvCfg):
     zero_ff_after_ref_end: bool = True
     follow_through_s: float = 2.0
     episode_length_s = 3.5
+
+
+@configclass
+class PitchedBattingHuman20EnvCfg(PitchedBattingHuman9EnvCfg):
+    """2026-10-27 Control C (Human15 alone at 1.5x from 12500, no post-clip change): outfield 5-seed mean 4.7 -> 1.4 ->
+    0.8% at +100 / +200, ONE OUTS 18.8 -> 16.1 -> 14.7%: the P3c-shaped pitch mix itself costs strength. Change (decision
+    session): Human19's post-clip balance on Human9's pitches (88-112 km/h, as Human17, whose 12698 kept outfield 3.5%).
+    Run with AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    post_clip_balance: bool = True
+    ref_hold_end: bool = True
+    clamp_ref_phase: bool = True
+    zero_ff_after_ref_end: bool = True
+    follow_through_s: float = 2.0
+    episode_length_s = 3.5
