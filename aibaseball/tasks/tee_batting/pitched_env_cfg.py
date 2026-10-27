@@ -269,8 +269,9 @@ class PitchedBattingHuman19EnvCfg(PitchedBattingHuman15EnvCfg):
     """2026-10-27 Human18 (post-clip training with the held reference + fall penalty) lowered diag falls 42 -> 25% by
     +300 but ONE OUTS 19.9 -> 16.4% and outfield 4.1 -> 0.2%: a softer swing, training falls per hit still 98%; the fall
     penalty (10, plus the lost tracking reward) outweighed the hit reward. Change (user 10-27 19:4x): before the clip end
-    Human15 unchanged; past it no mimic target (no tracking reward, no lost termination, no velocity feed-forward) and no
-    fall penalty, only a standing reward on hit episodes capped at bal_frac 0.5 x the episode's hit reward
+    Human15 unchanged; past it, on hit episodes, no mimic target (no tracking reward, no lost termination) and no
+    fall penalty, only a standing reward capped at bal_frac 0.5 x the episode's hit reward; misses keep Human15's tracking,
+    lost termination and fall penalty on the held pose (decision session); no velocity feed-forward on the held pose
     (post_clip_balance). Episode runs on (ref_hold_end, clamp_ref_phase, follow through 2.0 s, episode 3.5 s). Run with
     AIB_EFFORT_SCALE 1.5. From 12500."""
 

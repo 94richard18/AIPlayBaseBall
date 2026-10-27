@@ -78,7 +78,8 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)
     clamp_ref_phase: bool = False  # True: the reference-time input t / duration is held at 1 past the clip end
     zero_ff_after_ref_end: bool = False  # True: no joint-velocity feed-forward once the reference holds its last pose
-    # post-clip balance (Human19): past the clip end no tracking reward, no lost termination and no fall penalty; on hit
+    # post-clip balance (Human19), hit episodes only (misses keep tracking, lost and the fall penalty): past the clip end
+    # no tracking reward, no lost termination and no fall penalty; on hit
     # episodes only, per step bal_frac x (this episode's hit reward) / (bal_window_s / step_dt) x score, score = mean of
     # upright, whole-body COM over the feet line, low root speed, feet down (each 0..1): the sum over the window is at
     # most bal_frac x the hit reward, so falling can never cost more than hitting earns

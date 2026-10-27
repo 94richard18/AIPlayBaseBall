@@ -181,10 +181,11 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.hit_reward_ep = torch.where(self.new_hit, self.hit_reward.clamp_min(0.0), self.hit_reward_ep)
         post_s = (self._ref_time() - self.ref.duration[self.clip]) / self.speed
         past = post_s >= 0
-        track = torch.where(past, torch.zeros_like(track), track)
-        # the base reward charged a fall penalty: past the clip a fall only forfeits the balance reward (misses too)
-        fall_pen = torch.where(self.hit, c.w_fall_after_hit, c.w_fall) * self.fallen.float()
-        rew = rew + torch.where(past, fall_pen, torch.zeros_like(rew))
+        # hit episodes only: misses keep tracking the held pose, lost termination and the fall penalty (decision session)
+        past_hit = past & self.hit
+        track = torch.where(past_hit, torch.zeros_like(track), track)
+        # the base reward charged w_fall_after_hit for a fall: past the clip a fall only forfeits the balance reward
+        rew = rew + torch.where(past_hit, c.w_fall_after_hit * self.fallen.float(), torch.zeros_like(rew))
         tilt = torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0))
         w = self.body_mass.unsqueeze(-1)
         com = ((d.body_com_pos_w * w).sum(1) / w.sum(1))[:, :2]
@@ -232,8 +233,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         if self.cfg.play_mode:  # let the ball fly; the reference holds its final (follow-through) pose
             return terminated, time_out
         lost = key_err > self.cfg.max_key_err
-        if self.cfg.post_clip_balance:  # no reference to stay on past the clip end
-            lost = lost & (self._ref_time() < self.ref.duration[self.clip])
+        if self.cfg.post_clip_balance:  # no reference to stay on past the clip end after a hit
+            lost = lost & ((self._ref_time() < self.ref.duration[self.clip]) | ~self.hit)
         self.lost = lost
         if self.cfg.lost_after_hit_is_fall:  # drifting off the follow-through is how a fall starts: penalise it as one
             self.fallen = self.fallen | (lost & self.hit)
