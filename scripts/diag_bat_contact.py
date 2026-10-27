@@ -533,6 +533,8 @@ def main():
         po = {k: v.cpu().numpy()[hm] for k, v in pose.items()}
         po["ss_minus_ref"] = po["ss_rel"] - po["ss_rel_ref"]
         out["chain_log"]["pose_rel_xyz"] = {k: [pq(v[:, a]) for a in range(3)] for k, v in po.items()}
+        # lever: sweet-spot distance from the pelvis, robot minus reference (- = the bat is closer to the body)
+        out["chain_log"]["pose_ss_dist_minus_ref"] = pq(np.linalg.norm(po["ss_rel"], axis=1) - np.linalg.norm(po["ss_rel_ref"], axis=1))
         for k, v in out["chain_log"].items():
             print(f"[bat] chain_log {k}: " + json.dumps(v), flush=True)
     if args.contact_log:
