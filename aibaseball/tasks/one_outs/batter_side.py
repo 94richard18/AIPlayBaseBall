@@ -137,9 +137,9 @@ class _JointFramework(DirectRLEnv):
         self.step_dt = cfg.sim.dt * cfg.decimation
         self.max_episode_length_s = cfg.episode_length_s
         self.max_episode_length = int(round(cfg.episode_length_s / self.step_dt))
-        self.robot = RotatedArticulation(j.batter, j.scene.env_origins.clone())
+        self.robot = RotatedArticulation(j.batter, j.plate_front_w())
         self.ball, self.tee, self.ball_marker, self.landing_markers = _Null(), _Null(), _Null(), _Null()
-        self.scene = _Scene(self._batter_origins())
+        self.scene = _Scene(torch.zeros(self.num_envs, 3, device=self.device))  # set per clip in _place()
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         self.reset_terminated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reset_time_outs = torch.zeros_like(self.reset_terminated)
@@ -177,16 +177,15 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._obs = None
 
     # ------------------------------------------------------------------ frames
-    def _batter_origins(self) -> torch.Tensor:
-        """World position of each env's batter-frame origin: the plate front (pitch-crossing plane) at field level,
-        minus the clip's (tee_x, tee_y). Set in _place() once the clips are known (the MotionLib is built later)."""
-        return self._joint.scene.env_origins.clone()
-
     def _place(self):
-        j = self._joint
-        plate = j.plate_front_w()  # (n, 3) world, the plate's front edge centre at field level (joint env helper)
+        """Per env, the batter-frame origin (scene.env_origins, in B) for its clip. The pivot (B = 0) is the joint env's
+        judged plate plane at field level, plate frame (plate_distance, zone_center_y, field_z): the plane the pitcher's
+        tiers and j_cross use and the one build_library_from_release crosses (library frame x = 0 there, y = -y_plate).
+        So library point (0, y_L, z) = B (0, y_L + zone_center_y, z), and the clip's tee is at the library's (0, 0) plus
+        the pitch offset: env_origins = (-tee_x, zone_center_y - tee_y, 0)."""
         tee = self.ref.tee_pos[self.clip]
-        self.scene.env_origins = plate - torch.stack([tee[:, 0], tee[:, 1], torch.zeros_like(tee[:, 0])], -1)
+        zc = float(self._joint.cfg.zone_center_y)
+        self.scene.env_origins = torch.stack([-tee[:, 0], zc - tee[:, 1], torch.zeros_like(tee[:, 0])], -1)
 
     # ------------------------------------------------------------------ policy
     def _load_policy(self, path: str):
