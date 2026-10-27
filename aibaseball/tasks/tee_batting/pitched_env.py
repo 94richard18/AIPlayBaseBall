@@ -79,11 +79,15 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
     def _pre_physics_step(self, actions: torch.Tensor):
         c = self.cfg
         a = actions.clamp(-c.action_clip, c.action_clip)
+        if c.take_hold:  # a take (match video): no residual, no tempo
+            a = torch.zeros_like(a)
         tempo = a[:, -1].clamp(-1.0, 1.0)
         if c.tempo_zero_after_release:  # eval: the reference plays at nominal speed once the ball is in the air
             tempo = torch.where(self.phys_t >= self.release_t, torch.zeros_like(tempo), tempo)
         self.rate = self.speed * (1.0 + c.tempo_scale * tempo)
         self.ref_t = self.ref_t + self.rate * self.step_dt
+        if c.take_hold:  # the clock never leaves the stance (negative = frame 0, as while waiting for the pitch)
+            self.ref_t = torch.minimum(self.ref_t, torch.zeros_like(self.ref_t))
         self.prev_actions[:] = self.actions
         self.actions = a
         nxt = self._ref(self.ref_t)

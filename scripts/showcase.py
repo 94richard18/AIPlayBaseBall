@@ -37,6 +37,10 @@ parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
 parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
+parser.add_argument("--take", action="store_true", help="match video: the batter takes the pitch (cfg.take_hold)")
+parser.add_argument("--hold_after_hit", type=float, default=0.0,
+                    help="match video variant B: after contact keep a wide side view of the batter this many s (real time)")
+parser.add_argument("--result_json", type=str, default=None, help="match video: per-pitch outcome + batted ball (JSON list)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
@@ -359,20 +363,21 @@ def run_pitched_video(ckpt: str):
     cfg.post_ref_keep_residual = args.post_ref_keep_residual
     if args.aim_offset_y is not None:
         cfg.aim_offset_y = args.aim_offset_y
+    cfg.take_hold = args.take
     env = gym.make(TASK_ID, cfg=cfg, render_mode="rgb_array")
     wrapped = RslRlVecEnvWrapper(env)
     policy = load_policy(wrapped, ckpt)
     base, sim = env.unwrapped, env.unwrapped.sim
     title = ("AIB-1 vs pitched fastballs  |  perception: 2 cm bias, 1 cm noise, 100 ms delay  |  drag/Magnus",
              (255, 255, 255))
-    frames, results = [], []
+    frames, results, per_pitch = [], [], []
     for k in range(args.swings):
         with torch.inference_mode():
             obs, _ = wrapped.reset()
         n_logged = len(base.play_log)
         o = base.scene.env_origins[0].cpu().numpy()
         kmh = float(base.pitch_kmh[0])
-        outcome, step, post = None, 0, 0
+        outcome, step, post, rec_k = None, 0, 0, None
         while step < 1500:
             with torch.inference_mode():
                 obs, _, dones, _ = wrapped.step(policy(obs))
@@ -393,6 +398,10 @@ def run_pitched_video(ckpt: str):
                 sim.set_camera_view(eye=(o + [tee[0] - 3.5, tee[1] - 1.6, 1.7]).tolist(),
                                     target=(o + [tee[0] + 12.0, tee[1] + 0.3, 1.1]).tolist())
                 keep, phase = step % 2 == 0, "pitch incoming (catcher view)"
+            elif hit and args.hold_after_hit > 0 and post >= 40:  # variant B: the batter stays in frame, wide, real time
+                sim.set_camera_view(eye=(o + tee + [0.4, -4.6, 1.0]).tolist(), target=(o + tee + [-0.3, 0.4, 0.7]).tolist())
+                post += 1
+                keep, phase = step % 3 == 0, "follow-through (real time)"
             elif not hit or post < 40:  # the swing, side view, slow motion
                 sim.set_camera_view(eye=(o + tee + [0.15, -2.9, 0.65]).tolist(), target=(o + tee + [-0.3, 0.6, 0.3]).tolist())
                 post += int(hit)
@@ -411,20 +420,29 @@ def run_pitched_video(ckpt: str):
                     la = float(torch.rad2deg(torch.atan2(v[2], v[:2].norm())))
                     lines.append((f"exit velocity {ev / MPH:5.1f} mph   launch {la:5.1f} deg", (120, 220, 255)))
                 frames.append(overlay(grab(base), lines))
-            if len(base.play_log) > n_logged:
-                rec = base.play_log[-1]
-                fair = abs(rec["spray_deg"]) <= cfg.fair_half_angle_deg
-                outcome = f"{'FAIR' if fair else 'FOUL'}  {rec['carry_m']:.1f} m"
-                results.append(rec)
+            if len(base.play_log) > n_logged and rec_k is None:
+                rec_k = base.play_log[-1]
+                fair = abs(rec_k["spray_deg"]) <= cfg.fair_half_angle_deg
+                outcome = f"{'FAIR' if fair else 'FOUL'}  {rec_k['carry_m']:.1f} m"
+                results.append(rec_k)
+            # variant B ends after the hold (40 slow-motion steps + hold_after_hit s), else at the landing record
+            if rec_k is not None and (args.hold_after_hit <= 0 or post >= 40 + int(args.hold_after_hit / base.step_dt)):
                 break
         outcome = outcome or "NO RESULT"
         print(f"[pitched] pitch {k + 1}: {kmh:.0f} km/h -> {outcome}", flush=True)
+        if args.result_json:
+            per_pitch.append(dict(kmh=kmh, outcome=("TAKE" if args.take and outcome == "MISS" else outcome.split()[0]),
+                                  fell=bool(base.fallen[0]),
+                                  ball={k_: float(v) for k_, v in (rec_k or {}).items() if isinstance(v, (int, float))}))
         for _ in range(45):  # 1.5 s result card
             frames.append(overlay(grab(base), [title, (f"pitch {k + 1}/{args.swings}: {kmh:.0f} km/h", (200, 200, 200))],
                                   big=outcome))
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     imageio.mimwrite(args.out, frames, fps=30, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
     print(f"[pitched] wrote {args.out} ({len(frames)} frames)", flush=True)
+    if args.result_json:
+        with open(args.result_json, "w", encoding="utf-8") as f:
+            json.dump(per_pitch, f, indent=1)
 
 
 if __name__ == "__main__":

@@ -125,11 +125,16 @@ class TableBatter:
         assert rows, f"no batted balls in {path}"
         return cls(rows, hit_rate)
 
+    def decides_to_swing(self, pitch: Pitch, zone: StrikeZone, rng: random.Random) -> bool:
+        """The take / swing decision alone (the match video uses it with the same rng draws as swing())."""
+        if abs(pitch.plate_y) > 1.0:
+            return False
+        in_zone = zone.contains(pitch.plate_y, pitch.plate_z)
+        return rng.random() < (self.swing_in_zone if in_zone else self.swing_out_zone)
+
     def swing(self, state: GameState, pitch: Pitch, zone: StrikeZone, rng: random.Random) -> Swing:
         in_zone = zone.contains(pitch.plate_y, pitch.plate_z)
-        if abs(pitch.plate_y) > 1.0:
-            return Swing("take")
-        if rng.random() >= (self.swing_in_zone if in_zone else self.swing_out_zone):
+        if not self.decides_to_swing(pitch, zone, rng):
             return Swing("take")
         if rng.random() >= self.hit_rate * (1.0 if in_zone else self.out_zone_contact_scale):
             return Swing("miss")

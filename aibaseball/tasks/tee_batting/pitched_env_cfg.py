@@ -18,6 +18,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     observation_space = 152  # mimic obs (146 + 1 extra prev action) + perceived ball velocity 3 + released 1 + rate 1
     rsi_prob: float = 0.0  # always start in the stance; the batter waits for the pitch
     episode_length_s = 2.6
+    take_hold: bool = False  # match video (play only): a take - zero actions, the reference held in the stance (frame 0)
 
     # pitches (library is built once for the final range; the curriculum samples within the current range)
     pitch_library_size: int = 8192
