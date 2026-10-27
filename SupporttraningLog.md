@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-27 22:15：比賽影片工具完成（CPU），等 Human21 結束後試算圖**（f00dbdc / 1305ac9；決定 session 核可的計畫）
+> - **不揮模式**：`cfg.take_hold` / showcase `--take`，動作歸零、參考時鐘停在站姿（第 0 格）。**B 版**：`--hold_after_hit 2.0`，擊球後保持側面寬鏡頭 2 s（實際速度）。`--result_json` 輸出每球結果和擊球數據。
+> - **引擎同規則**：`TableBatter.decides_to_swing`（揮不揮的判斷，抽 rng 的方式和 swing() 相同）、`judge_pitch` / `is_hit_by_pitch`（每一球的球數規則）都從引擎抽出來共用；交付版 seed 0 仍是 19.9% / 外野 4.1%，結果完全沒變。
+> - **`scripts/match_video.py`**：投手影片依 episode 切段，對上投手 session 新加的 `eval_stage --video_release_csv`（拍到的那一球自己的出手狀態，20 已 commit）。每球的流程：出手狀態 → 進壘點（drag + Magnus）→ 觸身球判斷 → 引擎的揮 / 不揮 → 用同一顆球跑 Isaac 打者片段 → judge_pitch 算球數。結尾卡寫明「ONE OUTS simulation, 5 x 1000 matches: 18.8% (16.0–20.1%)」。CPU dry run 確認：球數、沒進壘算壞球、界外不算第三好球、正負號（出手第 1 列 y −0.15 = 投球表的 +0.1505 翻轉）、High / yuv420p。
+> - **試算圖**（GPU，不能有訓練在跑）：投手拍 12 個 episode → 同一個打席跑 A、B 兩版，送決定 session 審。
+
 > **打者 10-27 22:2x：Human21 開跑；比賽影片計畫送決定 session**（`logs/run_human21.sh`，H21_END；程式 4dfd061 / fd7f318）
 > - **Human21**（決定 session 指定，投手 PR 的做法用在打者）：`--post_clip_teacher 12500`，clip 結束前所有動作來自凍結的 12500（老師），clip 結束後才由學生（12500 的複本）出手，擊中和揮空都一樣；揮棒不可能改變。clip 結束後：沒有 tracking、沒有 lost、保留 Human15 的跌倒扣分，站穩分數 × 1 / 步（不設上限）。Human15 的球，effort 1.5，chunk 1 的 critic 先暖機 20 次。
 > - **遮罩**：觀測裡的參考時間比例 ≥ 0.9999（clamp_ref_phase 在 clip 後固定為 1）。老師用凍結的 normalizer 複本看觀測，學生的統計值變動不會改到揮棒。
