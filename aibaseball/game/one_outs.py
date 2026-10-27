@@ -48,10 +48,11 @@ def is_hit_by_pitch(plate_y: float, plate_z: float) -> bool:
 
 
 def judge_pitch(balls: int, strikes: int, p, kind: str, ball, zone: StrikeZone, fld: FieldSpec, fs: FieldingSpec,
-                grass: GrassSpec, phys: PhysicsSpec):
+                grass: GrassSpec, phys: PhysicsSpec, live=None):
     """One pitch under the ONE OUTS rules (the hit-by-pitch check comes first, see is_hit_by_pitch): kind "take" /
     "miss" / "contact" (ball = the BattedBall). Returns (balls, strikes, OneOutsResult fields (winner, how) or None,
-    extra log fields). The match video calls it with the Isaac batter's outcome."""
+    extra log fields). The match video calls it with the Isaac batter's outcome; live = (end, land) of the simulated
+    ball itself (joint ONE OUTS env) replaces first_bounce, which is then logged as engine_end / engine_land."""
     ev = {}
     if kind == "take":
         if zone.contains(p.plate_y, p.plate_z):  # hits the painted box on the wall
@@ -63,6 +64,10 @@ def judge_pitch(balls: int, strikes: int, p, kind: str, ball, zone: StrikeZone, 
     else:
         end, land = first_bounce(ball, fld, fs, grass, phys)
         ev = dict(land=land, ball=ball, end=end)
+        if live is not None:
+            ev.update(engine_end=end, engine_land=land)
+            end, land = live
+            ev.update(land=land, end=end)
         if end in ("home_run", "wall"):
             return balls, strikes, ("batter", "home_run" if end == "home_run" else "outfield_hit"), ev
         x, y = land
