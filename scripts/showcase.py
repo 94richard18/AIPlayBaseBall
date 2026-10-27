@@ -121,7 +121,6 @@ def load_policy(env, ckpt):
     if args.post_clip_teacher:  # Human21: as train.py --post_clip_teacher
         from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
 
-        env.unwrapped._get_observations()
         attach_post_release_student(runner.alg, args.post_clip_teacher, post_clip_rows(env.unwrapped, runner.obs_normalizer),
                                     env.unwrapped.device, runner.obs_normalizer)
     return runner.get_inference_policy(device=env.unwrapped.device)

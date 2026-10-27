@@ -105,8 +105,8 @@ def attach_post_release_student(alg, ckpt_path: str, rows, device, normalizer=No
         frozen.until = 0  # never updates
 
     def teacher_in(obs):
-        if frozen is None:
-            return obs
+        if frozen is None or (torch.equal(normalizer._mean, frozen._mean) and torch.equal(normalizer._std, frozen._std)):
+            return obs  # same statistics (evals): skip the round trip, its rounding alone changes the rollout
         raw = obs * (normalizer._std + normalizer.eps) + normalizer._mean
         return (raw - frozen._mean) / (frozen._std + frozen.eps)
 
@@ -133,11 +133,10 @@ def post_clip_rows(env, normalizer, phase_min: float = 0.9999):
     The reference-time input t / duration (TeeBattingMimicEnv, held at 1 past the clip with clamp_ref_phase) is read from
     the normalized policy observation, so the same rule holds in the rollout, the PPO update and the evals. Before the
     clip end every action column comes from the frozen teacher, so the swing cannot change."""
-    i_ph = env.phase_obs_index
-
     def rows(obs):
-        m, s = normalizer._mean[0, i_ph], normalizer._std[0, i_ph] + normalizer.eps
+        i_ph = env.phase_obs_index  # set by the env's first observation (read lazily: an extra observation call would
+        m, s = normalizer._mean[0, i_ph], normalizer._std[0, i_ph] + normalizer.eps  # draw perception noise)
         return ((obs[:, i_ph] * s + m) >= phase_min).unsqueeze(-1)
 
-    rows.t_min, rows.i_rel = phase_min, i_ph
+    rows.t_min, rows.i_rel = phase_min, getattr(env, "phase_obs_index", "set on the first observation")
     return rows

@@ -244,7 +244,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if args_cli.post_clip_teacher:
         from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
 
-        env.unwrapped._get_observations()  # sets phase_obs_index
         pr_rows = post_clip_rows(env.unwrapped, runner.obs_normalizer)
         attach_post_release_student(runner.alg, args_cli.post_clip_teacher, pr_rows, agent_cfg.device, runner.obs_normalizer)
     if os.environ.get("ASSIST_START") and hasattr(env.unwrapped, "assist_steps0"):
