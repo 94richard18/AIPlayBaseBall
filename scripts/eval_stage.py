@@ -18,6 +18,9 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--arm_teacher", type=str, default=None, help="checkpoint whose frozen actor drives the arm + release columns (F)")
+parser.add_argument("--arm_record", type=str, default=None, help="save env 0's arm + release actions per step (.pt) for --arm_replay")
+parser.add_argument("--arm_replay", type=str, default=None,
+                    help="open-loop arm (planning 10-27): arm + release columns from an --arm_record file, indexed by step from the start")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
 parser.add_argument("--no_plate_view", action="store_true",
@@ -134,12 +137,22 @@ def main():
     lift_max = np.zeros(n)  # lead foot's highest point over its start in the lift window (0.2-0.95 s)
     pause_dev = {}  # set pause (cfg set_pause_s): body-joint deviation from the reference's frame 0, at the start / the pause end
     t0_state = None  # COM horizontal speed / pelvis yaw rate / left-foot force share at the first step all envs reach t >= 0
+    rec_cols = list(base._arm_cols) + [29 + base.cfg.release_action_col] if (args.arm_record or args.arm_replay) else None
+    rec = [] if args.arm_record else None
+    replay = torch.load(args.arm_replay, map_location=base.device) if args.arm_replay else None
     with torch.inference_mode():
         obs, _ = w.reset()
         for k in range(T):
             act = pol(obs)
             if args.zero:
                 act = torch.zeros_like(act)
+            if rec is not None:
+                rec.append(act[0, rec_cols].clone())
+                if k == T - 1:
+                    torch.save(torch.stack(rec), args.arm_record)
+                    say(f"[arm record] {T} steps x {len(rec_cols)} columns -> {args.arm_record}")
+            if replay is not None:  # all envs start together (no early resets), so step k is the same time for each
+                act[:, rec_cols] = replay[min(k, replay.shape[0] - 1)]
             if hasattr(base, "_arm_cols"):  # arm residual size over the throw (0.9-1.0 s reference time), raw action units
                 tr_now = base._ref_time()
                 win = ((tr_now >= 0.9) & (tr_now < 1.0)).float()
