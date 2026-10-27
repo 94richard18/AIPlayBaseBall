@@ -2445,3 +2445,4 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - 影片：`logs/film_p3c_1027eve.sh` 用 TW2PL + `release_action_shift_s=0.0025 plate_yaw_deg=18 ball_aero_sim=True`，noise 0，P 預設 0。一致。
   - `scripts/eval_protocol.sh`：task 是參數，傳 P3C task 就是 P3c 設定。注意：P3C task 的預設 start_joint_noise 是 0.02（繼承自 Stage1dN），所有推論路徑都必須明確 `--set start_joint_noise=0.0`。eval_protocol 的 identical 那一跑有設；兩個 noisy 跑現在只當參考。
   - one_outs.py / render_one_outs.py / showcase.py 只讀上面的 CSV，不跑策略。
+- 12 小時影片（10-27 19:39，Human18b 結束後自動開錄，`logs/film_wait_1028.sh`）：`videos/pitcher_p3c_t18_1028am.mp4`（檔名沿用預定的 10-28 早上），229 幀，空白 0%，h264 High / yuv420p；沒跌倒，球飛 37.9 m。下次在 10-28 07:46 前。
