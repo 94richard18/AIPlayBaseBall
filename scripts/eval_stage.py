@@ -26,6 +26,11 @@ parser.add_argument("--arm_replay", type=str, default=None,
                     help="open-loop arm (planning 10-27): arm + release columns from an --arm_record file, indexed by step from the start")
 parser.add_argument("--video", type=str, default=None, help="side-view video of env 0 (+ key frames .png next to it)")
 parser.add_argument("--video_episodes", type=int, default=2)
+parser.add_argument("--video_env", type=int, default=0,
+                    help="film this env (others hidden) and take its --video_release_csv row (match film 2026-10-28)")
+parser.add_argument("--film_first", action="store_true",
+                    help="film right after the load, no eval before it: the filmed rollout is the gate's first-after-load "
+                         "rollout (every later env.reset() drifts, 2026-10-28) - use with --video_episodes 1")
 parser.add_argument("--no_plate_view", action="store_true",
                     help="video: side view only (default: side view + a view from home plate toward the pitcher, side by side)")
 parser.add_argument("--pitch_csv", type=str, default=None,
@@ -137,6 +142,9 @@ def main():
     if args.stochastic:
         pol = lambda x: r.alg.actor_critic.act(r.obs_normalizer(x))  # noqa: E731
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
+    if args.film_first:
+        film(w, base, pol, T)
+        return
     n = base.num_envs
     fell_at = np.full(n, np.nan)
     com_dy18 = np.full(n, np.nan)
@@ -599,7 +607,10 @@ def film(w, base, pol, T, fps=30):
     def set_focal(f):  # the viewport camera lives in the session layer: an edit on the root layer is overridden by it
         with Usd.EditContext(stage, stage.GetSessionLayer()):
             cam.GetFocalLengthAttr().Set(f)
-    for i in range(1, base.num_envs):
+    E = args.video_env
+    for i in range(base.num_envs):
+        if i == E:
+            continue
         UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/envs/env_{i}")).MakeInvisible()
 
     def grab():
@@ -633,17 +644,17 @@ def film(w, base, pol, T, fps=30):
                 obs, _, _, _ = w.step(pol(obs))
                 obs = obs.clone()
             t = (k + 1) * base.step_dt
-            if fell is None and bool(base.fallen[0]):
+            if fell is None and bool(base.fallen[E]):
                 fell = t
-            if snap is None and bool(base.released[0]):
-                snap = SimpleNamespace(**{a: getattr(base, a)[:1].clone() for a in ("rel_pos", "rel_vel", "rel_omega", "rel_ref_t")})
-            if e == 0 and rel_k is None and (bool(base.released[0]) or k == T // 3):
+            if snap is None and bool(base.released[E]):
+                snap = SimpleNamespace(**{a: getattr(base, a)[E:E + 1].clone() for a in ("rel_pos", "rel_vel", "rel_omega", "rel_ref_t")})
+            if e == 0 and rel_k is None and (bool(base.released[E]) or k == T // 3):
                 rel_k = k
             key = e == 0 and (k in keys or k == rel_k)
             if k % every and not key:
                 continue
-            o = base.scene.env_origins[0].cpu().numpy()  # follow the pelvis along the ground (1b walks off the view)
-            pel = base.robot.data.root_link_pos_w[0].cpu().numpy()
+            o = base.scene.env_origins[E].cpu().numpy()  # follow the pelvis along the ground (1b walks off the view)
+            pel = base.robot.data.root_link_pos_w[E].cpu().numpy()
             o = o + [pel[0] - o[0] - 0.3, pel[1] - o[1], 0.0]
             base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
             img = grab()
@@ -656,7 +667,7 @@ def film(w, base, pol, T, fps=30):
             if not args.no_plate_view:
                 # from 1 m behind the plate at eye height toward the rubber; the single viewport camera is moved for
                 # this frame and back for the next side-view grab (one stale render dropped after each move)
-                g = base.scene.env_origins[0].cpu().numpy() + [0.0, 0.0, base.field_z]
+                g = base.scene.env_origins[E].cpu().numpy() + [0.0, 0.0, base.field_z]
                 pd = base.cfg.plate_distance
                 th = -np.radians(getattr(base.cfg, "plate_yaw_deg", 0.0))  # the turned plate (stage plate_yaw_deg)
                 ex, ey = pd + 1.0, base.cfg.zone_center_y
@@ -684,7 +695,7 @@ def film(w, base, pol, T, fps=30):
                     cv2.putText(pv, "from home plate", (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2,
                                 cv2.LINE_AA)
             txt = f"episode {e + 1}  t = {t:.2f} s" + (f"  FELL at {fell:.2f} s" if fell is not None else "")
-            if e == 0 and k == rel_k and bool(base.released[0]):
+            if e == 0 and k == rel_k and bool(base.released[E]):
                 txt += "  release"
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
             cv2.putText(img, txt, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
@@ -695,12 +706,12 @@ def film(w, base, pol, T, fps=30):
                 vw.append_data(last)
                 ep_frames += 1
         # StageEnv never runs the release check (_get_dones is its own): measure the ball's distance to the grip
-        gap = float((base.ball.data.root_pos_w[0] - base._grip_point()[0]).norm())
+        gap = float((base.ball.data.root_pos_w[E] - base._grip_point()[E]).norm())
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
         n_frames += ep_frames
         say(f"[video] episode {e + 1}: fell at {fell}, {rel}; {ep_frames} frames ({ep_rep} repeated after a failed grab)")
         if args.video_release_csv:
-            film_release_row(base, snap, args.video_release_csv, fell is None)
+            film_release_row(base, snap, args.video_release_csv, fell is None, E)
     vw.close()
     if kf:
         png = os.path.splitext(args.video)[0] + "_keyframes.png"
