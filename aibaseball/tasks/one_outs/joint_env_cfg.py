@@ -35,7 +35,12 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     batter_pose_plate: tuple = (0.3, -0.9, math.pi / 2)
     # gate P3c identical starts: release reference time 0.9975 s for most envs (P 0: episode time = reference time)
     release_t_pred_s: float = 0.9975
+    batter_every: int = 4  # batter control every this many pitcher control steps (400 Hz / 4 = 100 Hz, as trained)
     batter_hold: bool = True  # M1: the batter holds its default pose under PD (no policy)
+    # after the hand-off: "mirror" = the integrated state written into the PhysX ball every physics step (one body for the
+    # camera and the judge); "park" = the PhysX ball parked under the field once, a marker shows the flight (C1 compares
+    # the batter's pelvis / foot height in both)
+    ball_after_handoff: str = "mirror"
     # integrated flight ends (the PhysX ball takes over again) on the ground or this far behind the plate
     flight_end_behind_plate_m: float = 3.0
 

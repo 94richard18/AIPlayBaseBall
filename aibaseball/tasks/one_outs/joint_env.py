@@ -31,7 +31,9 @@ class JointPitchEnv(StageEnv):
     cfg: JointPitchEnvCfg
 
     def __init__(self, cfg: JointPitchEnvCfg, render_mode: str | None = None, **kwargs):
-        self.batter_side = None
+        self.batter_side = None  # set before the first reset (the env's construction already reset once: call env.reset())
+        self.ball_marker = None
+        self.marker_envs = None  # park: envs whose flight marker is drawn (None = all)
         super().__init__(cfg, render_mode, **kwargs)
         n, dev = self.num_envs, self.device
         self.j_fly = torch.zeros(n, dtype=torch.bool, device=dev)  # the integrator owns the ball
@@ -50,6 +52,22 @@ class JointPitchEnv(StageEnv):
         self.release_t_pred = torch.full((n,), cfg.release_t_pred_s / self.speed, device=dev)
         self.j_cross = torch.full((n, 2), float("nan"), device=dev)  # (y - zone centre, z above the field) at the plate
         self._aero_c = _aero_consts(self.phys, self.j_vel)
+        self._j_k, self._ctrl = 0, False  # pitcher control steps since the load; this step is a batter control step
+
+    # ------------------------------------------------------------------ batter side clocks (batter session 10-28):
+    # control() at 100 Hz before the pitcher's action, ball_world(dt) every physics step (_fly), post() after the step
+    def _pre_physics_step(self, actions: torch.Tensor):
+        self._ctrl = self.batter_side is not None and self._j_k % self.cfg.batter_every == 0
+        self._j_k += 1
+        if self._ctrl:
+            self.batter_side.control()
+        super()._pre_physics_step(actions)
+
+    def step(self, action):
+        out = super().step(action)
+        if self._ctrl:
+            self.batter_side.post()
+        return out
 
     # ------------------------------------------------------------------ scene
     def _setup_scene(self):
@@ -111,12 +129,12 @@ class JointPitchEnv(StageEnv):
             self.handoff_vel[start] = self.to_plate(self.j_vel[start])
             self.handoff_omega[start] = self.to_plate(self.j_omega[start])
             self.handoff_t[start] = self.episode_length_buf[start].float() * self.step_dt
+        if self.batter_side is not None:  # every physics step, every env: it also writes the batter's PD targets
+            p, v, w = self.batter_side.ball_world(dt)
         if not self.j_fly.any():
             return
         self.j_prev = self.j_pos.clone()
-        if self.batter_side is not None:
-            p, v, w = self.batter_side.ball_world(dt)
-        else:
+        if self.batter_side is None:
             p, v, w = self._rk4(self.j_pos, self.j_vel, self.j_omega, dt)
         m = self.j_fly.unsqueeze(-1)
         self.j_pos, self.j_vel, self.j_omega = torch.where(m, p, self.j_pos), torch.where(m, v, self.j_vel), torch.where(m, w, self.j_omega)
@@ -132,12 +150,36 @@ class JointPitchEnv(StageEnv):
             self.j_cross[cr, 0] = q[:, 1] - self.cfg.zone_center_y
             self.j_cross[cr, 1] = q[:, 2] - self.field_z
         end = self.j_fly & ((b[:, 2] <= self.field_z + self.phys.ball.radius) | (b[:, 0] > pd + self.cfg.flight_end_behind_plate_m))
-        ids = self.j_fly.nonzero(as_tuple=False).squeeze(-1)
-        if len(ids):  # mirror into the PhysX body (pose + velocities: the next physics step starts from them)
-            st = torch.cat([self.j_pos[ids], self.ball.data.root_quat_w[ids], self.j_vel[ids], self.j_omega[ids]], -1)
-            self.ball.write_root_state_to_sim(st, ids)
+        if self.cfg.ball_after_handoff == "mirror":
+            ids = self.j_fly.nonzero(as_tuple=False).squeeze(-1)
+            if len(ids):  # into the PhysX body (pose + velocities: the next physics step starts from them)
+                st = torch.cat([self.j_pos[ids], self.ball.data.root_quat_w[ids], self.j_vel[ids], self.j_omega[ids]], -1)
+                self.ball.write_root_state_to_sim(st, ids)
+        else:  # "park" (the batter env's play mode: a ball teleported every physics step once broke the robot's ground
+            # contact): the PhysX ball goes 5 m under the field once, a marker shows the flight
+            if start.any():
+                ids = start.nonzero(as_tuple=False).squeeze(-1)
+                st = torch.zeros(len(ids), 13, device=self.device)
+                st[:, :3] = self.scene.env_origins[ids] + torch.tensor([0.0, 0.0, self.field_z - 5.0], device=self.device)
+                st[:, 3] = 1.0
+                self.ball.write_root_state_to_sim(st, ids)
+            self._show_marker()
         self.j_fly &= ~end
         self.j_done |= end
+
+    def _show_marker(self):
+        """park: the integrated ball as a marker (marker_envs: the envs to draw, the film sets its one env)."""
+        if self.ball_marker is None:
+            from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+
+            self.ball_marker = VisualizationMarkers(VisualizationMarkersCfg(prim_path="/Visuals/joint_ball", markers={
+                "ball": sim_utils.SphereCfg(radius=self.phys.ball.radius, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.95, 0.95, 0.92)))}))
+        ids = torch.arange(self.num_envs, device=self.device) if self.marker_envs is None else torch.as_tensor(
+            self.marker_envs, device=self.device)
+        on = (self.j_fly | self.j_done)[ids]
+        p = torch.where(on.unsqueeze(-1), self.j_pos[ids], self.j_pos[ids] * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
+        self.ball_marker.visualize(translations=p)
 
     def _rk4(self, p, v, w, dt):
         c = self._aero_c
@@ -162,6 +204,8 @@ class JointPitchEnv(StageEnv):
         self.batter.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=env_ids)
         self.batter.set_joint_position_target(jp, env_ids=env_ids)
         self.batter.set_joint_velocity_target(torch.zeros_like(jp), env_ids=env_ids)
+        if self.batter_side is not None:  # the batter's own reset (frame 0 of its clip)
+            self.batter_side.reset(env_ids)
         if hasattr(self, "j_fly"):
             for b in (self.j_fly, self.j_done):
                 b[env_ids] = False
