@@ -544,8 +544,17 @@ def film(w, base, pol, T, fps=30):
     # key frames: start, the release (user 2026-10-23; T // 3 if the ball is still held by then), 2/3, end
     keys = {0, 2 * T // 3, T - 1}
     rel_k = None
-    frames, kf = [], []
+    kf = []
+    # frames streamed to the file (match test 2026-10-27: a list of 12 episodes x 229 side + plate frames would take
+    # GBs of RAM); a failed grab repeats the last frame, so every episode has the same frame count (match_video.py splits
+    # the film into equal clips) - per-episode counts and repeats are logged
+    os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
+    # crf 16 high profile: quality=10 gave crf 0 = High 4:4:4, which most players show black
+    vw = imageio.get_writer(args.video, fps=fps, quality=None, macro_block_size=1,
+                            ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
+    n_frames, last = 0, None
     for e in range(args.video_episodes):
+        ep_frames, ep_rep = 0, 0
         with torch.inference_mode():
             obs, _ = w.reset()
         fell = None
@@ -570,6 +579,9 @@ def film(w, base, pol, T, fps=30):
             base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
             img = grab()
             if img is None:
+                if k % every == 0 and last is not None:
+                    vw.append_data(last)
+                    ep_frames, ep_rep = ep_frames + 1, ep_rep + 1
                 continue
             img = img.copy()
             if not args.no_plate_view:
@@ -610,21 +622,23 @@ def film(w, base, pol, T, fps=30):
             if key:
                 kf.append(cv2.resize(img, (640, 360)))
             if k % every == 0:
-                frames.append(img if args.no_plate_view else np.concatenate([img, np.zeros_like(img) if pv is None else pv], 1))
+                last = img if args.no_plate_view else np.concatenate([img, np.zeros_like(img) if pv is None else pv], 1)
+                vw.append_data(last)
+                ep_frames += 1
         # StageEnv never runs the release check (_get_dones is its own): measure the ball's distance to the grip
         gap = float((base.ball.data.root_pos_w[0] - base._grip_point()[0]).norm())
         rel = "ball held" if gap < base.cfg.release_distance else f"ball out of the hand at the end ({gap:.2f} m from the grip)"
-        say(f"[video] episode {e + 1}: fell at {fell}, {rel}")
+        n_frames += ep_frames
+        say(f"[video] episode {e + 1}: fell at {fell}, {rel}; {ep_frames} frames ({ep_rep} repeated after a failed grab)")
         if args.video_release_csv:
             film_release_row(base, snap, args.video_release_csv, fell is None)
-    os.makedirs(os.path.dirname(os.path.abspath(args.video)), exist_ok=True)
-    imageio.mimwrite(args.video, frames, fps=fps, quality=None, macro_block_size=1, ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])  # crf 16 high profile: quality=10 gave crf 0 = High 4:4:4, which most players show black
+    vw.close()
     if kf:
         png = os.path.splitext(args.video)[0] + "_keyframes.png"
         imageio.imwrite(png, np.concatenate([np.concatenate(kf[:2], 1), np.concatenate(kf[2:4], 1)], 0)
                         if len(kf) == 4 else np.concatenate(kf, 1))
         say(f"[video] key frames {png}")
-    say(f"[video] wrote {args.video} ({len(frames)} frames)")
+    say(f"[video] wrote {args.video} ({n_frames} frames)")
 
 
 if __name__ == "__main__":
