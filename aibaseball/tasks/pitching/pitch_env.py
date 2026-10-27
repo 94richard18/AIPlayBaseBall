@@ -1222,6 +1222,14 @@ class PitchEnv(DirectRLEnv):
         self.robot.write_joint_state_to_sim(jp, jv, env_ids=env_ids)
         self.q_target[env_ids] = jp
         self.q_target[env_ids.unsqueeze(-1), self.finger_ids] = self.hold_q
+        # env.reset() (evals, film) runs the actuator models once before the first step, right after the SEA motors
+        # re-sync: they take that step toward the joint targets in the robot buffer - zeros at the first load (what the
+        # gate evals measured), the last episode's targets after it (2026-10-28: filmed pitches 0.05 -> 0.21 -> 0.36 m
+        # wider per reset round). In training the step's _apply_action writes q_target first, so this changes nothing there.
+        self.robot.set_joint_position_target(torch.zeros_like(jp), env_ids=env_ids)
+        self.robot.set_joint_velocity_target(torch.zeros_like(jp), env_ids=env_ids)
+        self.pad_hist[env_ids] = 0.0
+        self.post_gain[env_ids] = 1.0
         self.finger_prev[env_ids] = self.hold_q
         self.finger_next[env_ids] = self.hold_q
         self.qd_target[env_ids] = jv
