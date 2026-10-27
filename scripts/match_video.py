@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import random
+import re
 import subprocess
 import sys
 
@@ -141,8 +142,14 @@ class PitcherClips:
             assert self.n * args.pitcher_episodes == total, f"{total} frames do not split into {args.pitcher_episodes} episodes"
             self.len, self.it, self.k = args.pitcher_episodes, iter(self.r), 0
         else:
-            self.files = sorted(glob.glob(args.pitcher_video))
+            # natural order (ep_2 before ep_10): one fresh process per episode (2026-10-28) writes one clip each
+            key = lambda f: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", os.path.basename(f))]  # noqa: E731
+            self.files = sorted(glob.glob(args.pitcher_video), key=key)
             self.len = len(self.files)
+            counts = {f: imageio.get_reader(f).count_frames() for f in self.files}
+            assert len(set(counts.values())) <= 1, f"pitcher clips differ in frame count: {counts}"
+            print(f"[match] {self.len} pitcher clips, {next(iter(counts.values()), 0)} frames each: "
+                  f"{os.path.basename(self.files[0]) if self.files else '-'} .. {os.path.basename(self.files[-1]) if self.files else '-'}", flush=True)
 
     def __len__(self):
         return self.len
