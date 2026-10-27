@@ -129,19 +129,31 @@ def resampled(frames, fps):
             n += 1
 
 
-def pitcher_clips():
-    """One (frames list, fps) per pitch."""
-    if args.pitcher_episodes > 0:
-        r = imageio.get_reader(args.pitcher_video)
-        fps, frames = r.get_meta_data()["fps"], [np.asarray(f)[..., :3] for f in r]
-        n = len(frames) // args.pitcher_episodes
-        assert n * args.pitcher_episodes == len(frames), f"{len(frames)} frames do not split into {args.pitcher_episodes} episodes"
-        return [([pip(f) for f in frames[i * n:(i + 1) * n]], fps) for i in range(args.pitcher_episodes)]
-    out = []
-    for c in sorted(glob.glob(args.pitcher_video)):
-        r = imageio.get_reader(c)
-        out.append(([np.asarray(f)[..., :3] for f in r], r.get_meta_data()["fps"]))
-    return out
+class PitcherClips:
+    """Pitcher clip k = (frames, fps), read on demand in pitch order: the film is streamed one episode at a time
+    (11450 frames of 3200 x 900 do not fit in memory), the PiP applied on read."""
+
+    def __init__(self):
+        if args.pitcher_episodes > 0:
+            self.r = imageio.get_reader(args.pitcher_video)
+            self.fps, total = self.r.get_meta_data()["fps"], self.r.count_frames()
+            self.n = total // args.pitcher_episodes
+            assert self.n * args.pitcher_episodes == total, f"{total} frames do not split into {args.pitcher_episodes} episodes"
+            self.len, self.it, self.k = args.pitcher_episodes, iter(self.r), 0
+        else:
+            self.files = sorted(glob.glob(args.pitcher_video))
+            self.len = len(self.files)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, k):
+        if args.pitcher_episodes <= 0:
+            r = imageio.get_reader(self.files[k])
+            return [pip(np.asarray(f)[..., :3]) for f in r], r.get_meta_data()["fps"]
+        assert k == self.k, "pitcher clips are read in order"
+        self.k += 1
+        return [pip(np.asarray(next(self.it))[..., :3]) for _ in range(self.n)], self.fps
 
 
 def frames_of(src, n_placeholder: int, text: str):
@@ -191,7 +203,7 @@ def card(lines, seconds=3.0, scale=1.0):
 
 def main():
     os.makedirs(args.work, exist_ok=True)
-    clips = pitcher_clips()
+    clips = PitcherClips()
     with open(args.pitcher_release, newline="") as f:
         rows = list(csv.DictReader(f))
     assert args.dry_run or len(clips) == len(rows), f"{len(clips)} pitcher clips vs {len(rows)} release rows"
