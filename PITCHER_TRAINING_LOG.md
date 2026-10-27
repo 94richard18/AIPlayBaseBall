@@ -2446,3 +2446,4 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - `scripts/eval_protocol.sh`：task 是參數，傳 P3C task 就是 P3c 設定。注意：P3C task 的預設 start_joint_noise 是 0.02（繼承自 Stage1dN），所有推論路徑都必須明確 `--set start_joint_noise=0.0`。eval_protocol 的 identical 那一跑有設；兩個 noisy 跑現在只當參考。
   - one_outs.py / render_one_outs.py / showcase.py 只讀上面的 CSV，不跑策略。
 - 12 小時影片（10-27 19:39，Human18b 結束後自動開錄，`logs/film_wait_1028.sh`）：`videos/pitcher_p3c_t18_1028am.mp4`（檔名沿用預定的 10-28 早上），229 幀，空白 0%，h264 High / yuv420p；沒跌倒，球飛 37.9 m。下次在 10-28 07:46 前。
+- 比賽影片測試批次（10-27 22:31–23:21，打者 15 / 規劃 14 核可）：`eval_stage --video_release_csv`（b6b78a6，每錄一回合寫一列出手狀態）+ 錄影改成邊錄邊寫、抓不到畫面就補前一幀，讓每回合幀數相同（0e8add5）。`logs/film_match_test.sh`：P3c，12 回合，`videos/match_test_p3c.mp4` 2748 幀（12 × 229，補幀 0），空白 0%，High / yuv420p；`videos/match_test_p3c_release.csv` 12 列全部出手，17.0–18.4 m/s，T4 2、T3 5、T2 4、T1 1；第 3、5 回合在 2.5 / 3.1 s 跌倒。identical 起點下，重置後錄的回合彼此也有差異，所以比賽不用加起點噪聲也會有不同的球路。
