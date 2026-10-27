@@ -395,11 +395,12 @@ def run_pitched_video(ckpt: str):
                 keep = (not hit or post < 40) or step % 3 == 0
                 phase = "catcher view" + (" (3.3x slow motion)" if (not hit or post < 40) else " (real time)")
             elif not hit and pitch[0] > tee[0] + 3.0:  # pitch on its way: from behind the catcher
-                sim.set_camera_view(eye=(o + [tee[0] - 3.5, tee[1] - 1.6, 1.7]).tolist(),
-                                    target=(o + [tee[0] + 12.0, tee[1] + 0.3, 1.1]).tolist())
+                # +0.5 m toward third base (screen left from here): the batter was half out of the frame's left edge
+                sim.set_camera_view(eye=(o + [tee[0] - 3.5, tee[1] - 1.1, 1.7]).tolist(),
+                                    target=(o + [tee[0] + 12.0, tee[1] + 0.8, 1.1]).tolist())
                 keep, phase = step % 2 == 0, "pitch incoming (catcher view)"
             elif hit and args.hold_after_hit > 0 and post >= 40:  # variant B: the batter stays in frame, wide, real time
-                sim.set_camera_view(eye=(o + tee + [0.4, -4.6, 1.0]).tolist(), target=(o + tee + [-0.3, 0.4, 0.7]).tolist())
+                sim.set_camera_view(eye=(o + tee + [0.9, -4.6, 1.0]).tolist(), target=(o + tee + [0.2, 0.4, 0.7]).tolist())  # +0.5 m toward the mound: the batter strides / falls that way
                 post += 1
                 keep, phase = step % 3 == 0, "follow-through (real time)"
             elif not hit or post < 40:  # the swing, side view, slow motion

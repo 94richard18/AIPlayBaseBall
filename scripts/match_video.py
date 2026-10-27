@@ -53,7 +53,8 @@ parser.add_argument("--pitcher_layout", choices=["pip", "side_by_side"], default
 parser.add_argument("--variant", choices=["A", "B"], default="A", help="A: ball-follow after contact; B: batter in frame 2 s")
 parser.add_argument("--seed", type=int, default=0, help="the PA rng (take decisions)")
 parser.add_argument("--pas", type=int, default=1, help="plate appearances (pitcher clips are used in order)")
-parser.add_argument("--end_card", default="ONE OUTS simulation, 5 x 1000 matches: batter wins 18.8% (16.0-20.1%)")
+parser.add_argument("--end_card", default="ONE OUTS simulation: 5 seeds x 3 pitch tables x 1000 matches, "
+                    "batter wins 17.6% (tables 16.5-18.8%)")
 parser.add_argument("--work", default="videos/match_work")
 parser.add_argument("--out", default=None)
 parser.add_argument("--dry_run", action="store_true")
@@ -166,10 +167,25 @@ def banner(fr, lines):
     return fr
 
 
-def card(lines, seconds=3.0):
+def wrapped(text, scale, width):
+    """Greedy word wrap so every line fits width px at this font scale."""
+    out, cur = [], ""
+    for wd in text.split():
+        t = f"{cur} {wd}".strip()
+        if cur and cv2.getTextSize(t, cv2.FONT_HERSHEY_SIMPLEX, scale, 2)[0][0] > width:
+            out.append(cur)
+            t = wd
+        cur = t
+    return out + [cur]
+
+
+def card(lines, seconds=3.0, scale=1.0):
     fr = np.zeros((SIZE[1], SIZE[0], 3), np.uint8)
-    for i, s in enumerate(lines):
-        cv2.putText(fr, s, (60, 260 + 60 * i), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA)
+    rows = [r for s in lines for r in wrapped(s, scale, SIZE[0] - 120)]
+    y = SIZE[1] // 2 - 26 * len(rows)
+    for r in rows:
+        cv2.putText(fr, r, (60, y), cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), 2, cv2.LINE_AA)
+        y += 52
     return [fr] * int(seconds * FPS)
 
 
@@ -236,8 +252,9 @@ def main():
         for fr in card([f"PA {pa + 1}: {res[0]} wins ({res[1].replace('_', ' ')})"]):
             w.append_data(fr)
         log.append(dict(pa=pa, winner=res[0], how=res[1]))
-    for fr in card(["This video: " + ", ".join(f"PA {e['pa'] + 1} {e['winner']}" for e in log if "winner" in e),
-                    args.end_card], 5.0):
+    won = [e["winner"] for e in log if "winner" in e]
+    for fr in card([f"This video: {len(won)} plate appearances, batter wins {won.count('batter')} / "
+                    f"pitcher wins {won.count('pitcher')}", "", args.end_card], 6.0):
         w.append_data(fr)
     w.close()
     with open(out.replace(".mp4", ".json"), "w", encoding="utf-8") as f:
