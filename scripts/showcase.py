@@ -384,7 +384,7 @@ def run_pitched_video(ckpt: str):
                 obs = obs.clone()
             step += 1
             if bool(dones[0]) and not bool(base.hit[0]):  # the pitch got past the batter
-                outcome = "MISS"
+                outcome = "TAKE" if args.take else "MISS"
                 break
             hit = bool(base.hit[0])
             pitch = base.pitch_pos[0].cpu().numpy() - o
@@ -431,7 +431,7 @@ def run_pitched_video(ckpt: str):
         outcome = outcome or "NO RESULT"
         print(f"[pitched] pitch {k + 1}: {kmh:.0f} km/h -> {outcome}", flush=True)
         if args.result_json:
-            per_pitch.append(dict(kmh=kmh, outcome=("TAKE" if args.take and outcome == "MISS" else outcome.split()[0]),
+            per_pitch.append(dict(kmh=kmh, outcome=outcome.split()[0],
                                   fell=bool(base.fallen[0]),
                                   ball={k_: float(v) for k_, v in (rec_k or {}).items() if isinstance(v, (int, float))}))
         for _ in range(45):  # 1.5 s result card
