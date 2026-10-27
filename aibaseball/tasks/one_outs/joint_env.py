@@ -14,6 +14,8 @@ One episode = one pitch; no env.reset() between pitches (every later reset drift
 
 from __future__ import annotations
 
+import math
+
 import torch
 
 import isaaclab.sim as sim_utils
@@ -183,6 +185,15 @@ class JointPitchEnv(StageEnv):
         on = (self.j_fly | self.j_done)[ids]
         p = torch.where(on.unsqueeze(-1), self.j_pos[ids], self.j_pos[ids] * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
         self.ball_marker.visualize(translations=p)
+
+    def plate_front_w(self) -> torch.Tensor:
+        """(n, 3) world point of the judged plate plane (plate frame x = plate_distance, y = zone_center_y) at field level:
+        the plane the pitcher's tiers and j_cross are measured on (batter session pivot for its frame)."""
+        th = -math.radians(self.cfg.plate_yaw_deg)
+        pd, zc = self.cfg.plate_distance, self.cfg.zone_center_y
+        p = torch.tensor([math.cos(th) * pd - math.sin(th) * zc, math.sin(th) * pd + math.cos(th) * zc, self.field_z],
+                         device=self.device)
+        return self.scene.env_origins + p
 
     def _rk4(self, p, v, w, dt):
         c = self._aero_c
