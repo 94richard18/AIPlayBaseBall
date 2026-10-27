@@ -43,6 +43,41 @@ def first_bounce(ball, fld: FieldSpec, fs: FieldingSpec, grass: GrassSpec, phys:
     return end, (land[1], land[2])
 
 
+def is_hit_by_pitch(plate_y: float, plate_z: float) -> bool:
+    return BODY_Y_M[0] <= plate_y <= BODY_Y_M[1] and BODY_Z_M[0] <= plate_z <= BODY_Z_M[1]
+
+
+def judge_pitch(balls: int, strikes: int, p, kind: str, ball, zone: StrikeZone, fld: FieldSpec, fs: FieldingSpec,
+                grass: GrassSpec, phys: PhysicsSpec):
+    """One pitch under the ONE OUTS rules (the hit-by-pitch check comes first, see is_hit_by_pitch): kind "take" /
+    "miss" / "contact" (ball = the BattedBall). Returns (balls, strikes, OneOutsResult fields (winner, how) or None,
+    extra log fields). The match video calls it with the Isaac batter's outcome."""
+    ev = {}
+    if kind == "take":
+        if zone.contains(p.plate_y, p.plate_z):  # hits the painted box on the wall
+            strikes += 1
+        else:
+            balls += 1
+    elif kind == "miss":
+        strikes += 1
+    else:
+        end, land = first_bounce(ball, fld, fs, grass, phys)
+        ev = dict(land=land, ball=ball, end=end)
+        if end in ("home_run", "wall"):
+            return balls, strikes, ("batter", "home_run" if end == "home_run" else "outfield_hit"), ev
+        x, y = land
+        if not fld.is_fair(x, y):
+            return balls, min(strikes + 1, 2), None, ev  # foul: a strike, never the third
+        if math.hypot(x - MOUND_DIST, y) <= INFIELD_RADIUS_M or math.hypot(x, y) <= MOUND_DIST:
+            return balls, strikes, ("pitcher", "infield_ball"), ev
+        return balls, strikes, ("batter", "outfield_hit"), ev
+    if balls >= 4:
+        return balls, strikes, ("batter", "walk"), ev
+    if strikes >= 3:
+        return balls, strikes, ("pitcher", "strikeout"), ev
+    return balls, strikes, None, ev
+
+
 def play_one_outs(pitcher: PitcherAgent, batter: BatterAgent, rng: random.Random, zone: StrikeZone | None = None,
                   fld: FieldSpec | None = None) -> OneOutsResult:
     zone, fld = zone or StrikeZone(), fld or FieldSpec()
@@ -53,32 +88,13 @@ def play_one_outs(pitcher: PitcherAgent, batter: BatterAgent, rng: random.Random
     while True:
         state.balls, state.strikes = balls, strikes
         p = pitcher.pitch(state, rng)
-        if BODY_Y_M[0] <= p.plate_y <= BODY_Y_M[1] and BODY_Z_M[0] <= p.plate_z <= BODY_Z_M[1]:
+        if is_hit_by_pitch(p.plate_y, p.plate_z):
             log.append(dict(balls=balls, strikes=strikes, pitch=p, swing="hit_by_pitch"))
             return OneOutsResult("batter", "hit_by_pitch", log)
         sw = batter.swing(state, p, zone, rng)
         ev = dict(balls=balls, strikes=strikes, pitch=p, swing=sw.kind)
         log.append(ev)
-        if sw.kind == "take":
-            if zone.contains(p.plate_y, p.plate_z):  # hits the painted box on the wall
-                strikes += 1
-            else:
-                balls += 1
-        elif sw.kind == "miss":
-            strikes += 1
-        else:
-            end, land = first_bounce(sw.ball, fld, fs, grass, phys)
-            ev["land"], ev["ball"], ev["end"] = land, sw.ball, end
-            if end in ("home_run", "wall"):
-                return OneOutsResult("batter", "home_run" if end == "home_run" else "outfield_hit", log)
-            x, y = land
-            if not fld.is_fair(x, y):
-                strikes = min(strikes + 1, 2)  # foul: a strike, never the third
-                continue
-            if math.hypot(x - MOUND_DIST, y) <= INFIELD_RADIUS_M or math.hypot(x, y) <= MOUND_DIST:
-                return OneOutsResult("pitcher", "infield_ball", log)
-            return OneOutsResult("batter", "outfield_hit", log)
-        if balls >= 4:
-            return OneOutsResult("batter", "walk", log)
-        if strikes >= 3:
-            return OneOutsResult("pitcher", "strikeout", log)
+        balls, strikes, res, extra = judge_pitch(balls, strikes, p, sw.kind, sw.ball, zone, fld, fs, grass, phys)
+        ev.update(extra)
+        if res is not None:
+            return OneOutsResult(*res, log)
