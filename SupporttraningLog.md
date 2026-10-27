@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-28 06:35：聯合場景的打者 shim 初版寫好（CPU，尚未在 GPU 上跑）；座標改由打者這邊旋轉 162°**（`aibaseball/tasks/one_outs/batter_side.py`，1fca746 / a4a4370 / 5fc1137；測試 59f3e79）
+> - **座標**：投手的世界座標固定（投手丘沿 +x、本壘方向 yaw −18°），20 沒辦法便宜地改，決定 session 14 核可在打者這邊加一層固定的 Rz(162°) 代理：`RotatedArticulation` 包住 env.batter，讀 robot.data 時把世界座標的位置 / 四元數 / 速度轉到打者座標，寫 root 狀態時轉回去，沒有對應的 *_w 欄位直接報錯。支點 = 20 的 `plate_front_w()`（判定用的本壘平面、地面高度），也就是打者 tee_x 所在的平面（build_library_from_release 的 plate_distance），不需要偏移；每個 clip 的 env_origins = (−tee_x, zone_center_y − tee_y, 0)，zone_center_y = 0。
+> - **CPU 檢查**：隨機姿態、支點 20 m，root 座標下的相對位置誤差 6e-6 m、body 座標速度 7e-7、寫入來回 9e-6 m / 6e-7 rad、yaw 162.00°。觀測 152 維全部是 root 座標下的差值或本身就不隨旋轉改變的量（清單已給 14）。
+> - **時序**：打者的 episode 延後開始，讓預測的出手時間（P3c 表中飛行時間中位數那一列）剛好落在投手的 release_t_pred；開始前用 PD 停在 clip 第 0 格。交接時把實際出手狀態轉到打者座標，當作「現在出手」，進壘點和飛行時間用 fly_to_x 算。每個 env 固定一個 clip（mimic_env 加了 `fixed_clip`，原本的亂數抽法不變，所以訓練 / 評估結果不受影響）。交接之後 PhysX 球停在地下，只用標記顯示（14 核可的 park）。
+> - **M1.5 等 GPU**：`scripts/test_batter_rotation.py`（`logs/run_rot.sh`）：原生 env 跑兩次未旋轉（量 PhysX 本身的雜訊）+ 一次旋轉 162°，比較每一步的觀測 / 動作，以及每個 env 是否擊中、初速、飛行距離。GPU 順序：投手影片（到約 09:50）→ B 版 → F1 → 20 的 C1 → 旋轉測試。
+
 > **打者 10-28 07:xx：使用者改了交付規格（投手、打者同一個畫面）→ 走聯合模擬（Route 2）；打者這邊的設計已核可**（決定 session 14；21d1a36）
 > - **分工**：20 負責 joint env（場景、投手、球、幾何、鏡頭）；我負責打者接進去：shim 式的 BatterSide，原本 TeeBattingEnv → MimicEnv → PitchedBattingEnv 的方法完全不改（robot 指向場景裡的 "batter"、env_origins = 本壘座標 + 每個 clip 的平移 (tee_x, tee_y, 0)），只換掉 _reset_idx 選球的部分。policy + normalizer 直接從 model_12500.pt 載入（rsl_rl 的類別），AIB_EFFORT_SCALE 1.5。
 > - **球**：出手前是投手的 PhysX 球；出手時 20 交接 (pos, vel, omega)，之後由打者的 RK4 drag + Magnus + 掃掠碰撞判定負責，PhysX 球不能和打者碰撞（避免重複計算擊球）。
