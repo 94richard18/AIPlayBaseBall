@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 06:3x 使用者新規格：最終影片投手與打者要在同一個畫面，而且選「真正同場模擬」**（不是分開拍再剪，也不是回放合成）。= 一個 Isaac 場景同時有投手（彈性 / SEA cfg）、打者（make_aib1_cfg human_strength、implicit PD、AIB_EFFORT_SCALE 1.5）和同一顆實體球（ball_aero_sim=True），兩個策略即時互動；打者的感知模型（偏差 / 雜訊 / 延遲）與揮棒起點 oracle 改吃真球的狀態。目前分開拍的 match_full2 B 版只當節奏 / 計數卡草稿，A 版取消。回放合成（兩邊各自的實際回合在同一場景裡 kinematic 回放）是 11-15 前同場模擬做不出來時的備案。分工：20 負責同場環境（場景、投手、球、終止條件、相機），15 負責打者整合（obs / 感知 / oracle / judge_pitch 計數）。里程碑（草案，等兩邊估工後定案）：M1 11-01 雙機器人場景載入、投手投球到本壘、env k 的球與門檻列相同；M2 11-08 打者即時揮 / 不揮，擊球結果分布與引擎相近（好球帶擊中約 0.46、跌倒約 43%）；M3 11-12 同場比賽影片草稿；11-15 備案決定點；11-26 交付。程式開發在 CPU，GPU 只給驗證。
+
 **10-28 06:1x 前測通過、50 球重拍開跑（05:36 起，logs/film_match_full2.sh，每球一個行程約 5 分鐘，約 09:50 結束）**：eval_stage 新旗標 --video_env k / --film_first（e31d77d）= 在 64 env 的門檻 sim 裡拍 env k 的載入後第一回合，其他 env 隱藏。k = 0、1、2 三個行程拍到的出手列與 64 env 評估的 env 0/1/2 列到最後一位都相同（17.788 / 0.150 / 0.689 T4；18.026 / −0.102 / 1.024 T4；17.292 / −0.052 / 0.014 T1）→ 渲染不改物理、球的變化就是門檻的分布。輸出 `videos/match_full2_p3c_k00..k49.mp4`（229 幀、0% 白畫面、High / yuv420p）+ `match_full2_p3c_release.csv`（k 序）；依評估列預期 T4 25 / T3 20 / T2 1 / T1 4、出手後跌倒 10。舊的 match_full / match_test 檔保留。拍完 → 15 渲染 B → A。投手 12 小時影片由此涵蓋（下次從拍完起算）。
 
 **10-28 06:0x 15 的多片段輸入完成（已 commit）**：--pitcher_video "<glob>" + --pitcher_episodes 0，自然排序、檢查每段幀數相同與段數 = 出手列數，不需 concat、不重新編碼。啟動：`NOWAIT=1 VARIANTS=B N=0 PV=<glob> PR=<csv> bash logs/run_match_full.sh`，再 VARIANTS=A。已請 20 依回合順序命名、CSV 同序。
