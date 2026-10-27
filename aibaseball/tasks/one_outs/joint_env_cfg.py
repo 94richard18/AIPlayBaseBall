@@ -40,7 +40,7 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     # after the hand-off: "mirror" = the integrated state written into the PhysX ball every physics step (one body for the
     # camera and the judge); "park" = the PhysX ball parked under the field once, a marker shows the flight (C1 compares
     # the batter's pelvis / foot height in both)
-    ball_after_handoff: str = "mirror"
+    ball_after_handoff: str = "park"  # planning 10-28: park (nothing functional reads the body after the release)
     # integrated flight ends (the PhysX ball takes over again) on the ground or this far behind the plate
     flight_end_behind_plate_m: float = 3.0
 
