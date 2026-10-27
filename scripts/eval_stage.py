@@ -39,6 +39,9 @@ parser.add_argument("--rerun_csv", type=str, default=None,
                     help="after the eval: --rerun_rounds more rollouts of every env (reset, no video), one --release_csv row per "
                          "env and round (film vs eval check 2026-10-28: is the first rollout after the load special?)")
 parser.add_argument("--rerun_rounds", type=int, default=1)
+parser.add_argument("--state_dump", type=str, default=None,
+                    help="save env 0's full state (every per-env tensor of the env, robot / ball data, actuators, the obs) "
+                         "after the eval's reset and each --rerun_csv reset, and 1 / 40 steps later (.pt)")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
@@ -156,6 +159,7 @@ def main():
     replay = torch.load(args.arm_replay, map_location=base.device) if args.arm_replay else None
     with torch.inference_mode():
         obs, _ = w.reset()
+        dump_state(base, obs, "eval_0")
         for k in range(T):
             act = pol(obs)
             if args.zero:
@@ -190,6 +194,8 @@ def main():
                 t0_state = (base._com()[1][:, :2].norm(dim=-1).cpu().numpy(), base.robot.data.root_ang_vel_w[:, 2].cpu().numpy(),
                             (fz[:, 0] / fz.sum(-1).clamp_min(1e-6)).cpu().numpy(), float(base._ref_time().max()))
             obs, _, _, _ = w.step(act)
+            if k in (0, 39):
+                dump_state(base, obs, f"eval_{k + 1}")
             f = base.fallen.cpu().numpy()
             if args.trace and (k % 40 == 0 or abs(float(base._ref_time()[0])) < 0.026):
                 dd = base.robot.data
@@ -480,12 +486,42 @@ def main():
         film(w, base, (lambda x: torch.zeros(x.shape[0], cfg.action_space, device=x.device)) if args.zero else pol, T)
 
 
+_dumps = {}
+
+
+def dump_state(base, obs, tag):
+    """--state_dump: env 0's state under tag (written after every call, so a crash keeps what was collected)."""
+    if not args.state_dump:
+        return
+    n, out = base.num_envs, {"obs": obs[0].detach().cpu().clone()}
+
+    def take(prefix, o):
+        for k, v in list(vars(o).items()):
+            if torch.is_tensor(v) and v.dim() >= 1 and v.shape[0] == n:
+                out[prefix + k] = v[0].detach().cpu().clone()
+            elif isinstance(v, (int, float, bool)) and not isinstance(v, bool) or isinstance(v, float):
+                out[prefix + k] = v
+    take("env.", base)
+    for name in ("robot", "ball"):
+        a = getattr(base, name)
+        for k in ("joint_pos", "joint_vel", "joint_pos_target", "joint_vel_target", "joint_effort_target", "root_state_w",
+                  "body_link_pos_w", "body_link_vel_w", "applied_torque", "computed_torque"):
+            if hasattr(a.data, k):
+                v = getattr(a.data, k)
+                out[f"{name}.{k}"] = v[0].detach().cpu().clone()
+    for i, a in enumerate(base.robot.actuators.values()):
+        take(f"act{i}.", a)
+    _dumps[tag] = out
+    torch.save(_dumps, args.state_dump)
+
+
 def rerun_rows(w, base, pol, T):
     """--rerun_csv: the film's rollout loop without the camera, every env recorded (rows in env order per round)."""
     keys = ("rel_pos", "rel_vel", "rel_omega", "rel_ref_t")
     for e in range(args.rerun_rounds):
         with torch.inference_mode():
             obs, _ = w.reset()
+        dump_state(base, obs, f"rerun{e}_0")
         snap = {a: getattr(base, a).clone() for a in keys}
         got = torch.zeros(base.num_envs, dtype=torch.bool, device=base.device)
         fell = torch.zeros_like(got)
@@ -493,6 +529,8 @@ def rerun_rows(w, base, pol, T):
             with torch.inference_mode():
                 obs, _, _, _ = w.step(pol(obs))
                 obs = obs.clone()
+            if k in (0, 39):
+                dump_state(base, obs, f"rerun{e}_{k + 1}")
             fell |= base.fallen
             new = base.released & ~got
             if new.any():
