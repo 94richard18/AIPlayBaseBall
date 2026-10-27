@@ -2390,3 +2390,21 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 
 - 檢查沒過：identical 播放比錄製少 8 站穩、6 T3（容許 ±3 / ±4）。64 個「相同」起點仍有 solver 雜訊，閉迴路手臂會修正，開迴路不會。
 - noisy T3 6 < 10，依規則關閉：手臂不是對噪聲敏感的部分。就算修好播放（最多補回約 6），也到不了 20。噪聲下放球還多了提早出手（p10 −5.6 ms）。
+
+## 加噪聲站穩分析與 PR 提案（10-27 08:4x，只用 CPU）
+
+- 7600 加噪聲 128：跌倒 79，跌倒時間中位數 1.98 s（出手約 1.00 s），中位數在收尾；34 個沒踏出 ≥ 0.5 m 的跨步就跌倒，可能有出手前跌倒，摘要分不出來。
+- P3c 加噪聲出手表（51 站穩）各出手特徵對站穩的 AUC：手的 y 0.17（站穩者更偏三壘側 −1.07 對 −0.85 m）、手的高度 z 0.25（站穩者較低 1.97 對 2.13 m）、球 vy 0.28、方向 0.34（站穩者偏得更多 −24° 對 −17°）、球速 0.40。噪聲先改變出手時的身體姿勢，那個姿勢就預告會不會跌；站穩的多是投偏的球，平衡和準度在這個策略裡互相拉扯。
+- 提案 PR（待規劃 session）：球離手前 30 欄全部由凍結的 7600 出，學生只在 obs 的 released = 1 且 phase ≥ release_ref + window + 30 ms 時接手。出手狀態按設計和 7600 一模一樣，只能修出手後的跌倒。
+  - 步驟 A（約 8 分）：`diag_fall_release --per_env`（42a85f5）+ `fall_noise_auc.py`，量出手前／後跌倒數、方向、各關節噪聲的 AUC；出手後跌倒 < 58 代表 PR 到不了 96。
+  - 步驟 B（≤ 20 分）：PR 訓練 60 its 後停，identical 出手時間和速度必須與 7600 相同，noisy 站穩 ≥ 45 通過、≤ 41 關閉。
+- 對 gate 的老實判斷：11-12 前達到加噪聲站穩 ≥ 96/128 不太可能（我估 ≤ 20–25%），已交給規劃 session 當規格問題。
+- 規劃 session 核可 PR（步驟 A，A 的上限夠才跑 B）。修正：gate 以交付版 P3c 判（P3C task，加噪聲站穩 53/128），所以上限規則改成出手後跌倒 ≥ 43，B 通過 ≥ 60、關閉 ≤ 56。PR 程式 88b0cbd（老師遮罩用 P3c 移過的出手時間：release_ref + window − shift + 30 ms）。
+
+## PR 步驟 A 通過 + 步驟 B 兩個 bug（10-27 09:15–，只用 CPU 診斷）
+
+- 步驟 A（P3C task，ho2 7600，noisy 128）：跌倒 69、站穩 53、128 個全部出手。出手前跌倒 0，出手後 69 ≥ 43，上限夠，B 自動開跑。跌倒時間（出手後）p10/50/90 0.73/0.88/1.98 s，集中在 0.6–1.0 s（39）；方向一壘側 44、本壘 19、後方 3、三壘側 3。噪聲關節 AUC 前幾名：r_shoulder_yaw 0.33、r_hip_roll 0.66、l_knee 0.38、waist_roll 0.60（都不強）。
+- 步驟 B（run pr_p3c，09:19 從 7600 開）兩個 bug，規劃 session 發現：
+  1. chain 等 model_7660.pt，但 rsl_rl 只在 it % save_interval == 0 時存檔，SAVE_EVERY 30 存的是 7620 / 7650 / …，7660 永遠不會出現。trainer 一路跑過 8600，沒有任何 eval。
+  2. 學生遮罩一直是空的（每次 update student share 0.000，KL 0）。原因：P3C 繼承 Stage1dF 的 release_neutral = True，StageEnv 把 obs 的球那一段（index i0..i0+10，含 released 旗標）凍結在持球時的值，所以 released 欄永遠是 0。checkpoint 的 normalizer 也證實：index 109 mean 0、std 0。這一輪只在訓練一個從來沒被用到的 actor。
+- 修正：遮罩只看 phase（ref t ≥ release_ref + window − shift + 30 ms = 1.0581 s，那時每個還在跑的 env 都已被強制出手），不再看 released；normalized 門檻約 0.04，不會落在常數欄。新 chain `logs/oo_pr2.sh`：只跑 B，SAVE_EVERY 20（7660 是 20 的倍數），第一次 update 的 student share 是 0 就停。等規劃 session 給 slot（打者的 ONE OUTS + 13:24 影片先）。pr_p3c 的 trainer 由規劃 session 跟使用者決定怎麼處理，我沒動。
