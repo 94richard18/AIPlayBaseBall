@@ -425,6 +425,14 @@ def main():
             v_a, re_a = v_a.numpy(), re_a.numpy() & rel
             ya, za = cr_a[:, 1].numpy() - cfg.zone_center_y, cr_a[:, 2].numpy() - base.field_z
             fast = re_a & (v_a >= 80.0 / 3.6)
+            if hasattr(base, "j_cross"):  # joint scene (C2): the hand-off flight vs simulate_to_plane from the release state
+                jc = base.j_cross.cpu().numpy()
+                ok_ = re_a & ~np.isnan(jc[:, 0])
+                if ok_.any():
+                    say(f"  joint flight check ({int(ok_.sum())} crossed): |dy| median {np.median(np.abs(jc[ok_, 0] - ya[ok_])):.4f} / max "
+                        f"{np.abs(jc[ok_, 0] - ya[ok_]).max():.4f} m, |dz| median {np.median(np.abs(jc[ok_, 1] - za[ok_])):.4f} / max "
+                        f"{np.abs(jc[ok_, 1] - za[ok_]).max():.4f} m; batter root moved max "
+                        f"{float((base.batter.data.root_pos_w - base.scene.env_origins - base.batter.data.default_root_state[:, :3]).norm(dim=-1).max()):.3f} m")
             if getattr(cfg, "ball_aero_sim", False) and (cr & re_a).any():  # the sim's own drag flight vs simulate_to_plane
                 both = cr & re_a
                 say(f"  ball_aero_sim check ({int(both.sum())} balls that crossed): sim - simulate_to_plane at the plate, |dy| "
