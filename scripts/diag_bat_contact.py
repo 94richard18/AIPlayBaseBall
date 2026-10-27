@@ -186,7 +186,9 @@ def main():
             rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.chain_log:
         nj = len(pj)
-        chain = {k: torch.full((n, nj), float("nan"), device=dev) for k in ("cc", "qd", "qdr")}
+        chain = {k: torch.full((n, nj), float("nan"), device=dev) for k in ("cc", "qd", "qdr", "q", "qr")}
+        # contact geometry (world frame, m): robot / reference sweet spot and the ball minus the pelvis, pelvis drift from the reference
+        pose = {k: torch.full((n, 3), float("nan"), device=dev) for k in ("ss_rel", "ss_rel_ref", "ball_rel", "root_drift")}
         chain_chk = {k: torch.full((n,), float("nan"), device=dev) for k in ("v", "joints", "res_link", "res_com")}
         pw_pos, pw_neg = torch.zeros(nj, device=dev), torch.zeros(nj, device=dev)
     if args.contact_log:
@@ -284,8 +286,13 @@ def main():
                 res_com = (vb_c + (cc_c * qd_all.unsqueeze(1)).sum(-1) - v_ss).norm(dim=-1)
             else:
                 res_link = res_com = torch.zeros_like(sp)
-            qdr_now = base._ref(base.ref_t)["joint_vel"] * (base.rate / base.speed).unsqueeze(-1)
-            ch_pre = dict(cc=cc_now, qd=qd_all.clone(), qdr=qdr_now, v=sp, joints=cc_now.sum(-1), res_link=res_link, res_com=res_com)
+            rr = base._ref(base.ref_t)
+            qdr_now = rr["joint_vel"] * (base.rate / base.speed).unsqueeze(-1)
+            ch_pre = dict(cc=cc_now, qd=qd_all.clone(), qdr=qdr_now, q=d.joint_pos[:, pj].clone(), qr=rr["joint_pos"],
+                          v=sp, joints=cc_now.sum(-1), res_link=res_link, res_com=res_com)
+            rp = d.root_link_pos_w
+            pose_pre = dict(ss_rel=p_ss - rp, ss_rel_ref=base._sweet_spot_of(rr["key_pos"]) - rr["root_pos"],
+                            ball_rel=ball - rp, root_drift=rp - rr["root_pos"])
         orig_apply()
         if args.phase_log:
             nh2 = base.hit & ~was_hit & ~finished
@@ -303,6 +310,8 @@ def main():
                     chain[k].copy_(torch.where(nh2.unsqueeze(-1), ch_pre[k], chain[k]))
                 for k in chain_chk:
                     chain_chk[k].copy_(torch.where(nh2, ch_pre[k], chain_chk[k]))
+                for k in pose:
+                    pose[k].copy_(torch.where(nh2.unsqueeze(-1), pose_pre[k], pose[k]))
         if args.contact_log:
             nh = base.hit & ~was_hit & ~finished
             # angle between the sweet spot's velocity and the reversed pitch direction (0 = swinging straight back up the pitch)
@@ -515,6 +524,15 @@ def main():
                                 contrib_top={nm: cmed[nm] for nm in top},
                                 contrib_groups={g: med(cc[:, ids].sum(1)) for g, ids in groups.items()},
                                 qd_vs_ref=qrat, down_power=power)
+        qa, qra = chain["q"].cpu().numpy()[hm], chain["qr"].cpu().numpy()[hm]
+        pq = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [10, 50, 90])] if np.isfinite(v).any() else None
+        out["chain_log"]["pose_q"] = {nm: dict(q=pq(qa[:, pnames.index(nm)]), q_ref=pq(qra[:, pnames.index(nm)]),
+                                               diff=pq(qa[:, pnames.index(nm)] - qra[:, pnames.index(nm)]))
+                                      for nm in ("l_elbow", "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "r_elbow",
+                                                 "waist_yaw", "l_wrist_yaw", "l_wrist_pitch")}
+        po = {k: v.cpu().numpy()[hm] for k, v in pose.items()}
+        po["ss_minus_ref"] = po["ss_rel"] - po["ss_rel_ref"]
+        out["chain_log"]["pose_rel_xyz"] = {k: [pq(v[:, a]) for a in range(3)] for k, v in po.items()}
         for k, v in out["chain_log"].items():
             print(f"[bat] chain_log {k}: " + json.dumps(v), flush=True)
     if args.contact_log:
