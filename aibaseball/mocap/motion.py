@@ -121,11 +121,56 @@ class MotionRef:
                     key_pos=lerp(self.key_pos))
 
 
+def settle_tail(c, tail_s: float, tau: float, limits: dict, joint_tau: float = 0.08, max_exc: float = 0.6) -> dict:
+    """Frames to append after a clip's last frame: root velocities decay to zero (exp, time constant tau), joint
+    velocities (last-frame finite difference; the arms still move at 5-12 rad/s there) with joint_tau, and the positions
+    follow by integration, so the reference glides to a stop instead of freezing mid-rotation. Joint positions stay
+    within max_exc of the last frame and inside their limits (velocity zeroed there); key points move rigidly with the root."""
+    dt = float(c["time"][1] - c["time"][0])
+    n = int(round(tail_s / dt))
+    k = np.arange(1, n + 1)[:, None] * dt
+    decay = np.exp(-k / tau)
+    names = [str(x) for x in c["joint_names"]]
+    q_end = c["joint_pos"][-1]
+    lo = np.maximum([limits.get(nm, (-np.inf, np.inf))[0] for nm in names], q_end - max_exc)
+    hi = np.minimum([limits.get(nm, (-np.inf, np.inf))[1] for nm in names], q_end + max_exc)
+    qd = (c["joint_pos"][-1] - c["joint_pos"][-2]) / dt * np.exp(-k / joint_tau)
+    q = np.clip(c["joint_pos"][-1] + np.cumsum(qd * dt, 0), lo, hi)
+    qd = np.where((q <= lo) | (q >= hi), 0.0, qd)
+    v = c["root_lin_vel"][-1] * decay
+    w = c["root_ang_vel"][-1] * decay
+    p = c["root_pos"][-1] + np.cumsum(v * dt, 0)
+    R0 = Rotation.from_quat(np.roll(c["root_quat"][-1], -1))  # wxyz -> xyzw
+    Rs, R = [], R0
+    for k in range(n):
+        R = Rotation.from_rotvec(w[k] * dt) * R  # world-frame angular velocity
+        Rs.append(R)
+    quat = np.stack([np.roll(r.as_quat(), 1) for r in Rs])
+    key_rel = c["key_pos"][-1] - c["root_pos"][-1]
+    key = np.stack([(r * R0.inv()).apply(key_rel) + p[k] for k, r in enumerate(Rs)])
+    stats = dict(root_disp_m=float(np.linalg.norm(p[-1] - c["root_pos"][-1])),
+                 root_turn_rad=float((Rs[-1] * R0.inv()).magnitude()),
+                 joint_exc_rad=float(np.abs(q[-1] - c["joint_pos"][-1]).max()),
+                 joint_exc_name=names[int(np.abs(q[-1] - c["joint_pos"][-1]).argmax())])
+    t = c["time"][-1] + np.arange(1, n + 1) * dt
+    return dict(time=t, joint_pos=q, joint_vel=qd, root_pos=p, root_quat=quat, root_lin_vel=v, root_ang_vel=w,
+                key_pos=key, stats=stats)
+
+
 class MotionLib:
     """Several reference clips (same joint set), sampled per environment: sample(t, clip_ids)."""
 
-    def __init__(self, paths: list[str], device):
-        clips = [np.load(p) for p in paths]
+    def __init__(self, paths: list[str], device, settle_tail_s: float = 0.0, settle_tau: float = 0.15):
+        clips = [dict(np.load(p)) for p in paths]
+        self.tail_stats = []
+        if settle_tail_s > 0:  # extend each clip with a decelerating tail (duration / contact time stay the clip's own)
+            limits = {j.name: (j.lower, j.upper) for j in build_humanoid(with_bat=False).actuated}
+            for c in clips:
+                tail = settle_tail(c, settle_tail_s, settle_tau, limits)
+                self.tail_stats.append(tail.pop("stats"))
+                c["_end_time"] = c["time"][-1]
+                for k, v in tail.items():
+                    c[k] = np.concatenate([c[k], v.astype(c[k].dtype)], 0)
         self.names = [str(c["source"]) for c in clips]
         self.joint_names = [str(n) for n in clips[0]["joint_names"]]
         for c in clips:
@@ -149,7 +194,8 @@ class MotionLib:
         self.key_pos = stack("key_pos")
         f = lambda v: torch.tensor(v, dtype=torch.float32, device=device)  # noqa: E731
         self.n_frames = torch.tensor(n_frames, device=device)
-        self.duration = f([float(c["time"][-1]) for c in clips])
+        # the clip's own end (phase input, ref_end); a settle tail is sampled past it but does not change it
+        self.duration = f([float(c.get("_end_time", c["time"][-1])) for c in clips])
         self.contact_time = f([float(c["contact_time"]) for c in clips])
         self.tee_pos = torch.stack([f(c["tee_pos"]) for c in clips])
 

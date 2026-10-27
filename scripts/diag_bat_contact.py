@@ -58,6 +58,7 @@ parser.add_argument("--release_top_hand", action="store_true",
 parser.add_argument("--action_clip", type=float, default=None, help="override cfg.action_clip (zero-shot: limit the policy's residual)")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
+parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.phase_log = args.phase_log or args.chain_log
@@ -128,6 +129,8 @@ def main():
         cfg.seed = args.seed
     cfg.clamp_ref_phase = args.clamp_ref_phase
     cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
+    if args.settle_tail is not None:
+        cfg.settle_tail_s = args.settle_tail
     if args.release_top_hand:
         from pxr import Usd, UsdPhysics  # noqa: E402
 
@@ -214,6 +217,8 @@ def main():
             return dict(com_v=vcom[:, :2].norm(dim=-1), com_foot=(com[:, :2] - feet[:, :2]).norm(dim=-1),
                         L_orb=L.norm(dim=-1) / m.sum(1).squeeze(-1), yaw_rate=d.root_ang_vel_w[:, 2].abs())
     prev = {}
+    past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
+    rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
     orig_apply = base._apply_action
 
     def hooked_apply():
@@ -260,6 +265,7 @@ def main():
         rec["sq_ax"] = torch.where(sq, axis[:, 0].abs(), rec["sq_ax"])
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
+        past_end.copy_(torch.where(~finished, base.ref_t - base.ref.duration[base.clip], past_end))
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -337,6 +343,7 @@ def main():
         rec["t_hit"] = torch.where(new_hit, t_now, rec["t_hit"])
         new_fall = base.fallen & ~finished & ~rec["fell"]
         rec["t_fall"] = torch.where(new_fall, t_now, rec["t_fall"])  # time into the episode of the first fall
+        rec["fall_past_end"] = torch.where(new_fall, past_end, rec["fall_past_end"])  # < 0 in the clip, then hold / tail
         rec["fell"] |= base.fallen & ~finished
         if args.fall_state:
             bs = balance_state()
@@ -408,10 +415,19 @@ def main():
         if mf.any():  # when the falls happen: into the episode, and after contact (hits only)
             s["fall_t_s"] = np.nanpercentile(r["t_fall"][mf], [10, 25, 50, 75, 90]).round(2).tolist()
             s["fall_after_hit_s"] = np.nanpercentile((r["t_fall"] - r["t_hit"])[mf], [10, 25, 50, 75, 90]).round(2).tolist()
+            pe, tail = r["fall_past_end"][mf], base.cfg.settle_tail_s
+            s["fall_phase"] = dict(in_clip=int((pe < 0).sum()), in_tail=int(((pe >= 0) & (pe < tail)).sum()),
+                                   after_tail=int((pe >= tail).sum()), past_end_s=np.nanpercentile(pe, [10, 50, 90]).round(2).tolist())
         print(f"[bat] {name}: " + json.dumps(s), flush=True)
         return s
 
     done = finished.cpu().numpy()
+    if base.ref.tail_stats:  # what the settle tail asks for beyond the clip's last frame
+        ts = base.ref.tail_stats
+        print("[bat] settle_tail: " + json.dumps(dict(s=base.cfg.settle_tail_s, tau=base.cfg.settle_tau,
+              root_disp_max_m=round(max(x["root_disp_m"] for x in ts), 3), root_turn_max_rad=round(max(x["root_turn_rad"] for x in ts), 3),
+              joint_exc_max_rad=round(max(x["joint_exc_rad"] for x in ts), 3),
+              joint_exc_by_clip=[(x["joint_exc_name"], round(x["joint_exc_rad"], 2)) for x in ts])), flush=True)
     out = dict(checkpoint=args.checkpoint, sweet_spot_x=ss, pitches=int(done.sum()), hit_rate=float(r["hit"][done].mean()))
     print(f"[bat] pitches {out['pitches']}  hit rate {out['hit_rate']:.3f}  (quartiles 25/50/75)", flush=True)
     out["hits"] = summary("hits", done & r["hit"])

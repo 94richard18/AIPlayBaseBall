@@ -29,7 +29,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         super().__init__(cfg, render_mode, **kwargs)
         dev = self.device
         # a library of retargeted swings; each environment uses one clip per episode
-        self.ref = MotionLib(list(cfg.motion_files) or [cfg.motion_file], dev)
+        self.ref = MotionLib(list(cfg.motion_files) or [cfg.motion_file], dev, settle_tail_s=cfg.settle_tail_s,
+                             settle_tau=cfg.settle_tau)
         self.clip = torch.zeros(self.num_envs, dtype=torch.long, device=dev)
         # reference joint order -> policy (body joint) order
         name_to_ref = {n: i for i, n in enumerate(self.ref.joint_names)}

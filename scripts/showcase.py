@@ -38,6 +38,7 @@ parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
 parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
+parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -272,6 +273,8 @@ def run_eval(ckpt: str):
             cfg.pitch_release_csv = args.release_csv
         cfg.clamp_ref_phase = args.clamp_ref_phase
         cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
+        if args.settle_tail is not None:
+            cfg.settle_tail_s = args.settle_tail
         if args.post_ref_blend is not None:
             cfg.post_ref_blend_s = args.post_ref_blend
         if args.post_ref_pose:
@@ -341,6 +344,8 @@ def run_pitched_video(ckpt: str):
         cfg.pitch_release_csv = args.release_csv
     cfg.clamp_ref_phase = args.clamp_ref_phase
     cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
+    if args.settle_tail is not None:
+        cfg.settle_tail_s = args.settle_tail
     if args.post_ref_blend is not None:
         cfg.post_ref_blend_s = args.post_ref_blend
     if args.post_ref_pose:
