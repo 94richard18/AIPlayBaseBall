@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 06:1x 前測通過、50 球重拍開跑（05:36 起，logs/film_match_full2.sh，每球一個行程約 5 分鐘，約 09:50 結束）**：eval_stage 新旗標 --video_env k / --film_first（e31d77d）= 在 64 env 的門檻 sim 裡拍 env k 的載入後第一回合，其他 env 隱藏。k = 0、1、2 三個行程拍到的出手列與 64 env 評估的 env 0/1/2 列到最後一位都相同（17.788 / 0.150 / 0.689 T4；18.026 / −0.102 / 1.024 T4；17.292 / −0.052 / 0.014 T1）→ 渲染不改物理、球的變化就是門檻的分布。輸出 `videos/match_full2_p3c_k00..k49.mp4`（229 幀、0% 白畫面、High / yuv420p）+ `match_full2_p3c_release.csv`（k 序）；依評估列預期 T4 25 / T3 20 / T2 1 / T1 4、出手後跌倒 10。舊的 match_full / match_test 檔保留。拍完 → 15 渲染 B → A。投手 12 小時影片由此涵蓋（下次從拍完起算）。
+
+**10-28 06:0x 15 的多片段輸入完成（已 commit）**：--pitcher_video "<glob>" + --pitcher_episodes 0，自然排序、檢查每段幀數相同與段數 = 出手列數，不需 concat、不重新編碼。啟動：`NOWAIT=1 VARIANTS=B N=0 PV=<glob> PR=<csv> bash logs/run_match_full.sh`，再 VARIANTS=A。已請 20 依回合順序命名、CSV 同序。
+
 **10-28 05:4x 修正驗證沒過 → 決定每球獨立行程、64 env、相機跟 env k**：12d155e 後 64 env：評估輪不變（y 0.052、32/25/2/5、站穩 51）、rerun 0 y 0.085（31/16/10/7）、rerun 1 y 0.258（18/25/17/4）——比修前（0.206 / 0.358）好，仍漂。dump：評估 vs rerun0 逐位元相同；評估 vs rerun1 reset 時所有 tensor、機器人 / 球 / 致動器都相同，但一步之後球速差 3.7 m/s、關節速度差 1.46 rad/s → 相同輸入狀態 PhysX 給不同結果，PhysX 內部（最可能是球與手指的接觸 / warm-start 快取；reset 時球從 18 m 外瞬移回握把）撐過了 reset。20 提三案：(1) 每球全新行程（= 門檻的載入後第一回合，+30 s/球）、(2) 保留 12d155e + (1)、(3) 再試 PhysX 端 reset（不做）。我選 (2) 並加一條：兩次單 env 拍攝前 12 球逐位元相同，表示全新單 env 行程 + 相同起始很可能 50 球都一樣，門檻的分散來自 64 env 同一個 sim；所以每球 = 一個全新行程跑門檻設定（64 env、相同起始、載入後第一回合），相機放在 env k（k = 0..49），出手列取 env k。前測（約 15 分鐘）：k = 0、1、2 三個行程，與一次 64 env 不錄影評估的逐 env 列比對，三球要等於評估的 env 0/1/2（至少彼此不同、落在評估分布內）。相機無法便宜地指定 env 就先回報成本；退路是純 (2)，但要先證明兩個全新單 env 行程的球不同。輸出 50 個單球 mp4（同幀數、同版面）+ 一份出手 CSV，15 用 ffmpeg concat 無損接起來。預估 50 球約 4 小時 → B → A。
 
 **10-28 05:2x 打者端沒有 reset 踢動問題（15）**：打者機器人全部用 ImplicitActuatorCfg（PhysX PD，沒有致動器狀態），有狀態的 SEA 模型只在投手的彈性 cfg（aib1_cfg.py:149+）；env.reset() 只寫目標不 step 物理，step() 前 _apply_action 一定先寫新目標，所以沒有東西帶過去。diag1024 與 showcase 表格只在開頭 reset 一次（同訓練）；showcase 揮棒影片與 match_video 打者片段每揮一次 reset 一次，但無害。佐證：Human21 smoke diag 完全重現 12500。打者數字都不用重量。15 待命：20 重拍後跑 run_match_full.sh B → A。
