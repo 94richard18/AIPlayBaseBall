@@ -432,7 +432,9 @@ def main():
                     say(f"  joint flight check ({int(ok_.sum())} crossed): |dy| median {np.median(np.abs(jc[ok_, 0] - ya[ok_])):.4f} / max "
                         f"{np.abs(jc[ok_, 0] - ya[ok_]).max():.4f} m, |dz| median {np.median(np.abs(jc[ok_, 1] - za[ok_])):.4f} / max "
                         f"{np.abs(jc[ok_, 1] - za[ok_]).max():.4f} m; batter root moved max "
-                        f"{float((base.batter.data.root_pos_w - base.scene.env_origins - base.batter.data.default_root_state[:, :3]).norm(dim=-1).max()):.3f} m")
+                        f"{float((base.batter.data.root_pos_w - base.scene.env_origins - base.batter.data.default_root_state[:, :3]).norm(dim=-1).max()):.3f} m, "
+                        f"batter root z min / max over the episode {float(base.j_bat_z[:, 0].min()):.3f} / {float(base.j_bat_z[:, 1].max()):.3f} m "
+                        f"(start {float(base.batter.data.default_root_state[0, 2]):.3f})")
             if getattr(cfg, "ball_aero_sim", False) and (cr & re_a).any():  # the sim's own drag flight vs simulate_to_plane
                 both = cr & re_a
                 say(f"  ball_aero_sim check ({int(both.sum())} balls that crossed): sim - simulate_to_plane at the plate, |dy| "

@@ -52,6 +52,7 @@ class JointPitchEnv(StageEnv):
         self.release_t_pred = torch.full((n,), cfg.release_t_pred_s / self.speed, device=dev)
         self.j_cross = torch.full((n, 2), float("nan"), device=dev)  # (y - zone centre, z above the field) at the plate
         self._aero_c = _aero_consts(self.phys, self.j_vel)
+        self.j_bat_z = torch.tensor([[1e9, -1e9]], device=dev).repeat(n, 1)  # batter root z min / max since the load
         self._j_k, self._ctrl = 0, False  # pitcher control steps since the load; this step is a batter control step
 
     # ------------------------------------------------------------------ batter side clocks (batter session 10-28):
@@ -115,6 +116,8 @@ class JointPitchEnv(StageEnv):
             self.batter.set_joint_position_target(self.batter.data.default_joint_pos)
             self.batter.set_joint_velocity_target(torch.zeros_like(self.batter.data.default_joint_pos))
         self._fly(self.physics_dt)
+        bz = self.batter.data.root_pos_w[:, 2]  # C1: does the ball (mirror / park) disturb the batter's footing
+        self.j_bat_z = torch.stack([torch.minimum(self.j_bat_z[:, 0], bz), torch.maximum(self.j_bat_z[:, 1], bz)], -1)
 
     def _fly(self, dt: float):
         start = self.released & ~self.j_fly & ~self.j_done
