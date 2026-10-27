@@ -2435,3 +2435,13 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 | 0.02（目前 gate） | 53 | 5 | – | 約 69 | – |
 
 - 噪聲降到 0.01，站穩也只有 64/128，離 96 很遠；一有噪聲 T3 就掉到 ≤ 11/128。差距主要來自策略本身的穩健度，不是噪聲大小。數字已交給規劃 session，由它帶給使用者決定；決定之前不做新的投手設計。
+
+## 交付版定案：P3c（10-27 18:4x，使用者決定）
+
+- 使用者取消加噪聲起點 gate，投手 gate 只看 identical 起點（T3 ≥ 32/64、站穩 ≥ 48/64）。**P3c 定案**：ho2 model_7600（logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt）+ task AIB-Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3C-v0（release_action_shift_s 0.0025、plate_yaw_deg 18），P 0，start_joint_noise 0.0。identical 站穩 52/64、阻力 T3 48/64、進好球帶 47/64、17.8 m/s。加噪聲的數字只報告（0.01 / 0.015 / 0.02：64 / 56 / 53 /128）。
+- 不再有投手 GPU 工作或新設計；12 小時影片照常（下次 10-28 06:14 前）。
+- 比賽用的推論路徑檢查（CPU）：
+  - 球路表：比賽和打者近期的腳本都讀 `assets/game/p3c_identical_t18_pitches.csv` / `_release.csv`（ff4471a）。這組是 TW2PL + ho2 7600 + shift 0.0025、yaw 17、identical、P 0 跑出來，再離線轉到 18° 平面。plate_yaw_deg 不改物理（碰撞的投手丘仍沿 +x，只轉看得到的模型和計分平面），所以轉換是精確的；W100 只改訓練時的 reward。和 P3c 一致。
+  - 影片：`logs/film_p3c_1027eve.sh` 用 TW2PL + `release_action_shift_s=0.0025 plate_yaw_deg=18 ball_aero_sim=True`，noise 0，P 預設 0。一致。
+  - `scripts/eval_protocol.sh`：task 是參數，傳 P3C task 就是 P3c 設定。注意：P3C task 的預設 start_joint_noise 是 0.02（繼承自 Stage1dN），所有推論路徑都必須明確 `--set start_joint_noise=0.0`。eval_protocol 的 identical 那一跑有設；兩個 noisy 跑現在只當參考。
+  - one_outs.py / render_one_outs.py / showcase.py 只讀上面的 CSV，不跑策略。
