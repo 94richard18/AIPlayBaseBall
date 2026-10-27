@@ -41,6 +41,8 @@ parser.add_argument("--arm_teacher", type=str, default=None,
                     help="checkpoint whose frozen actor drives the arm + release columns (F, 2026-10-27; aibaseball/rl/arm_teacher.py)")
 parser.add_argument("--post_release_teacher", type=str, default=None,
                     help="PR (2026-10-27): this checkpoint's frozen actor drives every column until the ball has left the hand")
+parser.add_argument("--post_clip_teacher", type=str, default=None,
+                    help="batter PC (Human21, 2026-10-27): this checkpoint's frozen actor drives every column until the clip ends")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
 # append RSL-RL cli arguments
@@ -239,6 +241,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
         pr_rows = post_release_rows(env.unwrapped, runner.obs_normalizer)
         attach_post_release_student(runner.alg, args_cli.post_release_teacher, pr_rows, agent_cfg.device)
+    if args_cli.post_clip_teacher:
+        from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
+
+        env.unwrapped._get_observations()  # sets phase_obs_index
+        pr_rows = post_clip_rows(env.unwrapped, runner.obs_normalizer)
+        attach_post_release_student(runner.alg, args_cli.post_clip_teacher, pr_rows, agent_cfg.device, runner.obs_normalizer)
     if os.environ.get("ASSIST_START") and hasattr(env.unwrapped, "assist_steps0"):
         # assist-force curriculum across cycles: decay from the iteration the assist training started
         done_it = max(0, runner.current_learning_iteration - int(os.environ["ASSIST_START"]))

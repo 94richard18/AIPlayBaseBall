@@ -296,3 +296,20 @@ class PitchedBattingHuman20EnvCfg(PitchedBattingHuman9EnvCfg):
     zero_ff_after_ref_end: bool = True
     follow_through_s: float = 2.0
     episode_length_s = 3.5
+
+
+@configclass
+class PitchedBattingHuman21EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-27 Human18-20: every post-clip reward that the swing could see traded swing strength for fewer falls
+    (or did nothing). Change (decision session, the pitcher's PR idea): train with --post_clip_teacher 12500 - the frozen
+    delivery actor drives every action column until the clip end, the student (a copy of 12500) only after it, hits and
+    misses alike - so the swing cannot change. Past the clip end: no tracking, no lost termination, Human15's fall penalty
+    kept, a standing reward of 1 x the score per step (uncapped). Human15's pitches. Run with AIB_EFFORT_SCALE 1.5."""
+
+    post_clip_balance: bool = True
+    post_clip_stand_w: float = 1.0
+    ref_hold_end: bool = True
+    clamp_ref_phase: bool = True
+    zero_ff_after_ref_end: bool = True
+    follow_through_s: float = 2.0
+    episode_length_s = 3.5

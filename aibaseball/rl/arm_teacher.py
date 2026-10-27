@@ -84,9 +84,11 @@ def post_release_rows(env, normalizer, margin_s: float = 0.03):
     return rows
 
 
-def attach_post_release_student(alg, ckpt_path: str, rows, device):
+def attach_post_release_student(alg, ckpt_path: str, rows, device, normalizer=None):
     """PR: all action columns from a frozen copy of the checkpoint's actor except on student rows (rows(obs) True), where
-    the trainable actor acts. Teacher rows have a detached mean and std: log-prob ratio 1, no gradient, KL 0."""
+    the trainable actor acts. Teacher rows have a detached mean and std: log-prob ratio 1, no gradient, KL 0.
+    normalizer (batter PC): the live observation normalizer; the teacher then sees the observation under a frozen copy of
+    it (its statistics at attach time = the checkpoint's), so the running statistics cannot move the teacher's actions."""
     ac = alg.actor_critic
     teacher = copy.deepcopy(ac.actor)
     sd = torch.load(ckpt_path, map_location=device, weights_only=False)["model_state_dict"]
@@ -97,9 +99,20 @@ def attach_post_release_student(alg, ckpt_path: str, rows, device):
     object.__setattr__(ac, "_arm_teacher", teacher)
     object.__setattr__(ac, "_pr_rows", rows)
 
+    frozen = None
+    if normalizer is not None:
+        frozen = copy.deepcopy(normalizer).eval()
+        frozen.until = 0  # never updates
+
+    def teacher_in(obs):
+        if frozen is None:
+            return obs
+        raw = obs * (normalizer._std + normalizer.eps) + normalizer._mean
+        return (raw - frozen._mean) / (frozen._std + frozen.eps)
+
     def mean_of(obs):
         with torch.no_grad():
-            t = teacher(obs)
+            t = teacher(teacher_in(obs))
         return torch.where(rows(obs), ac.actor(obs), t)
 
     def update_distribution(obs):
@@ -110,5 +123,21 @@ def attach_post_release_student(alg, ckpt_path: str, rows, device):
 
     ac.update_distribution = update_distribution
     ac.act_inference = mean_of
-    print(f"[INFO]: post-release student, teacher {ckpt_path}: student acts once ref t >= {rows.t_min:.4f} s "
-          f"(obs released index {rows.i_rel})", flush=True)
+    print(f"[INFO]: post-release / post-clip student, teacher {ckpt_path}: student acts once ref t (phase) >= {rows.t_min:.4f} "
+          f"(obs index {rows.i_rel})", flush=True)
+
+
+def post_clip_rows(env, normalizer, phase_min: float = 0.9999):
+    """Batter PC (decision session 2026-10-27, Human21): rows the student may act on - the reference clip has ended.
+
+    The reference-time input t / duration (TeeBattingMimicEnv, held at 1 past the clip with clamp_ref_phase) is read from
+    the normalized policy observation, so the same rule holds in the rollout, the PPO update and the evals. Before the
+    clip end every action column comes from the frozen teacher, so the swing cannot change."""
+    i_ph = env.phase_obs_index
+
+    def rows(obs):
+        m, s = normalizer._mean[0, i_ph], normalizer._std[0, i_ph] + normalizer.eps
+        return ((obs[:, i_ph] * s + m) >= phase_min).unsqueeze(-1)
+
+    rows.t_min, rows.i_rel = phase_min, i_ph
+    return rows

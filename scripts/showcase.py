@@ -37,6 +37,7 @@ parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
 parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
+parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
@@ -117,6 +118,12 @@ def load_policy(env, ckpt):
     agent_cfg = AGENT_CFG()
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     runner.load(ckpt)
+    if args.post_clip_teacher:  # Human21: as train.py --post_clip_teacher
+        from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
+
+        env.unwrapped._get_observations()
+        attach_post_release_student(runner.alg, args.post_clip_teacher, post_clip_rows(env.unwrapped, runner.obs_normalizer),
+                                    env.unwrapped.device, runner.obs_normalizer)
     return runner.get_inference_policy(device=env.unwrapped.device)
 
 

@@ -91,6 +91,9 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     bal_sigma_lin: float = 0.5  # m/s root speed
     bal_sigma_ang: float = 1.5  # rad/s root angular speed
     bal_sigma_foot: float = 0.03  # m, foot height above its lowest point this episode
+    # > 0 (Human21, swing frozen by a post-clip teacher): past the clip end, every episode, no tracking, no lost, the fall
+    # penalty kept, this x the standing score per step (uncapped)
+    post_clip_stand_w: float = 0.0
     settle_tail_s: float = 0.0  # > 0: after the clip, the reference decelerates to a stop over this long (no frozen pose)
     settle_tau: float = 0.15  # root-velocity decay time constant of the settle tail (s)
 

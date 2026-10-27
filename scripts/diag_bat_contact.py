@@ -40,6 +40,7 @@ parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
+parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
@@ -148,6 +149,12 @@ def main():
     agent = TeeBattingMimicPPORunnerCfg()
     runner = OnPolicyRunner(wrapped, agent.to_dict(), log_dir=None, device=agent.device)
     runner.load(args.checkpoint)
+    if args.post_clip_teacher:  # Human21: as train.py --post_clip_teacher
+        from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
+
+        env.unwrapped._get_observations()
+        attach_post_release_student(runner.alg, args.post_clip_teacher, post_clip_rows(env.unwrapped, runner.obs_normalizer),
+                                    env.unwrapped.device, runner.obs_normalizer)
     policy = runner.get_inference_policy(device=env.unwrapped.device)
     base = env.unwrapped
     n, dev, geom, r_ball = base.num_envs, base.device, base.bat_geom, base.phys.ball.radius
