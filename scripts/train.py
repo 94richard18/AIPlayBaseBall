@@ -39,6 +39,8 @@ parser.add_argument("--zero_arm_actions", action="store_true", default=False,
                     help="zero the actor's output rows of the arm joints (arms were frozen in the previous stage)")
 parser.add_argument("--arm_teacher", type=str, default=None,
                     help="checkpoint whose frozen actor drives the arm + release columns (F, 2026-10-27; aibaseball/rl/arm_teacher.py)")
+parser.add_argument("--post_release_teacher", type=str, default=None,
+                    help="PR (2026-10-27): this checkpoint's frozen actor drives every column until the ball has left the hand")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
 # append RSL-RL cli arguments
@@ -231,6 +233,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         u = env.unwrapped
         arm_mask = attach_arm_teacher(runner.alg, args_cli.arm_teacher, list(u._arm_cols) + [29 + u.cfg.release_action_col],
                                       agent_cfg.device)
+    pr_rows = None
+    if args_cli.post_release_teacher:
+        from aibaseball.rl.arm_teacher import attach_post_release_student, post_release_rows
+
+        pr_rows = post_release_rows(env.unwrapped, runner.obs_normalizer)
+        attach_post_release_student(runner.alg, args_cli.post_release_teacher, pr_rows, agent_cfg.device)
     if os.environ.get("ASSIST_START") and hasattr(env.unwrapped, "assist_steps0"):
         # assist-force curriculum across cycles: decay from the iteration the assist training started
         done_it = max(0, runner.current_learning_iteration - int(os.environ["ASSIST_START"]))
@@ -311,12 +319,19 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         out = update_kl(*a, **k)
         kl_sum, clip_n, n = 0.0, 0, 0
         kl_arm = kl_rest = 0.0  # arm teacher: the KL split into teacher columns / the rest (should be 0 / all of it)
+        pr_n = [0]
         with torch.inference_mode():
             for i in range(obs.shape[0]):  # one rollout step at a time
                 ac_kl.update_distribution(obs[i])
                 mu, sig = ac_kl.action_mean, ac_kl.action_std
                 kld = torch.log(sig / sig0[i] + 1.0e-5) + (sig0[i] ** 2 + (mu0[i] - mu) ** 2) / (2.0 * sig**2) - 0.5
                 kl = kld.sum(-1)
+                if pr_rows is not None:  # PR: KL on teacher rows (should be 0) / student rows, without the log offset
+                    kld = torch.log(sig / sig0[i]) + (sig0[i] ** 2 + (mu0[i] - mu) ** 2) / (2.0 * sig**2) - 0.5
+                    st_rows = pr_rows(obs[i])[:, 0]
+                    kl_arm += kld[~st_rows].sum().item()
+                    kl_rest += kld[st_rows].sum().item()
+                    pr_n[0] += int(st_rows.sum())
                 if arm_mask is not None:  # split without the 1e-5 log offset (it alone gave 1e-5 per held column)
                     kld = torch.log(sig / sig0[i]) + (sig0[i] ** 2 + (mu0[i] - mu) ** 2) / (2.0 * sig**2) - 0.5
                     kl_arm += kld[:, arm_mask].sum().item()
@@ -330,6 +345,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         if runner.writer is not None:
             runner.writer.add_scalar("Loss/approx_kl", kl_sum / n, kl_step[0])
             runner.writer.add_scalar("Loss/clip_fraction", clip_n / n, kl_step[0])
+        if pr_rows is not None:
+            print(f"[post-release] update {kl_step[0]}: KL teacher rows {kl_arm / n:.2e}, student rows {kl_rest / n:.2e} "
+                  f"(student share {pr_n[0] / n:.3f}), all {kl_sum / n:.2e}", flush=True)
         if arm_mask is not None:
             print(f"[arm teacher] update {kl_step[0]}: KL teacher columns {kl_arm / n:.2e}, other columns {kl_rest / n:.2e}, "
                   f"all {kl_sum / n:.2e}", flush=True)

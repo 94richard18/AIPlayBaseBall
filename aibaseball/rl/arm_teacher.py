@@ -59,3 +59,55 @@ def attach_arm_teacher(alg, ckpt_path: str, cols: list[int], device) -> torch.Te
     alg.update = update
     print(f"[INFO]: arm teacher {ckpt_path}: {int(mask.sum())} action columns from the frozen actor ({cols})", flush=True)
     return mask
+
+
+def post_release_rows(env, normalizer, margin_s: float = 0.03):
+    """PR (planning session 2026-10-27): rows (samples) the student may act on - the ball has left the hand for sure.
+
+    The released flag and the phase are read from the (normalized) policy observation, so the same rule holds in the
+    rollout, the PPO update and the eval: released and reference time >= release_ref + window - shift + margin (the
+    latest forced finger-open, plus the ~17 ms the ball still rolls off the fingers). Before that, every action column
+    comes from the frozen teacher (the deliverable's actor), so the release state cannot change."""
+    c = env.cfg
+    i_rel = 2 * len(env.body_ids) + 2 * len(env.finger_ids) + 19  # PitchEnv._get_observations: released, then phase
+    i_ph = i_rel + 1
+    t_min = float(env.release_ref) + c.release_action_window_s - c.release_action_shift_s + margin_s
+
+    def rows(obs):
+        m, s = normalizer._mean[0], normalizer._std[0] + normalizer.eps
+        rel = obs[:, i_rel] * s[i_rel] + m[i_rel]
+        ph = (obs[:, i_ph] * s[i_ph] + m[i_ph]) * c.phase_duration_s
+        return ((rel > 0.5) & (ph >= t_min)).unsqueeze(-1)
+
+    rows.t_min, rows.i_rel = t_min, i_rel
+    return rows
+
+
+def attach_post_release_student(alg, ckpt_path: str, rows, device):
+    """PR: all action columns from a frozen copy of the checkpoint's actor except on student rows (rows(obs) True), where
+    the trainable actor acts. Teacher rows have a detached mean and std: log-prob ratio 1, no gradient, KL 0."""
+    ac = alg.actor_critic
+    teacher = copy.deepcopy(ac.actor)
+    sd = torch.load(ckpt_path, map_location=device, weights_only=False)["model_state_dict"]
+    teacher.load_state_dict({k[len("actor."):]: v for k, v in sd.items() if k.startswith("actor.")})
+    teacher.eval()
+    for p in teacher.parameters():
+        p.requires_grad_(False)
+    object.__setattr__(ac, "_arm_teacher", teacher)
+    object.__setattr__(ac, "_pr_rows", rows)
+
+    def mean_of(obs):
+        with torch.no_grad():
+            t = teacher(obs)
+        return torch.where(rows(obs), ac.actor(obs), t)
+
+    def update_distribution(obs):
+        mean = mean_of(obs)
+        std = (ac.std if ac.noise_std_type == "scalar" else torch.exp(ac.log_std)).expand_as(mean)
+        std = torch.where(rows(obs), std, std.detach())
+        ac.distribution = Normal(mean, std)
+
+    ac.update_distribution = update_distribution
+    ac.act_inference = mean_of
+    print(f"[INFO]: post-release student, teacher {ckpt_path}: student acts once released and ref t >= {rows.t_min:.4f} s "
+          f"(obs released index {rows.i_rel})", flush=True)

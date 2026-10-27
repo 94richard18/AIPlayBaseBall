@@ -18,6 +18,8 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=64)
 parser.add_argument("--stochastic", action="store_true", help="sample the action noise (as in training)")
 parser.add_argument("--arm_teacher", type=str, default=None, help="checkpoint whose frozen actor drives the arm + release columns (F)")
+parser.add_argument("--post_release_teacher", type=str, default=None,
+                    help="PR: this checkpoint's frozen actor drives every column until the ball has left the hand")
 parser.add_argument("--arm_record", type=str, default=None, help="save env 0's arm + release actions per step (.pt) for --arm_replay")
 parser.add_argument("--arm_replay", type=str, default=None,
                     help="open-loop arm (planning 10-27): arm + release columns from an --arm_record file, indexed by step from the start")
@@ -116,6 +118,10 @@ def main():
         from aibaseball.rl.arm_teacher import attach_arm_teacher
 
         attach_arm_teacher(r.alg, args.arm_teacher, list(base._arm_cols) + [29 + base.cfg.release_action_col], base.device)
+    if args.post_release_teacher:
+        from aibaseball.rl.arm_teacher import attach_post_release_student, post_release_rows
+
+        attach_post_release_student(r.alg, args.post_release_teacher, post_release_rows(base, r.obs_normalizer), base.device)
     pol = r.get_inference_policy(device=base.device)
     if args.stochastic:
         pol = lambda x: r.alg.actor_critic.act(r.obs_normalizer(x))  # noqa: E731
