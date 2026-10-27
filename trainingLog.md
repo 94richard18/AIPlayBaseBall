@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 07:5x 空影片原因與修正（20，71fbde4）**：拍攝在 k24 停、GPU 交給 15 的 F1。原因：複製的 env 繼承 env_0 的 USD 設定；film() 隱藏 k 以外的所有 env（含 env_0），env k 跟著繼承「不可見」，只有 k00 拍得到。前測只對 k00 做幀檢查、precheck k01 其實也是空的。修正：在 env k 及其下所有 prim 設本地可見性 inherited，再逐 prim ComputeVisibility，任何隱藏 → 拍攝前 RuntimeError。check_video_frames 新增「機器人可見」檢查：本壘視角像素時間標準差 > 20 的比例（每 5 幀、去掉字幕）；k00 3.01%、空片段 0.01%，< 0.5% 判 EMPTY 並 exit 1。k = 1 測試（logs/film_fixcheck.sh）等 F1_END 後拍 → videos/fixcheck_p3c_k01.mp4 + 每 23 幀拼圖 videos/fixcheck_tiles/k01_tile.png；20 和我都看過才重拍 50 球。CSV k0–k23 保留。
+
+**10-28 07:4x 使用者發現重拍的影片是空的（match_full2_p3c_k21）→ 停拍**：我抽圖確認 k13、k21 兩個視角整段只有地板格線，沒有投手 / 投手丘 / 球；k00 正常。檔案大小一致指向同一件事：k00 6.7 MB、k01–k23 全部 8.2–8.5 MB → k ≥ 1 的片段全部是空的。出手列（k8、k13、k21）都和評估相同，所以是 --video_env k 的相機 / 可見性路徑拍到空地（相機沒移到 env k 的原點，或隱藏其他 env 時把 env k 也藏了），不是物理。前測的漏洞：k = 0、1、2 只比對了出手列和「0% 黑畫面」（check_video_frames 只抓全黑），沒有人看 k1 / k2 的畫面——規劃 session 應該自己抽圖看，這次漏了。處理：請 20 立刻停掉 film_match_full2.sh、修好後只拍 k = 1、把每 10 幀拼圖目視確認（兩個視角都要有機器人、投手丘、球），並在 check_video_frames 加「機器人可見」檢查；我也看過才重拍 50 球（k00 與 CSV 保留）。15 的 B / A 鏈解除（它的觸發條件會在壞片段上啟動）；F1 三項檢查提前，GPU 一空就跑。約 1.9 小時 GPU 浪費（k01–k23）。
+
 **10-28 06:47 檢查**：GPU 1 個 Isaac（50 球重拍，k14 / 50，71 分鐘 15 球 ≈ 4.7 分鐘一球 → 約 09:30 結束）。沒有 trainer、沒有閒置。12 小時影片由這次拍攝（投手）與之後的 B 渲染（打者）涵蓋。兩個 session 都在 CPU 上做同場環境。
 
 **10-28 08:3x 打者座標代理完成（1fca746，CPU 驗過）**：RotatedArticulation（batter_side.py）W = Rz(162°)·B + 每 env 樞軸；robot.data 的 *_pos_w / *_quat_w / *_vel_w / root_state_w 讀時旋轉、root 寫回時反轉，其他 *_w 欄位一律 raise 以免漏掉。152 維 obs 逐項分類：座標不變（關節、projected_gravity_b、root 體座標速度、root z、相位、動作、參考關節差、t_arrive、|v_seen|、released、tempo）；靠代理（球 − root、甜蜜點 − 球與甜蜜點速度、球棒軸、參考 root / 棒尖差，皆經 quat_rotate_inverse）。CPU 隨機姿態 20 m 樞軸：相對位置 6e-6 m、速度 7e-7、往返 9e-6 m。M1.5 精確性測試（約 10 分鐘 GPU）：原生 PitchedBattingEnv 同種子 64 env 跑兩次（純 vs 經代理旋轉 162°、球停放、tee 隱藏），比前 50 步 obs / 動作 ≤ 1e-4 與每 env 結果；另跑純 vs 純量 PhysX 的 run-to-run 雜訊。GPU 順序：B 渲染 → F1 → 20 的 C1–C3 → 精確性測試。
