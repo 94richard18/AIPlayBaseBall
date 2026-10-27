@@ -192,7 +192,7 @@ def main():
         chain_chk = {k: torch.full((n,), float("nan"), device=dev) for k in ("v", "joints", "res_link", "res_com")}
         pw_pos, pw_neg = torch.zeros(nj, device=dev), torch.zeros(nj, device=dev)
     if args.contact_log:
-        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact"):
+        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.fall_state:
         rob = base.robot
@@ -261,7 +261,7 @@ def main():
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
         if args.contact_log or args.phase_log:
-            was_hit, v_in = base.hit.clone(), base.pitch_vel.clone()
+            was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
             # sweet-spot velocity split by joint, bat state before this physics step (the one the hit test uses)
             d = rob.data
@@ -318,7 +318,9 @@ def main():
             cosang = (v_ss * -v_in).sum(-1) / (sp * v_in.norm(dim=-1)).clamp_min(1e-6)
             for k, val in (("ss_contact", sp), ("dx_contact", base.contact_x - geom.sweet_spot_x),
                            ("swing_pitch_deg", torch.rad2deg(torch.acos(cosang.clamp(-1.0, 1.0)))),
-                           ("ev_contact", base.launch_vel.norm(dim=-1))):
+                           ("ev_contact", base.launch_vel.norm(dim=-1)),
+                           # reference clock at the hit step minus the clip's contact time (+ = the reference is past contact)
+                           ("ref_phase_hit", ref_t_pre - base.ref.contact_time[base.clip])):
                 rec[k] = torch.where(nh, val, rec[k])
         rec["hit"] |= base.hit & ~finished
 
@@ -543,7 +545,7 @@ def main():
         q = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if len(v) else None
         out["contact_log"] = dict(n=int(hm.sum()), ss_contact=q(r["ss_contact"][hm]), ss_max=q(r["ss_speed_max"][hm]),
                                   dx=q(r["dx_contact"][hm]), abs_dz=q(dzh), swing_pitch_deg=q(r["swing_pitch_deg"][hm]),
-                                  ev=q(r["ev_contact"][hm]), squared_up=round(float(((dzh <= 0.02) & (dxh <= 0.05)).mean()), 3) if hm.any() else None)
+                                  ev=q(r["ev_contact"][hm]), ref_phase_hit=q(r["ref_phase_hit"][hm]), squared_up=round(float(((dzh <= 0.02) & (dxh <= 0.05)).mean()), 3) if hm.any() else None)
         print("[bat] contact_log: " + json.dumps(out["contact_log"]), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
