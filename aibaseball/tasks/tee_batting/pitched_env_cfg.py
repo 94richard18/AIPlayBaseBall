@@ -18,6 +18,9 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     observation_space = 152  # mimic obs (146 + 1 extra prev action) + perceived ball velocity 3 + released 1 + rate 1
     rsi_prob: float = 0.0  # always start in the stance; the batter waits for the pitch
     episode_length_s = 2.6
+    # joint ONE OUTS env check: the pitch crosses at its own plate height (not re-centred by the clip's contact height
+    # tee_z + tee_offset_z - pitch_table_center_z), as in one scene where the batter stands on the ground
+    real_height: bool = False
     take_hold: bool = False  # match video (play only): a take - zero actions, the reference held in the stance (frame 0)
 
     # pitches (library is built once for the final range; the curriculum samples within the current range)

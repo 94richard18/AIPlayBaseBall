@@ -216,6 +216,8 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             target[:, 2] += c.tee_offset_z
             target[:, 1] += self.lib.target[k, 1]
             target[:, 2] += self.lib.target[k, 2] - c.pitch_table_center_z
+            if c.real_height:  # the plate height itself (one scene, the batter on the ground)
+                target[:, 2] = self.scene.env_origins[env_ids, 2] + self.lib.target[k, 2]
             self.tee_pos[env_ids] = target
         else:
             i_lo = torch.searchsorted(self.lib.speed_kmh, torch.tensor([lo], device=dev)).item()

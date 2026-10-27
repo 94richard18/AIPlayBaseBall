@@ -59,6 +59,10 @@ parser.add_argument("--release_top_hand", action="store_true",
 parser.add_argument("--action_clip", type=float, default=None, help="override cfg.action_clip (zero-shot: limit the policy's residual)")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="override cfg.aim_offset_y (m, world y)")
 parser.add_argument("--zero_ff_after_ref_end", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward on the held pose")
+parser.add_argument("--physics_dt", type=float, default=None,
+                    help="joint ONE OUTS env check: physics dt (s); decimation is set so the policy keeps its 100 Hz control")
+parser.add_argument("--clips", type=str, nargs="+", default=None, help="restrict the MotionLib to these clips (e.g. obp_42-1)")
+parser.add_argument("--real_height", action="store_true", help="cfg.real_height: pitch heights not re-centred on the clip's contact")
 parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -132,6 +136,16 @@ def main():
     cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
     if args.settle_tail is not None:
         cfg.settle_tail_s = args.settle_tail
+    if args.physics_dt is not None:
+        ctrl = cfg.sim.dt * cfg.decimation
+        cfg.sim.dt, cfg.decimation = args.physics_dt, int(round(ctrl / args.physics_dt))
+        cfg.sim.render_interval = cfg.decimation
+        print(f"[diag] physics dt {cfg.sim.dt:.6f} s, decimation {cfg.decimation} (control {cfg.sim.dt * cfg.decimation:.4f} s)", flush=True)
+    if args.clips:
+        import os as _os
+        cfg.motion_files = [f for f in cfg.motion_files if _os.path.splitext(_os.path.basename(f))[0] in args.clips]
+        assert len(cfg.motion_files) == len(args.clips), f"clips not found: {args.clips}"
+    cfg.real_height = args.real_height
     if args.release_top_hand:
         from pxr import Usd, UsdPhysics  # noqa: E402
 
