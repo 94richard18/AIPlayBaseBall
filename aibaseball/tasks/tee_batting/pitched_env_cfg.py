@@ -241,6 +241,22 @@ class PitchedBattingHuman16EnvCfg(PitchedBattingHuman9EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman18EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-27 delivery 12500 at AIB_EFFORT_SCALE 1.5 vs P3c (aim 0): ONE OUTS 19.9%, falls after 43% of hits ~0.8 s
+    after the clip ends; a decelerating settle tail did not move them (43.1 vs 43.4%, same timing), so the target past
+    the clip is not the cause - training ends the episode at the clip end (ref_end) and never sees the fall. Change
+    (decision session): Human13's post-clip training (hold the last pose, reference-time input at 1, Human12's lost after
+    contact = fall, follow through 2.0 s, episode 3.5 s) on Human15's P3c-shaped pitches; Human13 ran it at 1.0x on
+    88-112 km/h and a crash cut it at 150 its. Run with AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    lost_after_hit_is_fall: bool = True
+    follow_through_s: float = 2.0
+    episode_length_s = 3.5
+    ref_hold_end: bool = True
+    clamp_ref_phase: bool = True
+
+
+@configclass
 class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     play_mode: bool = True
     pitch_ramp_steps: int = 0
