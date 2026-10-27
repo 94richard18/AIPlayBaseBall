@@ -2408,3 +2408,17 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   1. chain 等 model_7660.pt，但 rsl_rl 只在 it % save_interval == 0 時存檔，SAVE_EVERY 30 存的是 7620 / 7650 / …，7660 永遠不會出現。trainer 一路跑過 8600，沒有任何 eval。
   2. 學生遮罩一直是空的（每次 update student share 0.000，KL 0）。原因：P3C 繼承 Stage1dF 的 release_neutral = True，StageEnv 把 obs 的球那一段（index i0..i0+10，含 released 旗標）凍結在持球時的值，所以 released 欄永遠是 0。checkpoint 的 normalizer 也證實：index 109 mean 0、std 0。這一輪只在訓練一個從來沒被用到的 actor。
 - 修正：遮罩只看 phase（ref t ≥ release_ref + window − shift + 30 ms = 1.0581 s，那時每個還在跑的 env 都已被強制出手），不再看 released；normalized 門檻約 0.04，不會落在常數欄。新 chain `logs/oo_pr2.sh`：只跑 B，SAVE_EVERY 20（7660 是 20 的倍數），第一次 update 的 student share 是 0 就停。等規劃 session 給 slot（打者的 ONE OUTS + 13:24 影片先）。pr_p3c 的 trainer 由規劃 session 跟使用者決定怎麼處理，我沒動。
+
+## PR 步驟 B 重跑：關閉（10-27 17:37–18:01）
+
+- `logs/oo_pr2.sh`（3ad369c，run pr2_p3c，從 ho2 7600 訓練 60 its，trainer 單獨跑）。遮罩這次有作用：學生佔比 0.29 → 0.75，學生列 KL 7e-3 → 4e-2。老師列 KL 約 1e-5 而不是 0：std 是共用的純量，學生的梯度也會改到老師列的 std。這只影響 rollout 的取樣噪聲，評估用 mean。
+
+| 評估 | 站穩 | T3 | 進好球帶 | 放球 p10/50/90 | 球速 | 出手球速度 |
+|---|---|---|---|---|---|---|
+| 7600（P3C）identical 64 | 52 | 48 | 47 | +16.9/+18.2/+19.4 | 17.8 | (+16.8, −4.7, +3.8) |
+| 學生 7660 identical 64 | 48 | 45 | 47 | +16.9/+18.2/+19.4 | 17.8 | (+16.8, −4.7, +3.8) |
+| 學生 7660 noisy 128 | 40 | 6 | 4 | −3.1/+16.9/+21.9 | 17.6 | (+16.2, −4.8, +4.0) |
+
+- 檢查通過：identical 下出手時間、球速、出手速度和 7600 完全相同，出手前沒有漏。站穩和 T3 會變，是因為學生在出手後接手。
+- noisy 站穩 40，比 P3c 的 53 少 13，≤ 56，依規則關閉。60 its 的出手後控制沒有任何改善的跡象：噪聲下的跌倒取決於老師決定的出手狀態，出手後才修救不回來。
+- F、開迴路手臂、PR 三條路都關閉，交付版仍是 P3c。gate（noisy 站穩 ≥ 96/128）交給規劃 session，當成規格問題問使用者。
