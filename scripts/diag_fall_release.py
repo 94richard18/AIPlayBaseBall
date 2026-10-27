@@ -22,6 +22,7 @@ parser.add_argument("--task", type=str, required=True)
 parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=128)
 parser.add_argument("--set", nargs="*", default=["start_joint_noise=0.02", "start_noise_ramp_steps=0"])
+parser.add_argument("--per_env", type=str, default=None, help="save a per-env .npz (start noise, outcome, fall time / direction)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -110,6 +111,7 @@ def main():
     prev_rel = np.zeros(n, dtype=bool)
     with torch.inference_mode():
         obs, _ = w.reset()
+        q_start = rob.data.joint_pos.cpu().numpy().copy()  # the start noise per env: deviation from the cross-env mean
         for k in range(T):
             obs, _, _, _ = w.step(pol(obs))
             t = (k + 1) * dt
@@ -235,6 +237,11 @@ def main():
     np.savez(os.path.splitext(args.checkpoint)[0].replace(os.sep, "_").replace("/", "_")[-60:] + "_falldiag.npz" if False else
              "logs/falldiag_poses.npz", rest=rest, fell=fell, b_td=b_td, b_tdyaw=b_tdyaw, b_tdyawabs=b_tdyawabs,
              pel01=pel[0.1], pel025=pel[0.25], pel04=pel[0.4], leadp=leadp, bq45=bq45)
+    if args.per_env:  # per-env table for offline analysis (planning 10-27: which start-noise joints predict a fall)
+        np.savez(args.per_env, joint_names=np.array(rob.joint_names), q_noise=q_start - q_start.mean(0, keepdims=True),
+                 rest=rest, fell=fell, up=up, rel_t=rel_t, fell_t=fell_t, fall_dir=fall_dir, unload=unload,
+                 off03=at03["off"], L03=at03["L"])
+        say(f"  per-env table -> {args.per_env}")
     if rest.any():
         say(f"  at rest: back-leg joints {[base.body_names[i] for i in base.back_leg_cols]} at release + 0.45 s, median "
             f"{np.round(np.nanmedian(bq45[rest], 0), 3).tolist()}")
