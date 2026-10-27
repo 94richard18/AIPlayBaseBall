@@ -35,6 +35,10 @@ parser.add_argument("--release_csv", type=str, default=None,
 parser.add_argument("--video_release_csv", type=str, default=None,
                     help="video: one --release_csv row per FILMED episode (env 0), so a batter clip can face the exact pitch "
                          "of the pitcher clip; at_rest = not fallen in the clip, tier from the drag + Magnus plate location")
+parser.add_argument("--rerun_csv", type=str, default=None,
+                    help="after the eval: --rerun_rounds more rollouts of every env (reset, no video), one --release_csv row per "
+                         "env and round (film vs eval check 2026-10-28: is the first rollout after the load special?)")
+parser.add_argument("--rerun_rounds", type=int, default=1)
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
@@ -470,11 +474,37 @@ def main():
             f"m/s, head {np.median(head_z[up]):.2f} m, both feet down {both[up].mean() * 100:.0f}%")
     if not args.stochastic:
         say(f"[goal] {ok.sum()}/{n}")
+    if args.rerun_csv:
+        rerun_rows(w, base, pol, T)
     if args.video:  # (--zero: the video too - it filmed the loaded policy, a fall the statistics never had)
         film(w, base, (lambda x: torch.zeros(x.shape[0], cfg.action_space, device=x.device)) if args.zero else pol, T)
 
 
-def film_release_row(base, snap, path, at_rest):
+def rerun_rows(w, base, pol, T):
+    """--rerun_csv: the film's rollout loop without the camera, every env recorded (rows in env order per round)."""
+    keys = ("rel_pos", "rel_vel", "rel_omega", "rel_ref_t")
+    for e in range(args.rerun_rounds):
+        with torch.inference_mode():
+            obs, _ = w.reset()
+        snap = {a: getattr(base, a).clone() for a in keys}
+        got = torch.zeros(base.num_envs, dtype=torch.bool, device=base.device)
+        fell = torch.zeros_like(got)
+        for k in range(T):
+            with torch.inference_mode():
+                obs, _, _, _ = w.step(pol(obs))
+                obs = obs.clone()
+            fell |= base.fallen
+            new = base.released & ~got
+            if new.any():
+                for a in keys:
+                    snap[a][new] = getattr(base, a)[new]
+                got |= new
+        for i in range(base.num_envs):
+            s = SimpleNamespace(**{a: snap[a][i:i + 1] for a in keys}) if bool(got[i]) else None
+            film_release_row(base, s, args.rerun_csv, not bool(fell[i]), i)
+
+
+def film_release_row(base, snap, path, at_rest, i=0):
     """--video_release_csv (batter request 2026-10-27): append env 0's release state of the filmed episode as one
     --release_csv row (same columns, plate frame). The filmed episodes are new rollouts after the eval, so the eval's
     --release_csv rows are not the filmed pitches. at_rest = not fallen in the clip (the stand criteria are an eval
@@ -485,11 +515,12 @@ def film_release_row(base, snap, path, at_rest):
     rel = snap is not None
     src = snap if rel else base  # not released: the zeroed buffers, written as a released 0 row
     tp_ = getattr(base, "to_plate", lambda x: x)
-    pl = tp_(src.rel_pos[:1] - base.scene.env_origins[:1]).cpu().double()
-    vp, wp = tp_(src.rel_vel[:1]).cpu().double(), tp_(src.rel_omega[:1]).cpu().double()
+    j = 0 if rel else i  # snap holds one env; the base buffers hold all
+    pl = tp_(src.rel_pos[j:j + 1] - base.scene.env_origins[i:i + 1]).cpu().double()
+    vp, wp = tp_(src.rel_vel[j:j + 1]).cpu().double(), tp_(src.rel_omega[j:j + 1]).cpu().double()
     cr_a, _, _, re_a = simulate_to_plane(pl, vp, wp, base.phys, cfg.plate_distance, dt=0.005, t_max=3.0, ground_z=base.field_z)
     vp, wp, p = vp[0].numpy(), wp[0].numpy(), pl[0].numpy()
-    rt, v = float(src.rel_ref_t[0]), float(np.linalg.norm(vp))
+    rt, v = float(src.rel_ref_t[j]), float(np.linalg.norm(vp))
     head = np.degrees(np.arctan2(vp[1], vp[0]))
     el = np.degrees(np.arctan2(vp[2], np.hypot(vp[0], vp[1])))
     ya, za, re = float(cr_a[0, 1]) - cfg.zone_center_y, float(cr_a[0, 2]) - base.field_z, bool(re_a[0]) and rel
