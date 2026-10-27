@@ -2447,3 +2447,12 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - one_outs.py / render_one_outs.py / showcase.py 只讀上面的 CSV，不跑策略。
 - 12 小時影片（10-27 19:39，Human18b 結束後自動開錄，`logs/film_wait_1028.sh`）：`videos/pitcher_p3c_t18_1028am.mp4`（檔名沿用預定的 10-28 早上），229 幀，空白 0%，h264 High / yuv420p；沒跌倒，球飛 37.9 m。下次在 10-28 07:46 前。
 - 比賽影片測試批次（10-27 22:31–23:21，打者 15 / 規劃 14 核可）：`eval_stage --video_release_csv`（b6b78a6，每錄一回合寫一列出手狀態）+ 錄影改成邊錄邊寫、抓不到畫面就補前一幀，讓每回合幀數相同（0e8add5）。`logs/film_match_test.sh`：P3c，12 回合，`videos/match_test_p3c.mp4` 2748 幀（12 × 229，補幀 0），空白 0%，High / yuv420p；`videos/match_test_p3c_release.csv` 12 列全部出手，17.0–18.4 m/s，T4 2、T3 5、T2 4、T1 1；第 3、5 回合在 2.5 / 3.1 s 跌倒。identical 起點下，重置後錄的回合彼此也有差異，所以比賽不用加起點噪聲也會有不同的球路。
+
+## Full match batch (10-28 00:22-03:36)
+
+- Requested by planning 14. Run with logs/film_match_full.sh, settings identical to the 12-episode test: P3c (ho2 7600, release shift 2.5 ms, yaw 18, start_joint_noise 0.0, aero), eval_stage film --envs 1 --video_episodes 50 --video_release_csv. No other Isaac process ran.
+- Output: videos/match_full_p3c.mp4. 11450 frames = 50 x 229, 0 repeated grabs, 0% blank. h264 High / yuv420p, 3200x900, 30 fps, 6:21. Plus videos/match_full_p3c_release.csv (50 rows, all released).
+- Tiers (aero): T4 12, T3 17, T2 14, T1 7, so T3 or better is 29/50. T1: 3 hit the ground, 4 wide. Speed 16.74-18.51 m/s, mean 17.84.
+- Falls 10/50 (ep 3, 5, 13, 14, 17, 26, 27, 36, 37, 38), all at 1.86-3.78 s, after the release. Kept as-is per planning.
+- Film time 184 min plus a 10 min frame check. Handed to batter 15 for the ~10-PA renders.
+- Planning 14 counts this as the pitcher 12-hour video; the next one is due by 10-28 15:36.
