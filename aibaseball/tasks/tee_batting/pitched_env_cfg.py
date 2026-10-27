@@ -262,3 +262,21 @@ class PitchedBattingHumanPlayEnvCfg(PitchedBattingHumanEnvCfg):
     pitch_ramp_steps: int = 0
     episode_length_s = 9.0
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=16, env_spacing=4.0, replicate_physics=True)
+
+
+@configclass
+class PitchedBattingHuman19EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-27 Human18 (post-clip training with the held reference + fall penalty) lowered diag falls 42 -> 25% by
+    +300 but ONE OUTS 19.9 -> 16.4% and outfield 4.1 -> 0.2%: a softer swing, training falls per hit still 98%; the fall
+    penalty (10, plus the lost tracking reward) outweighed the hit reward. Change (user 10-27 19:4x): before the clip end
+    Human15 unchanged; past it no mimic target (no tracking reward, no lost termination, no velocity feed-forward) and no
+    fall penalty, only a standing reward on hit episodes capped at bal_frac 0.5 x the episode's hit reward
+    (post_clip_balance). Episode runs on (ref_hold_end, clamp_ref_phase, follow through 2.0 s, episode 3.5 s). Run with
+    AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    post_clip_balance: bool = True
+    ref_hold_end: bool = True
+    clamp_ref_phase: bool = True
+    zero_ff_after_ref_end: bool = True
+    follow_through_s: float = 2.0
+    episode_length_s = 3.5

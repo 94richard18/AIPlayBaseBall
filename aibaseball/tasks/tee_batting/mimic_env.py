@@ -44,6 +44,12 @@ class TeeBattingMimicEnv(TeeBattingEnv):
                              "ss_speed_win", "ss_ref_speed_win")}
         self.min_ball_dist = torch.full((self.num_envs,), 9.0, device=dev)
         self.ss_ref_contact_speed = None
+        if cfg.post_clip_balance:
+            self.track_stats.update({k: torch.zeros((), device=dev) for k in ("post_bal_score", "post_bal_reward")})
+            self.hit_reward_ep = torch.zeros(self.num_envs, device=dev)  # this episode's hit reward (one-shot in rew)
+            self.foot_ids = [self.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
+            self.foot_zmin = torch.full((self.num_envs, 2), 9.0, device=dev)
+            self.body_mass = self.robot.root_physx_view.get_masses().to(dev)
 
     # ------------------------------------------------------------------ reference time
     def _ref_time(self, extra_steps: int = 0) -> torch.Tensor:
@@ -165,7 +171,43 @@ class TeeBattingMimicEnv(TeeBattingEnv):
             self.track_stats[k] = (1 - a) * self.track_stats[k] + a * v
         self.extras["log"].update({f"mimic/{k}": v.clone() for k, v in self.track_stats.items()})
         self.extras["log"]["mimic/speed"] = torch.tensor(self.speed, device=self.device)
+        if self.cfg.post_clip_balance:
+            rew, track = self._post_clip_balance(rew, track)
         return rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r + self.cfg.w_ss_speed * ss_r
+
+    def _post_clip_balance(self, rew, track):
+        """Past the clip end: no mimic target, a standing reward capped by the episode's hit reward (cfg comment)."""
+        c, d = self.cfg, self.robot.data
+        self.hit_reward_ep = torch.where(self.new_hit, self.hit_reward.clamp_min(0.0), self.hit_reward_ep)
+        post_s = (self._ref_time() - self.ref.duration[self.clip]) / self.speed
+        past = post_s >= 0
+        track = torch.where(past, torch.zeros_like(track), track)
+        # the base reward charged a fall penalty: past the clip a fall only forfeits the balance reward (misses too)
+        fall_pen = torch.where(self.hit, c.w_fall_after_hit, c.w_fall) * self.fallen.float()
+        rew = rew + torch.where(past, fall_pen, torch.zeros_like(rew))
+        tilt = torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0))
+        w = self.body_mass.unsqueeze(-1)
+        com = ((d.body_com_pos_w * w).sum(1) / w.sum(1))[:, :2]
+        feet = d.body_link_pos_w[:, self.foot_ids]
+        a, b = feet[:, 0, :2], feet[:, 1, :2]
+        ab = b - a
+        s = (((com - a) * ab).sum(-1) / (ab * ab).sum(-1).clamp_min(1e-6)).clamp(0.0, 1.0)
+        com_off = (com - (a + s.unsqueeze(-1) * ab)).norm(dim=-1)
+        self.foot_zmin = torch.minimum(self.foot_zmin, feet[..., 2])
+        lift = (feet[..., 2] - self.foot_zmin).clamp_min(0.0)
+        score = (torch.exp(-(tilt / c.bal_sigma_tilt) ** 2)
+                 + torch.exp(-(com_off / c.bal_sigma_com) ** 2)
+                 + torch.exp(-(d.root_lin_vel_w.norm(dim=-1) / c.bal_sigma_lin) ** 2
+                             - (d.root_ang_vel_w.norm(dim=-1) / c.bal_sigma_ang) ** 2)
+                 + torch.exp(-(lift / c.bal_sigma_foot) ** 2).mean(-1)) / 4
+        on = past & (post_s < c.bal_window_s) & self.hit
+        bal = torch.where(on, c.bal_frac * self.hit_reward_ep * self.step_dt / c.bal_window_s * score, torch.zeros_like(rew))
+        if on.any():
+            a_ = 0.01
+            self.track_stats["post_bal_score"] = (1 - a_) * self.track_stats["post_bal_score"] + a_ * score[on].mean()
+            self.track_stats["post_bal_reward"] = (1 - a_) * self.track_stats["post_bal_reward"] + a_ * bal[on].mean()
+            self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("post_bal_score", "post_bal_reward")})
+        return rew + bal, track
 
     def _ref_sweet_spot(self, t: torch.Tensor) -> torch.Tensor:
         return self._sweet_spot_of(self._ref(t)["key_pos"])
@@ -190,6 +232,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         if self.cfg.play_mode:  # let the ball fly; the reference holds its final (follow-through) pose
             return terminated, time_out
         lost = key_err > self.cfg.max_key_err
+        if self.cfg.post_clip_balance:  # no reference to stay on past the clip end
+            lost = lost & (self._ref_time() < self.ref.duration[self.clip])
         self.lost = lost
         if self.cfg.lost_after_hit_is_fall:  # drifting off the follow-through is how a fall starts: penalise it as one
             self.fallen = self.fallen | (lost & self.hit)
@@ -211,6 +255,9 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         rsi = torch.rand(n, device=dev) < self.cfg.rsi_prob
         t_max = (self.ref.contact_time[self.clip[env_ids]] - self.cfg.rsi_margin_before_contact).clamp_min(0.0)
         self.min_ball_dist[env_ids] = 9.0
+        if self.cfg.post_clip_balance:
+            self.hit_reward_ep[env_ids] = 0.0
+            self.foot_zmin[env_ids] = 9.0
         self.t0[env_ids] = torch.where(rsi, torch.rand(n, device=dev) * t_max, torch.zeros(n, device=dev))
         self.episode_length_buf[env_ids] = 0
         r = self.ref.sample(self.t0[env_ids], self.clip[env_ids])
