@@ -267,6 +267,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         n = len(env_ids)
         dev = self.device
         self.clip[env_ids] = torch.randint(0, self.ref.num_clips, (n,), device=dev)
+        if getattr(self, "fixed_clip", None) is not None:  # joint ONE OUTS scene: each env keeps its placed clip
+            self.clip[env_ids] = self.fixed_clip[env_ids]
         rsi = torch.rand(n, device=dev) < self.cfg.rsi_prob
         t_max = (self.ref.contact_time[self.clip[env_ids]] - self.cfg.rsi_margin_before_contact).clamp_min(0.0)
         self.min_ball_dist[env_ids] = 9.0

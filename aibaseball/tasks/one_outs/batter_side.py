@@ -31,9 +31,8 @@ import torch
 from isaaclab.envs import DirectRLEnv
 from isaaclab.utils.math import quat_apply, quat_rotate_inverse, quat_from_euler_xyz, quat_mul
 
-from aibaseball.physics.pitch_gen import fly_to_x
+from aibaseball.physics.pitch_gen import PitchLibrary, fly_to_x
 from aibaseball.tasks.tee_batting.pitched_env import PitchedBattingEnv
-from aibaseball.tasks.tee_batting.mimic_env import TeeBattingMimicEnv
 
 JOINT_CLIPS = ("obp_167-7", "obp_282-1", "obp_42-1", "obp_42-2")  # |dz| <= 0.03 m (one scene, real heights)
 
@@ -154,9 +153,11 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None):
-        """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg, effort via
-        AIB_EFFORT_SCALE); clip_of_env: clip index per env (into cfg.motion_files), default round-robin."""
+        """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
+        the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
+        default round-robin."""
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
+        assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
         self._joint = joint
         cfg.motion_files = [f for f in cfg.motion_files if os.path.splitext(os.path.basename(f))[0] in JOINT_CLIPS]
         assert len(cfg.motion_files) == len(JOINT_CLIPS), cfg.motion_files
@@ -167,9 +168,17 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         ctrl = cfg.sim.dt * cfg.decimation  # 100 Hz control on the joint env's physics step
         cfg.sim.dt = joint.physics_dt
         cfg.decimation = int(round(ctrl / cfg.sim.dt))
+        assert abs(joint.step_dt * joint.cfg.batter_every - ctrl) < 1e-9, "control() must run at the batter's 100 Hz"
         n = joint.num_envs
-        self._clip_of_env = (torch.arange(n) % len(JOINT_CLIPS)) if clip_of_env is None else torch.as_tensor(clip_of_env)
         PitchedBattingEnv.__init__(self, cfg)  # TeeBattingEnv's super().__init__ lands in _JointFramework
+        names = [os.path.splitext(os.path.basename(f))[0] for f in cfg.motion_files]
+        order = torch.tensor([names.index(c) for c in JOINT_CLIPS], device=self.device)  # JOINT_CLIPS index -> MotionLib
+        sel = torch.arange(n, device=self.device) % len(JOINT_CLIPS) if clip_of_env is None else \
+            torch.as_tensor(clip_of_env, device=self.device)
+        self.fixed_clip = order[sel]  # mimic_env's reset keeps these (fixed_clip)
+        # the predicted pitch (before the hand-off): the P3c table's median-flight row, as one training pitch of it
+        k = int(self.lib.flight_time.argsort()[len(self.lib.flight_time) // 2])
+        self.lib = PitchLibrary(*(getattr(self.lib, f)[k:k + 1] for f in PitchLibrary.__dataclass_fields__))
         self.active = torch.zeros(n, dtype=torch.bool, device=self.device)  # its episode has started
         self.start_t = torch.zeros(n, device=self.device)  # joint episode time of the batter's episode start
         self.handed = torch.zeros(n, dtype=torch.bool, device=self.device)
@@ -183,7 +192,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         tiers and j_cross use and the one build_library_from_release crosses (library frame x = 0 there, y = -y_plate).
         So library point (0, y_L, z) = B (0, y_L + zone_center_y, z), and the clip's tee is at the library's (0, 0) plus
         the pitch offset: env_origins = (-tee_x, zone_center_y - tee_y, 0)."""
-        tee = self.ref.tee_pos[self.clip]
+        tee = self.ref.tee_pos[self.fixed_clip]
         zc = float(self._joint.cfg.zone_center_y)
         self.scene.env_origins = torch.stack([-tee[:, 0], zc - tee[:, 1], torch.zeros_like(tee[:, 0])], -1)
 
@@ -205,22 +214,27 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._actor, self._norm = ac, norm
 
     # ------------------------------------------------------------------ joint env hooks
+    def _joint_time(self) -> torch.Tensor:
+        j = self._joint
+        return j.episode_length_buf.float() * j.step_dt
+
     def reset(self, env_ids):
-        """Joint env reset (once per process): clips, placement, the hold pose; the batter episode starts later."""
-        ids = torch.as_tensor(env_ids, device=self.device)
-        self.clip[ids] = self._clip_of_env.to(self.device)[ids]
+        """Joint env reset (first after load): the clip's stance (the batter env's own reset, through the proxy) and the
+        start time of the batter's episode, so that its pitch release (release_t of the predicted pitch) falls on the
+        pitcher's predicted release. Until then the batter holds the stance under PD."""
+        ids = torch.as_tensor(env_ids, device=self.device, dtype=torch.long)
         self._place()
+        PitchedBattingEnv._reset_idx(self, ids)
         self.active[ids] = False
         self.handed[ids] = False
-        lead = (self.ref.contact_time[self.clip[ids]] - self.t0[ids]) / self.speed - self._flight_pred() + self.cfg.timing_bias_s
-        self.start_t[ids] = (self._joint.release_t_pred[ids] - lead.clamp_min(self.cfg.min_lead_s))
+        self.start_t[ids] = self._joint.release_t_pred[ids] - self.release_t[ids]
+        self._obs = None
 
     def control(self):
-        j = self._joint
-        start = ~self.active & (j.episode_time() >= self.start_t)
-        if start.any():
+        start = ~self.active & (self._joint_time() >= self.start_t - 1e-6)
+        if start.any():  # the training episode starts now: the stance again (it was held there), ref clock, phys_t 0
             ids = start.nonzero(as_tuple=False).squeeze(-1)
-            self._reset_idx(ids)  # the training reset (stance, ref clock) + the predicted pitch (below)
+            PitchedBattingEnv._reset_idx(self, ids)
             self.active[ids] = True
             self._obs = None
         if self._obs is None:
@@ -228,15 +242,17 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         with torch.inference_mode():
             act = self._actor.act_inference(self._norm(self._obs))
         self._pre_physics_step(act)
+        hold = ~self.active
+        if hold.any():  # waiting: frame 0 of the clip, no feed-forward
+            pose = self._ref(torch.zeros(self.num_envs, device=self.device))["joint_pos"]
+            tgt = self.joint_targets[:, self.body_joint_ids]
+            self.joint_targets[:, self.body_joint_ids] = torch.where(hold.unsqueeze(-1), pose, tgt)
+            self.joint_vel_targets[hold] = 0.0
 
     def ball_world(self, dt: float):
-        j = self._joint
-        new = j.j_fly & ~self.handed & self.active
+        new = self._joint.j_fly & ~self.handed
         if new.any():
             self._hand_off(new.nonzero(as_tuple=False).squeeze(-1))
-        hold = ~self.active
-        if hold.any():  # not started: the clip's first frame under PD (what its reset will write)
-            self.joint_targets[hold] = self._hold_pose()[hold]
         self._apply_action()
         h = self.hit.unsqueeze(-1)
         p = torch.where(h, self.ball_pos, self.pitch_pos)
@@ -251,16 +267,25 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._get_rewards()  # hit records -> play_log, fall flags
         self._obs = self._get_observations()["policy"]
 
-    # ------------------------------------------------------------------ pitch (replaces the library part of the reset)
-    def _flight_pred(self):
-        return torch.full((self.num_envs,), self._joint.cfg.flight_t_pred_s, device=self.device)[: 1].expand(1)
-
-    def _hold_pose(self):
-        return self.robot.data.default_joint_pos
-
+    # ------------------------------------------------------------------ the live pitch replaces the predicted one
     def _hand_off(self, ids):
-        raise NotImplementedError("filled in once the joint env's frame helpers are fixed (batter session)")
-
-    def _reset_idx(self, env_ids):
-        TeeBattingMimicEnv._reset_idx(self, env_ids)  # robot to the clip's frame 0, ref clock, perception buffers
-        raise NotImplementedError("the predicted-pitch part follows pitched_env._reset_idx lines 238-272")
+        """At the joint env's hand-off (this physics step, before the flight step): the batter's pitch becomes the live
+        release state in B, released now. Target, crossing and flight time follow from it (drag + Magnus, fly_to_x)."""
+        j, a = self._joint, self.robot
+        if (~self.active[ids]).any():
+            print(f"[batter_side] {int((~self.active[ids]).sum())} envs released before their episode start", flush=True)
+        pos = a.vec_to_b(j.j_pos[ids] - a.pivot[ids])
+        vel, omg = a.vec_to_b(j.j_vel[ids]), a.vec_to_b(j.j_omega[ids])
+        x_c = self.contact_x_ref[ids]
+        p_hit, t_hit = torch.empty_like(pos), torch.empty_like(x_c)
+        for x in x_c.unique():  # fly_to_x takes one plane (the clips here all have contact_x_ref 0)
+            m = x_c == x
+            p_hit[m], _, t_hit[m] = fly_to_x(pos[m], vel[m], omg[m], self.phys, float(x))
+        self.pitch_pos[ids], self.pitch_prev[ids] = pos, pos
+        self.pitch_vel[ids], self.pitch_omega[ids] = vel, omg
+        self.release_t[ids] = self.phys_t[ids]  # released now: _advance_pitch flies it from this step
+        self.flight_time[ids] = t_hit
+        self.tee_pos[ids] = p_hit
+        self.pitch_plate[ids] = torch.stack([p_hit[:, 1] - float(j.cfg.zone_center_y), p_hit[:, 2]], -1)
+        self.pitch_kmh[ids] = vel.norm(dim=-1) * 3.6
+        self.handed[ids] = True
