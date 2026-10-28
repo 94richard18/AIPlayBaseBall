@@ -160,7 +160,7 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
-                 timing_bias=None, shift_hist=False, no_handoff=False):
+                 timing_bias=None, shift_hist=True, no_handoff=False):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -172,7 +172,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         the table's median-flight row. timing_bias: cfg.timing_bias_s override (default the game value 0.055).
         shift_hist: at the hand-off, move the perceived-ball history (the static pre-release ball) by the live release
         minus the predicted one, as if the ball had waited at its own release point (native); without it the first
-        delayed percepts after the release see a jump of a few cm (a one-step velocity / crossing spike).
+        delayed percepts after the release see a jump of a few cm (a one-step velocity / crossing spike). Default on
+        (planning 10-28: joint seed 1 in-zone hits 0.24 -> 0.33, dz scatter 0.084 -> 0.061 m).
         no_handoff: control run - the live pitch never replaces the batter's own (the predicted median-flight row,
         released at its own release_t exactly as in the native env); the joint env's ball mirrors the batter's."""
         assert after_done in ("policy", "hold", "blend"), after_done
