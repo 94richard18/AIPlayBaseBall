@@ -158,10 +158,14 @@ class _JointFramework(DirectRLEnv):
 
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
-    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None):
+    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy"):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
-        default round-robin."""
+        default round-robin. after_done: what the batter does once its training episode would have ended (pitch
+        passed, batted ball landed, fallen, time out): "policy" keeps the policy running (never trained there),
+        "hold" freezes the PD targets at the joint pose of that moment."""
+        assert after_done in ("policy", "hold"), after_done
+        self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
         assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
         self._joint = joint
@@ -188,7 +192,10 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.active = torch.zeros(n, dtype=torch.bool, device=self.device)  # its episode has started
         self.start_t = torch.zeros(n, device=self.device)  # joint episode time of the batter's episode start
         self.handed = torch.zeros(n, dtype=torch.bool, device=self.device)
+        self.done = torch.zeros(n, dtype=torch.bool, device=self.device)  # its training episode would have ended
+        self.done_t = torch.full((n,), float("nan"), device=self.device)  # joint episode time of that
         self._load_policy(checkpoint)
+        self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self._obs = None
 
     # ------------------------------------------------------------------ frames
@@ -233,6 +240,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         PitchedBattingEnv._reset_idx(self, ids)
         self.active[ids] = False
         self.handed[ids] = False
+        self.done[ids] = False
+        self.done_t[ids] = float("nan")
         self.start_t[ids] = self._joint.release_t_pred[ids] - self.release_t[ids]
         self._obs = None
 
@@ -254,6 +263,11 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(hold.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[hold] = 0.0
+        frz = self.done if self.after_done == "hold" else torch.zeros_like(self.done)
+        if frz.any():  # past the training episode: hold the pose it ended in
+            tgt = self.joint_targets[:, self.body_joint_ids]
+            self.joint_targets[:, self.body_joint_ids] = torch.where(frz.unsqueeze(-1), self.hold_q, tgt)
+            self.joint_vel_targets[frz] = 0.0
 
     def ball_world(self, dt: float):
         new = self._joint.j_fly & ~self.handed
@@ -271,6 +285,11 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.common_step_counter += 1
         self.reset_terminated[:], self.reset_time_outs[:] = self._get_dones()
         self._get_rewards()  # hit records -> play_log, fall flags
+        new = self.active & ~self.done & (self.reset_terminated | self.reset_time_outs)
+        if new.any():
+            self.hold_q[new] = self.robot.data.joint_pos[new][:, self.body_joint_ids]
+            self.done_t[new] = self._joint_time()[new]
+            self.done |= new
         self._obs = self._get_observations()["policy"]
 
     # ------------------------------------------------------------------ the live pitch replaces the predicted one

@@ -23,6 +23,9 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--after_done", choices=("policy", "hold"), default="policy",
+                    help="the batter once its training episode would have ended (BatterSide after_done)")
+parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -72,7 +75,9 @@ def main():
     bcfg = PitchedBattingHumanPlayEnvCfg()
     bcfg.pitch_release_csv = args.release_csv
     bcfg.scene.num_envs = args.envs
-    side = BatterSide(base, bcfg, args.batter)
+    bcfg.zero_ff_after_ref_end = args.zero_ff
+    side = BatterSide(base, bcfg, args.batter, after_done=args.after_done)
+    print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}", flush=True)
     base.batter_side = side
     w = RslRlVecEnvWrapper(env)  # its reset = the first-after-load reset, now with the batter's own
     ag = load_cfg_from_registry(TASK, "rsl_rl_cfg_entry_point")
@@ -157,14 +162,18 @@ def main():
     if args.diag:
         clip_end = side.start_t + (side.ref.duration[side.clip] - side.t0) / side.speed  # joint time of the ref's end
         rows, ph = [], {"hold": 0, "start_to_handoff": 0, "after_handoff": 0, "after_clip_end": 0, "never": 0}
+        win = {"before_done": 0, "after_done": 0}  # the training episode's end: pitch passed / ball landed / fallen
         for e in range(n):
             ft, st, ho, ce = (float(fall_t[e]), float(start_at[e]), float(base.handoff_t[e]), float(clip_end[e]))
             p = ("never" if ft != ft else "hold" if not ft >= st else "start_to_handoff" if ft < ho
                  else "after_handoff" if ft < ce else "after_clip_end")
             ph[p] += 1
+            dt_ = float(side.done_t[e])
+            if ft == ft:
+                win["before_done" if not ft > dt_ else "after_done"] += 1
             row = dict(env=e, clip=names[e % len(names)], fall_t=round(ft, 4), batter_start=round(st, 4), handoff_t=round(ho, 4),
                        clip_end=round(ce, 4), phase=p, fall_minus_start=round(ft - st, 4), fall_minus_handoff=round(ft - ho, 4),
-                       hit=bool(hit[e]))
+                       hit=bool(hit[e]), done_t=round(dt_, 4))
             for k, (rz, fz) in marks.items():
                 row[f"root_z_{k}"], row[f"foot_z_{k}"] = round(float(rz[e]), 3), round(float(fz[e]), 3)
             rows.append(row)
@@ -172,7 +181,8 @@ def main():
             wr = csv.DictWriter(f, fieldnames=list(rows[0]))
             wr.writeheader()
             wr.writerows(rows)
-        print(f"[diag] falls by phase: {ph}", flush=True)
+        print(f"[diag] falls by phase: {ph}; vs the training episode's end (done_t median "
+              f"{side.done_t.nanmedian():.3f} s): {win}", flush=True)
         for k, (rz, fz) in marks.items():
             print(f"[diag] {k}: root z {rz.nanmedian():.3f} ({rz.nan_to_num(9).min():.3f}..{rz.nan_to_num(-9).max():.3f}), "
                   f"lowest foot z {fz.nanmedian():.3f} ({fz.nan_to_num(9).min():.3f}..{fz.nan_to_num(-9).max():.3f}) m above field_z {gz}", flush=True)

@@ -57,6 +57,7 @@ from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingHumanPlay
 
 N, SUB = 64, 38
 G = torch.Generator().manual_seed(0)
+torch.manual_seed(0)  # random_orientation draws from the global generator (unseeded, a fake bat could cross the pitch)
 
 
 def rnd(*s):
