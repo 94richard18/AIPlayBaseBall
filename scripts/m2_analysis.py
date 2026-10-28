@@ -86,6 +86,12 @@ def main():
     fh = sum(x and h for x, h in zip(fell, hit))
     print(f"[m2] falls after a hit (inside the training episode) {fh}/{nh} = {fh / max(nh, 1):.1%} (bar 43 +- 8%); "
           f"miss falls inside the episode {sum(x and not h for x, h in zip(fell, hit))}")
+    if "hit_t" in rows[0]:  # joint_smoke from 10-29: the film shows the batter for ~2 s after contact
+        hr_ = [r for r in rows if r["hit"] == "True"]
+        dt = [f(r["bat_fall_t"]) - f(r["hit_t"]) for r in hr_]  # NaN (never fell) compares False
+        w1, w2 = sum(d <= 1.0 for d in dt), sum(d <= 2.0 for d in dt)
+        print(f"[m2] hits fallen within 1.0 s of contact {w1}/{len(hr_)} = {w1 / max(len(hr_), 1):.1%}, "
+              f"within 2.0 s {w2}/{len(hr_)} = {w2 / max(len(hr_), 1):.1%}; fell before contact {sum(d < 0 for d in dt)}")
     rng = random.Random(a.seed)
     pit = ReplayPitcher(rows)
     bat = ReplayBatter(pit)
