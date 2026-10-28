@@ -341,3 +341,12 @@ class PitchedBattingHuman23EnvCfg(PitchedBattingHuman15EnvCfg):
     w_cvel: float = 1.0
     cvel_window_s: float = 0.1
     sigma_cvel: float = 8.0
+
+
+@configclass
+class PitchedBattingHuman23bEnvCfg(PitchedBattingHuman23EnvCfg):
+    """2026-10-29 Human23 +100: cvel_err flat at ~12 rad/s - with sigma 8 the term paid exp(-144/64) ~ 0.1 per step (no
+    gradient). Change (decision session, last shot at 1.5x): sigma 20 rad/s, w_cvel 3 (below the hit reward's upper range)."""
+
+    w_cvel: float = 3.0
+    sigma_cvel: float = 20.0
