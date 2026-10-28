@@ -119,6 +119,7 @@ def main():
     ap.add_argument("--want", default="in_play", choices=("in_play", "pitcher", "batter"),
                     help="the showcase PA's end: any ball in play, an infield ball (pitcher wins), an outfield hit (batter wins)")
     ap.add_argument("--plan", default="pa_plan.csv", help="plan file name inside --out")
+    ap.add_argument("--take_mode", type=int, default=0, help="BatterSide take mode written into the masks for a take (see BatterSide swing)")
     ap.add_argument("--after_done", default="policy")
     ap.add_argument("--timing_csv", default="logs/m2lite/timing.csv")
     a = ap.parse_args()
@@ -173,7 +174,7 @@ def main():
             with open(m, "w", newline="") as fm:  # every env swings except this pitch's env when it is a take
                 mw = csv.writer(fm)
                 mw.writerow(["env", "swing"])
-                mw.writerows([e, x["swing"] if e == x["env"] else 1] for e in range(n_env))
+                mw.writerows([e, (1 if x["swing"] else a.take_mode) if e == x["env"] else 1] for e in range(n_env))
             row = dict(pitch=i + 1, seed=r["seed"], env=x["env"], balls_before=x["balls_before"],
                        strikes_before=x["strikes_before"], swing=x["swing"], expected=x["expected"], swing_csv=m,
                        after_done=a.after_done, timing_csv=a.timing_csv)
