@@ -210,6 +210,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._perc = None
+        self.fallen = torch.zeros(n, dtype=torch.bool, device=self.device)  # _get_dones (post) sets it; drivers read it every step
         self.trace = None  # list: per control step, the policy's input / output and body joints (trace diff vs native)
         self.shift_hist = shift_hist
         self.no_handoff = no_handoff
