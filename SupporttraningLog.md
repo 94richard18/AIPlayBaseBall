@@ -60,6 +60,11 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-28 08:05：F1 完成，聯合場景的兩個條件各自都過；兩者一起時比標準好一點點，不需要 fine-tune**（`logs/run_f1.txt`，07:51–08:05，GPU 14 分鐘）
+> - 交付版 12500、1.5 倍，diag1024 用 P3c 的出手資料，seed 0。標準：in-zone 在 0.458 ± 0.03、擊中後跌倒在 43% ± 5。
+> - base：0.458 / 43%（288 次擊中）PASS。(a) 物理 dt 1/800：0.461 / 41% PASS。(b) 4 個 clip + 真實高度：0.469 / 44% PASS。
+> - (c) 兩者一起：0.490 / 37%，帶外（+0.032、−6 點），但方向是變好；in-zone 樣本約 300 球，標準誤約 0.03，所以算在雜訊內。聯合場景就用 (c) 的設定，不訓練。
+
 > **打者 10-28 06:35：聯合場景的打者 shim 初版寫好（CPU，尚未在 GPU 上跑）；座標改由打者這邊旋轉 162°**（`aibaseball/tasks/one_outs/batter_side.py`，1fca746 / a4a4370 / 5fc1137；測試 59f3e79）
 > - **座標**：投手的世界座標固定（投手丘沿 +x、本壘方向 yaw −18°），20 沒辦法便宜地改，決定 session 14 核可在打者這邊加一層固定的 Rz(162°) 代理：`RotatedArticulation` 包住 env.batter，讀 robot.data 時把世界座標的位置 / 四元數 / 速度轉到打者座標，寫 root 狀態時轉回去，沒有對應的 *_w 欄位直接報錯。支點 = 20 的 `plate_front_w()`（判定用的本壘平面、地面高度），也就是打者 tee_x 所在的平面（build_library_from_release 的 plate_distance），不需要偏移；每個 clip 的 env_origins = (−tee_x, zone_center_y − tee_y, 0)，zone_center_y = 0。
 > - **CPU 檢查**：隨機姿態、支點 20 m，root 座標下的相對位置誤差 6e-6 m、body 座標速度 7e-7、寫入來回 9e-6 m / 6e-7 rad、yaw 162.00°。觀測 152 維全部是 root 座標下的差值或本身就不隨旋轉改變的量（清單已給 14）。
