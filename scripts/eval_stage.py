@@ -648,6 +648,26 @@ def film(w, base, pol, T, fps=30):
     if hidden:
         raise RuntimeError(f"env {E} prims hidden: {hidden[:5]}")
 
+    # joint scene (C3, 10-28): the first panel is a centre-field view instead of the side view - far behind the mound
+    # on the first-base side, zoomed, so the pitcher and the batter are in one frame; the flight marker of env k only
+    joint = hasattr(base, "batter")
+    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 25.0, 1.0, 5.0, 4.0
+    if joint:
+        base.marker_envs = [E]
+
+    def main_cam(o):
+        if not joint:
+            base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
+            return
+        g = base.scene.env_origins[E].cpu().numpy() + [0.0, 0.0, base.field_z]
+        th = -np.radians(getattr(base.cfg, "plate_yaw_deg", 0.0))
+        rz = lambda x, y: [np.cos(th) * x - np.sin(th) * y, np.sin(th) * x + np.cos(th) * y]
+        zc = base.cfg.zone_center_y
+        base.sim.set_camera_view(eye=(g + np.array(rz(-CF_BACK, zc + CF_SIDE) + [CF_UP])).tolist(),
+                                 target=(g + np.array(rz(base.cfg.plate_distance, zc - 0.3) + [1.0])).tolist())
+        if focal0:
+            set_focal(focal0 * CF_ZOOM)
+
     def grab():
         for _ in range(6):
             img = base.render()
@@ -691,7 +711,7 @@ def film(w, base, pol, T, fps=30):
             o = base.scene.env_origins[E].cpu().numpy()  # follow the pelvis along the ground (1b walks off the view)
             pel = base.robot.data.root_link_pos_w[E].cpu().numpy()
             o = o + [pel[0] - o[0] - 0.3, pel[1] - o[1], 0.0]
-            base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
+            main_cam(o)
             img = grab()
             if img is None:
                 if k % every == 0 and last is not None:
@@ -718,7 +738,7 @@ def film(w, base, pol, T, fps=30):
                 pv = grab()
                 if focal0:
                     set_focal(focal0)
-                base.sim.set_camera_view(eye=(o + [0.3, -4.0, 0.9]).tolist(), target=(o + [0.3, 0.0, 0.7]).tolist())
+                main_cam(o)
                 base.render()
                 if pv is not None:
                     if not focal0:  # no camera prim: fall back to the old 3x crop
