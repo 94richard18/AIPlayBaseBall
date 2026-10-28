@@ -28,6 +28,7 @@ parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
+parser.add_argument("--shift_hist", action="store_true", help="BatterSide shift_hist: no release-point jump in the percept")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 AppLauncher.add_app_launcher_args(parser)
@@ -86,10 +87,10 @@ def main():
         assert [int(r["env"]) for r in tr] == list(range(args.envs)), args.timing_csv
         own = [[float(r["handoff_t"]), float(r["t_plane"])] for r in tr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
-                      timing_bias=args.timing_bias)
+                      timing_bias=args.timing_bias, shift_hist=args.shift_hist)
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}, "
-          f"timing {'own pitch (' + args.timing_csv + ')' if own else 'median-flight row'}, bias {side.cfg.timing_bias_s}", flush=True)
+          f"timing {'own pitch (' + args.timing_csv + ')' if own else 'median-flight row'}, bias {side.cfg.timing_bias_s}, shift_hist {args.shift_hist}", flush=True)
     base.batter_side = side
     w = RslRlVecEnvWrapper(env)  # its reset = the first-after-load reset, now with the batter's own
     ag = load_cfg_from_registry(TASK, "rsl_rl_cfg_entry_point")
@@ -175,7 +176,8 @@ def main():
             backspin_rpm=round(rec.get("backspin_rpm", float("nan")), 0),
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
-            flight_pred=round(float(side.flight_time[e]), 4),  # fly_to_x at the hand-off: release to the contact plane
+            flight_pred=round(float(side.flight_time[e]), 4),
+            handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))
     for o in out:
         print("[joint] " + " ".join(f"{k}={v}" for k, v in o.items()), flush=True)

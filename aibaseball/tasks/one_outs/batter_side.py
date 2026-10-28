@@ -160,7 +160,7 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
-                 timing_bias=None):
+                 timing_bias=None, shift_hist=False):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -169,7 +169,10 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         clip's stance (frame 0) over BLEND_S (smoothstep, zero velocity targets: the PD damps the motion).
         own_timing: (n, 2) per env (hand-off time, contact-plane time) of the same seed's live pitch from a first pass
         (the pitch does not depend on the batter): two-pass oracle timing, see _own_clock. None = schedule every env on
-        the table's median-flight row. timing_bias: cfg.timing_bias_s override (default the game value 0.055)."""
+        the table's median-flight row. timing_bias: cfg.timing_bias_s override (default the game value 0.055).
+        shift_hist: at the hand-off, move the perceived-ball history (the static pre-release ball) by the live release
+        minus the predicted one, as if the ball had waited at its own release point (native); without it the first
+        delayed percepts after the release see a jump of a few cm (a one-step velocity / crossing spike)."""
         assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
@@ -203,6 +206,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._load_policy(checkpoint)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
+        self.shift_hist = shift_hist
+        self.handoff_jump = torch.full((n,), float("nan"), device=self.device)
         self.own = None if own_timing is None else torch.as_tensor(own_timing, dtype=torch.float32, device=self.device)
         assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
         self._obs = None
@@ -393,6 +398,10 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         for x in x_c.unique():  # fly_to_x takes one plane (the clips here all have contact_x_ref 0)
             m = x_c == x
             p_hit[m], _, t_hit[m] = fly_to_x(pos[m], vel[m], omg[m], self.phys, float(x))
+        jump = pos - self.pitch_pos[ids]  # live release minus the predicted (static) pre-release ball
+        self.handoff_jump[ids] = jump.norm(dim=-1)
+        if self.shift_hist:
+            self.ball_obs_hist[ids] += jump.unsqueeze(1)
         self.pitch_pos[ids], self.pitch_prev[ids] = pos, pos
         self.pitch_vel[ids], self.pitch_omega[ids] = vel, omg
         self.release_t[ids] = self.phys_t[ids]  # released now: _advance_pitch flies it from this step
