@@ -28,6 +28,7 @@ parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
+parser.add_argument("--dof_dump", type=str, default=None, help="json: the batter's DOF / body properties as PhysX reports them")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: per env (first per clip) obs / action / body joints per control step from its start; perception noise 0")
 parser.add_argument("--diag_yaw", type=float, default=None, help="diagnostic: batter frame yaw (deg) instead of 162")
@@ -102,6 +103,9 @@ def main():
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)
         side.robot.q_r = quat_from_euler_xyz(z, z, torch.full_like(z, args.diag_yaw * torch.pi / 180.0))
+    if args.dof_dump:
+        from dof_readout import dump
+        dump(base.batter, base.sim, args.dof_dump, "joint")
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     if args.trace:
         side.trace = []
@@ -164,6 +168,8 @@ def main():
             b_fell |= side.fallen & side.active
             b_fell_pre |= side.fallen & side.active & ~was_done  # inside the training episode (native window)
             hit |= side.hit
+    if args.dof_dump:  # again after the run (anything written to the sim later)
+        dump(base.batter, base.sim, args.dof_dump.replace(".json", "_end.json"), "joint end")
     if args.trace:
         import numpy as np
         names_t = [os.path.splitext(os.path.basename(f))[0] for f in side.cfg.motion_files]

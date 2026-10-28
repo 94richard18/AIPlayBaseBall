@@ -39,6 +39,7 @@ parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from th
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
+parser.add_argument("--dof_dump", type=str, default=None, help="json: the batter's DOF / body properties as PhysX reports them")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: first env per clip, obs / action / body joints per control step (150); perception noise 0")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
@@ -175,6 +176,9 @@ def main():
                                     env.unwrapped.device, runner.obs_normalizer)
     policy = runner.get_inference_policy(device=env.unwrapped.device)
     base = env.unwrapped
+    if args.dof_dump:
+        from dof_readout import dump
+        dump(base.robot, base.sim, args.dof_dump, "native")
     n, dev, geom, r_ball = base.num_envs, base.device, base.bat_geom, base.phys.ball.radius
 
     inf = torch.full((n,), float("inf"), device=dev)
@@ -598,6 +602,8 @@ def main():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
     print(f"[bat] wrote {path}", flush=True)
+    if args.dof_dump:  # again after the run (anything written to the sim later)
+        dump(base.robot, base.sim, args.dof_dump.replace(".json", "_end.json"), "native end")
     if trace:  # first env per clip, steps while its first episode runs
         names_t = [os.path.splitext(os.path.basename(f))[0] for f in base.cfg.motion_files]
         out_t = {}
