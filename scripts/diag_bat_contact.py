@@ -357,7 +357,8 @@ def main():
                         yaw_ref=(rr_b["root_ang_vel"][:, 2] * base.rate / base.speed).abs())
             fv = d.body_link_lin_vel_w[:, bl_feet, :2].norm(dim=-1)
             if bl_prev:
-                fv_r = (rr_b["key_pos"][:, bl_fk, :2] - bl_prev["kp"]).norm(dim=-1) / base.physics_dt
+                # the reference clock moves once per control step (decimation physics steps): the change over one control step
+                fv_r = (rr_b["key_pos"][:, bl_fk, :2] - bl_prev["kp"]).norm(dim=-1) / base.step_dt
             else:
                 fv_r = torch.zeros_like(fv)
             bl_prev["kp"] = rr_b["key_pos"][:, bl_fk, :2].clone()
