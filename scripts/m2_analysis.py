@@ -69,15 +69,15 @@ def main():
     n = len(rows)
     # j_cross y is the pitcher's plate frame (+y toward first base: the batter stands at plate y -0.9); pred_y is the
     # batter frame B = the game's convention (Pitch.plate_y, BODY_Y_M: + toward third base) -> compare with the sign flipped
-    dy = [abs(-f(r["plate_y"]) - f(r["pred_y"])) for r in rows if not math.isnan(f(r["plate_y"]))]
-    dz = [abs(f(r["plate_z"]) - f(r["pred_z"])) for r in rows if not math.isnan(f(r["plate_z"]))]
+    dy = [abs(-f(r["plate_y"]) - f(r["pred_y"])) for r in rows if not math.isnan(f(r["plate_y"])) and r["hit"] != "True"]
+    dz = [abs(f(r["plate_z"]) - f(r["pred_z"])) for r in rows if not math.isnan(f(r["plate_z"])) and r["hit"] != "True"]
     inz = [zone.contains(f(r["pred_y"]), f(r["pred_z"])) for r in rows]
     hit = [r["hit"] == "True" for r in rows]
     fell = [r["batter_fell_before_done"] == "True" for r in rows]
     n_in = sum(inz)
     hits_in = sum(h and i for h, i in zip(hit, inz))
     print(f"[m2] {n} live pitches from {len(glob.glob(a.rows))} files; in zone {n_in} ({n_in / n:.3f})")
-    print(f"[m2] crossing vs fly_to_x ({len(dy)} crossed): |dy| max {max(dy) * 100:.2f} cm, |dz| max {max(dz) * 100:.2f} cm "
+    print(f"[m2] crossing vs fly_to_x ({len(dy)} crossed, misses only: a batted ball can cross the plane again): |dy| max {max(dy) * 100:.2f} cm, |dz| max {max(dz) * 100:.2f} cm "
           f"(bar < 1 cm)")
     hr = hits_in / max(n_in, 1)
     se = math.sqrt(hr * (1 - hr) / max(n_in, 1))
