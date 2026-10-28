@@ -87,8 +87,8 @@ class RotatedArticulation:
         self.q_r = quat_from_euler_xyz(z, z, torch.full_like(z, yaw_deg * torch.pi / 180.0))
         self.data = _RotatedData(self)
 
-    def _qr(self, x):
-        return self.q_r if x.dim() == 2 else self.q_r.unsqueeze(1).expand(*x.shape[:-1], 4)
+    def _qr(self, x):  # one yaw for every env: also fits env subsets (x[ids])
+        return self.q_r[0].expand(*x.shape[:-1], 4)
 
     def vec_to_b(self, v):
         return quat_rotate_inverse(self._qr(v).reshape(-1, 4), v.reshape(-1, 3)).reshape(v.shape)
