@@ -12,7 +12,8 @@ Empty-scene check (match_full2 10-28: clips for env k >= 1 showed only the floor
 whose grey value varies over the clip (std > 20 over every 5th frame, caption band excluded) in the fixed plate view
 (right half of a side-by-side film, else the whole frame). The good k00 clip gives 3.0 %, the empty k01 / k21 0.01 %;
 below --min_motion (0.1 %) the video is flagged EMPTY. The joint film (m3b) gives 0.42 %: its plate view is filled by
-the batter standing still with the pitcher small behind - 0.5 % flagged it by mistake.
+the batter standing still with the pitcher small behind - 0.5 % flagged it by mistake. A side-by-side film also needs
+--min_motion_left in its left panel (side / centre-field view): real clips 2.96-15.3 %, the empty precheck k01 0.56 %.
 """
 
 import argparse
@@ -26,6 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("videos", nargs="+")
 parser.add_argument("--max_frac", type=float, default=0.02, help="allowed fraction of blank frames")
 parser.add_argument("--min_motion", type=float, default=0.1, help="% of plate-view pixels that must vary")
+parser.add_argument("--min_motion_left", type=float, default=1.0, help="% of left-panel pixels that must vary (side by side)")
 parser.add_argument("--caption_px", type=int, default=60, help="top band with the text overlay, ignored")
 args = parser.parse_args()
 
@@ -47,8 +49,11 @@ for path in args.videos:
         n += 1
     g = np.stack(grey).astype(np.float32) if grey else np.zeros((1, 1, 1), np.float32)
     w = g.shape[2]
-    motion = 100 * float((g[:, :, w // 2:] if w > 2.5 * (g.shape[1] + args.caption_px + 20) else g).std(0).__gt__(20).mean())
-    empty = motion < args.min_motion
+    sbs = w > 2.5 * (g.shape[1] + args.caption_px + 20)  # side-by-side film: left view | plate view
+    var = g.std(0) > 20
+    motion = 100 * float((var[:, w // 2:] if sbs else var).mean())
+    left = 100 * float(var[:, :w // 2].mean()) if sbs else None
+    empty = motion < args.min_motion or (sbs and left < args.min_motion_left)
     bad |= empty
     frac = blank / max(n, 1)
     bad |= frac > args.max_frac
@@ -59,5 +64,5 @@ for path in args.videos:
     bad |= not fmt_ok
     print(f"[frames] {path}: {n} frames, blank {blank} ({100 * frac:.1f}%)" + (f", first at {first}" if first else "")
           + f" | {vid.split(',')[0]}, {'yuv420p' if fmt_ok else 'NOT PLAYABLE: ' + vid[:60]}"
-          + f" | motion {motion:.2f}%" + (" EMPTY" if empty else ""))
+          + f" | motion {motion:.2f}%" + (f", left {left:.2f}%" if sbs else "") + (" EMPTY" if empty else ""))
 sys.exit(1 if bad else 0)
