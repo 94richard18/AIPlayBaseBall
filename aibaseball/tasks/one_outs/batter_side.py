@@ -159,13 +159,16 @@ class _JointFramework(DirectRLEnv):
 
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
-    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy"):
+    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
         passed, batted ball landed, fallen, time out): "policy" keeps the policy running (never trained there),
         "hold" freezes the PD targets at the joint pose of that moment, "blend" moves them from that pose to the
-        clip's stance (frame 0) over BLEND_S (smoothstep, zero velocity targets: the PD damps the motion)."""
+        clip's stance (frame 0) over BLEND_S (smoothstep, zero velocity targets: the PD damps the motion).
+        own_timing: (n, 2) per env (hand-off time, contact-plane time) of the same seed's live pitch from a first pass
+        (the pitch does not depend on the batter): two-pass oracle timing, see _own_clock. None = schedule every env on
+        the table's median-flight row."""
         assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
@@ -199,6 +202,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._load_policy(checkpoint)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
+        self.own = None if own_timing is None else torch.as_tensor(own_timing, dtype=torch.float32, device=self.device)
+        assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
         self._obs = None
 
     # ------------------------------------------------------------------ frames
@@ -246,13 +251,31 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.done[ids] = False
         self.done_t[ids] = float("nan")
         self.start_t[ids] = self._joint.release_t_pred[ids] - self.release_t[ids]
+        if self.own is not None:  # the native release of this env's own pitch: start = hand-off - release
+            h, tp = self.own[ids, 0], self.own[ids, 1]
+            rel = (self.ref.contact_time[self.clip[ids]] - self.t0[ids]) / self.speed - (tp - h) + self.cfg.timing_bias_s
+            self.start_t[ids] = h - torch.maximum(rel, torch.full_like(rel, self.cfg.min_lead_s))
         self._obs = None
+
+    def _own_clock(self, ids):
+        """Two-pass oracle timing (planning session 10-28, the ONE OUTS metric's assumption): at the episode start the
+        batter env's pitch clock is the native one of this env's own pitch (pitched_env._reset_idx with its flight
+        time tp - h, jitter 0, the game bias): released at the hand-off h, the reference contact timing_bias_s before
+        the ball reaches the contact plane at tp. The start falls on a 100 Hz control step up to 10 ms after start_t;
+        the reference clock absorbs that (ts - start_t) * speed, so the ball-vs-reference offset stays exact."""
+        h, tp = self.own[ids, 0], self.own[ids, 1]
+        ts = self._joint_time()[ids]
+        self.release_t[ids] = h - ts
+        self.flight_time[ids] = tp - h  # until the hand-off replaces it with the live fly_to_x time
+        self.ref_t[ids] = self.ref.contact_time[self.clip[ids]] - (tp - self.cfg.timing_bias_s - ts) * self.speed
 
     def control(self):
         start = ~self.active & (self._joint_time() >= self.start_t - 1e-6)
         if start.any():  # the training episode starts now: the stance again (it was held there), ref clock, phys_t 0
             ids = start.nonzero(as_tuple=False).squeeze(-1)
             PitchedBattingEnv._reset_idx(self, ids)
+            if self.own is not None:
+                self._own_clock(ids)
             self.active[ids] = True
             self._obs = None
         if self._obs is None:

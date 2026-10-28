@@ -6,6 +6,7 @@ every physics step, post); the fake articulation checks the shape of every write
 in env subsets (38 arbitrary envs, then 1, then the rest), as do resets (38, 1, all).
 
     python scripts/test_batter_side_cpu.py --batter <model_12500.pt>
+    python scripts/test_batter_side_cpu.py --batter <model_12500.pt> --own_timing   # two-pass oracle timing check
 """
 
 import argparse
@@ -203,6 +204,7 @@ def main():
     ap.add_argument("--batter", required=True)
     ap.add_argument("--release_csv", default="assets/game/p3c_identical_t18_release.csv")
     ap.add_argument("--after_done", default="policy", choices=("policy", "hold", "blend"))
+    ap.add_argument("--own_timing", action="store_true", help="the two-pass oracle timing falsifier only")
     a = ap.parse_args()
     os.environ["AIB_EFFORT_SCALE"] = "1.5"
     cfg = PitchedBattingHumanPlayEnvCfg()
@@ -213,6 +215,8 @@ def main():
     bodies = ["pelvis"] + [b for b in KEY_BODIES if b != "pelvis"]
     art = FakeArticulation(jn, bodies)
     joint = FakeJoint(art)
+    if a.own_timing:
+        return own_timing_check(cfg, art, a.batter)
     side = BatterSide(joint, cfg, a.batter, after_done=a.after_done)
     side.record_swing()
     art.inner_pivot = side.robot.pivot
@@ -307,6 +311,72 @@ def main():
         print(f"[cpu] blend ok: {int(late.sum())} envs past done + {BLEND_S} s, |target - stance| max {err:.2e}", flush=True)
         assert late.any() and err < 1e-6
     print("CPU_SHIM_CHECK_PASS", flush=True)
+
+
+def own_timing_check(cfg, art, ckpt):
+    """Pass 1 schedules every env on the median-flight row; pass 2 on its own (hand-off, contact-plane time) from
+    pass 1. The joint env's real cadence: one joint step = 2 physics steps (ball_world each), control / post every 4th
+    step, hand-offs at the start of a joint step in env groups (different flights: random release speeds). The tempo
+    action is zeroed (rate = speed), so with the native schedule the reference clock at the crossing must be exactly
+    timing_bias_s * speed past contact (pitched_env._reset_idx: ball arrival = reference contact + bias)."""
+    import copy
+
+    def run(own):
+        G.manual_seed(0)  # the same fake pitches (and bat states) in both passes
+        torch.manual_seed(0)
+        joint = FakeJoint(art)
+        joint.handoff_t = torch.full((N,), float("nan"))
+        side = BatterSide(joint, copy.deepcopy(cfg), ckpt, own_timing=own)
+        side._actor.act_inference = lambda o: torch.zeros(o.shape[0], side._actor.actor[-1].out_features)
+        side.record_swing()
+        art.inner_pivot = side.robot.pivot
+        side.reset(torch.arange(N))
+        perm = torch.randperm(N, generator=torch.Generator().manual_seed(1))
+        j0 = int(round(0.9975 / joint.step_dt))
+        hand = {j0: perm[:SUB], j0 + 3: perm[SUB:SUB + 1], j0 + 9: perm[SUB + 1:]}
+        speeds = 30.0 + 15.0 * torch.rand(N, generator=torch.Generator().manual_seed(2))
+        for j in range(int(round(2.6 / joint.step_dt))):
+            ctrl = j % joint.cfg.batter_every == 0
+            if ctrl:
+                side.control()
+            if j in hand:
+                ids = hand[j]
+                joint.release(ids)
+                joint.j_vel[ids] = joint.j_vel[ids] / joint.j_vel[ids].norm(dim=-1, keepdim=True) * speeds[ids, None]
+                joint.handoff_t[ids] = joint.episode_length_buf[ids].float() * joint.step_dt
+            for _ in range(int(round(joint.step_dt / joint.physics_dt))):
+                p, v, w = side.ball_world(joint.physics_dt)
+                m = joint.j_fly.unsqueeze(-1)
+                joint.j_pos, joint.j_vel, joint.j_omega = (torch.where(m, p, joint.j_pos), torch.where(m, v, joint.j_vel),
+                                                           torch.where(m, w, joint.j_omega))
+            joint.episode_length_buf += 1
+            if ctrl:
+                side.post()
+        return side, joint
+
+    s1, j1 = run(None)
+    R1 = s1.rec
+    ok1 = torch.isfinite(R1["t_plane"])
+    assert ok1.sum() >= 48 and not s1.hit.any(), (int(ok1.sum()), int(s1.hit.sum()))  # the fake's random falls end some early
+    own = torch.stack([j1.handoff_t, R1["t_plane"].nan_to_num(3.0)], -1)
+    s2, j2 = run(own)
+    R2 = s2.rec
+    ok = ok1 & torch.isfinite(R2["t_plane"])
+    assert ok.sum() >= 48 and (R2["t_plane"] - R1["t_plane"])[ok].abs().max() < 1e-5, "the pitch must not depend on the schedule"
+    bias, spd = s2.cfg.timing_bias_s, s2.speed
+    # ref_t moves in 100 Hz steps, advanced at the start of each control interval: at the crossing it reads the clock
+    # of the interval's end (diag_bat_contact's ref_err has the same 0..10 ms offset); take it back to t_plane
+    ctrl = j2.step_dt * j2.cfg.batter_every
+    ahead = (torch.floor(R1["t_plane"] / ctrl + 1e-6) + 1.0) * ctrl - R1["t_plane"]
+    e1 = (R1["ref_err"] / spd - ahead - bias)[ok]  # 0 = the native schedule
+    e2 = (R2["ref_err"] / spd - ahead - bias)[ok]
+    fl = (R1["t_plane"] - j1.handoff_t)[ok]
+    print(f"[cpu] own timing ({int(ok.sum())} envs crossed in both passes): flights {fl.min():.3f}..{fl.max():.3f} s; ref_err / speed - bias: median row "
+          f"{e1.median():+.4f} (sd {e1.std():.4f}, max |.| {e1.abs().max():.4f}) -> own pitch {e2.median():+.5f} "
+          f"(max |.| {e2.abs().max():.5f}) s; start_t {s2.start_t.min():.3f}..{s2.start_t.max():.3f} s", flush=True)
+    assert e2.abs().max() < 1e-4, e2.abs().max()
+    assert e1.std() > 5 * e2.abs().max()
+    print("CPU_OWN_TIMING_PASS", flush=True)
 
 
 main()
