@@ -11,8 +11,8 @@ def dump(art, sim, path, label=""):
         _dump(art, sim, path, label)
     except Exception as e:  # noqa: BLE001  a diagnostic: never kill the run
         import traceback
-        print(f"[dof] {label} readout failed: {e!r}
-{traceback.format_exc()}", flush=True)
+        print(f"[dof] {label} readout failed: {e!r}", flush=True)
+        traceback.print_exc()
 
 
 def _dump(art, sim, path, label):
