@@ -35,6 +35,7 @@ class JointPitchEnv(StageEnv):
     def __init__(self, cfg: JointPitchEnvCfg, render_mode: str | None = None, **kwargs):
         self.batter_side = None  # set before the first reset (the env's construction already reset once: call env.reset())
         self.ball_marker = None
+        self.ring_marker = None
         self.marker_envs = None  # park: envs whose flight marker is drawn (None = all)
         super().__init__(cfg, render_mode, **kwargs)
         n, dev = self.num_envs, self.device
@@ -292,6 +293,28 @@ class JointPitchEnv(StageEnv):
             p = torch.stack([o[:, 0] + math.cos(th) * xp + math.sin(th) * yp, o[:, 1] - math.sin(th) * xp + math.cos(th) * yp, p[:, 2]], -1)
         p = torch.where(on.unsqueeze(-1), p, p * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
         self.ball_marker.visualize(translations=p)
+        if self.cfg.film_landing_ring and self.batter_side is not None:
+            self._show_ring(ids)
+
+    def _show_ring(self, ids):
+        """film_landing_ring: a batted ball whose integrated flight ended on the ground gets an orange ring (grass-coloured
+        centre) at its landing point; elsewhere / before the landing the ring is parked under the field."""
+        if self.ring_marker is None:
+            from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+
+            self.ring_marker = VisualizationMarkers(VisualizationMarkersCfg(prim_path="/Visuals/joint_landing", markers={
+                "ring": sim_utils.CylinderCfg(radius=0.30, height=0.004, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(1.0, 0.45, 0.05), emissive_color=(0.35, 0.12, 0.0))),
+                "hole": sim_utils.CylinderCfg(radius=0.22, height=0.006, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.20, 0.42, 0.16), roughness=0.9))}))
+        r = self.phys.ball.radius
+        landed = self.j_done[ids] & self.batter_side.hit[ids] & (self.j_pos[ids, 2] <= self.field_z + r + 1e-3)
+        p = self.j_pos[ids].clone()
+        p[:, 2] = self.field_z + 0.006  # above the grass sheet (field + 2 mm, 2 mm thick)
+        p = torch.where(landed.unsqueeze(-1), p, p * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
+        k = len(ids)
+        self.ring_marker.visualize(translations=torch.cat([p, p], 0),
+                                   marker_indices=torch.cat([torch.zeros(k, dtype=torch.long), torch.ones(k, dtype=torch.long)]).to(self.device))
 
     def plate_front_w(self) -> torch.Tensor:
         """(n, 3) world point of the judged plate plane (plate frame x = plate_distance, y = zone_center_y) at field level:

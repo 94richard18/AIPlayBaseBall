@@ -44,6 +44,10 @@ def card(w, h, lines, sizes):
 
 def result_text(p, row):
     r = RESULT[p["expected"]]
+    if p["expected"] == "ball" and p["balls_before"] == "3":
+        r = "Ball four  -  walk"
+    elif p["expected"] in ("called_strike", "swinging_strike") and p["strikes_before"] == "2":
+        r += "  -  strikeout"
     if p["expected"] in ("foul", "in_play") and row:
         r += f"  -  exit {float(row['exit_mps']) * 3.6:.0f} km/h, launch {float(row['launch_deg']):.0f} deg, carry {float(row['carry_m']):.1f} m"
     return r
