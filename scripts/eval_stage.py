@@ -627,8 +627,18 @@ def film(w, base, pol, T, fps=30):
     # it made PhysX re-parse the env and invalidated the sim view), then check that nothing under env k is hidden
     root = stage.GetPrimAtPath(f"/World/envs/env_{E}")
     UsdGeom.Imageable(root).GetVisibilityAttr().Set(UsdGeom.Tokens.inherited)
+    # hidden from above only: a prim that is invisible itself (or under such a prim inside env k) is meant to be, e.g.
+    # the colliding mound under plate_yaw_deg (its visual-only "...Shown" copy is drawn instead)
+    def own_hidden(p):
+        while p != root:
+            a = UsdGeom.Imageable(p).GetVisibilityAttr() if UsdGeom.Imageable(p) else None
+            if a and a.Get() == UsdGeom.Tokens.invisible:
+                return True
+            p = p.GetParent()
+        return False
     hidden = [str(p.GetPath()) for p in Usd.PrimRange(root)
-              if UsdGeom.Imageable(p) and UsdGeom.Imageable(p).ComputeVisibility() == UsdGeom.Tokens.invisible]
+              if UsdGeom.Imageable(p) and UsdGeom.Imageable(p).ComputeVisibility() == UsdGeom.Tokens.invisible
+              and not own_hidden(p)]
     print(f"[video] env {E}: {sum(1 for _ in Usd.PrimRange(root))} prims, hidden {len(hidden)} {hidden[:3]}", flush=True)
     if hidden:
         raise RuntimeError(f"env {E} prims hidden: {hidden[:5]}")
