@@ -150,6 +150,8 @@ def main():
     nan = lambda: torch.full((n,), float("nan"), device=base.device)  # noqa: E731
     fall_t, cross_t = nan(), nan()
     bat_fall_t, hit_t = nan(), nan()  # read-only: the batter's first fall (while active) and first bat-ball contact
+    fall_pz, fall_tilt = nan(), nan()  # at that fall: pelvis z above field_z (m), pelvis tilt (deg); the criterion uses world z
+    pel = base.batter.find_bodies("pelvis")[0][0]
     feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
     gz = float(base.field_z)
     marks = {}  # phase -> (root z, lowest foot z) above the world ground, per env
@@ -189,6 +191,10 @@ def main():
             b_fell |= side.fallen & side.active
             b_fell_pre |= side.fallen & side.active & ~was_done  # inside the training episode (native window)
             hit |= side.hit
+            nf = torch.isnan(bat_fall_t) & side.fallen & side.active
+            dd = base.batter.data
+            fall_pz = torch.where(nf, dd.body_link_pos_w[:, pel, 2] - gz, fall_pz)
+            fall_tilt = torch.where(nf, torch.rad2deg(torch.acos((-dd.projected_gravity_b[:, 2]).clamp(-1, 1))), fall_tilt)
             bat_fall_t = torch.where(torch.isnan(bat_fall_t) & side.fallen & side.active, now, bat_fall_t)
             hit_t = torch.where(torch.isnan(hit_t) & side.hit, now, hit_t)
     if args.dof_dump:  # again after the run (anything written to the sim later)
@@ -252,6 +258,7 @@ def main():
             backspin_rpm=round(rec.get("backspin_rpm", float("nan")), 0),
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
             bat_fall_t=round(float(bat_fall_t[e]), 4), hit_t=round(float(hit_t[e]), 4),
+            fall_pelvis_z=round(float(fall_pz[e]), 3), fall_tilt_deg=round(float(fall_tilt[e]), 1),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
             swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
