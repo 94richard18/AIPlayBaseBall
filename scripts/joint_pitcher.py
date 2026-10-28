@@ -111,6 +111,9 @@ class JointFilm:
     ball camera looked straight down at the fallen batter, so the ball is followed only while it is more than
     MIN_BATTER_DEG away from the batter's pelvis as seen from the camera; otherwise the pitcher."""
     CUT_AFTER_S = 0.5
+    # planning 14 10-29 (recover_rl films: the batter now stays up): a pitch not hit keeps the batter views this long after
+    # done_t - past the PA video's clip end (done_t + 1.0 s), so no cut is shown; a hit still cuts to the ball at CUT_AFTER_S
+    CUT_AFTER_MISS_S = float(os.environ.get("AIB_FILM_CUT_AFTER_MISS_S", CUT_AFTER_S))
     SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
     HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
     NEAR_BALL_M, HIGH_ZOOM_NEAR = 25.0, 2.0  # planning 14 10-28: a ball within this of the plate gets the closer zoom
@@ -224,7 +227,7 @@ class JointFilm:
         self._pose(t)
         if k % self.every:
             return
-        cut = done_t is not None and done_t == done_t and t >= done_t + self.CUT_AFTER_S
+        cut = done_t is not None and done_t == done_t and t >= done_t + (self.CUT_AFTER_S if hit else self.CUT_AFTER_MISS_S)
         if cut and self.cut_at is None:
             self.cut_at = t
         left, right = ("side", "high") if cut else ("cf", "pv")

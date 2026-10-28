@@ -24,7 +24,8 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default="policy",
+parser.add_argument("--recover_ckpt", type=str, default=None, help="after_done recover_rl: the Human25-R recovery actor")
+parser.add_argument("--after_done", choices=("policy", "hold", "blend", "recover", "recover_low", "recover_rl"), default="policy",
                     help="the batter once its training episode would have ended (BatterSide after_done)")
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
@@ -126,7 +127,7 @@ def main():
         swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
-                      no_handoff=args.no_handoff, swing=swing)
+                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt)
     if args.diag_yaw is not None:  # before the first reset places the batter
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)
@@ -160,6 +161,12 @@ def main():
     start_at = torch.full((n,), float("nan"), device=base.device)
     nan = lambda: torch.full((n,), float("nan"), device=base.device)  # noqa: E731
     fall_t, cross_t = nan(), nan()
+    bat_fall_t, hit_t = nan(), nan()  # read-only: the batter's first fall (while active) and first bat-ball contact
+    fall_pz, fall_tilt = nan(), nan()  # at that fall: pelvis z above field_z (m), pelvis tilt (deg); the criterion uses world z
+    pel = base.batter.find_bodies("pelvis")[0][0]
+    pz_tr, t_tr = [], []  # read-only: pelvis z above field_z per step (min over the film window, after the run)
+    arr_t = nan()  # the pitch's first plate-plane crossing (misses; j_cross)
+    ball_body = torch.full((n,), float("inf"), device=base.device)  # read-only: batted ball to the nearest batter link origin, from hit_t + 0.05 s
     feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
     gz = float(base.field_z)
     marks = {}  # phase -> (root z, lowest foot z) above the world ground, per env
@@ -207,6 +214,18 @@ def main():
                           done_t=None if args.no_film_cut else float(side.done_t[E]), hit=bool(hit[E]))
     if film:
         film.close()
+            nf = torch.isnan(bat_fall_t) & side.fallen & side.active
+            dd = base.batter.data
+            fall_pz = torch.where(nf, dd.body_link_pos_w[:, pel, 2] - gz, fall_pz)
+            fall_tilt = torch.where(nf, torch.rad2deg(torch.acos((-dd.projected_gravity_b[:, 2]).clamp(-1, 1))), fall_tilt)
+            bat_fall_t = torch.where(torch.isnan(bat_fall_t) & side.fallen & side.active, now, bat_fall_t)
+            hit_t = torch.where(torch.isnan(hit_t) & side.hit, now, hit_t)
+            pz_tr.append(dd.body_link_pos_w[:, pel, 2] - gz); t_tr.append(now.clone())
+            arr_t = torch.where(torch.isnan(arr_t) & ~torch.isnan(base.j_cross[:, 0]), now, arr_t)
+            late_hit = side.hit & (now >= hit_t + 0.05)
+            if late_hit.any():
+                dist = (side.robot.data.body_link_pos_w - side.ball_pos.unsqueeze(1)).norm(dim=-1).min(1).values
+                ball_body = torch.where(late_hit, torch.minimum(ball_body, dist), ball_body)
     if args.dof_dump:  # again after the run (anything written to the sim later)
         dump(base.batter, base.sim, args.dof_dump.replace(".json", "_end.json"), "joint end")
     if args.trace:
@@ -230,6 +249,14 @@ def main():
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)
+    pz_all, t_all = torch.stack(pz_tr, 1), torch.stack(t_tr, 1)  # (n, T)
+    t_ref = torch.where(hit, hit_t, torch.where(torch.isnan(arr_t), base.handoff_t + side.flight_time, arr_t))
+    inf = torch.full_like(pz_all, float("inf"))
+    after = t_all >= t_ref.unsqueeze(1)
+    min_pz_2s = torch.where(after & (t_all <= t_ref.unsqueeze(1) + 2.0), pz_all, inf).min(1).values
+    min_pz_end = torch.where(after, pz_all, inf).min(1).values
+    low = (pz_all < 0.35) & (t_all >= start_at.nan_to_num(9e9).unsqueeze(1))
+    t_low = torch.where(low.any(1), torch.where(low, t_all, inf).min(1).values, nan())
     out = []
     names = list(JOINT_CLIPS)
     pcols, ccols = pitcher_columns(base, p_fell), count_columns(args.count_csv, n)
@@ -270,12 +297,19 @@ def main():
             carry_m=round(rec.get("carry_m", float("nan")), 1), batter_fell=bool(b_fell[e]), pitcher_fell=bool(p_fell[e]),
             backspin_rpm=round(rec.get("backspin_rpm", float("nan")), 0),
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
+            bat_fall_t=round(float(bat_fall_t[e]), 4), hit_t=round(float(hit_t[e]), 4),
+            fall_pelvis_z=round(float(fall_pz[e]), 3), fall_tilt_deg=round(float(fall_tilt[e]), 1),
+            t_ref=round(float(t_ref[e]), 4), min_pelvis_z_2s=round(float(min_pz_2s[e]), 3),
+            min_pelvis_z_end=round(float(min_pz_end[e]), 3), t_pelvis_below_035=round(float(t_low[e]), 4),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
             swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
             take_bat_vmax=round(float(side.take_bat_vmax[e]), 2),
             take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
-            handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
+            handoff_jump_m=round(float(side.handoff_jump[e]), 4),
+            pt_t=round(float(side.pt_t[e]), 4), ball_body_min_m=round(float(ball_body[e]), 3),
+            **{f"pt_{k}": round(float(side.pt_stats[k][e] / side.pt_stats["n"][e].clamp_min(1.0)), 4) for k in ("tgt_rate", "jv_rms")},
+            pt_jv_max=round(float(side.pt_stats["jv_max"][e]), 2),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()},
             **pcols[e], **ball_columns(rec), **ccols[e]))
     for o in out:
