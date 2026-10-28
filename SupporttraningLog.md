@@ -60,6 +60,14 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-28 17:50：找到 joint 打者落差的根本原因並修好：obs 舊了 7.5 ms。修正後 A 擊中 0.922（原生 0.905），初速 20.5 m/s（原生 19.4）；完整 M2 已自動開跑**（`logs/gap/tr3/`、`logs/gap/fix/`，17:00–17:48，GPU 約 45 分鐘；83f5995 / bf96315）
+> - **原因**：`JointPitchEnv.step` 在「控制步自己那一個投手步」結束後就呼叫 `batter_side.post()`（算下一步的 obs），也就是動作施加後只過了 2 個物理子步（2.5 ms），而不是原生的 8 個（10 ms）；下一個 control() 要再過 7.5 ms 才用這組 obs → policy 每一步都看 7.5 ms 前的狀態。證據：joint 的 obs 關節角和控制當下實際的 q 差 0.15–0.30 rad（原生 0）；t_arrive 在某一個區間只少了 0.005（= 2.5 ms × 2），obp_167-7 在第 0→1 步（就是那個 23 rad/s 的起點）、obp_282-1 在第 1→2 步（發散起點）。打者 policy 是 bang-bang（例如 l_elbow 目標在 0 和 2.6 兩個極限之間跳），多 7.5 ms 延遲就會揮得鈍、相位錯開、初速低。
+> - **一路排除的**：物理參數讀回（`scripts/dof_readout.py`、`--dof_dump`）：61 個 DOF 的增益 / 上下限 / armature / 摩擦、63 個 body 的質量 / 慣量、USD 驅動 / 迭代 / loop joint 全部 0 差異；`replicate_physics=False`（原生改成 False，trace 完全相同）；場景加投手 + 動態球（原生加上去只差 0.02–0.13，擊中 0.912，第 1 步的小差異就是它造成的 GPU 耦合）；座標 yaw、地面高度（三種變體 trace 到小數第三位都一樣）。
+> - **修正**：`joint_env.step` 改成在控制區間最後一個投手步之後才呼叫 post()（`_j_k % batter_every == 0`）；`BatterSide` 先初始化 `fallen`（driver 每一步都讀它，第一次修正後的 A 因為這個當掉）。CPU 測試原本照抄了同樣的順序（假 articulation 的狀態不會動，所以看不出來），已經改正，並加上證偽：post 時打者時鐘要比 control 時多一整個控制區間（舊順序只差 0.0025 s → 失敗）；兩項 CPU 測試都 PASS。
+> - **A 修正後**（joint `--no_handoff`、seed 1）：擊中 59/64 = **0.922**（修正前 0.391，原生 B 0.905）；初速 18.1 / 20.5 / 22.0 m/s（原生 19.4）；ref_err 0.031 / 0.033 / 0.035（原生 0.029）；擊中時甜蜜點 16.9（原生 16.7）；tempo_fly −0.076（原生 −0.081）；trace 和原生的差回到「原生 + 投手」的程度，stale 檢查 0。
+> - **影響**：之前所有 joint 打者數字（smoke、M2-lite、M2、a/c、A）都是在 obs 舊了 7.5 ms 的狀態下量的，不能用；投手那邊的結果（C1、gate、影片的投球列）不受影響。舊 M2 檔案移到 `logs/m2_stale_obs_1028/`。
+> - **正在跑**（14 事先核准，`logs/run_fixA_m2.sh`）：完整兩階段 M2，10 seeds × 64、shift_hist 預設、bias 0.055、after_done policy、`--timing_csv logs/m2lite/timing.csv`；seed 1 後確認投球欄位和第一階段一致；seed 2 後早停（好球帶 < 0.36、ref_err 中位數不在 0.032 ± 0.010，或當掉）。最終標準：好球帶 0.46 ± 0.05（原生 800 Hz jitter 0 是 0.478）、擊中後跌倒 43 ± 8%、進壘點 vs fly_to_x < 1 cm、保送 10 ± 2.3%，另外報初速（原生 19.4）和 dz 殘差 sd（原生 0.036）。結束標記 `logs/m2/M2_END.txt`。
+
 > **打者 10-28 16:35：落差在 joint 場景的打者動力學（系統性），和感知、時序、絕對高度、控制節奏都無關；正在二分搜尋原因**（`logs/gap/`，15:50–16:30，GPU 約 35 分鐘；a63bac3 / 6d25811 / 9f71a0e）
 > - **A/B 分離測試**（同一球 `p3c_median_flight_row.csv`、800 Hz、jitter 0）：B 原生擊中 0.905、ref_err 0.029、擊中時甜蜜點 16.7 m/s；A joint `--no_handoff`（打者打自己預測的那一球，沒有交接）25/64 = 0.391、ref_err 0.019、甜蜜點 15.2、初速 14.6 m/s。**B2**（同 B 加 `--contact_log`）：原生初速中位數 **19.4 m/s**（17.3 / 19.4 / 21.2）。→ 交接和感知拿掉以後落差還在，問題在場景本身。
 > - **CPU 檢查（14 要求）**：(1) 絕對高度：pivot 帶 field_z，所有 proxy 位置欄位都扣掉；打者 env 的 env_origins z = 0、自己的球 / tee / nominal / ref 都在 B 座標；跌倒判定走 proxy；CPU shim 測試本來就用 pivot z −0.196 → 沒問題。(2) 控制節奏：control() 每 4 個投手步一次、post() 只在那一步、ball_world（打者 _apply_action）每個物理子步，cfg 斷言 10 ms → 沒問題。
