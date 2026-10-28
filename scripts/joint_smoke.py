@@ -38,11 +38,16 @@ parser.add_argument("--no_handoff", action="store_true", help="control: the batt
 parser.add_argument("--no_shift_hist", action="store_true", help="BatterSide shift_hist off: the percept sees the release-point jump")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
+parser.add_argument("--effort_probe", type=float, default=None,
+                    help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
 parser.add_argument("--swing_csv", type=str, default=None,
                     help="ONE OUTS PA: env,swing per env (scripts/joint_pa.py); swing 0 = the batter takes (stance held). Default all swing")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True
+if args.effort_probe is not None:  # before any cfg import: the batter env cfg reads it at import
+    os.environ["AIB_EFFORT_SCALE"] = str(args.effort_probe)
+    os.environ["AIB_EFFORT_PROBE"] = "1"
 app = AppLauncher(args).app
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,8 +68,12 @@ TASK = "AIB-OneOutsJoint-v0"
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5"
+    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or args.effort_probe is not None
     cfg = load_cfg_from_registry(TASK, "env_cfg_entry_point")
+    if args.effort_probe is not None:  # the joint scene's batter articulation (the cfg pins 1.5)
+        from aibaseball.robot.aib1_cfg import make_aib1_cfg
+        cfg.batter = make_aib1_cfg(human_strength=True, effort_scale=args.effort_probe).replace(prim_path="/World/envs/env_.*/Batter")
+        print(f"[joint] EFFORT PROBE: batter effort scale {args.effort_probe} (delivery 1.5)", flush=True)
     cfg.scene.num_envs = args.envs
     cfg.seed = args.seed
     cfg.episode_length_s = args.seconds
