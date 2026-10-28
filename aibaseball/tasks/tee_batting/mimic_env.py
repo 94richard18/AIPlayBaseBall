@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import re
+
 import torch
 
 from isaaclab.utils.math import quat_error_magnitude, quat_rotate_inverse
@@ -41,9 +43,11 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.speed = float(cfg.speed)
         self.track_stats = {k: torch.zeros((), device=dev) for k in
                             ("track_reward", "key_err_m", "pose_err_rad", "t0", "min_ball_dist_m",
-                             "ss_speed_win", "ss_ref_speed_win")}
+                             "ss_speed_win", "ss_ref_speed_win", "cvel_err", "cvel_reward")}
         self.min_ball_dist = torch.full((self.num_envs,), 9.0, device=dev)
         self.ss_ref_contact_speed = None
+        # contact-window joint-velocity tracking (Human23): body-joint columns of cfg.cvel_joints
+        self.cvel_cols = [i for i, n in enumerate(self.body_joint_names) if re.match(cfg.cvel_joints, n)] if cfg.w_cvel > 0 else []
         if cfg.post_clip_balance:
             self.track_stats.update({k: torch.zeros((), device=dev) for k in ("post_bal_score", "post_bal_reward")})
             self.hit_reward_ep = torch.zeros(self.num_envs, device=dev)  # this episode's hit reward (one-shot in rew)
@@ -163,6 +167,20 @@ class TeeBattingMimicEnv(TeeBattingEnv):
                 ss_r = torch.where(win, along.clamp(0.0).minimum(v_ref_n) / v_c, ss_r)
                 self.track_stats["ss_speed_win"] = 0.99 * self.track_stats["ss_speed_win"] + 0.01 * v_ss.norm(dim=-1)[win].mean()
                 self.track_stats["ss_ref_speed_win"] = 0.99 * self.track_stats["ss_ref_speed_win"] + 0.01 * v_ref_n[win].mean()
+        cvel_r = torch.zeros_like(dist)
+        if self.cfg.w_cvel > 0:
+            t = self._ref_time()
+            win = ((t >= self.ref.contact_time[self.clip] - self.cfg.cvel_window_s) & (t <= self.ref.contact_time[self.clip])
+                   & (~self.hit | self.new_hit))
+            if win.any():
+                r = self._ref(t)
+                rate = getattr(self, "rate", None)  # the pitched env's playback rate (tempo action); the clip's otherwise
+                qd_ref = r["joint_vel"][:, self.cvel_cols] * ((rate / self.speed).unsqueeze(-1) if rate is not None else 1.0)
+                qd = self.robot.data.joint_vel[:, self.body_joint_ids][:, self.cvel_cols]
+                err = ((qd - qd_ref) ** 2).mean(-1)
+                cvel_r = torch.where(win, torch.exp(-err / self.cfg.sigma_cvel ** 2), cvel_r)
+                self.track_stats["cvel_err"] = 0.99 * self.track_stats["cvel_err"] + 0.01 * err[win].sqrt().mean()
+                self.track_stats["cvel_reward"] = 0.99 * self.track_stats["cvel_reward"] + 0.01 * cvel_r[win].mean()
         done = self.reset_terminated | self.reset_time_outs
         a = 0.01
         if done.any():
@@ -174,7 +192,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.extras["log"]["mimic/speed"] = torch.tensor(self.speed, device=self.device)
         if self.cfg.post_clip_balance:
             rew, track = self._post_clip_balance(rew, track)
-        return rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r + self.cfg.w_ss_speed * ss_r
+        return (rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r + self.cfg.w_ss_speed * ss_r
+                + self.cfg.w_cvel * cvel_r)
 
     def _post_clip_balance(self, rew, track):
         """Past the clip end: no mimic target, a standing reward capped by the episode's hit reward (cfg comment)."""

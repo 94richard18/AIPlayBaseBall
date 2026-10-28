@@ -73,6 +73,12 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     # speed at contact (the reference ramps ~6 -> 31 m/s over the window, so the sum follows the speed profile)
     w_ss_speed: float = 0.0
     ss_speed_window_s: float = 0.1
+    # contact-window joint-velocity tracking: in the last cvel_window_s of reference time before contact (until the hit), per
+    # step w_cvel * exp(-mean((qd - qd_ref)^2 over cvel_joints) / sigma_cvel^2); a timing term (early peaks cost), not a speed one
+    w_cvel: float = 0.0
+    cvel_window_s: float = 0.1
+    sigma_cvel: float = 8.0  # rad/s RMS
+    cvel_joints: str = r"waist_|l_shoulder_|l_elbow|l_wrist_"
     max_key_err: float = 0.45  # terminate when key bodies drift this far (m RMS)
     lost_after_hit_is_fall: bool = False  # True: losing the reference after contact counts as a fall (w_fall_after_hit)
     ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)

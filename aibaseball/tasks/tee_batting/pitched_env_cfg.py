@@ -328,3 +328,16 @@ class PitchedBattingHuman22EnvCfg(PitchedBattingHuman15EnvCfg):
 
     target_distance: float = 43.0
     w_exit_velo: float = 60.0
+
+
+@configclass
+class PitchedBattingHuman23EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-29 bat-speed cap (diag_bat_contact --link_log on 12500, 277 hits): the upper body is not slow but early - waist
+    peaks 0.06 s and shoulder / wrist pitch 0.20-0.26 s before contact (reference: at contact), at every swing-start bias,
+    while Human16 / 16b / 22's speed rewards traded hit rate for nothing. Change (decision session): a contact-window joint-
+    velocity tracking term (last 0.1 s of reference time before contact, waist + left arm, sigma 8 rad/s, w 1.0) so the
+    segment speeds peak at contact. Human15's pitches. Run with AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    w_cvel: float = 1.0
+    cvel_window_s: float = 0.1
+    sigma_cvel: float = 8.0
