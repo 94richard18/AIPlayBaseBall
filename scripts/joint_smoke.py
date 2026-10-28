@@ -152,6 +152,8 @@ def main():
     bat_fall_t, hit_t = nan(), nan()  # read-only: the batter's first fall (while active) and first bat-ball contact
     fall_pz, fall_tilt = nan(), nan()  # at that fall: pelvis z above field_z (m), pelvis tilt (deg); the criterion uses world z
     pel = base.batter.find_bodies("pelvis")[0][0]
+    pz_tr, t_tr = [], []  # read-only: pelvis z above field_z per step (min over the film window, after the run)
+    arr_t = nan()  # the pitch's first plate-plane crossing (misses; j_cross)
     feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
     gz = float(base.field_z)
     marks = {}  # phase -> (root z, lowest foot z) above the world ground, per env
@@ -197,6 +199,8 @@ def main():
             fall_tilt = torch.where(nf, torch.rad2deg(torch.acos((-dd.projected_gravity_b[:, 2]).clamp(-1, 1))), fall_tilt)
             bat_fall_t = torch.where(torch.isnan(bat_fall_t) & side.fallen & side.active, now, bat_fall_t)
             hit_t = torch.where(torch.isnan(hit_t) & side.hit, now, hit_t)
+            pz_tr.append(dd.body_link_pos_w[:, pel, 2] - gz); t_tr.append(now.clone())
+            arr_t = torch.where(torch.isnan(arr_t) & ~torch.isnan(base.j_cross[:, 0]), now, arr_t)
     if args.dof_dump:  # again after the run (anything written to the sim later)
         dump(base.batter, base.sim, args.dof_dump.replace(".json", "_end.json"), "joint end")
     if args.trace:
@@ -220,6 +224,14 @@ def main():
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)
+    pz_all, t_all = torch.stack(pz_tr, 1), torch.stack(t_tr, 1)  # (n, T)
+    t_ref = torch.where(hit, hit_t, torch.where(torch.isnan(arr_t), base.handoff_t + side.flight_time, arr_t))
+    inf = torch.full_like(pz_all, float("inf"))
+    after = t_all >= t_ref.unsqueeze(1)
+    min_pz_2s = torch.where(after & (t_all <= t_ref.unsqueeze(1) + 2.0), pz_all, inf).min(1).values
+    min_pz_end = torch.where(after, pz_all, inf).min(1).values
+    low = (pz_all < 0.35) & (t_all >= start_at.nan_to_num(9e9).unsqueeze(1))
+    t_low = torch.where(low.any(1), torch.where(low, t_all, inf).min(1).values, nan())
     out = []
     names = list(JOINT_CLIPS)
     R = side.rec
@@ -259,6 +271,8 @@ def main():
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
             bat_fall_t=round(float(bat_fall_t[e]), 4), hit_t=round(float(hit_t[e]), 4),
             fall_pelvis_z=round(float(fall_pz[e]), 3), fall_tilt_deg=round(float(fall_tilt[e]), 1),
+            t_ref=round(float(t_ref[e]), 4), min_pelvis_z_2s=round(float(min_pz_2s[e]), 3),
+            min_pelvis_z_end=round(float(min_pz_end[e]), 3), t_pelvis_below_035=round(float(t_low[e]), 4),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
             swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
