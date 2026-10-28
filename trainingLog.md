@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-29 02:2x（規劃 session）天空版兩個打席重拍驗收 OK -> m3pa_draft.mp4 v4 / m3pa2_draft.mp4 v2 = 現行展示版
+- 20（ee850e1，02:18 M3SKY_ALL_END）：PA1 揮棒列 p1 e60 / p4 e37 / p5 e12 各 64/64、看球 p2 e51 / p3 e34 63/64；PA2 揮棒 p1 e62 64/64、看球 p2-p6 63/64；看球 7 球 0 跌倒；每球 343 幀 blank 0。我複核：`videos/m3pa_draft.mp4` 59.4 s、`videos/m3pa2_draft.mp4` 65.7 s，皆 h264 High yuv420p 2560x720，`videos/fixcheck_tiles/m3pa_p5_tile.png` 看過——藍天、雲、實影、中綠草地、牆 + 好球帶、擊球後落點圓環可見、打者與球棒都在本壘視角畫面內。舊版留 m3pa_draft_v3.mp4 / m3pa2_draft_v1.mp4。
+- 這兩支就是目前的展示版（投手贏 5 球內野出局 / 打者贏四壞）；11-26 最終剪輯在此基礎上加球數卡與說明。
+- Isaac 0；15 的摩擦診斷鏈（gate M3SKY_ALL_END）應已自動啟動，約 5 min -> `logs/BSPEED3_END.txt`。20 無排程；之後 GPU 閒置待 15 數字與使用者決定（力量 / 摩擦）。
+
 ### 10-29 00:47（規劃 session）3 小時檢查：天空重拍 PA1 3/11 球完成、各球一致；GPU 滿載無閒置
 - Isaac 0 瞬間（球與球之間的閘門）；20 的 `logs/m3sky_all.sh` 00:21 起：PA1 p1（s1 e60 揮空）64/64 IDENTICAL、p2（s1 e51 看球，take mode 10，bat_vmax 2.45，batter_fell False）63/64、p3 已出片；每球約 10 min，預計 ~02:10 M3SKY_ALL_END。之後 15 的 `logs/run_bspeed3.sh`（F0c / F1c mu 2.0、F0d 對照、F0e 扭轉摩擦 0.04 m，約 5 min，標記 `logs/BSPEED3_END.txt`）。
 - 15 的 CPU 查核：機器人 USD 無物理材質，用場景預設 1.0 / 0.9，與地面相同 -> 今天腳地摩擦已是 1.0 / 0.9，沒有「被平均拉低」的單純修正；F0d 當對照（須重現 F0b 骨盆 0.56 / 甜蜜點 13.8）。
