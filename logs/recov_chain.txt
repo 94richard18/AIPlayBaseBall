@@ -1,0 +1,20 @@
+[bank] seed 0: 2048 states of 2048 envs in 135 steps; hits 596 (0.291), misses 1452; fallen at the trigger 5
+[bank] hits: pelvis z min/q1/med/q3/max 0.78 / 0.84 / 0.86 / 0.88 / 0.93 m | tilt 9.04 / 16.89 / 20.08 / 23.25 / 35.19 deg | root speed 0.13 / 0.65 / 0.81 / 1.01 / 1.65 m/s | foot z max 0.08 / 0.10 / 0.11 / 0.13 / 0.18 m
+[bank] misses: pelvis z min/q1/med/q3/max 0.24 / 0.86 / 0.88 / 0.90 / 0.95 m | tilt 4.40 / 16.85 / 19.56 / 22.62 / 88.73 deg | root speed 0.01 / 0.49 / 0.69 / 0.92 / 3.37 m/s | foot z max 0.08 / 0.16 / 0.21 / 0.26 / 0.78 m
+[bank] wrote logs/recover_bank_s0.npz
+[bank] seed 6: 1024 states of 1024 envs in 135 steps; hits 294 (0.287), misses 730; fallen at the trigger 1
+[bank] hits: pelvis z min/q1/med/q3/max 0.80 / 0.84 / 0.86 / 0.87 / 0.94 m | tilt 8.17 / 16.59 / 19.93 / 22.78 / 39.57 deg | root speed 0.22 / 0.64 / 0.81 / 0.99 / 1.91 m/s | foot z max 0.09 / 0.10 / 0.11 / 0.13 / 0.23 m
+[bank] misses: pelvis z min/q1/med/q3/max 0.21 / 0.86 / 0.88 / 0.90 / 0.95 m | tilt 6.59 / 16.78 / 19.94 / 22.50 / 91.43 deg | root speed 0.07 / 0.49 / 0.68 / 0.91 / 4.18 m/s | foot z max 0.09 / 0.16 / 0.20 / 0.25 / 0.45 m
+[bank] wrote logs/recover_bank_s6.npz
+[reval] zero hits: on the ground within 2 s 272/294 (92.5%), lost posture 278/294 (94.6%), tilted > 75 deg 273/294 (92.9%); min pelvis z 0.12 / 0.13 / 0.16 / 0.18 / 0.89; t on the ground med 0.92 s
+[reval] zero misses: on the ground within 2 s 715/730 (97.9%), lost posture 716/730 (98.1%), tilted > 75 deg 714/730 (97.8%); min pelvis z 0.10 / 0.13 / 0.13 / 0.17 / 0.87; t on the ground med 0.65 s
+REVAL zero ground 0.964 hits 0.925 misses 0.979 lost 0.971
+RECOV_BANK_END 06:07 banks s0 / s6 + a=0 baseline done
+06:30 run logs/rsl_rl/aib1_recover/2026-10-29_06-08-39_h25r: 4 checkpoints
+[reval] m299 hits: on the ground within 2 s 12/294 (4.1%), lost posture 17/294 (5.8%), tilted > 75 deg 10/294 (3.4%); min pelvis z 0.17 / 0.84 / 0.85 / 0.87 / 0.93; t on the ground med 1.30 s
+[reval] m299 misses: on the ground within 2 s 14/730 (1.9%), lost posture 22/730 (3.0%), tilted > 75 deg 16/730 (2.2%); min pelvis z 0.17 / 0.77 / 0.82 / 0.85 / 0.92; t on the ground med 0.90 s
+REVAL m299 ground 0.025 hits 0.041 misses 0.019 lost 0.038
+[reval] m998 hits: on the ground within 2 s 2/294 (0.7%), lost posture 2/294 (0.7%), tilted > 75 deg 2/294 (0.7%); min pelvis z 0.11 / 0.84 / 0.86 / 0.87 / 0.94; t on the ground med 0.91 s
+[reval] m998 misses: on the ground within 2 s 7/730 (1.0%), lost posture 8/730 (1.1%), tilted > 75 deg 4/730 (0.5%); min pelvis z 0.17 / 0.85 / 0.87 / 0.88 / 0.93; t on the ground med 0.82 s
+REVAL m998 ground 0.009 hits 0.007 misses 0.010 lost 0.010
+RECOV_TRAIN_END 07:26 model_299 ground 0.025, model_998 ground 0.009 -> +1000 bar 0.30 PASS (logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b)

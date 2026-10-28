@@ -1,0 +1,16 @@
+RECOV_TRAIN_END 07:26 model_299 ground 0.025, model_998 ground 0.009 -> +1000 bar 0.30 PASS (logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b)
+final recovery checkpoint logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b/model_998.pt (s6 bank on the ground 0.009)
+policy 07:35 [joint] summary: handed 64/64, hits 0.250, batter falls 64, pitcher falls 11, released before the batter's start 0 
+recover_rl 07:43 [joint] summary: handed 64/64, hits 0.250, batter falls 1, pitcher falls 11, released before the batter's start 0 
+RD recover_rl vs falldiag2: pitch + hit_t + swing columns identical 64/64
+RD policy rerun vs falldiag2: pitch + hit_t + swing columns identical 64/64
+RD falldiag2 hits n 16: on the ground within 2 s 14 (88%), lost posture within 2 s 15 (94%), on the ground by episode end 15 (94%)
+RD falldiag2 misses n 48: on the ground within 2 s 39 (81%), lost posture within 2 s 45 (94%), on the ground by episode end 42 (88%)
+RD policy rerun hits n 16: on the ground within 2 s 14 (88%), lost posture within 2 s 15 (94%), on the ground by episode end 15 (94%)
+RD policy rerun misses n 48: on the ground within 2 s 39 (81%), lost posture within 2 s 45 (94%), on the ground by episode end 42 (88%)
+RD recover_rl hits n 16: on the ground within 2 s 0 (0%), lost posture within 2 s 0 (0%), on the ground by episode end 0 (0%)
+RD recover_rl misses n 48: on the ground within 2 s 0 (0%), lost posture within 2 s 1 (2%), on the ground by episode end 0 (0%)
+RD policy rerun: hits with the ball within 0.15 m of a body link after hit_t + 0.05 s 0/16 (closest 0.43 m); pt_tgt_rate med 0.601 q90 0.683; pt_jv_rms med 8.423 q90 9.322; pt_jv_max med 42.940 q90 47.910
+RD recover_rl: hits with the ball within 0.15 m of a body link after hit_t + 0.05 s 0/16 (closest 0.44 m); pt_tgt_rate med 0.018 q90 0.023; pt_jv_rms med 2.613 q90 3.108; pt_jv_max med 39.940 q90 42.530
+RD RESULT recover_rl on the ground within 2 s 0.000 (all 64)
+RECOV_DIAG_END 07:43 done (logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b/model_998.pt)
