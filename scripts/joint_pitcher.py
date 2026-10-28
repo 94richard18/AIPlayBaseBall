@@ -1,12 +1,24 @@
 """Joint ONE OUTS run helpers (pitcher session, M2 columns 10-28): per-env pitcher release columns, the batted ball's
 landing point / fair flag, the count, and the film path (eval_stage's M3 joint cameras) for scripts/joint_smoke.py.
 
-Columns appended after the batter session's (agreed 10-28):
-  p_released, p_release_t, p_speed, p_heading, p_elev, p_rel_x, p_rel_y, p_rel_z (above the field), p_vx..p_vz,
-  p_wx..p_wz, p_spin_rpm, p_aero_y, p_aero_z, p_tier, p_standing - the gate's release row (eval_stage film_release_row),
-  plate frame, tier from the drag + Magnus flight of the release state;
-  ball_land_x, ball_land_y, ball_dist_m, ball_fair - game frame (aibaseball/game/field.py: home at the origin, +x toward
-  centre field, +y toward the third-base side, spray + = toward left field), NaN / False without a batted ball;
+Lateral frames (planning 14, 10-28: every column with a left / right sign names its frame):
+  _plate = the pitcher's plate frame (eval_stage release rows, j_cross, joint_env to_plate): rubber at the origin, +x
+           toward the plate (plate_distance at its front), +y = the pitcher's left = the FIRST-base side, z up.
+  _game  = the game convention (agents.Pitch.plate_y, one_outs.BODY_Y_M / is_hit_by_pitch, field.FieldSpec, play_log
+           spray_deg, the batter frame B of batter_side): +x from the plate toward centre field, +y = the THIRD-base side
+           (a right-handed batter's side), spray + = toward left field.
+  The 180 deg turn between them: y_game = -y_plate (x_game = plate_distance - x_plate; vectors flip x and y), as
+  pitch_gen.build_library_from_release, agents.TablePitcher and match_video.plate_crossing do. Vertical columns are
+  the same in both. Worked row (10-28): P3c gate table row 0 aero_y +0.150 (plate) -> library / engine plate_y -0.151;
+  joint env 0 (fall_ab_hold) j_cross y +0.150 (plate), the batter's pred_y -0.1504 (game), z 0.689 / 0.6892.
+
+Columns appended after the batter session's (agreed 10-28, frame suffixes 10-28):
+  p_released, p_release_t, p_speed, p_heading_plate, p_elev, p_rel_x_plate, p_rel_y_plate, p_rel_z (above the field),
+  p_vx_plate, p_vy_plate, p_vz, p_wx_plate, p_wy_plate, p_wz, p_spin_rpm, p_aero_y_plate, p_aero_y_game, p_aero_z, p_tier,
+  p_standing - the gate's release row (eval_stage film_release_row), tier from the drag + Magnus flight of the release
+  state (aero y / z written also when it hit the ground first, as in the gate rows);
+  ball_land_x_game, ball_land_y_game, ball_dist_m, ball_fair - from play_log's carry / spray (frame B: origin at the
+  batter's crossing plane, not the plate centre - a few dm), NaN / False without a batted ball;
   count_balls, count_strikes - from --count_csv (env,balls,strikes), 0 / 0 by default (plumbing only)."""
 
 import csv
@@ -17,9 +29,10 @@ import numpy as np
 import torch
 
 GATE_MIN_SPEED, GATE_MIN_RELEASE_T = 10.0, 0.9  # eval_stage --gate_min_speed / --gate_min_release_t defaults
-PITCH_COLS = ("p_released", "p_release_t", "p_speed", "p_heading", "p_elev", "p_rel_x", "p_rel_y", "p_rel_z", "p_vx", "p_vy",
-              "p_vz", "p_wx", "p_wy", "p_wz", "p_spin_rpm", "p_aero_y", "p_aero_z", "p_tier", "p_standing")
-BALL_COLS = ("ball_land_x", "ball_land_y", "ball_dist_m", "ball_fair")
+PITCH_COLS = ("p_released", "p_release_t", "p_speed", "p_heading_plate", "p_elev", "p_rel_x_plate", "p_rel_y_plate", "p_rel_z",
+              "p_vx_plate", "p_vy_plate", "p_vz", "p_wx_plate", "p_wy_plate", "p_wz", "p_spin_rpm", "p_aero_y_plate",
+              "p_aero_y_game", "p_aero_z", "p_tier", "p_standing")
+BALL_COLS = ("ball_land_x_game", "ball_land_y_game", "ball_dist_m", "ball_fair")
 COUNT_COLS = ("count_balls", "count_strikes")
 
 
@@ -50,12 +63,13 @@ def pitcher_columns(base, p_fell):
         t3 = t2 and abs(ya) <= 0.5 and 0.2 <= za <= 1.5
         t4 = t3 and abs(ya) <= 0.2159 + 0.0366 and 0.50 <= za <= 1.10
         out.append(dict(
-            p_released=r, p_release_t=round(float(rt[e]), 4), p_speed=round(v, 3), p_heading=round(head, 2), p_elev=round(el, 2),
-            p_rel_x=round(float(pl[e, 0]), 3), p_rel_y=round(float(pl[e, 1]), 3), p_rel_z=round(float(pl[e, 2]) - base.field_z, 3),
-            p_vx=round(float(vp[e, 0]), 4), p_vy=round(float(vp[e, 1]), 4), p_vz=round(float(vp[e, 2]), 4),
-            p_wx=round(float(wp[e, 0]), 3), p_wy=round(float(wp[e, 1]), 3), p_wz=round(float(wp[e, 2]), 3),
+            p_released=r, p_release_t=round(float(rt[e]), 4), p_speed=round(v, 3), p_heading_plate=round(head, 2), p_elev=round(el, 2),
+            p_rel_x_plate=round(float(pl[e, 0]), 3), p_rel_y_plate=round(float(pl[e, 1]), 3),
+            p_rel_z=round(float(pl[e, 2]) - base.field_z, 3),
+            p_vx_plate=round(float(vp[e, 0]), 4), p_vy_plate=round(float(vp[e, 1]), 4), p_vz=round(float(vp[e, 2]), 4),
+            p_wx_plate=round(float(wp[e, 0]), 3), p_wy_plate=round(float(wp[e, 1]), 3), p_wz=round(float(wp[e, 2]), 3),
             p_spin_rpm=round(float(np.linalg.norm(wp[e])) * 60.0 / (2.0 * math.pi), 0),
-            p_aero_y=round(ya, 3), p_aero_z=round(za, 3),  # as the gate rows: written also when it hit the ground first
+            p_aero_y_plate=round(ya, 3), p_aero_y_game=round(-ya, 3), p_aero_z=round(za, 3),  # as the gate rows: written also when it hit the ground first
             p_tier=int(t1) + int(t2) + int(t3) + int(t4), p_standing=bool(ok[e])))
     return out
 
@@ -65,9 +79,9 @@ def ball_columns(rec):
     from aibaseball.game.field import FieldSpec
     carry, spray = rec.get("carry_m", float("nan")), rec.get("spray_deg", float("nan"))
     if not rec or carry != carry or spray != spray:
-        return dict(ball_land_x=float("nan"), ball_land_y=float("nan"), ball_dist_m=float("nan"), ball_fair=False)
+        return dict(ball_land_x_game=float("nan"), ball_land_y_game=float("nan"), ball_dist_m=float("nan"), ball_fair=False)
     x, y = carry * math.cos(math.radians(spray)), carry * math.sin(math.radians(spray))
-    return dict(ball_land_x=round(x, 2), ball_land_y=round(y, 2), ball_dist_m=round(carry, 1), ball_fair=FieldSpec().is_fair(x, y))
+    return dict(ball_land_x_game=round(x, 2), ball_land_y_game=round(y, 2), ball_dist_m=round(carry, 1), ball_fair=FieldSpec().is_fair(x, y))
 
 
 def count_columns(path, n):

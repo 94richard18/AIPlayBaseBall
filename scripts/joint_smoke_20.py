@@ -163,14 +163,14 @@ def main():
         jc = base.j_cross[e].tolist()  # (y - zone centre, z above the field); NaN when the bat met it first
         out.append(dict(
             env=e, clip=names[e % len(names)], kmh=round(float(side.pitch_kmh[e]), 1),
-            plate_y=round(jc[0], 3), plate_z=round(jc[1], 3),
+            cross_y_plate=round(jc[0], 3), plate_z=round(jc[1], 3),  # j_cross y: plate frame (+ first base)
             handoff_t=round(float(base.handoff_t[e]), 4), batter_start=round(float(start_at[e]), 4),
             handed=bool(side.handed[e]), hit=bool(hit[e]), exit_mps=round(rec.get("exit_velo_mps", float("nan")), 2),
             launch_deg=round(rec.get("launch_deg", float("nan")), 1), spray_deg=round(rec.get("spray_deg", float("nan")), 1),
             carry_m=round(rec.get("carry_m", float("nan")), 1), batter_fell=bool(b_fell[e]), pitcher_fell=bool(p_fell[e]),
             backspin_rpm=round(rec.get("backspin_rpm", float("nan")), 0),
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
-            pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
+            pred_y_game=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             **pcols[e], **ball_columns(rec), **ccols[e]))
     for o in out:
         print("[joint] " + " ".join(f"{k}={v}" for k, v in o.items()), flush=True)
