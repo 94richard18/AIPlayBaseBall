@@ -655,7 +655,14 @@ def film(w, base, pol, T, fps=30):
     # pitcher (feet 4.7 deg, head 2.2 deg below the horizon) and batter (3.4 / 1.7 deg) inside the +-3.1 deg frame height
     # C3b: 1 m to the first-base side put the batter (3B side, y -0.9) right behind the pitcher; 4 m to the third-base
     # side separates them by ~2.7 deg (pitcher +5.7, batter +3.0 deg off the aim line to the plate)
-    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM, CF_TZ = 40.0, -4.0, 3.5, 6.0, 0.3
+    # M3 (planning 14: the pair was small, the swing must read): 8x aimed between them (0.42 x plate distance, 0.75 m up) -
+    # pinhole check on the 1600 x 900 panel: pitcher ~490 px tall, batter ~350 px, both inside
+    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
+    CF_T = (0.42, -0.45, 0.75)  # aim: x as a share of the plate distance, y off the zone centre, z above the field
+    # joint plate view: 6.5 m behind the plate, 0.6 m to the first-base side, 1.0 m up, 1.8x, toward the mound - the batter
+    # in the left foreground (~735 px tall), the pitcher in the middle distance (~185 px); the old 1 m / 3x view left the
+    # batter out of the frame
+    PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (6.5, 0.6, 1.0), (-10.0, -0.3, 0.9), 1.8  # x relative to the plate
     if joint:
         base.marker_envs = [E]
 
@@ -668,7 +675,7 @@ def film(w, base, pol, T, fps=30):
         rz = lambda x, y: [np.cos(th) * x - np.sin(th) * y, np.sin(th) * x + np.cos(th) * y]
         zc = base.cfg.zone_center_y
         base.sim.set_camera_view(eye=(g + np.array(rz(-CF_BACK, zc + CF_SIDE) + [CF_UP])).tolist(),
-                                 target=(g + np.array(rz(base.cfg.plate_distance, zc - 0.3) + [CF_TZ])).tolist())
+                                 target=(g + np.array(rz(CF_T[0] * base.cfg.plate_distance, zc + CF_T[1]) + [CF_T[2]])).tolist())
         if focal0:
             set_focal(focal0 * CF_ZOOM)
 
@@ -732,10 +739,15 @@ def film(w, base, pol, T, fps=30):
                 ex, ey = pd + 1.0, base.cfg.zone_center_y
                 # aimed at 1.0 m above the field: the old crop was centred at 55 % of the frame height, about 0.6 m
                 # below the 1.3 m target at this distance
-                base.sim.set_camera_view(eye=(g + [np.cos(th) * ex - np.sin(th) * ey, np.sin(th) * ex + np.cos(th) * ey, 1.5]).tolist(),
-                                         target=(g + [0.0, 0.0, 1.0]).tolist())
+                rot = lambda x, y: [np.cos(th) * x - np.sin(th) * y, np.sin(th) * x + np.cos(th) * y]
+                if joint:
+                    zc = base.cfg.zone_center_y
+                    base.sim.set_camera_view(eye=(g + np.array(rot(pd + PV_J_EYE[0], zc + PV_J_EYE[1]) + [PV_J_EYE[2]])).tolist(),
+                                             target=(g + np.array(rot(pd + PV_J_TGT[0], zc + PV_J_TGT[1]) + [PV_J_TGT[2]])).tolist())
+                else:
+                    base.sim.set_camera_view(eye=(g + rot(ex, ey) + [1.5]).tolist(), target=(g + [0.0, 0.0, 1.0]).tolist())
                 if focal0:
-                    set_focal(focal0 * PLATE_ZOOM)
+                    set_focal(focal0 * (PV_J_ZOOM if joint else PLATE_ZOOM))
                     if k == 0 and e == 0:
                         print(f"[video] plate view focal {focal0:.1f} -> {cam.GetFocalLengthAttr().Get():.1f} mm", flush=True)
                 base.render()
