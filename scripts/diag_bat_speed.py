@@ -23,6 +23,9 @@ parser.add_argument("--window", type=float, default=0.3, help="s before the refe
 parser.add_argument("--friction", type=float, nargs=2, default=None, metavar=("STATIC", "DYNAMIC"),
                     help="scene default material (the robot's colliders have none) with combine mode max -> the foot / ground "
                          "contact uses these values (today 1.0 / 0.9 everywhere)")
+parser.add_argument("--torsion", type=float, default=None,
+                    help="torsional friction patch radius (m) on every robot collider (spawn collision props; only the feet touch "
+                         "the ground) - resists a planted foot's spin; PhysX default 0 = none")
 parser.add_argument("--tail", type=float, default=0.2, help="s run past the reference contact (standing check)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -46,6 +49,10 @@ def main():
             a.stiffness *= args.gain_scale
             a.damping *= args.gain_scale
     cfg.scene.num_envs = args.envs
+    if args.torsion is not None:
+        import isaaclab.sim as sim_utils
+
+        cfg.robot.spawn.collision_props = sim_utils.CollisionPropertiesCfg(torsional_patch_radius=args.torsion)
     if args.friction:
         import isaaclab.sim as sim_utils
 
@@ -76,6 +83,7 @@ def main():
     leg_sim = torch.zeros(n, len(legs), device=dev)
     leg_ref = torch.zeros(n, len(legs), device=dev)
     foot_sim = torch.zeros(n, 2, device=dev)
+    foot_yaw = torch.zeros(n, 2, device=dev)
     foot_ref = torch.zeros(n, 2, device=dev)
     fk = [KEY_BODIES.index(f"{s}_foot") for s in "lr"]
     foot_ids = [env.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
@@ -123,6 +131,7 @@ def main():
             leg_sim = torch.where(s2, torch.maximum(leg_sim, d.joint_vel[:, env.body_joint_ids][:, legs].abs()), leg_sim)
             fv = d.body_link_lin_vel_w[:, foot_ids, :2].norm(dim=-1)
             foot_sim = torch.where(s2, torch.maximum(foot_sim, fv), foot_sim)
+            foot_yaw = torch.where(s2, torch.maximum(foot_yaw, d.body_link_ang_vel_w[:, foot_ids, 2].abs()), foot_yaw)
             steps += swing.sum()
             for g, a in groups.items():
                 ids = a.joint_indices
@@ -136,7 +145,7 @@ def main():
                 sat_v[g] += (hit_v & swing).sum()
     ok = swung.sum().item()
     print(f"== diag_bat_speed strength={args.strength} effort_scale={args.effort_scale} gain_scale={args.gain_scale} ff={args.ff} "
-          f"friction={args.friction or 'default'} "
+          f"friction={args.friction or 'default'} torsion={args.torsion} "
           f"({ok}/{n} envs swung to the contact time without a reset)")
     m = swung if ok else torch.ones_like(swung)
     print(f"sweet spot peak before contact {peak[m].mean():.1f} m/s (min {peak[m].min():.1f}, max {peak[m].max():.1f}); "
@@ -151,6 +160,7 @@ def main():
         f"{names[j]} {leg_sim[m, k].mean():.1f}/{leg_ref[m, k].mean():.1f}" for k, j in enumerate(legs)))
     print(f"foot horizontal speed peak sim / reference (m/s): l {foot_sim[m, 0].mean():.2f}/{foot_ref[m, 0].mean():.2f}, "
           f"r {foot_sim[m, 1].mean():.2f}/{foot_ref[m, 1].mean():.2f} (slip proxy; no contact sensor in this env)")
+    print(f"foot yaw rate peak sim (rad/s, world z; the clip has no foot orientation): l {foot_yaw[m, 0].mean():.1f}, r {foot_yaw[m, 1].mean():.1f}")
     print("swing window share at the limit (any joint of the group): torque / speed")
     for g in groups:
         print(f"  {g:9s} {100 * (sat_t[g] / steps.clamp_min(1)).item():5.1f}% / {100 * (sat_v[g] / steps.clamp_min(1)).item():5.1f}%")
