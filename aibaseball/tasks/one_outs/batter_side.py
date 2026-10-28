@@ -29,7 +29,16 @@ import os
 import torch
 
 from isaaclab.envs import DirectRLEnv
-from isaaclab.utils.math import quat_apply, quat_rotate_inverse, quat_from_euler_xyz, quat_mul
+from isaaclab.utils.math import quat_apply, quat_rotate_inverse, quat_from_euler_xyz
+
+
+def quat_mul(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
+    """Hamilton product (w, x, y, z), written out directly: exact when either factor is the identity (isaaclab's
+    quat_mul uses the 8-multiply form, which rounds even then - enough to change the contact-rich rollout)."""
+    w1, x1, y1, z1 = q1.unbind(-1)
+    w2, x2, y2, z2 = q2.unbind(-1)
+    return torch.stack([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                        w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2], -1)
 
 from aibaseball.physics.pitch_gen import PitchLibrary, fly_to_x
 from aibaseball.tasks.tee_batting.pitched_env import PitchedBattingEnv
