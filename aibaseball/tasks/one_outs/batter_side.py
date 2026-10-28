@@ -50,6 +50,7 @@ BATTER_YAW_DEG = 162.0
 BLEND_S = 0.5  # after_done "blend": seconds from the done pose to the stance  # Rz(180 - plate_yaw 18): the batter frame B into the pitcher's world
 TAKE_BLEND_S = 0.5  # take modes 5 / 6: stance -> default pose from the scheduled start
 TAKE_BLEND_FAST_S = 0.25  # take mode 8
+TAKE_BLEND_SLOW_S = 0.8  # take mode 10
 N_LEG_WAIST = 15  # body joints 0..14: legs (12) + waist (3); 15.. arms
 
 
@@ -190,7 +191,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         5 = from the scheduled start, blend (smoothstep, TAKE_BLEND_S) the stance to the default pose;
         6 = as 5 for the legs + waist only, the arms (bat) stay in the stance;
         7 = as 6 from the joint episode's start (t 0) instead of the scheduled batter start;
-        8 = as 6 with a TAKE_BLEND_FAST_S blend.
+        8 = as 6 with a TAKE_BLEND_FAST_S blend;
+        9 / 10 = all body joints blend to the default pose from t 0 over TAKE_BLEND_S / TAKE_BLEND_SLOW_S (diag 3: with
+          the legs + waist at the default pose the obp_42 stance arms still tip it over, 8/8).
         Take diag 10-28 (64 envs, 16 per mode): the stance does not stand under PD alone - mode 4 falls 16/16 at 1.4-2.4 s,
         mode 0 16/16, mode 2 12/16 (and moves the bat ~8 m/s); the default pose (3) stands 16/16 but jumps there at the start.
         None = every env swings. take_dev_t / take_dev_joint: per take env the first time a body joint is 0.3 rad off
@@ -239,7 +242,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
         self._obs = None
         mode = torch.ones(n, dtype=torch.long, device=self.device) if swing is None else             torch.as_tensor(swing, device=self.device).long()
-        assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 8)).all()), mode
+        assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 10)).all()), mode
         self.take_dev_t = torch.full((n,), float("nan"), device=self.device)
         self.take_dev_joint = torch.full((n,), -1, dtype=torch.long, device=self.device)
         self.take_bat_vmax = torch.zeros(n, device=self.device)  # per env, max bat CM speed over the whole run (a take must not swing)
@@ -364,11 +367,13 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
                 pose = torch.where(dflt.unsqueeze(-1), dpose, pose)
             bl = self.take_mode >= 5
             if bl.any():  # stance -> default pose from the scheduled start (legs + waist only for 6..8)
-                t0 = torch.where(self.take_mode == 7, torch.zeros_like(self.start_t), self.start_t)
+                t0 = torch.where((self.take_mode == 7) | (self.take_mode >= 9), torch.zeros_like(self.start_t), self.start_t)
                 dur = torch.where(self.take_mode == 8, torch.full_like(t0, TAKE_BLEND_FAST_S), torch.full_like(t0, TAKE_BLEND_S))
+                dur = torch.where(self.take_mode == 10, torch.full_like(t0, TAKE_BLEND_SLOW_S), dur)
                 s = ((self._joint_time() - t0) / dur).clamp(0.0, 1.0)
                 s = (s * s * (3.0 - 2.0 * s)).unsqueeze(-1).expand_as(pose).clone()
-                s[:, N_LEG_WAIST:] = torch.where((self.take_mode >= 6).unsqueeze(-1), 0.0, s[:, N_LEG_WAIST:])
+                arms_stay = (self.take_mode >= 6) & (self.take_mode <= 8)
+                s[:, N_LEG_WAIST:] = torch.where(arms_stay.unsqueeze(-1), 0.0, s[:, N_LEG_WAIST:])
                 pose = torch.where(bl.unsqueeze(-1), pose + s * (dpose - pose), pose)
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(take.unsqueeze(-1), pose, tgt)
@@ -405,8 +410,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.trace[-1]["tp"] = self.robot.data.joint_pos_target.clone()
             self.trace[-1]["tv"] = self.robot.data.joint_vel_target.clone()
         self._obs = self._get_observations()["policy"]
-        win = ~self.done & ~self.fallen & (self.take_mode != 4)  # while the pitch is live, before any fall (a falling bat whips)
-        win |= (self.take_mode == 4) & ~self.fallen & (self._joint_time() < self._joint.release_t_pred + 1.0)
+        # while the pitch is live (released, not yet past), before any fall (a falling bat whips)
+        win = self.handed & ~self.done & ~self.fallen & (self.take_mode != 4)
+        win |= (self.take_mode == 4) & ~self.fallen & (self._joint_time() >= self._joint.release_t_pred) &             (self._joint_time() < self._joint.release_t_pred + 1.0)
         v = self.robot.data.body_com_lin_vel_w[:, self.bat_id].norm(dim=-1)
         self.take_bat_vmax = torch.where(win, torch.maximum(self.take_bat_vmax, v), self.take_bat_vmax)
         new = ~self.swing & torch.isnan(self.take_dev_t)
