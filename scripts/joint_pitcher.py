@@ -113,7 +113,7 @@ class JointFilm:
     CUT_AFTER_S = 0.5
     SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
     HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
-    NEAR_BALL_M, HIGH_ZOOM_NEAR = 25.0, 1.5  # planning 14 10-28: a ball within this of the plate gets the closer zoom
+    NEAR_BALL_M, HIGH_ZOOM_NEAR = 25.0, 2.0  # planning 14 10-28: a ball within this of the plate gets the closer zoom
     MIN_BATTER_DEG = 30.0  # the zoom-1 half field of view is ~18 deg (vertical) / ~30 deg (horizontal)
     CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
     CF_T = (0.42, -0.45, 0.75)

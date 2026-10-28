@@ -297,15 +297,15 @@ class JointPitchEnv(StageEnv):
             self._show_ring(ids)
 
     def _show_ring(self, ids):
-        """film_landing_ring: a batted ball whose integrated flight ended on the ground gets an orange ring (grass-coloured
+        """film_landing_ring: a batted ball whose integrated flight ended on the ground gets a red-orange ring 1.2 m across (grass-coloured
         centre) at its landing point; elsewhere / before the landing the ring is parked under the field."""
         if self.ring_marker is None:
             from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 
             self.ring_marker = VisualizationMarkers(VisualizationMarkersCfg(prim_path="/Visuals/joint_landing", markers={
-                "ring": sim_utils.CylinderCfg(radius=0.30, height=0.004, visual_material=sim_utils.PreviewSurfaceCfg(
-                    diffuse_color=(1.0, 0.45, 0.05), emissive_color=(0.35, 0.12, 0.0))),
-                "hole": sim_utils.CylinderCfg(radius=0.22, height=0.006, visual_material=sim_utils.PreviewSurfaceCfg(
+                "ring": sim_utils.CylinderCfg(radius=0.60, height=0.004, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.95, 0.12, 0.02), emissive_color=(0.6, 0.06, 0.0))),
+                "hole": sim_utils.CylinderCfg(radius=0.48, height=0.006, visual_material=sim_utils.PreviewSurfaceCfg(
                     diffuse_color=(0.20, 0.42, 0.16), roughness=0.9))}))
         r = self.phys.ball.radius
         landed = self.j_done[ids] & self.batter_side.hit[ids] & (self.j_pos[ids, 2] <= self.field_z + r + 1e-3)

@@ -54,7 +54,7 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     # flight marker stops at its face. Distance = the integrated flight's end behind the plate.
     film_wall: bool = False
     film_wall_size_m: tuple = (4.0, 2.5)  # width (centred on the zone), height
-    # film (M3, planning 14 10-28): an orange ground ring (0.6 m across) at the batted ball's integrated landing point,
+    # film (M3, planning 14 10-28): a red-orange ground ring (1.2 m across) at the batted ball's integrated landing point,
     # shown from the landing on - visual only (the ~7 cm ball is lost at the batted-ball camera's range)
     film_landing_ring: bool = False
 
