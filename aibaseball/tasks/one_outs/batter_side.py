@@ -131,6 +131,7 @@ class _Null:
 class _Scene:
     def __init__(self, env_origins):
         self.env_origins = env_origins
+        self.num_envs = env_origins.shape[0]
 
 
 class _JointFramework(DirectRLEnv):
@@ -139,15 +140,10 @@ class _JointFramework(DirectRLEnv):
     def __init__(self, cfg, render_mode=None, **kwargs):  # noqa: D401 - replaces DirectRLEnv.__init__
         j = self._joint
         self.cfg, self.render_mode = cfg, None
-        self.sim = j.sim
-        self.device, self.num_envs = j.device, j.num_envs
-        self.physics_dt = cfg.sim.dt
-        self.step_dt = cfg.sim.dt * cfg.decimation
-        self.max_episode_length_s = cfg.episode_length_s
-        self.max_episode_length = int(round(cfg.episode_length_s / self.step_dt))
+        self.sim = j.sim  # device, num_envs, physics_dt, step_dt, max_episode_length: DirectRLEnv properties of these
+        self.scene = _Scene(torch.zeros(j.num_envs, 3, device=j.device))  # set per clip in _place()
         self.robot = RotatedArticulation(j.batter, j.plate_front_w())
         self.ball, self.tee, self.ball_marker, self.landing_markers = _Null(), _Null(), _Null(), _Null()
-        self.scene = _Scene(torch.zeros(self.num_envs, 3, device=self.device))  # set per clip in _place()
         self.episode_length_buf = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         self.reset_terminated = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.reset_time_outs = torch.zeros_like(self.reset_terminated)
