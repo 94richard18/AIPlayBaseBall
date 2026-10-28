@@ -39,8 +39,6 @@ parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from th
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
-parser.add_argument("--physics_hz", type=int, default=None,
-                    help="physics rate (control stays 100 Hz): 800 = the ONE OUTS joint scene's dt, native 400")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -132,11 +130,6 @@ def main():
     if hasattr(cfg, "tee_noise_ramp_steps"):
         cfg.tee_noise_ramp_steps = 0
     cfg.scene.num_envs = args.envs
-    if args.physics_hz:
-        ctrl = cfg.sim.dt * cfg.decimation
-        cfg.sim.dt = 1.0 / args.physics_hz
-        cfg.decimation = int(round(ctrl / cfg.sim.dt))
-        cfg.sim.render_interval = cfg.decimation
     if args.seed is not None:
         cfg.seed = args.seed
     cfg.clamp_ref_phase = args.clamp_ref_phase
