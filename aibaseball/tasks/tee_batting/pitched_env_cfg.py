@@ -317,3 +317,14 @@ class PitchedBattingHuman21EnvCfg(PitchedBattingHuman15EnvCfg):
     zero_ff_after_ref_end: bool = True
     follow_through_s: float = 2.0
     episode_length_s = 3.5
+
+
+@configclass
+class PitchedBattingHuman22EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-28 arm B power line (decision session): the frozen M2 (12500 at 1.5x) has no outfield ball in 640 joint
+    pitches (exit speed median ~16 m/s, ~25 m/s needed). Change: target 29 -> 43 m (mid outfield) and the exit-speed term
+    x3 (Power cfg's 20 -> 60, x exit speed / 52.5), fall terms unchanged. Human15's P3c-shaped pitches. Run with
+    AIB_EFFORT_SCALE 1.5 (the spec value). From 12500."""
+
+    target_distance: float = 43.0
+    w_exit_velo: float = 60.0
