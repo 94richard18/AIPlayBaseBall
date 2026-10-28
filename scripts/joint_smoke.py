@@ -83,7 +83,6 @@ def main():
     bcfg.zero_ff_after_ref_end = args.zero_ff
     own = None
     if args.timing_csv:
-        import csv
         tr = sorted(csv.DictReader(open(args.timing_csv)), key=lambda r: int(r["env"]))
         assert [int(r["env"]) for r in tr] == list(range(args.envs)), args.timing_csv
         own = [[float(r["handoff_t"]), float(r["t_plane"])] for r in tr]
