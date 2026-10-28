@@ -112,7 +112,7 @@ def main():
     if args.swing_csv:
         sr = sorted(csv.DictReader(open(args.swing_csv)), key=lambda r: int(r["env"]))
         assert [int(r["env"]) for r in sr] == list(range(args.envs)), args.swing_csv
-        swing = [r["swing"] in ("1", "True") for r in sr]
+        swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
                       no_handoff=args.no_handoff, swing=swing)
@@ -250,7 +250,8 @@ def main():
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
-            swing=bool(side.swing[e]),
+            swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
+            take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
             handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))
     for o in out:

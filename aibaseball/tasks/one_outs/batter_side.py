@@ -176,9 +176,16 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         (planning 10-28: joint seed 1 in-zone hits 0.24 -> 0.33, dz scatter 0.084 -> 0.061 m).
         no_handoff: control run - the live pitch never replaces the batter's own (the predicted median-flight row,
         released at its own release_t exactly as in the native env); the joint env's ball mirrors the batter's.
-        swing: (n,) bool per env, False = the batter takes the pitch (ONE OUTS PA, the engine's take decision made
-        offline on the env's seed-invariant crossing): its episode runs as usual (clock, hand-off, contact check) but
-        the PD targets stay on the clip's stance (frame 0, no feed-forward) the whole time. None = every env swings."""
+        swing: (n,) per env, 1 / True = swing, else a take (ONE OUTS PA, the engine's take decision made offline on the
+        env's seed-invariant crossing): its episode runs as usual (clock, hand-off, contact check) but
+        0 = the PD targets stay on the clip's stance (frame 0, no feed-forward) the whole time (20's M3 PA film 10-28:
+          falls on its face ~1.6 s after the start - the stance is not balanced under PD alone);
+        2 = the policy keeps running with its reference clock pinned to the stance (residual on, tempo ignored, no
+          feed-forward): the policy's own balance feedback around the stance;
+        3 = the PD targets go to the articulation's default pose (M1's standing batter);
+        4 = diagnostic: the batter's episode never starts (the pre-start stance hold for the whole joint episode).
+        None = every env swings. take_dev_t / take_dev_joint: per take env the first time a body joint is 0.3 rad off
+        its PD target, and which (fall diagnosis)."""
         assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or os.environ.get("AIB_EFFORT_PROBE") == "1",             "the delivery batter runs at AIB_EFFORT_SCALE 1.5 (AIB_EFFORT_PROBE=1: a zero-shot strength probe, never a delivery)"
@@ -222,8 +229,12 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.own = None if own_timing is None else torch.as_tensor(own_timing, dtype=torch.float32, device=self.device)
         assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
         self._obs = None
-        self.swing = torch.ones(n, dtype=torch.bool, device=self.device) if swing is None else             torch.as_tensor(swing, dtype=torch.bool, device=self.device)
-        assert self.swing.shape == (n,), self.swing.shape
+        mode = torch.ones(n, dtype=torch.long, device=self.device) if swing is None else             torch.as_tensor(swing, device=self.device).long()
+        assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 4)).all()), mode
+        self.take_dev_t = torch.full((n,), float("nan"), device=self.device)
+        self.take_dev_joint = torch.full((n,), -1, dtype=torch.long, device=self.device)
+        self.take_mode = torch.where(mode == 1, torch.full_like(mode, -1), mode)  # -1 = swings
+        self.swing = mode == 1
 
     # ------------------------------------------------------------------ frames
     def _place(self):
@@ -289,7 +300,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.ref_t[ids] = self.ref.contact_time[self.clip[ids]] - (tp - self.cfg.timing_bias_s - ts) * self.speed
 
     def control(self):
-        start = ~self.active & (self._joint_time() >= self.start_t - 1e-6)
+        start = ~self.active & (self._joint_time() >= self.start_t - 1e-6) & (self.take_mode != 4)
         if start.any():  # the training episode starts now: the stance again (it was held there), ref clock, phys_t 0
             ids = start.nonzero(as_tuple=False).squeeze(-1)
             PitchedBattingEnv._reset_idx(self, ids)
@@ -329,8 +340,17 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.joint_targets[:, self.body_joint_ids] = torch.where(frz.unsqueeze(-1), q, tgt)
             self.joint_vel_targets[frz] = 0.0
         take = ~self.swing
-        if take.any():  # a take: the stance the whole pitch, whatever the policy outputs
-            pose = self._ref(torch.zeros(self.num_envs, device=self.device))["joint_pos"]
+        if take.any():  # a take (see __init__ swing): stance / policy around the stance / default pose
+            z = torch.zeros(self.num_envs, device=self.device)
+            pose = self._ref(z)["joint_pos"]
+            pin = self.take_mode == 2
+            if pin.any():  # the clock stays on frame 0 (as cfg.take_hold), the policy's residual stays on
+                self.ref_t = torch.where(pin, torch.minimum(self.ref_t, z), self.ref_t)
+                res = self.actions[:, :-1] * self.action_scale * self.cfg.residual_scale
+                pose = torch.where(pin.unsqueeze(-1), torch.clamp(pose + res, self.q_lo, self.q_hi), pose)
+            dflt = self.take_mode == 3
+            if dflt.any():
+                pose = torch.where(dflt.unsqueeze(-1), self.robot.data.default_joint_pos[:, self.body_joint_ids], pose)
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(take.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[take] = 0.0
@@ -366,6 +386,13 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.trace[-1]["tp"] = self.robot.data.joint_pos_target.clone()
             self.trace[-1]["tv"] = self.robot.data.joint_vel_target.clone()
         self._obs = self._get_observations()["policy"]
+        new = ~self.swing & torch.isnan(self.take_dev_t)
+        if new.any():  # take fall diagnosis: the first body joint 0.3 rad off its PD target
+            err = (self.robot.data.joint_pos[:, self.body_joint_ids] - self.joint_targets[:, self.body_joint_ids]).abs()
+            m, j = err.max(-1)
+            hit = new & (m > 0.3)
+            self.take_dev_t = torch.where(hit, self._joint_time(), self.take_dev_t)
+            self.take_dev_joint = torch.where(hit, j, self.take_dev_joint)
         if self.rec is not None and self._perc is not None:  # the ball the policy was given (B, z above the field)
             self.rec["perc"].append((self._joint_time().clone(), self._perc[:, 2].clone()))
 
