@@ -159,7 +159,8 @@ class _JointFramework(DirectRLEnv):
 
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
-    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None):
+    def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
+                 timing_bias=None):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -168,7 +169,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         clip's stance (frame 0) over BLEND_S (smoothstep, zero velocity targets: the PD damps the motion).
         own_timing: (n, 2) per env (hand-off time, contact-plane time) of the same seed's live pitch from a first pass
         (the pitch does not depend on the batter): two-pass oracle timing, see _own_clock. None = schedule every env on
-        the table's median-flight row."""
+        the table's median-flight row. timing_bias: cfg.timing_bias_s override (default the game value 0.055)."""
         assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
@@ -178,7 +179,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         assert len(cfg.motion_files) == len(JOINT_CLIPS), cfg.motion_files
         cfg.real_height = True
         cfg.timing_noise_s = 0.0  # the engine's true arrival (batter-oracle-timing); bias stays the game value
-        cfg.timing_bias_s = 0.055
+        cfg.timing_bias_s = 0.055 if timing_bias is None else timing_bias
         cfg.aim_offset_z = 0.0
         ctrl = cfg.sim.dt * cfg.decimation  # 100 Hz control on the joint env's physics step
         cfg.sim.dt = joint.physics_dt
@@ -283,6 +284,12 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         with torch.inference_mode():
             act = self._actor.act_inference(self._norm(self._obs))
         self._pre_physics_step(act)
+        if self.rec is not None:  # mean tempo action (the clipped one the clock used): before the hand-off / from it to done (diag_bat_contact's window)
+            r, tempo = self.rec, self.actions[:, -1].clamp(-1.0, 1.0)
+            live = self.active & ~self.done
+            for key, m in (("pre", live & ~self.handed), ("fly", live & self.handed)):
+                r["tempo_" + key] += torch.where(m, tempo, torch.zeros_like(tempo))
+                r["n_" + key] += m.float()
         hold = ~self.active
         if hold.any():  # waiting: frame 0 of the clip, no feed-forward
             pose = self._ref(torch.zeros(self.num_envs, device=self.device))["joint_pos"]
@@ -336,7 +343,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         n, dev = self.num_envs, self.device
         nan = lambda: torch.full((n,), float("nan"), device=dev)  # noqa: E731
         self.rec = dict(t_plane=nan(), ref_err=nan(), t_square=nan(), sq_ax=torch.ones(n, device=dev), gap=torch.full((n,), 9.0, device=dev),
-                        t_gap=nan(), dz=nan(), dperp=nan(), ss_speed_max=torch.zeros(n, device=dev), k=0)
+                        t_gap=nan(), dz=nan(), dperp=nan(), ss_speed_max=torch.zeros(n, device=dev), k=0,
+                        tempo_pre=torch.zeros(n, device=dev), n_pre=torch.zeros(n, device=dev),
+                        tempo_fly=torch.zeros(n, device=dev), n_fly=torch.zeros(n, device=dev))
 
     def _record(self, prev_ball, dt):
         r = self.rec
