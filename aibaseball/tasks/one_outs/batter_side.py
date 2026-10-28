@@ -46,7 +46,8 @@ from aibaseball.tasks.tee_batting.pitched_env import PitchedBattingEnv
 JOINT_CLIPS = ("obp_167-7", "obp_282-1", "obp_42-1", "obp_42-2")  # |dz| <= 0.03 m (one scene, real heights)
 
 
-BATTER_YAW_DEG = 162.0  # Rz(180 - plate_yaw 18): the batter frame B into the pitcher's world
+BATTER_YAW_DEG = 162.0
+BLEND_S = 0.5  # after_done "blend": seconds from the done pose to the stance  # Rz(180 - plate_yaw 18): the batter frame B into the pitcher's world
 
 
 class _RotatedData:
@@ -163,8 +164,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
         passed, batted ball landed, fallen, time out): "policy" keeps the policy running (never trained there),
-        "hold" freezes the PD targets at the joint pose of that moment."""
-        assert after_done in ("policy", "hold"), after_done
+        "hold" freezes the PD targets at the joint pose of that moment, "blend" moves them from that pose to the
+        clip's stance (frame 0) over BLEND_S (smoothstep, zero velocity targets: the PD damps the motion)."""
+        assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
         assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
@@ -196,6 +198,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.done_t = torch.full((n,), float("nan"), device=self.device)  # joint episode time of that
         self._load_policy(checkpoint)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
+        self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._obs = None
 
     # ------------------------------------------------------------------ frames
@@ -263,17 +266,26 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(hold.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[hold] = 0.0
-        frz = self.done if self.after_done == "hold" else torch.zeros_like(self.done)
-        if frz.any():  # past the training episode: hold the pose it ended in
+        frz = self.done if self.after_done != "policy" else torch.zeros_like(self.done)
+        if frz.any():  # past the training episode: hold the pose it ended in (or blend it to the stance)
+            q = self.hold_q
+            if self.after_done == "blend":
+                s = ((self._joint_time() - self.done_t) / BLEND_S).clamp(0.0, 1.0).nan_to_num(0.0)
+                s = (s * s * (3.0 - 2.0 * s)).unsqueeze(-1)
+                stance = self._ref(torch.zeros(self.num_envs, device=self.device))["joint_pos"]
+                q = self.hold_q + s * (stance - self.hold_q)
             tgt = self.joint_targets[:, self.body_joint_ids]
-            self.joint_targets[:, self.body_joint_ids] = torch.where(frz.unsqueeze(-1), self.hold_q, tgt)
+            self.joint_targets[:, self.body_joint_ids] = torch.where(frz.unsqueeze(-1), q, tgt)
             self.joint_vel_targets[frz] = 0.0
 
     def ball_world(self, dt: float):
         new = self._joint.j_fly & ~self.handed
         if new.any():
             self._hand_off(new.nonzero(as_tuple=False).squeeze(-1))
+        prev_ball = self.pitch_pos.clone() if self.rec is not None else None
         self._apply_action()
+        if self.rec is not None:
+            self._record(prev_ball, dt)
         h = self.hit.unsqueeze(-1)
         p = torch.where(h, self.ball_pos, self.pitch_pos)
         v = torch.where(h, self.ball_vel, self.pitch_vel)
@@ -291,6 +303,49 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.done_t[new] = self._joint_time()[new]
             self.done |= new
         self._obs = self._get_observations()["policy"]
+
+    # ------------------------------------------------------------------ swing timing / geometry (diag_bat_contact's)
+    def record_swing(self):
+        """Per env, the native contact diag's quantities at physics-step resolution (joint time): t_plane = the pitch
+        crosses the clip's contact plane (x = contact_x_ref, interpolated), ref_err = ref clock minus the clip's contact
+        time then (+ = the swing is early), t_square = the bat most square to the pitch line while the sweet spot is
+        fast, gap / t_gap / dz / dperp = the closest ball-to-bat-surface approach before contact."""
+        n, dev = self.num_envs, self.device
+        nan = lambda: torch.full((n,), float("nan"), device=dev)  # noqa: E731
+        self.rec = dict(t_plane=nan(), ref_err=nan(), t_square=nan(), sq_ax=torch.ones(n, device=dev), gap=torch.full((n,), 9.0, device=dev),
+                        t_gap=nan(), dz=nan(), dperp=nan(), ss_speed_max=torch.zeros(n, device=dev), k=0)
+
+    def _record(self, prev_ball, dt):
+        r = self.rec
+        r["k"] += 1
+        m = int(round(self._joint.step_dt / dt))  # physics steps per joint step; its clock advances after them
+        t = self._joint_time() + ((r["k"] - 1) % m + 1) * dt  # end of this physics step
+        live = self.active & self.handed & ~self.done
+        knob, axis, cm, v_cm, w, _ = self._bat_state()
+        b = self.pitch_pos
+        x = ((b - knob) * axis).sum(-1).clamp(0.0, self.bat_geom.length)
+        p = knob + axis * x.unsqueeze(-1)
+        off = b - p
+        gap = off.norm(dim=-1) - self.bat_geom.radius_at(x) - self.phys.ball.radius
+        better = live & ~self.hit & (gap < r["gap"])
+        _, v_ss = self._sweet_spot(knob, axis, cm, v_cm, w)
+        dp = v_ss - (v_ss * axis).sum(-1, keepdim=True) * axis
+        dp[:, 2] = 0.0
+        dp = dp / dp.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+        r["gap"] = torch.where(better, gap, r["gap"])
+        r["t_gap"] = torch.where(better, t, r["t_gap"])
+        r["dz"] = torch.where(better, off[:, 2], r["dz"])
+        r["dperp"] = torch.where(better, (off * dp).sum(-1), r["dperp"])
+        xr = self.contact_x_ref
+        cross = live & (prev_ball[:, 0] >= xr) & (b[:, 0] < xr) & torch.isnan(r["t_plane"])
+        frac = (prev_ball[:, 0] - xr) / (prev_ball[:, 0] - b[:, 0]).clamp_min(1e-9)
+        r["t_plane"] = torch.where(cross, t - dt + dt * frac, r["t_plane"])
+        r["ref_err"] = torch.where(cross, self.ref_t - self.ref.contact_time[self.clip], r["ref_err"])
+        sp = v_ss.norm(dim=-1)
+        r["ss_speed_max"] = torch.where(live, torch.maximum(r["ss_speed_max"], sp), r["ss_speed_max"])
+        sq = live & (sp > 10.0) & (axis[:, 0].abs() < r["sq_ax"])
+        r["sq_ax"] = torch.where(sq, axis[:, 0].abs(), r["sq_ax"])
+        r["t_square"] = torch.where(sq, t, r["t_square"])
 
     # ------------------------------------------------------------------ the live pitch replaces the predicted one
     def _hand_off(self, ids):

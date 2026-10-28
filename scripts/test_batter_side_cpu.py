@@ -202,6 +202,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--batter", required=True)
     ap.add_argument("--release_csv", default="assets/game/p3c_identical_t18_release.csv")
+    ap.add_argument("--after_done", default="policy", choices=("policy", "hold", "blend"))
     a = ap.parse_args()
     os.environ["AIB_EFFORT_SCALE"] = "1.5"
     cfg = PitchedBattingHumanPlayEnvCfg()
@@ -212,7 +213,8 @@ def main():
     bodies = ["pelvis"] + [b for b in KEY_BODIES if b != "pelvis"]
     art = FakeArticulation(jn, bodies)
     joint = FakeJoint(art)
-    side = BatterSide(joint, cfg, a.batter)
+    side = BatterSide(joint, cfg, a.batter, after_done=a.after_done)
+    side.record_swing()
     art.inner_pivot = side.robot.pivot
     print(f"[cpu] init ok: {N} envs, clips {sorted(set(side.fixed_clip.tolist()))}, start_t pending", flush=True)
     perm = torch.randperm(N, generator=G)
@@ -290,6 +292,20 @@ def main():
         side.robot.write_root_state_to_sim(st if ids is None else st[ids], ids)
         side.robot.write_root_pose_to_sim((st if ids is None else st[ids])[:, :7], ids)
     print("[cpu] root write-back ok (38 / 1 / all)", flush=True)
+    R = side.rec
+    miss = side.handed & ~side.hit
+    assert torch.isfinite(R["t_plane"][miss]).all() and torch.isfinite(R["ref_err"][miss]).all()
+    ft = R["t_plane"][miss] - side._joint.handoff_t[miss] if hasattr(side._joint, "handoff_t") else None
+    print(f"[cpu] swing record ok: t_plane {R['t_plane'][miss].min():.3f}..{R['t_plane'][miss].max():.3f} s, ref_err median "
+          f"{R['ref_err'][miss].median():+.3f}, gap median {R['gap'].median():.3f} m, done {int(side.done.sum())}/{N}", flush=True)
+    if a.after_done == "blend":  # by done + BLEND_S the PD targets are the stance
+        from aibaseball.tasks.one_outs.batter_side import BLEND_S
+        late = side.done & (side._joint_time() - side.done_t > BLEND_S)
+        side.control()
+        stance = side._ref(torch.zeros(N))["joint_pos"]
+        err = (side.joint_targets[late][:, side.body_joint_ids] - stance[late]).abs().max()
+        print(f"[cpu] blend ok: {int(late.sum())} envs past done + {BLEND_S} s, |target - stance| max {err:.2e}", flush=True)
+        assert late.any() and err < 1e-6
     print("CPU_SHIM_CHECK_PASS", flush=True)
 
 

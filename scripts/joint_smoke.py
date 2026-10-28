@@ -23,7 +23,7 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--after_done", choices=("policy", "hold"), default="policy",
+parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default="policy",
                     help="the batter once its training episode would have ended (BatterSide after_done)")
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
@@ -77,6 +77,7 @@ def main():
     bcfg.scene.num_envs = args.envs
     bcfg.zero_ff_after_ref_end = args.zero_ff
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done)
+    side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}", flush=True)
     base.batter_side = side
     w = RslRlVecEnvWrapper(env)  # its reset = the first-after-load reset, now with the batter's own
@@ -140,6 +141,14 @@ def main():
         rows.setdefault(int(rec["env"]), rec)
     out = []
     names = list(JOINT_CLIPS)
+    R = side.rec
+
+    def swing_cols(e):  # + delta: the swing reference reaches contact before the ball does (early)
+        t_pl = R["t_plane"][e]
+        return dict(t_plane=t_pl, ref_err=R["ref_err"][e], delta_s=R["ref_err"][e] / side.rate[e],
+                    t_sched=t_pl - R["ref_err"][e] / side.rate[e], timing_s=R["t_square"][e] - t_pl,
+                    gap_m=R["gap"][e], t_gap=R["t_gap"][e], dz_m=R["dz"][e], dperp_m=R["dperp"][e],
+                    ss_speed_max=R["ss_speed_max"][e])
     for e in range(n):
         rec = rows.get(e, {})
         jc = base.j_cross[e].tolist()  # (y - zone centre, z above the field); NaN when the bat met it first
@@ -152,7 +161,8 @@ def main():
             carry_m=round(rec.get("carry_m", float("nan")), 1), batter_fell=bool(b_fell[e]), pitcher_fell=bool(p_fell[e]),
             backspin_rpm=round(rec.get("backspin_rpm", float("nan")), 0),
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
-            pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4)))
+            pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
+            **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))
     for o in out:
         print("[joint] " + " ".join(f"{k}={v}" for k, v in o.items()), flush=True)
     late = sum(1 for o in out if o["handed"] and not (o["batter_start"] <= o["handoff_t"]))
