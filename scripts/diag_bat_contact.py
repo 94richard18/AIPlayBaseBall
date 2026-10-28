@@ -609,7 +609,9 @@ def main():
             while len(ks) < len(trace) and int(trace[len(ks)]["k"][e]) > int(trace[len(ks) - 1]["k"][e]):
                 ks.append(len(ks))  # until its first reset
             out_t[c] = {f: np.stack([trace[i][f][e].cpu().numpy() for i in ks]) for f in ("obs", "act", "q", "k")}
-        np.savez(args.trace, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
+        all_t = {"all__obs": np.stack([s["obs"].cpu().numpy() for s in trace[:12]], 1),  # (n, 12, D): every env's first 12 steps
+                 "all__clip": np.array([names_t[int(c)] for c in clip_first])}
+        np.savez(args.trace, **all_t, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
         print(f"[bat] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
 
 

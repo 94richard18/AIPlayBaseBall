@@ -166,7 +166,11 @@ def main():
                 continue
             ks = [i for i, s in enumerate(tr) if bool(s["active"][e])][:150]
             out_t[c] = {f: np.stack([tr[i][f][e].cpu().numpy() for i in ks]) for f in ("obs", "act", "q", "k")}
-        np.savez(args.trace, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
+        act = np.stack([s["active"].cpu().numpy() for s in tr])  # every env's first 12 active steps (n, 12, D)
+        all_t = {"all__obs": np.stack([np.stack([tr[i]["obs"][e].cpu().numpy() for i in np.flatnonzero(act[:, e])[:12]])
+                                       for e in range(n)]),
+                 "all__clip": np.array([names_t[int(c)] for c in side.clip])}
+        np.savez(args.trace, **all_t, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
         print(f"[joint] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
     rows = {}
     for rec in side.play_log:  # first batted ball per env
