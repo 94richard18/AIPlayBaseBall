@@ -40,6 +40,9 @@ parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
 parser.add_argument("--dof_dump", type=str, default=None, help="json: the batter's DOF / body properties as PhysX reports them")
+parser.add_argument("--diag_no_replicate", action="store_true", help="diagnostic: scene.replicate_physics False (as the joint scene)")
+parser.add_argument("--diag_add_pitcher", action="store_true",
+                    help="diagnostic: the joint scene's pitcher articulation + dynamic ball in every env, 18 m away")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: first env per clip, obs / action / body joints per control step (150); perception noise 0")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
@@ -164,6 +167,28 @@ def main():
         stage.GetRootLayer().Export(dst)
         cfg.robot.spawn.usd_path = dst
         print(f"[bat] top hand released: {dst}", flush=True)
+    if args.diag_no_replicate:
+        cfg.scene.replicate_physics = False
+    if args.diag_add_pitcher:  # bisect the joint-vs-native batter dynamics (10-28): the pitcher's presence alone
+        from isaaclab.assets import Articulation, RigidObject
+        from aibaseball.tasks.one_outs.joint_env_cfg import JointPitchEnvCfg
+        from aibaseball.tasks.tee_batting.tee_batting_env import TeeBattingEnv
+        jc = JointPitchEnvCfg()
+        p0 = jc.robot.init_state.pos
+        pcfg = jc.robot.replace(prim_path="/World/envs/env_.*/Pitcher",
+                                init_state=jc.robot.init_state.replace(pos=(p0[0] - 18.0, p0[1], p0[2])))
+        bcfg_p = jc.ball.replace(prim_path="/World/envs/env_.*/PBall",
+                                 init_state=jc.ball.init_state.replace(pos=(-18.0, 1.0, 0.2)))
+        _orig_setup = TeeBattingEnv._setup_scene
+
+        def _setup_with_pitcher(self):
+            self.diag_pitcher, self.diag_pball = Articulation(pcfg), RigidObject(bcfg_p)  # spawned in env_0 before the clone
+            _orig_setup(self)
+            self.scene.articulations["diag_pitcher"] = self.diag_pitcher
+            self.scene.rigid_objects["diag_pball"] = self.diag_pball
+
+        TeeBattingEnv._setup_scene = _setup_with_pitcher
+        print(f"[diag] + pitcher ({type(pcfg.actuators).__name__}, {len(pcfg.actuators)} groups) and dynamic ball at x -18", flush=True)
     env = gym.make("AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     agent = TeeBattingMimicPPORunnerCfg()
