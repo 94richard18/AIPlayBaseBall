@@ -51,6 +51,9 @@ BLEND_S = 0.5  # after_done "blend": seconds from the done pose to the stance  #
 TAKE_BLEND_S = 0.5  # take modes 5 / 6: stance -> default pose from the scheduled start
 TAKE_BLEND_FAST_S = 0.25  # take mode 8
 TAKE_BLEND_SLOW_S = 0.8  # take mode 10
+RECOVER_S = 0.8  # after_done "recover": policy targets -> batting stance from contact / plate crossing
+RECOVER_LOW_S = 0.4  # after_done "recover_low": the same, faster, to a lower stance
+RECOVER_LOW_KNEE_DEG = 10.0  # recover_low: knees this much more bent, hip / ankle pitch half each (feet and trunk as the stance)
 N_LEG_WAIST = 15  # body joints 0..14: legs (12) + waist (3); 15.. arms
 
 
@@ -198,7 +201,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         mode 0 16/16, mode 2 12/16 (and moves the bat ~8 m/s); the default pose (3) stands 16/16 but jumps there at the start.
         None = every env swings. take_dev_t / take_dev_joint: per take env the first time a body joint is 0.3 rad off
         its PD target, and which (fall diagnosis)."""
-        assert after_done in ("policy", "hold", "blend"), after_done
+        assert after_done in ("policy", "hold", "blend", "recover", "recover_low"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or os.environ.get("AIB_EFFORT_PROBE") == "1",             "the delivery batter runs at AIB_EFFORT_SCALE 1.5 (AIB_EFFORT_PROBE=1: a zero-shot strength probe, never a delivery)"
         assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
@@ -230,6 +233,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.done_t = torch.full((n,), float("nan"), device=self.device)  # joint episode time of that
         self._load_policy(checkpoint)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
+        self.rec_t = torch.full((n,), float("nan"), device=self.device)  # recover: joint time of the trigger
+        self.rec_q0 = torch.zeros_like(self.hold_q)  # recover: the policy's joint targets at the trigger
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._perc = None
         self.fallen = torch.zeros(n, dtype=torch.bool, device=self.device)  # _get_dones (post) sets it; drivers read it every step
@@ -341,7 +346,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(hold.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[hold] = 0.0
-        frz = self.done if self.after_done != "policy" else torch.zeros_like(self.done)
+        if self.after_done.startswith("recover"):  # film-side option (14, 10-29): blend to the stance after contact / crossing
+            self._recover()
+        frz = self.done if self.after_done in ("hold", "blend") else torch.zeros_like(self.done)
         if frz.any():  # past the training episode: hold the pose it ended in (or blend it to the stance)
             q = self.hold_q
             if self.after_done == "blend":
@@ -378,6 +385,34 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(take.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[take] = 0.0
+
+    def _recover(self):
+        """after_done recover / recover_low: from the first control step after contact (hit) or the training episode's
+        end (done: the pitch passed on a miss), the PD targets blend (smoothstep) from the policy's targets of that step
+        to the batting stance (default pose; recover_low: knees bent more) over RECOVER_S / RECOVER_LOW_S, zero velocity
+        targets; the policy output is ignored from then on. Before the trigger nothing changes."""
+        trig = self.active & (self.hit | self.done) & torch.isnan(self.rec_t)
+        if trig.any():
+            self.rec_t = torch.where(trig, self._joint_time(), self.rec_t)
+            self.rec_q0[trig] = self.joint_targets[trig][:, self.body_joint_ids]
+        on = ~torch.isnan(self.rec_t)
+        if not on.any():
+            return
+        pose = self.robot.data.default_joint_pos[:, self.body_joint_ids].clone()
+        dur = RECOVER_S
+        if self.after_done == "recover_low":
+            dur, dk = RECOVER_LOW_S, RECOVER_LOW_KNEE_DEG * torch.pi / 180.0
+            for i, name in enumerate(self.body_joint_names):
+                if name.endswith("_knee"):
+                    pose[:, i] += dk
+                elif name.endswith(("_hip_pitch", "_ankle_pitch")):
+                    pose[:, i] -= 0.5 * dk
+        s = ((self._joint_time() - self.rec_t) / dur).clamp(0.0, 1.0).nan_to_num(0.0)
+        s = (s * s * (3.0 - 2.0 * s)).unsqueeze(-1)
+        q = self.rec_q0 + s * (pose - self.rec_q0)
+        tgt = self.joint_targets[:, self.body_joint_ids]
+        self.joint_targets[:, self.body_joint_ids] = torch.where(on.unsqueeze(-1), q, tgt)
+        self.joint_vel_targets[on] = 0.0
 
     def ball_world(self, dt: float):
         if self.no_handoff:  # the batter's own pitch is "handed" once it leaves the hand (the swing record needs it)

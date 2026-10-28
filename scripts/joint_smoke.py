@@ -23,7 +23,7 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default="policy",
+parser.add_argument("--after_done", choices=("policy", "hold", "blend", "recover", "recover_low"), default="policy",
                     help="the batter once its training episode would have ended (BatterSide after_done)")
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
