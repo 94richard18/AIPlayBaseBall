@@ -28,6 +28,7 @@ parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
+parser.add_argument("--dof_only", action="store_true", help="exit right after the --dof_dump readout")
 parser.add_argument("--dof_dump", type=str, default=None, help="json: the batter's DOF / body properties as PhysX reports them")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: per env (first per clip) obs / action / body joints per control step from its start; perception noise 0")
@@ -106,6 +107,9 @@ def main():
     if args.dof_dump:
         from dof_readout import dump
         dump(base.batter, base.sim, args.dof_dump, "joint")
+        if args.dof_only:
+            env.close()
+            return
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     if args.trace:
         side.trace = []

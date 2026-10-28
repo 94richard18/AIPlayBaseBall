@@ -18,7 +18,7 @@ def dump(art, sim, path, label=""):
 def _dump(art, sim, path, label):
     import torch
     from pxr import PhysxSchema, UsdPhysics
-    import isaaclab.sim as sim_utils
+    import omni.usd
 
     v = art.root_physx_view
     out = dict(label=label, joint_names=list(art.joint_names), body_names=list(art.body_names))
@@ -44,32 +44,35 @@ def _dump(art, sim, path, label):
         out["gravity_sim"] = f"n/a: {e}"
     out["gravity_cfg"] = list(sim.cfg.gravity)
     out["dt"] = sim.cfg.dt
-    stage = sim_utils.get_current_stage()
-    root = art.cfg.prim_path.replace(".*", "0")
-    prims = [p for p in stage.Traverse() if str(p.GetPath()).startswith(root + "/") or str(p.GetPath()) == root]
-    usd = {}
-    for p in prims:
-        if p.HasAPI(PhysxSchema.PhysxArticulationAPI):
-            a = PhysxSchema.PhysxArticulationAPI(p)
-            usd["articulation " + str(p.GetPath())[len(root):]] = dict(
-                pos_iters=a.GetSolverPositionIterationCountAttr().Get(), vel_iters=a.GetSolverVelocityIterationCountAttr().Get(),
-                self_coll=a.GetEnabledSelfCollisionsAttr().Get(), enabled=a.GetArticulationEnabledAttr().Get(),
-                sleep=a.GetSleepThresholdAttr().Get(), stab=a.GetStabilizationThresholdAttr().Get())
-        for d in ("angular", "linear"):
-            if p.HasAPI(UsdPhysics.DriveAPI, d):
-                dr = UsdPhysics.DriveAPI(p, d)
-                usd["drive " + p.GetName()] = dict(type=dr.GetTypeAttr().Get(), kp=dr.GetStiffnessAttr().Get(),
-                                                   kd=dr.GetDampingAttr().Get(), fmax=dr.GetMaxForceAttr().Get())
-        if p.HasAPI(PhysxSchema.PhysxJointAPI):
-            j = PhysxSchema.PhysxJointAPI(p)
-            usd["physxjoint " + p.GetName()] = dict(armature=j.GetArmatureAttr().Get(), friction=j.GetJointFrictionAttr().Get(),
-                                                    maxvel=j.GetMaxJointVelocityAttr().Get())
-        if p.IsA(UsdPhysics.Joint) and not p.HasAPI(UsdPhysics.DriveAPI, "angular"):
-            usd["joint " + p.GetName()] = dict(type=p.GetTypeName(),
-                                               excluded=UsdPhysics.Joint(p).GetExcludeFromArticulationAttr().Get(),
-                                               enabled=UsdPhysics.Joint(p).GetJointEnabledAttr().Get())
-    out["usd"] = {k: {kk: (vv if isinstance(vv, (int, float, bool, str, type(None))) else str(vv)) for kk, vv in d.items()}
-                  for k, d in usd.items()}
+    try:
+        stage = omni.usd.get_context().get_stage()
+        root = art.cfg.prim_path.replace(".*", "0")
+        prims = [p for p in stage.Traverse() if str(p.GetPath()).startswith(root + "/") or str(p.GetPath()) == root]
+        usd = {}
+        for p in prims:
+            if p.HasAPI(PhysxSchema.PhysxArticulationAPI):
+                a = PhysxSchema.PhysxArticulationAPI(p)
+                usd["articulation " + str(p.GetPath())[len(root):]] = dict(
+                    pos_iters=a.GetSolverPositionIterationCountAttr().Get(), vel_iters=a.GetSolverVelocityIterationCountAttr().Get(),
+                    self_coll=a.GetEnabledSelfCollisionsAttr().Get(), enabled=a.GetArticulationEnabledAttr().Get(),
+                    sleep=a.GetSleepThresholdAttr().Get(), stab=a.GetStabilizationThresholdAttr().Get())
+            for d in ("angular", "linear"):
+                if p.HasAPI(UsdPhysics.DriveAPI, d):
+                    dr = UsdPhysics.DriveAPI(p, d)
+                    usd["drive " + p.GetName()] = dict(type=dr.GetTypeAttr().Get(), kp=dr.GetStiffnessAttr().Get(),
+                                                       kd=dr.GetDampingAttr().Get(), fmax=dr.GetMaxForceAttr().Get())
+            if p.HasAPI(PhysxSchema.PhysxJointAPI):
+                j = PhysxSchema.PhysxJointAPI(p)
+                usd["physxjoint " + p.GetName()] = dict(armature=j.GetArmatureAttr().Get(), friction=j.GetJointFrictionAttr().Get(),
+                                                        maxvel=j.GetMaxJointVelocityAttr().Get())
+            if p.IsA(UsdPhysics.Joint) and not p.HasAPI(UsdPhysics.DriveAPI, "angular"):
+                usd["joint " + p.GetName()] = dict(type=p.GetTypeName(),
+                                                   excluded=UsdPhysics.Joint(p).GetExcludeFromArticulationAttr().Get(),
+                                                   enabled=UsdPhysics.Joint(p).GetJointEnabledAttr().Get())
+        out["usd"] = {k: {kk: (vv if isinstance(vv, (int, float, bool, str, type(None))) else str(vv)) for kk, vv in d.items()}
+                      for k, d in usd.items()}
+    except Exception as e:  # noqa: BLE001  the PhysX numbers above are still written
+        out["usd"] = f"n/a: {e!r}"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=1, default=str)
     print(f"[dof] {label} -> {path}: {len(out['joint_names'])} dofs, actuators {out['actuators']}", flush=True)

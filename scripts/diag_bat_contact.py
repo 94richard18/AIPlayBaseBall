@@ -39,6 +39,7 @@ parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from th
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
+parser.add_argument("--dof_only", action="store_true", help="exit right after the --dof_dump readout")
 parser.add_argument("--dof_dump", type=str, default=None, help="json: the batter's DOF / body properties as PhysX reports them")
 parser.add_argument("--diag_no_replicate", action="store_true", help="diagnostic: scene.replicate_physics False (as the joint scene)")
 parser.add_argument("--diag_add_pitcher", action="store_true",
@@ -204,6 +205,9 @@ def main():
     if args.dof_dump:
         from dof_readout import dump
         dump(base.robot, base.sim, args.dof_dump, "native")
+        if args.dof_only:
+            env.close()
+            return
     n, dev, geom, r_ball = base.num_envs, base.device, base.bat_geom, base.phys.ball.radius
 
     inf = torch.full((n,), float("inf"), device=dev)
