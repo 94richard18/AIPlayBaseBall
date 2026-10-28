@@ -2577,3 +2577,32 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `check_video_frames`：並排影片的左半（側面 / 中外野）也要 motion >= 1%。
   - 實際影片 2.96–15.3%，空片 precheck k01 0.56%。
   - 右半（本壘視角）門檻仍是 0.1%。
+
+## M2 欄位 + 聯合拍攝路徑（10-28 13:55，CPU）
+
+- 14 交辦的 (1)–(3) 已完成，commit 5b3158f。
+- `scripts/joint_pitcher.py`：
+  - pitcher_columns：每個 env 一列 gate release row，tier 定義與 eval_stage 相同，p_standing = at_rest。
+  - ball_columns：由 play_log 的 carry / spray 算落點，用遊戲座標（+x 中外野、+y 三壘側）；ball_fair 用 FieldSpec.is_fair。
+  - count_columns：讀 --count_csv，預設 0/0。
+  - JointFilm：env k 邊跑邊拍，沿用 M3 相機、草地、圓投手丘、root-only 可見性與 hidden 檢查。
+- `scripts/joint_smoke_20.py` = 15 的 joint_smoke.py，在其 20 欄之後依約定順序加上 25 欄，並新增 --count_csv / --video。M2_END 後再合併進 joint_smoke.py。
+- CPU 驗證：P3c gate 表前 4 列的 tier、speed、aero y/z 與 CSV 一致（≤ 0.001 m）。
+- p_aero_* 照 gate 列的做法，球先落地時也照寫。
+- (2) 的 GPU 測試（1 env 拍攝、live batter、約 7 分鐘）等 CHAIN_AB_M2_END 之後、14 同意才跑。
+
+## 座標方向 + 聯合拍攝測試（10-28 14:15）
+
+- 座標方向（f7775a4、653e75e）：
+  - 投手 plate frame 的 +y 是一壘側，遊戲座標的 +y 是三壘側，y_game = -y_plate。
+  - joint_pitcher.py 說明裡寫了這個慣例和一列驗算。我的欄位加上 _plate / _game 後綴；15 的 plate_y / pred_y 依 15 要求保留原名，只在註解註明。
+  - 比賽 / showcase 的讀取路徑在進觸身球判定前都有翻號。
+  - joint_smoke_20 已 rebase 到 15 的 3e397a0（blend、揮棒欄位）。
+- 拍攝測試 videos/m2film_s1_k0.mp4（14:06-14:14；seed 1、hold；因為沒有 M2，拍 env 0）：
+  - 影片：343 幀，0 空白，motion 2.52%、left 5.43%，High profile。
+  - 截圖：兩人同框，投手投球完站穩，打者揮空，打者 done（2.11 s）之後跌倒（hold 的已知問題）。
+  - env 0：64 km/h、tier 4。
+  - 整批：擊中 11/64（界內 3），投手 tier 64/61/56/33，站穩 53。
+- 與 fall_ab_hold（seed 0）比對：env 0 完全相同，42/64 列全等；投球相關欄位 64/64 相同，seed 只影響打者感知雜訊。
+- 逐位元宣稱等 15 的 M2-lite seed 1（m2lite_s1.csv）出來再比。
+- 這支片算這輪的 12 小時影片，下一支約 02:15 前。
