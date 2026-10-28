@@ -60,6 +60,23 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-29 07:5x：Human25-R 恢復策略的介面說明（給新 session 重建 BatterSide 交接用）**
+> - 存檔：`logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b/model_998.pt`（rsl_rl ActorCritic 512-256-128 elu，含 obs normalizer），要在 `AIB_EFFORT_SCALE=1.5` 下執行。程式碼在 `aibaseball/tasks/recover/`，BatterSide 的 `after_done recover_rl`。
+> - 交接點：第一個 `active & (hit | done)` 的控制步，和 `_recover` 一樣。之後揮棒策略照常計算但輸出丟掉，由恢復策略決定 29 個身體關節的 PD 目標。
+> - 動作（29 維，裁到 ±2.0）：目標 = clamp(anchor + 0.5 × action_scale × a, 關節限位)。關節、action_scale、PD 增益都和揮棒策略相同，速度目標 = 0。
+> - anchor：q0 + s × (站姿 − q0)。s = smoothstep((t + 0.01) / 0.8)，t = 交接後經過的時間。q0 = 交接那一步「之前」已套用的身體 PD 目標（揮棒策略上一步的輸出），站姿 = `default_joint_pos`。
+> - obs（127 維，依序；全部是身體座標或關節空間，B 座標系不用轉換）：
+>   - 關節位置 − default（29）
+>   - 關節速度 × 0.05（29）
+>   - projected_gravity_b（3）
+>   - root_lin_vel_b × 0.5（3）
+>   - root_ang_vel_b × 0.25（3）
+>   - 骨盆離場地高度 − 0.94（1）
+>   - 上一步的 anchor − 關節位置（29）
+>   - 上一步的動作（29）
+>   - t / 2（1）
+> - 第一步的種子值：anchor = q0、上一步動作 = 揮棒策略上一步的 29 個身體動作（去掉 tempo）、t = 0，和訓練狀態庫的起點一致。
+
 > **打者 10-29 07:43：Human25-R stage 2 通過（聯合場景 seed 6，64 球，`logs/recov_diag/`）**
 > - 交接前完全不變：`recover_rl` 和 `policy` 重跑，都和 falldiag2 的投球、hit_t、揮棒結果欄位逐位元相同（64/64）。
 > - 從擊中（或球到本壘）起算 2 s 內倒地：擊中 0/16、揮空 0/48。到 episode 結束也是 0/64。失去姿勢只有揮空 1/48。對照 policy（falldiag2）：倒地 88% / 81%，失去姿勢 94% / 94%。
