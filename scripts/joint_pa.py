@@ -94,11 +94,16 @@ def play_pa(envs, rng, zone):
     return log, (None, "out_of_pitches")
 
 
-def showcase_ok(log, how, lo, hi):
+def showcase_ok(log, how, lo, hi, want="in_play"):
+    """want: in_play (an end by a ball in play, carry >= 15 m), pitcher (an infield ball), batter (the batter wins: an
+    outfield hit / home run, or a walk - M2's 182 hits have no outfield ball, its longest carries ~40 m judge infield)."""
     last = log[-1]
-    return (lo <= len(log) <= hi and last["expected"] == "in_play" and f(last["row"]["carry_m"]) >= 15.0
-            and not any(b(x["row"], "pitcher_fell") for x in log)
-            and not any(x["swing"] and b(x["row"], "batter_fell_before_done") for x in log))
+    clean = (lo <= len(log) <= hi and how != "hit_by_pitch" and not any(b(x["row"], "pitcher_fell") for x in log)
+             and not any(x["swing"] and b(x["row"], "batter_fell_before_done") for x in log))
+    in_play = last["expected"] == "in_play" and f(last["row"]["carry_m"]) >= 15.0
+    if want == "batter":
+        return clean and (how == "walk" or (in_play and how in ("outfield_hit", "home_run")))
+    return clean and in_play and (want == "in_play" or how == "infield_ball")
 
 
 def main():
@@ -111,6 +116,9 @@ def main():
     ap.add_argument("--tries", type=int, default=5000)
     ap.add_argument("--min_pitches", type=int, default=3)
     ap.add_argument("--max_pitches", type=int, default=7)
+    ap.add_argument("--want", default="in_play", choices=("in_play", "pitcher", "batter"),
+                    help="the showcase PA's end: any ball in play, an infield ball (pitcher wins), an outfield hit (batter wins)")
+    ap.add_argument("--plan", default="pa_plan.csv", help="plan file name inside --out")
     ap.add_argument("--after_done", default="policy")
     ap.add_argument("--timing_csv", default="logs/m2lite/timing.csv")
     a = ap.parse_args()
@@ -141,7 +149,7 @@ def main():
     best = None
     for d in range(a.pa_seed, a.pa_seed + a.tries):
         log, (win, how) = play_pa(envs, random.Random(d), zone)
-        if not showcase_ok(log, how, a.min_pitches, a.max_pitches):
+        if not showcase_ok(log, how, a.min_pitches, a.max_pitches, a.want):
             continue
         rich = any(x["expected"] == "called_strike" for x in log) and any(x["expected"] == "swinging_strike" for x in log)
         if best is None or rich:
@@ -156,7 +164,7 @@ def main():
     keys = ["pitch", "seed", "env", "balls_before", "strikes_before", "swing", "expected", "swing_csv", "after_done",
             "timing_csv", "exit_mps", "launch_deg", "carry_m", "spray_deg", "fair"]
     n_env = max(int(r["env"]) for p in files[:1] for r in csv.DictReader(open(p))) + 1
-    with open(os.path.join(a.out, "pa_plan.csv"), "w", newline="") as fh:
+    with open(os.path.join(a.out, a.plan), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         for i, x in enumerate(log):
@@ -178,7 +186,7 @@ def main():
         extra = f" EV {f(r['exit_mps']):.1f} carry {f(r['carry_m']):.1f} m" if x["expected"] in ("in_play", "foul") else ""
         print(f"[pa]   {i + 1}. seed {r['seed']:2d} env {x['env']:2d} {x['balls_before']}-{x['strikes_before']} "
               f"{x['kmh']:.1f} km/h {'zone' if x['in_zone'] else 'out '} -> {x['expected']}{extra}")
-    print(f"[pa] wrote {a.out}/pa_plan.csv + {len(log)} swing masks")
+    print(f"[pa] wrote {a.out}/{a.plan} + {len(log)} swing masks")
 
 
 main()
