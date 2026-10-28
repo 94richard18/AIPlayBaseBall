@@ -30,6 +30,8 @@ parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: per env (first per clip) obs / action / body joints per control step from its start; perception noise 0")
+parser.add_argument("--diag_yaw", type=float, default=None, help="diagnostic: batter frame yaw (deg) instead of 162")
+parser.add_argument("--diag_flat", action="store_true", help="diagnostic: no mound (field_z 0)")
 parser.add_argument("--no_handoff", action="store_true", help="control: the batter plays its own predicted pitch (native)")
 parser.add_argument("--no_shift_hist", action="store_true", help="BatterSide shift_hist off: the percept sees the release-point jump")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
@@ -63,6 +65,8 @@ def main():
     cfg.seed = args.seed
     cfg.episode_length_s = args.seconds
     cfg.ball_after_handoff = "park"
+    if args.diag_flat:
+        cfg.mound_height = 0.0
     if hasattr(cfg, "landed_start_prob"):
         cfg.landed_start_prob = 0.0
     if hasattr(cfg, "rsi_prob"):
@@ -94,6 +98,10 @@ def main():
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
                       no_handoff=args.no_handoff)
+    if args.diag_yaw is not None:  # before the first reset places the batter
+        from isaaclab.utils.math import quat_from_euler_xyz
+        z = torch.zeros(base.num_envs, device=base.device)
+        side.robot.q_r = quat_from_euler_xyz(z, z, torch.full_like(z, args.diag_yaw * torch.pi / 180.0))
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     if args.trace:
         side.trace = []
