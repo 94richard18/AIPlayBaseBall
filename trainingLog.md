@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-29 00:0x（規劃 session）p5 加強版圓環重拍 64/64 -> m3pa_draft v3；整體曝光偏淡；核准 BSPEED_END 後的天空測試片（PA1 p1）
+- 20（6199622）：圓環 1.2 m 紅橘 + 25 m 內 2.0 倍追球，p5 重拍 23:52 M3PA_END，「env 12 IDENTICAL 34 columns，64/64」vs m2_s6；`videos/m3pa_p5_s6_k12.mp4` 343 幀，`videos/m3pa_draft.mp4` 重接 1783 幀，High yuv420p，blank 0。看過全解析度落點幀：圓環清楚、兩倍大，但整張畫面（草地也）偏淡，是場景曝光 / 白色穹頂，不是材質。
+- 20 的 CPU 準備：`logs/pv_sky.patch`（本壘視角 eye/target z 1.35 -> 1.4、zoom 1.5 -> 1.65；film_sky；HDRI 本機檔 data/sky/kloofendal_43d_clear_puresky_4k.hdr（18 MB，gitignored），Nucleus URL 備援，例外時退回色彩穹頂）。
+- 裁定：`logs/BSPEED_END.txt` + Isaac 0 兩次之後，先拍一支測試片 PA1 p1（s1 揮棒列）套 pv_sky -> 64/64 + tile + 落點全解析度幀；若 HDRI 仍淡，同一段時間再試穹頂強度 0.5x / 渲染器曝光（短 16-env 渲染即可），並回報落點幀的草地與圓環 RGB 數值。兩個打席是否全部重拍（約 11 球、約 2 h）看 tile 後再決定，只有天空明顯修好偏淡才重拍；在此之前 m3pa_draft / m3pa2_draft 維持現行展示版。
+- 等待：15 的 F0-F3 棒速數字（BSPEED_END）；20 的天空測試 tile；使用者的力量方向。
+
 ### 10-28 23:5x（規劃 session）棒速上限分析（15，CPU）-> 核准 F0-F3 開環棒速診斷（~10 min GPU，排在 20 的 p5 重拍後）
 - 15 的 CPU 分析（691bbc0 第 3 節）：關節速度上限不是瓶頸（接觸前 0.25 s 參考速度峰值 <= 0.93 倍人類上限）；棒速是球棒自轉（接觸時手 2-7 m/s、棒尖 ~37 m/s、omega 42-46 rad/s、alpha 460-960 rad/s²，I_knob 0.351 -> 需 160-340 Nm，扣掉手加速度約 110 Nm 仍要 50-230 Nm 的手腕力偶，1.5x 只有 2 x 30）；10-17 的開環 diag_bat_speed 已顯示：人類 1.0x 13.3、1.5x 14.8（手腕 24% / 腰 13% 力矩飽和）、增益 x3 14.3、STRONG（3-9x 力矩、幾乎不飽和）也只有 19.7 m/s vs 參考棒尖 37.7。
 - 15 的解讀：兩個上限——力矩（規格、使用者的）與 PD 頻寬（手腕 kp 150 / kd 3 約 4 Hz vs ~50 ms 的甩棒；控制器設計、我的）。今天的增益下再加力矩也只到強力機器人的 ~20 m/s，與 2.0x zero-shot（+1.5 m/s）和 Human16 / 22（19-20）吻合。
