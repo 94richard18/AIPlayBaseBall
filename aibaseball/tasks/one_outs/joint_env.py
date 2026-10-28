@@ -85,6 +85,10 @@ class JointPitchEnv(StageEnv):
             ground.size = (200.0, 200.0)
             ground.color = (0.16, 0.36, 0.14)
         spawn_ground_plane("/World/ground", ground, translation=(0.0, 0.0, self.field_z))
+        if c.film_grass:  # the tinted grid read as teal tiles (M3 film): a plain grass sheet 2 mm above it, visual only
+            sheet = sim_utils.CuboidCfg(size=(200.0, 200.0, 0.002), visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.20, 0.42, 0.16), roughness=0.9))  # no collision / rigid-body props: nothing physical
+            sheet.func("/World/grass", sheet, translation=(0.0, 0.0, self.field_z + 0.002))
         self._spawn_mound("/World/envs/env_0")
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])

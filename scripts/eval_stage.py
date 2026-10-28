@@ -662,7 +662,9 @@ def film(w, base, pol, T, fps=30):
     # joint plate view: 6.5 m behind the plate, 0.6 m to the first-base side, 1.0 m up, 1.8x, toward the mound - the batter
     # in the left foreground (~735 px tall), the pitcher in the middle distance (~185 px); the old 1 m / 3x view left the
     # batter out of the frame
-    PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (6.5, 0.6, 1.0), (-10.0, -0.3, 0.9), 1.8  # x relative to the plate
+    # M3 film 10-28: at 6.5 m / 1.8x the bat tip (~2.75 m in the stance) left the frame top; 9 m back, 1.35 m up, 1.5x:
+    # bat tip ~117 px below the top, feet ~130 px above the bottom, batter ~650 px, pitcher ~140 px
+    PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (9.0, 0.6, 1.35), (-10.0, -0.3, 1.35), 1.5  # x relative to the plate
     if joint:
         base.marker_envs = [E]
 
