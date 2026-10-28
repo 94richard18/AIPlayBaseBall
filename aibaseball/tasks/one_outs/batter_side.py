@@ -167,7 +167,7 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
-                 timing_bias=None, shift_hist=True, no_handoff=False, swing=None):
+                 timing_bias=None, shift_hist=True, no_handoff=False, swing=None, recover_ckpt=None):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -201,7 +201,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         mode 0 16/16, mode 2 12/16 (and moves the bat ~8 m/s); the default pose (3) stands 16/16 but jumps there at the start.
         None = every env swings. take_dev_t / take_dev_joint: per take env the first time a body joint is 0.3 rad off
         its PD target, and which (fall diagnosis)."""
-        assert after_done in ("policy", "hold", "blend", "recover", "recover_low"), after_done
+        assert after_done in ("policy", "hold", "blend", "recover", "recover_low", "recover_rl"), after_done
+        assert (after_done == "recover_rl") == (recover_ckpt is not None), "recover_rl needs recover_ckpt (and only it)"
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or os.environ.get("AIB_EFFORT_PROBE") == "1",             "the delivery batter runs at AIB_EFFORT_SCALE 1.5 (AIB_EFFORT_PROBE=1: a zero-shot strength probe, never a delivery)"
         assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
@@ -235,6 +236,18 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec_t = torch.full((n,), float("nan"), device=self.device)  # recover: joint time of the trigger
         self.rec_q0 = torch.zeros_like(self.hold_q)  # recover: the policy's joint targets at the trigger
+        if recover_ckpt is not None:  # Human25-R: the separate recovery actor (aibaseball/tasks/recover)
+            from aibaseball.tasks.recover.recover_env_cfg import RecoverEnvCfg
+            rc = RecoverEnvCfg()
+            self._rec_actor, self._rec_norm = self._load_actor(recover_ckpt)
+            self.rec_res, self.rec_blend, self.rec_clip = rc.residual_scale, rc.anchor_blend_s, rc.action_clip
+            self.rec_anchor = torch.zeros_like(self.hold_q)
+            self.rec_act = torch.zeros_like(self.hold_q)
+        # every after_done mode: the hand-off trigger (first active control step with hit | done) and, over the 2 s from
+        # it, the body PD targets' step-to-step change (rms rad) and the body joint speed (rms / max rad/s)
+        self.pt_t = torch.full((n,), float("nan"), device=self.device)
+        self.pt_stats = {k: torch.zeros(n, device=self.device) for k in ("tgt_rate", "jv_rms", "jv_max", "n")}
+        self._tgt_prev = None
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._perc = None
         self.fallen = torch.zeros(n, dtype=torch.bool, device=self.device)  # _get_dones (post) sets it; drivers read it every step
@@ -267,6 +280,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
 
     # ------------------------------------------------------------------ policy
     def _load_policy(self, path: str):
+        self._actor, self._norm = self._load_actor(path)
+
+    def _load_actor(self, path: str):
         from rsl_rl.modules import ActorCritic, EmpiricalNormalization
 
         ck = torch.load(path, map_location=self.device, weights_only=False)
@@ -280,7 +296,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         norm = EmpiricalNormalization(shape=[n_obs], until=1.0e8).to(self.device)
         norm.load_state_dict(ck["obs_norm_state_dict"])
         norm.eval()
-        self._actor, self._norm = ac, norm
+        return ac, norm
 
     # ------------------------------------------------------------------ joint env hooks
     def _joint_time(self) -> torch.Tensor:
@@ -328,6 +344,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self._obs = None
         if self._obs is None:
             self._obs = self._get_observations()["policy"]
+        q_prev, a_prev = self.joint_targets[:, self.body_joint_ids].clone(), self.actions[:, :-1].clone()
+        trig = self.active & (self.hit | self.done) & torch.isnan(self.pt_t)
+        self.pt_t = torch.where(trig, self._joint_time(), self.pt_t)
         with torch.inference_mode():
             act = self._actor.act_inference(self._norm(self._obs))
         if self.trace is not None:
@@ -347,7 +366,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.joint_targets[:, self.body_joint_ids] = torch.where(hold.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[hold] = 0.0
         if self.after_done.startswith("recover"):  # film-side option (14, 10-29): blend to the stance after contact / crossing
-            self._recover()
+            self._recover_rl(q_prev, a_prev) if self.after_done == "recover_rl" else self._recover()
         frz = self.done if self.after_done in ("hold", "blend") else torch.zeros_like(self.done)
         if frz.any():  # past the training episode: hold the pose it ended in (or blend it to the stance)
             q = self.hold_q
@@ -385,6 +404,50 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(take.unsqueeze(-1), pose, tgt)
             self.joint_vel_targets[take] = 0.0
+        self._post_trigger_stats()
+
+    def _post_trigger_stats(self):
+        tgt = self.joint_targets[:, self.body_joint_ids]
+        if self._tgt_prev is not None:
+            dt = self._joint_time() - self.pt_t
+            win = (dt > 0) & (dt <= 2.0)  # NaN (no trigger yet) compares False
+            jv = self.robot.data.joint_vel[:, self.body_joint_ids].abs()
+            s, z = self.pt_stats, torch.zeros_like(dt)
+            s["tgt_rate"] += torch.where(win, (tgt - self._tgt_prev).pow(2).mean(-1).sqrt(), z)
+            s["jv_rms"] += torch.where(win, jv.pow(2).mean(-1).sqrt(), z)
+            s["jv_max"] = torch.where(win, torch.maximum(s["jv_max"], jv.max(-1).values), s["jv_max"])
+            s["n"] += win.float()
+        self._tgt_prev = tgt.clone()
+
+    def _recover_rl(self, q_prev, a_prev):
+        """after_done recover_rl (Human25-R): from the trigger of _recover (the first active control step with hit | done),
+        the recovery actor drives the body PD targets: anchor (the targets applied in the trigger step -> stance, as
+        RecoverEnv) + residual. Its first input sees anchor = those targets, previous action = the swing's last body
+        action, t = 0 - the bank state it was trained from. The swing policy's own targets are discarded from then on."""
+        from aibaseball.tasks.recover.recover_env import recover_anchor, recover_obs
+        jt = self._joint_time()
+        trig = self.active & (self.hit | self.done) & torch.isnan(self.rec_t)
+        if trig.any():
+            self.rec_t = torch.where(trig, jt, self.rec_t)
+            self.rec_q0[trig] = q_prev[trig]
+            self.rec_anchor[trig] = q_prev[trig]
+            self.rec_act[trig] = a_prev[trig]
+        on = ~torch.isnan(self.rec_t)
+        if not on.any():
+            return
+        t = (jt - self.rec_t).nan_to_num(0.0)
+        with torch.inference_mode():
+            a = self._rec_actor.act_inference(self._rec_norm(recover_obs(self, self.rec_anchor, self.rec_act, t)))
+        a = a.clamp(-self.rec_clip, self.rec_clip)
+        stance = self.robot.data.default_joint_pos[:, self.body_joint_ids]
+        anchor = recover_anchor(self.rec_q0, stance, t + self.step_dt, self.rec_blend)
+        q = torch.clamp(anchor + a * self.action_scale * self.rec_res, self.q_lo, self.q_hi)
+        m = on.unsqueeze(-1)
+        self.rec_anchor = torch.where(m, anchor, self.rec_anchor)
+        self.rec_act = torch.where(m, a, self.rec_act)
+        tgt = self.joint_targets[:, self.body_joint_ids]
+        self.joint_targets[:, self.body_joint_ids] = torch.where(m, q, tgt)
+        self.joint_vel_targets[on] = 0.0
 
     def _recover(self):
         """after_done recover / recover_low: from the first control step after contact (hit) or the training episode's

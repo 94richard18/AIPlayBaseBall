@@ -23,7 +23,8 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--after_done", choices=("policy", "hold", "blend", "recover", "recover_low"), default="policy",
+parser.add_argument("--recover_ckpt", type=str, default=None, help="after_done recover_rl: the Human25-R recovery actor")
+parser.add_argument("--after_done", choices=("policy", "hold", "blend", "recover", "recover_low", "recover_rl"), default="policy",
                     help="the batter once its training episode would have ended (BatterSide after_done)")
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
@@ -115,7 +116,7 @@ def main():
         swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
-                      no_handoff=args.no_handoff, swing=swing)
+                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt)
     if args.diag_yaw is not None:  # before the first reset places the batter
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)
@@ -154,6 +155,7 @@ def main():
     pel = base.batter.find_bodies("pelvis")[0][0]
     pz_tr, t_tr = [], []  # read-only: pelvis z above field_z per step (min over the film window, after the run)
     arr_t = nan()  # the pitch's first plate-plane crossing (misses; j_cross)
+    ball_body = torch.full((n,), float("inf"), device=base.device)  # read-only: batted ball to the nearest batter link origin, from hit_t + 0.05 s
     feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
     gz = float(base.field_z)
     marks = {}  # phase -> (root z, lowest foot z) above the world ground, per env
@@ -201,6 +203,10 @@ def main():
             hit_t = torch.where(torch.isnan(hit_t) & side.hit, now, hit_t)
             pz_tr.append(dd.body_link_pos_w[:, pel, 2] - gz); t_tr.append(now.clone())
             arr_t = torch.where(torch.isnan(arr_t) & ~torch.isnan(base.j_cross[:, 0]), now, arr_t)
+            late_hit = side.hit & (now >= hit_t + 0.05)
+            if late_hit.any():
+                dist = (side.robot.data.body_link_pos_w - side.ball_pos.unsqueeze(1)).norm(dim=-1).min(1).values
+                ball_body = torch.where(late_hit, torch.minimum(ball_body, dist), ball_body)
     if args.dof_dump:  # again after the run (anything written to the sim later)
         dump(base.batter, base.sim, args.dof_dump.replace(".json", "_end.json"), "joint end")
     if args.trace:
@@ -278,7 +284,10 @@ def main():
             swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
             take_bat_vmax=round(float(side.take_bat_vmax[e]), 2),
             take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
-            handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
+            handoff_jump_m=round(float(side.handoff_jump[e]), 4),
+            pt_t=round(float(side.pt_t[e]), 4), ball_body_min_m=round(float(ball_body[e]), 3),
+            **{f"pt_{k}": round(float(side.pt_stats[k][e] / side.pt_stats["n"][e].clamp_min(1.0)), 4) for k in ("tgt_rate", "jv_rms")},
+            pt_jv_max=round(float(side.pt_stats["jv_max"][e]), 2),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))
     for o in out:
         print("[joint] " + " ".join(f"{k}={v}" for k, v in o.items()), flush=True)
