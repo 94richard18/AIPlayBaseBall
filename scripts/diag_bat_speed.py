@@ -31,6 +31,7 @@ import torch  # noqa: E402
 
 import aibaseball.tasks  # noqa: F401, E402
 from aibaseball.robot.aib1_cfg import make_aib1_cfg  # noqa: E402
+from aibaseball.mocap.motion import KEY_BODIES  # noqa: E402
 from aibaseball.tasks.tee_batting.mimic_env_cfg import TeeBattingHumanPlayEnvCfg  # noqa: E402
 
 
@@ -59,6 +60,18 @@ def main():
     fell = torch.zeros(n, dtype=torch.bool, device=dev)
     swung = torch.zeros(n, dtype=torch.bool, device=dev)  # reached the contact time without a reset
     prev_tip = None
+    # lower body vs the reference over the swing window: pelvis yaw rate, leg joint speeds, foot horizontal speeds
+    names = [env.robot.joint_names[i] for i in env.body_joint_ids]
+    legs = [k for k, nm in enumerate(names) if any(g in nm for g in ("ankle", "knee", "hip_yaw"))]
+    yaw_sim = torch.zeros(n, device=dev)
+    yaw_ref = torch.zeros(n, device=dev)
+    leg_sim = torch.zeros(n, len(legs), device=dev)
+    leg_ref = torch.zeros(n, len(legs), device=dev)
+    foot_sim = torch.zeros(n, 2, device=dev)
+    foot_ref = torch.zeros(n, 2, device=dev)
+    fk = [KEY_BODIES.index(f"{s}_foot") for s in "lr"]
+    foot_ids = [env.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
+    prev_feet = None
     groups = {name: a for name, a in env.robot.actuators.items() if name not in ("finger", "thumb")}
     sat_t = {g: torch.zeros((), device=dev) for g in groups}
     sat_v = {g: torch.zeros((), device=dev) for g in groups}
@@ -71,6 +84,14 @@ def main():
             ref_v = (tip - prev_tip).norm(dim=-1) / env.step_dt
             ref_peak = torch.where(alive & (t <= contact_t), torch.maximum(ref_peak, ref_v), ref_peak)
         prev_tip = tip
+        feet = r["key_pos"][:, fk, :2]
+        win = alive & (t > contact_t - args.window) & (t <= contact_t)
+        w2 = win.unsqueeze(-1)
+        yaw_ref = torch.where(win, torch.maximum(yaw_ref, r["root_ang_vel"][:, 2].abs()), yaw_ref)
+        leg_ref = torch.where(w2, torch.maximum(leg_ref, r["joint_vel"][:, legs].abs()), leg_ref)
+        if prev_feet is not None:
+            foot_ref = torch.where(w2, torch.maximum(foot_ref, (feet - prev_feet).norm(dim=-1) / env.step_dt), foot_ref)
+        prev_feet = feet
         env.step(act)
         fell |= alive & env.fallen
         alive &= ~env.reset_buf
@@ -89,6 +110,11 @@ def main():
         swing = alive & (t > contact_t - args.window) & (t <= contact_t)
         if swing.any():
             d = env.robot.data
+            s2 = swing.unsqueeze(-1)
+            yaw_sim = torch.where(swing, torch.maximum(yaw_sim, d.root_ang_vel_w[:, 2].abs()), yaw_sim)
+            leg_sim = torch.where(s2, torch.maximum(leg_sim, d.joint_vel[:, env.body_joint_ids][:, legs].abs()), leg_sim)
+            fv = d.body_link_lin_vel_w[:, foot_ids, :2].norm(dim=-1)
+            foot_sim = torch.where(s2, torch.maximum(foot_sim, fv), foot_sim)
             steps += swing.sum()
             for g, a in groups.items():
                 ids = a.joint_indices
@@ -110,6 +136,12 @@ def main():
           f"{tip_peak[m].mean():.1f} m/s (max {tip_peak[m].max():.1f}), bat omega peak {w_peak[m].mean():.1f} rad/s")
     print(f"standing: fell {fell.sum().item()}/{n} by contact + {args.tail:.1f} s, pelvis z at the end {env.robot.data.root_pos_w[:, 2].mean():.2f} m "
           f"(envs reset during the run are re-spawned)")
+    print(f"pelvis yaw rate peak (swing window) sim {yaw_sim[m].mean():.1f} vs reference {yaw_ref[m].mean():.1f} rad/s "
+          f"(ratio {(yaw_sim[m] / yaw_ref[m].clamp_min(1e-6)).mean():.2f})")
+    print("leg joint speed peak sim / reference (rad/s): " + ", ".join(
+        f"{names[j]} {leg_sim[m, k].mean():.1f}/{leg_ref[m, k].mean():.1f}" for k, j in enumerate(legs)))
+    print(f"foot horizontal speed peak sim / reference (m/s): l {foot_sim[m, 0].mean():.2f}/{foot_ref[m, 0].mean():.2f}, "
+          f"r {foot_sim[m, 1].mean():.2f}/{foot_ref[m, 1].mean():.2f} (slip proxy; no contact sensor in this env)")
     print("swing window share at the limit (any joint of the group): torque / speed")
     for g in groups:
         print(f"  {g:9s} {100 * (sat_t[g] / steps.clamp_min(1)).item():5.1f}% / {100 * (sat_v[g] / steps.clamp_min(1)).item():5.1f}%")
