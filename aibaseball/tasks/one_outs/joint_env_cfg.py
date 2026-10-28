@@ -43,6 +43,8 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     ball_after_handoff: str = "park"  # planning 10-28: park (nothing functional reads the body after the release)
     # integrated flight ends (the PhysX ball takes over again) on the ground or this far behind the plate
     flight_end_behind_plate_m: float = 3.0
+    # film (M3): a 200 m grass-green ground instead of the grey grid - visual only, the physics material is the same
+    film_grass: bool = False
 
     def __post_init__(self):
         super().__post_init__()

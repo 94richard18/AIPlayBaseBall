@@ -81,7 +81,7 @@ class JointPitchEnv(StageEnv):
         self.batter = Articulation(c.batter)
         self.ball = RigidObject(c.ball)
         ground = GroundPlaneCfg(physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9))
-        if c.play_mode:
+        if c.play_mode or c.film_grass:  # colour only (the user's spec: grass in the video); friction unchanged
             ground.size = (200.0, 200.0)
             ground.color = (0.16, 0.36, 0.14)
         spawn_ground_plane("/World/ground", ground, translation=(0.0, 0.0, self.field_z))
