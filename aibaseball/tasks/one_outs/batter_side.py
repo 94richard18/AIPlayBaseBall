@@ -160,7 +160,7 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
-                 timing_bias=None, shift_hist=False):
+                 timing_bias=None, shift_hist=False, no_handoff=False):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -172,7 +172,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         the table's median-flight row. timing_bias: cfg.timing_bias_s override (default the game value 0.055).
         shift_hist: at the hand-off, move the perceived-ball history (the static pre-release ball) by the live release
         minus the predicted one, as if the ball had waited at its own release point (native); without it the first
-        delayed percepts after the release see a jump of a few cm (a one-step velocity / crossing spike)."""
+        delayed percepts after the release see a jump of a few cm (a one-step velocity / crossing spike).
+        no_handoff: control run - the live pitch never replaces the batter's own (the predicted median-flight row,
+        released at its own release_t exactly as in the native env); the joint env's ball mirrors the batter's."""
         assert after_done in ("policy", "hold", "blend"), after_done
         self.after_done = after_done
         assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
@@ -208,6 +210,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._perc = None
         self.shift_hist = shift_hist
+        self.no_handoff = no_handoff
+        assert not (no_handoff and own_timing is not None), "no_handoff flies the predicted row on its own schedule"
         self.handoff_jump = torch.full((n,), float("nan"), device=self.device)
         self.own = None if own_timing is None else torch.as_tensor(own_timing, dtype=torch.float32, device=self.device)
         assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
@@ -315,9 +319,12 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.joint_vel_targets[frz] = 0.0
 
     def ball_world(self, dt: float):
-        new = self._joint.j_fly & ~self.handed
-        if new.any():
-            self._hand_off(new.nonzero(as_tuple=False).squeeze(-1))
+        if self.no_handoff:  # the batter's own pitch is "handed" once it leaves the hand (the swing record needs it)
+            self.handed |= self.active & (self.phys_t >= self.release_t)
+        else:
+            new = self._joint.j_fly & ~self.handed
+            if new.any():
+                self._hand_off(new.nonzero(as_tuple=False).squeeze(-1))
         prev_ball = self.pitch_pos.clone() if self.rec is not None else None
         self._apply_action()
         if self.rec is not None:

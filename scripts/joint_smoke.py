@@ -28,6 +28,7 @@ parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
+parser.add_argument("--no_handoff", action="store_true", help="control: the batter plays its own predicted pitch (native)")
 parser.add_argument("--shift_hist", action="store_true", help="BatterSide shift_hist: no release-point jump in the percept")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
@@ -87,10 +88,11 @@ def main():
         assert [int(r["env"]) for r in tr] == list(range(args.envs)), args.timing_csv
         own = [[float(r["handoff_t"]), float(r["t_plane"])] for r in tr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
-                      timing_bias=args.timing_bias, shift_hist=args.shift_hist)
+                      timing_bias=args.timing_bias, shift_hist=args.shift_hist,
+                      no_handoff=args.no_handoff)
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}, "
-          f"timing {'own pitch (' + args.timing_csv + ')' if own else 'median-flight row'}, bias {side.cfg.timing_bias_s}, shift_hist {args.shift_hist}", flush=True)
+          f"timing {'own pitch (' + args.timing_csv + ')' if own else 'median-flight row'}, bias {side.cfg.timing_bias_s}, shift_hist {args.shift_hist}, no_handoff {args.no_handoff}", flush=True)
     base.batter_side = side
     w = RslRlVecEnvWrapper(env)  # its reset = the first-after-load reset, now with the batter's own
     ag = load_cfg_from_registry(TASK, "rsl_rl_cfg_entry_point")

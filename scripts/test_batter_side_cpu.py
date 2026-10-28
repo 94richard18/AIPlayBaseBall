@@ -321,12 +321,12 @@ def own_timing_check(cfg, art, ckpt):
     timing_bias_s * speed past contact (pitched_env._reset_idx: ball arrival = reference contact + bias)."""
     import copy
 
-    def run(own):
+    def run(own, no_handoff=False):
         G.manual_seed(0)  # the same fake pitches (and bat states) in both passes
         torch.manual_seed(0)
         joint = FakeJoint(art)
         joint.handoff_t = torch.full((N,), float("nan"))
-        side = BatterSide(joint, copy.deepcopy(cfg), ckpt, own_timing=own)
+        side = BatterSide(joint, copy.deepcopy(cfg), ckpt, own_timing=own, no_handoff=no_handoff)
         side._actor.act_inference = lambda o: torch.zeros(o.shape[0], side._actor.actor[-1].out_features)
         side.record_swing()
         art.inner_pivot = side.robot.pivot
@@ -376,6 +376,14 @@ def own_timing_check(cfg, art, ckpt):
           f"(max |.| {e2.abs().max():.5f}) s; start_t {s2.start_t.min():.3f}..{s2.start_t.max():.3f} s", flush=True)
     assert e2.abs().max() < 1e-4, e2.abs().max()
     assert e1.std() > 5 * e2.abs().max()
+    s3, j3 = run(None, no_handoff=True)  # the predicted row on its own (native) schedule: exact without a hand-off
+    R3 = s3.rec
+    ok3 = torch.isfinite(R3["t_plane"])
+    a3 = (torch.floor(R3["t_plane"] / ctrl + 1e-6) + 1.0) * ctrl - R3["t_plane"]
+    e3 = (R3["ref_err"] / spd - a3 - bias)[ok3]
+    print(f"[cpu] no_handoff: {int(ok3.sum())} envs crossed, ref_err / speed - bias max |.| {e3.abs().max():.5f} s, "
+          f"flight {(R3['t_plane'] - s3.start_t - s3.release_t)[ok3].median():.3f} s (row {float(s3.lib.flight_time[0]):.3f})", flush=True)
+    assert ok3.sum() >= 48 and e3.abs().max() < 1.5 * j3.physics_dt  # native too: the pitch leaves on the physics step after release_t
     print("CPU_OWN_TIMING_PASS", flush=True)
 
 
