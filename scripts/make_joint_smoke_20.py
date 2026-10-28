@@ -41,9 +41,10 @@ rep('            hit |= side.hit\n', '''            hit |= side.hit
                 film.step(float(now[E]), ("HIT" if bool(hit[E]) else "") + ("  batter FELL" if bool(b_fell_pre[E]) else "")
                           + ("  pitcher FELL" if bool(p_fell[E]) else ""),
                           done_t=None if args.no_film_cut else float(side.done_t[E]), hit=bool(hit[E]))
-    if film:
-        film.close()
 ''')
+# the step loop ends before the first post-run block (15's loop body grew past `hit |= side.hit`, cbad249)
+rep('    if args.dof_dump:  # again after the run (anything written to the sim later)\n',
+    '    if film:\n        film.close()\n    if args.dof_dump:  # again after the run (anything written to the sim later)\n')
 rep('    names = list(JOINT_CLIPS)\n',
     '    names = list(JOINT_CLIPS)\n    pcols, ccols = pitcher_columns(base, p_fell), count_columns(args.count_csv, n)\n')
 rep('        jc = base.j_cross[e].tolist()  # (y - zone centre, z above the field); NaN when the bat met it first\n',

@@ -212,8 +212,6 @@ def main():
                 film.step(float(now[E]), ("HIT" if bool(hit[E]) else "") + ("  batter FELL" if bool(b_fell_pre[E]) else "")
                           + ("  pitcher FELL" if bool(p_fell[E]) else ""),
                           done_t=None if args.no_film_cut else float(side.done_t[E]), hit=bool(hit[E]))
-    if film:
-        film.close()
             nf = torch.isnan(bat_fall_t) & side.fallen & side.active
             dd = base.batter.data
             fall_pz = torch.where(nf, dd.body_link_pos_w[:, pel, 2] - gz, fall_pz)
@@ -226,6 +224,8 @@ def main():
             if late_hit.any():
                 dist = (side.robot.data.body_link_pos_w - side.ball_pos.unsqueeze(1)).norm(dim=-1).min(1).values
                 ball_body = torch.where(late_hit, torch.minimum(ball_body, dist), ball_body)
+    if film:
+        film.close()
     if args.dof_dump:  # again after the run (anything written to the sim later)
         dump(base.batter, base.sim, args.dof_dump.replace(".json", "_end.json"), "joint end")
     if args.trace:
