@@ -91,6 +91,7 @@ def main():
     T = int(round(cfg.episode_length_s / base.step_dt)) - 2
     p_fell = torch.zeros(n, dtype=torch.bool, device=base.device)
     b_fell = torch.zeros_like(p_fell)
+    b_fell_pre = torch.zeros_like(p_fell)
     hit = torch.zeros_like(p_fell)
     start_at = torch.full((n,), float("nan"), device=base.device)
     nan = lambda: torch.full((n,), float("nan"), device=base.device)  # noqa: E731
@@ -115,6 +116,7 @@ def main():
     with torch.inference_mode():
         for _ in range(T):
             was = side.active.clone()
+            was_done = side.done.clone()
             obs, _, _, _ = w.step(pol(obs))
             now = base.episode_length_buf.float() * base.step_dt
             start_at = torch.where(side.active & ~was, now, start_at)
@@ -131,6 +133,7 @@ def main():
                     env0.append((round(float(now[0]), 3), round(float(heights()[0][0]), 3)))
             p_fell |= base.fallen
             b_fell |= side.fallen & side.active
+            b_fell_pre |= side.fallen & side.active & ~was_done  # inside the training episode (native window)
             hit |= side.hit
     rows = {}
     for rec in side.play_log:  # first batted ball per env
@@ -146,7 +149,9 @@ def main():
             handoff_t=round(float(base.handoff_t[e]), 4), batter_start=round(float(start_at[e]), 4),
             handed=bool(side.handed[e]), hit=bool(hit[e]), exit_mps=round(rec.get("exit_velo_mps", float("nan")), 2),
             launch_deg=round(rec.get("launch_deg", float("nan")), 1), spray_deg=round(rec.get("spray_deg", float("nan")), 1),
-            carry_m=round(rec.get("carry_m", float("nan")), 1), batter_fell=bool(b_fell[e]), pitcher_fell=bool(p_fell[e])))
+            carry_m=round(rec.get("carry_m", float("nan")), 1), batter_fell=bool(b_fell[e]), pitcher_fell=bool(p_fell[e]),
+            batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
+            pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4)))
     for o in out:
         print("[joint] " + " ".join(f"{k}={v}" for k, v in o.items()), flush=True)
     late = sum(1 for o in out if o["handed"] and not (o["batter_start"] <= o["handoff_t"]))
