@@ -350,6 +350,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.hold_q[new] = self.robot.data.joint_pos[new][:, self.body_joint_ids]
             self.done_t[new] = self._joint_time()[new]
             self.done |= new
+        if self.trace:  # the targets this control step wrote (all dofs), as diag_bat_contact --trace
+            self.trace[-1]["tp"] = self.robot.data.joint_pos_target.clone()
+            self.trace[-1]["tv"] = self.robot.data.joint_vel_target.clone()
         self._obs = self._get_observations()["policy"]
         if self.rec is not None and self._perc is not None:  # the ball the policy was given (B, z above the field)
             self.rec["perc"].append((self._joint_time().clone(), self._perc[:, 2].clone()))

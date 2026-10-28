@@ -402,6 +402,9 @@ def main():
                 trace.append(dict(obs=obs.clone(), act=act.clone(), q=base.robot.data.joint_pos[:, base.body_joint_ids].clone(),
                                   k=base.episode_length_buf.clone()))
             obs, _, dones, _ = wrapped.step(act)
+        if trace is not None and len(trace) <= 150 and "tp" not in trace[-1]:  # the targets that step wrote (all dofs)
+            trace[-1]["tp"] = base.robot.data.joint_pos_target.clone()
+            trace[-1]["tv"] = base.robot.data.joint_vel_target.clone()
         t_now = (base.episode_length_buf.float() * base.step_dt)
         new_hit = base.hit & ~finished & torch.isnan(rec["t_hit"])
         rec["t_hit"] = torch.where(new_hit, t_now, rec["t_hit"])
@@ -645,6 +648,8 @@ def main():
                 ks.append(len(ks))  # until its first reset
             out_t[c] = {f: np.stack([trace[i][f][e].cpu().numpy() for i in ks]) for f in ("obs", "act", "q", "k")}
         all_t = {"all__obs": np.stack([s["obs"].cpu().numpy() for s in trace[:12]], 1),  # (n, 12, D): every env's first 12 steps
+                 "all__tp": np.stack([s["tp"].cpu().numpy() for s in trace[:12]], 1),
+                 "all__tv": np.stack([s["tv"].cpu().numpy() for s in trace[:12]], 1),
                  "all__clip": np.array([names_t[int(c)] for c in clip_first])}
         np.savez(args.trace, **all_t, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
         print(f"[bat] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
