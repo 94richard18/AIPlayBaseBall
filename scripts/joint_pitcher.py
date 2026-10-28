@@ -100,7 +100,17 @@ class JointFilm:
     """Film env k of the joint run as it plays (the eval row of that env is the filmed pitch: one process = one pitch
     per env, no reset). Same cameras as eval_stage film() in joint mode (M3 defaults 10-28): left a centre-field view
     with both players, right the view from behind the plate; the flight marker of env k only; others hidden. Frames
-    every step_dt * slow * fps; mp4 crf 16 High profile."""
+    every step_dt * slow * fps; mp4 crf 16 High profile.
+
+    Film convention (planning 14, 10-28: the batter falls after its training episode ends - 56/60 under blend - and the
+    film must not show it): the batter is shown until the play ends, cut = the batter's done_t + CUT_AFTER_S (done = the
+    batted ball landed, or the pitch passed). From the cut both cameras leave the batter: left a side view of the
+    pitcher from the first-base side (the batter ~65 deg off its axis), right a high camera behind the plate (8 m up)
+    aimed at the batted ball (hit) or at the pitcher (miss / take) - the batter below it, ~30 deg outside the half
+    field of view. The end card / README says so."""
+    CUT_AFTER_S = 0.5
+    SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
+    HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
     CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
     CF_T = (0.42, -0.45, 0.75)
     PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (9.0, 0.6, 1.35), (-10.0, -0.3, 1.35), 1.5
@@ -149,16 +159,29 @@ class JointFilm:
                    (g + np.array(rz(self.CF_T[0] * pd, zc + self.CF_T[1]) + [self.CF_T[2]])).tolist())
         self.pv = ((g + np.array(rz(pd + self.PV_J_EYE[0], zc + self.PV_J_EYE[1]) + [self.PV_J_EYE[2]])).tolist(),
                    (g + np.array(rz(pd + self.PV_J_TGT[0], zc + self.PV_J_TGT[1]) + [self.PV_J_TGT[2]])).tolist())
+        self.side_eye = (g + np.array(rz(self.SIDE_EYE[0], zc + self.SIDE_EYE[1]) + [self.SIDE_EYE[2]])).tolist()
+        self.high_eye = (g + np.array(rz(pd + self.HIGH_EYE[0], zc + self.HIGH_EYE[1]) + [self.HIGH_EYE[2]])).tolist()
+        self.cut_at = None  # joint time of the first frame after the cut
 
     def _focal(self, z):
         if self.focal0:
             with self.Usd.EditContext(self.stage, self.stage.GetSessionLayer()):  # the viewport camera lives there
                 self.cam.GetFocalLengthAttr().Set(self.focal0 * z)
 
-    def _view(self, which):
-        eye, tgt = self.cf if which == "cf" else self.pv
-        self.base.sim.set_camera_view(eye=eye, target=tgt)
-        self._focal(self.CF_ZOOM if which == "cf" else self.PV_J_ZOOM)
+    def _view(self, which, hit=False):
+        b, E = self.base, self.E
+        if which in ("cf", "pv"):
+            (eye, tgt), z = (self.cf, self.CF_ZOOM) if which == "cf" else (self.pv, self.PV_J_ZOOM)
+        else:  # after the cut: the pitcher's pelvis, or the batted ball (the joint env's flight marker position)
+            pel = (b.robot.data.root_link_pos_w[E].cpu().numpy() + [0.0, 0.0, -0.1]).tolist()
+            if which == "side":
+                eye, tgt, z = self.side_eye, pel, self.SIDE_ZOOM
+            elif hit:
+                eye, tgt, z = self.high_eye, b.j_pos[E].cpu().numpy().tolist(), self.HIGH_ZOOM_BALL
+            else:
+                eye, tgt, z = self.high_eye, pel, self.HIGH_ZOOM_P
+        b.sim.set_camera_view(eye=eye, target=tgt)
+        self._focal(z)
 
     def _grab(self):
         for _ in range(6):
@@ -167,25 +190,32 @@ class JointFilm:
                 return np.ascontiguousarray(img[..., :3]).copy()
         return None
 
-    def step(self, t, txt=""):
-        """After each env step (t = joint time): a frame every self.every steps; a failed grab repeats the last frame."""
+    def step(self, t, txt="", done_t=float("nan"), hit=False):
+        """After each env step (t = joint time): a frame every self.every steps; a failed grab repeats the last frame.
+        done_t: the batter's done time of env k (NaN while it runs) - the cut is CUT_AFTER_S after it (None: no cut)."""
         import cv2
         k, self.k = self.k, self.k + 1
         if k % self.every:
             return
-        self._view("cf")
+        cut = done_t is not None and done_t == done_t and t >= done_t + self.CUT_AFTER_S
+        if cut and self.cut_at is None:
+            self.cut_at = t
+        left, right = ("side", "high") if cut else ("cf", "pv")
+        self._view(left, hit)
+        self.base.render()  # one stale render after the move
         img = self._grab()
         if img is None:
             if self.last is not None:
                 self.vw.append_data(self.last)
                 self.n, self.rep = self.n + 1, self.rep + 1
             return
-        self._view("pv")
-        self.base.render()  # one stale render after the move
-        pv = self._grab()
-        self._view("cf")
+        self._view(right, hit)
         self.base.render()
-        for im, s in ((img, f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, "from home plate")):
+        pv = self._grab()
+        labels = ("from home plate",) if not cut else ("the batted ball" if hit else "from behind home plate",)
+        if cut:
+            txt = (txt + "  " if txt else "") + "play over (batter shown until the play ends)"
+        for im, s in ((img, f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, labels[0])):
             if im is not None:
                 cv2.putText(im, s, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
                 cv2.putText(im, s, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
@@ -196,4 +226,5 @@ class JointFilm:
     def close(self):
         self.vw.close()
         self._focal(1.0)
-        print(f"[video] wrote {self.path} ({self.n} frames, {self.rep} repeated after a failed grab), env {self.E}", flush=True)
+        print(f"[video] wrote {self.path} ({self.n} frames, {self.rep} repeated after a failed grab), env {self.E}, cut at "
+              f"{'none' if self.cut_at is None else f'{self.cut_at:.2f} s'}", flush=True)
