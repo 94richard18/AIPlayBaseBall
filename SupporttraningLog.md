@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-28 16:35：落差在 joint 場景的打者動力學（系統性），和感知、時序、絕對高度、控制節奏都無關；正在二分搜尋原因**（`logs/gap/`，15:50–16:30，GPU 約 35 分鐘；a63bac3 / 6d25811 / 9f71a0e）
+> - **A/B 分離測試**（同一球 `p3c_median_flight_row.csv`、800 Hz、jitter 0）：B 原生擊中 0.905、ref_err 0.029、擊中時甜蜜點 16.7 m/s；A joint `--no_handoff`（打者打自己預測的那一球，沒有交接）25/64 = 0.391、ref_err 0.019、甜蜜點 15.2、初速 14.6 m/s。**B2**（同 B 加 `--contact_log`）：原生初速中位數 **19.4 m/s**（17.3 / 19.4 / 21.2）。→ 交接和感知拿掉以後落差還在，問題在場景本身。
+> - **CPU 檢查（14 要求）**：(1) 絕對高度：pivot 帶 field_z，所有 proxy 位置欄位都扣掉；打者 env 的 env_origins z = 0、自己的球 / tee / nominal / ref 都在 B 座標；跌倒判定走 proxy；CPU shim 測試本來就用 pivot z −0.196 → 沒問題。(2) 控制節奏：control() 每 4 個投手步一次、post() 只在那一步、ball_world（打者 _apply_action）每個物理子步，cfg 斷言 10 ms → 沒問題。
+> - **Trace diff**（雜訊全關，`--trace`；原生每個 clip 238–270 個 env、joint 16 個，存前 12 個控制步）：第 0 步 obs 完全相同（< 1e-5）；第 1 步幾乎相同（obp_282-1 最大關節速度差 0.004）；**第 2 步原生和 joint 的平均差跳到關節速度 1.0–3.2（obs 單位 ×0.05，即 20–60 rad/s）、根部角速度 1–1.5，但同一邊 env 之間的 sd 只有約 0.001** → 是系統性的動力學差異，不是混沌，也不是感知。差最多的是手腕和肩（l_sh_r、l_wr_p、l_wr_y、r_wr_y、r_wr_p）以及髖、腰的 yaw。原生的關節速度每 10 ms 正負翻轉（bang-bang，例如 r_hip_yaw +11.5 → −9.2 rad/s），joint 的打者明顯比較「鈍」。時間相關的 obs（phase、ref phase、tempo）兩邊一致。
+> - **靜態檢查都沒差**：動作 clamp、effort scale（都 1.5）、solver 迭代（兩個機器人都 8/2）、增益沒有 runtime 寫入、衝量路徑、打者有註冊在 scene.articulations；原生的球和 tee 是 kinematic 且沒有碰撞。
+> - **正在跑**（`logs/run_bisect.sh`，結束標記 `logs/gap/BISECT_END.txt`）：joint A 的 trace 換成三種：yaw 0 + 平地（沒有投手丘，field_z 0）、只有 yaw 0、只有平地。都不是的話，下一步把投手 / 動態球從 joint 場景拿掉。
+
 > **打者 10-28 15:45：時間落差查完一輪：原生參考值修正、交接跳動是真的但不是全部；shift_hist 改成預設**（`logs/gap/`，15:20–15:45，GPU 約 25 分鐘；fd96593 / 1577493 / 9660bae）
 > - **原生參考**（4 個 joint clip + 真實高度、P3c 表、bias 0.055、**jitter 0**，1024 球，好球帶）：(i) 400 Hz 擊中 0.506、ref_err 0.033 / 0.036 / 0.038、dz 殘差 sd 0.036；(ii) 800 Hz 0.478、ref_err 0.030 / 0.032 / 0.034、dz 殘差 0.036、擊中後跌倒 38%。之前拿來比的 0.043（IQR 34 ms）含 ±0.03 的 jitter，不是正確的尺；物理步長 800 Hz 只差約 0.03。甜蜜點速度的讀數本身隨 dt 改變（400 Hz 約 21、800 Hz 約 16.5，擊中率不變），只能同 dt 比。
 > - **joint seed 1**（兩階段時序、after_done policy）：(a) 好球帶 8/33 = 0.242、ref_err 中位數 0.021、dz 殘差 0.084、飛行中 tempo −0.109（原生 −0.081）、交接跳動 3.2 / 4.7 / 7.1 cm、擊中初速中位數 12.5 m/s；(c) 加 shift_hist（交接時把感知歷史平移，等同球停在自己的出手點）：11/33 = 0.333、dz 殘差 0.061，其他不變。
