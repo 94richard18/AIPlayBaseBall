@@ -57,6 +57,9 @@ parser.add_argument("--body_log", action="store_true",
                     help="lower body vs the reference over the last --body_window s of reference time before contact: pelvis yaw "
                          "rate, foot translation speed, foot yaw rate, foot lift, sole tilt (peaks); split by hit / miss, fell / stood")
 parser.add_argument("--body_window", type=float, default=0.3)
+parser.add_argument("--link_log", action="store_true",
+                    help="upper-body joints (waist / shoulders / elbows / wrists), hits: |joint speed| peak before contact and its time "
+                         "vs contact, robot vs reference, and torque saturation over the last 0.1 s of reference time before contact")
 parser.add_argument("--sat_log", action="store_true",
                     help="per body joint: fraction of swing steps (ball in flight, before contact) with the torque at its limit")
 parser.add_argument("--phase_log", action="store_true",
@@ -292,6 +295,13 @@ def main():
             rec[k] = torch.zeros(n, device=dev)
         bl_prev = {}
         bl_z0 = {}
+    if args.link_log:
+        lk_ids = [i for i, nm in enumerate(base.body_joint_names) if re.match(r"waist|(l|r)_(shoulder|elbow|wrist)", nm)]
+        lk_names = [base.body_joint_names[i] for i in lk_ids]
+        lk_j = [base.body_joint_ids[i] for i in lk_ids]
+        nl = len(lk_ids)
+        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n")}
+        lk.update({k: torch.full((n, nl), float("nan"), device=dev) for k in ("t_pk", "t_pk_ref")})
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -371,6 +381,24 @@ def main():
                 vals[f"tilt_deg_{sd}"] = torch.rad2deg(torch.acos(up[:, i, 2].clamp(-1.0, 1.0)))
             for k, v in vals.items():
                 rec[k] = torch.where(win, torch.maximum(rec[k], v), rec[k])
+        if args.link_log:
+            d = base.robot.data
+            ct = base.ref.contact_time[base.clip]
+            rr_l = base._ref(base.ref_t)
+            qd_l = d.joint_vel[:, lk_j].abs()
+            qdr_l = (rr_l["joint_vel"][:, lk_ids] * (base.rate / base.speed).unsqueeze(-1)).abs()
+            win_l = (~finished & ~base.hit & (base.ref_t > ct - 0.3)).unsqueeze(-1)
+            up = win_l & (qd_l > lk["pk"])
+            lk["pk"] = torch.where(up, qd_l, lk["pk"])
+            lk["t_pk"] = torch.where(up, t.unsqueeze(-1).expand(-1, nl), lk["t_pk"])  # physics time; minus the hit time later
+            win_r = (~finished & (base.ref_t > ct - 0.3) & (base.ref_t <= ct + 0.02)).unsqueeze(-1)
+            up_r = win_r & (qdr_l > lk["pk_ref"])
+            lk["pk_ref"] = torch.where(up_r, qdr_l, lk["pk_ref"])
+            lk["t_pk_ref"] = torch.where(up_r, (base.ref_t - ct).unsqueeze(-1).expand(-1, nl), lk["t_pk_ref"])
+            last = (~finished & ~base.hit & (base.ref_t > ct - 0.1) & (base.ref_t <= ct)).unsqueeze(-1)
+            sat_l = d.computed_torque[:, lk_j].abs() > d.applied_torque[:, lk_j].abs() + 1e-3
+            lk["sat"] += (sat_l & last).float()
+            lk["sat_n"] += last.float().expand(-1, nl)
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -688,6 +716,22 @@ def main():
                            for g, m in groups.items()}
         for g, v in out["body_log"].items():
             print(f"[bat] body_log {g}: " + json.dumps(v), flush=True)
+    if args.link_log:
+        hm = r["hit"].astype(bool)
+        L = {k: v.cpu().numpy()[hm] for k, v in lk.items()}
+        th = t_hit_phys.cpu().numpy()[hm] if args.phase_log else np.full(int(hm.sum()), np.nan)
+        md = lambda v: round(float(np.nanmedian(v)), 3) if np.isfinite(v).any() else None
+        rows = {}
+        for i, nm in enumerate(lk_names):
+            rows[nm] = dict(sim_pk=md(L["pk"][:, i]), ref_pk=md(L["pk_ref"][:, i]),
+                            ratio=md(L["pk"][:, i] / np.maximum(L["pk_ref"][:, i], 1e-6)),
+                            t_pk_sim=md(L["t_pk"][:, i] - th), t_pk_ref=md(L["t_pk_ref"][:, i]),
+                            sat_last100ms_pct=round(float(100 * L["sat"][:, i].sum() / max(L["sat_n"][:, i].sum(), 1)), 1))
+        out["link_log"] = dict(n=int(hm.sum()), rows=rows)
+        print(f"[bat] link_log (hits {int(hm.sum())}; peaks before contact, times in s vs contact; sat over the last 0.1 s of reference time)")
+        print(f"[bat] link | sim peak | ref peak | ratio | t peak sim / ref | sat %")
+        for nm, v in rows.items():
+            print(f"[bat] {nm:18s} | {v['sim_pk']} | {v['ref_pk']} | {v['ratio']} | {v['t_pk_sim']} / {v['t_pk_ref']} | {v['sat_last100ms_pct']}")
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
