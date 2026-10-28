@@ -68,6 +68,14 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 05:3x（14）使用者裁定「直接做新機制」→ 開 Human25-R：獨立的接觸後平衡策略（two-policy hand-off），GPU 分給 15**
+- 原則：揮棒策略 h9b 12500 @ 1.5x 到交棒點前完全不動（投球 / 擊球 / M2 逐位元不變）；交棒點 = `_recover` 的觸發 `active & (hit | done)` 的第一個控制步，之後由第二個 actor 驅動同一組 PD 目標，唯一任務是站穩。
+- Stage 0 state bank（~20 min，marker `logs/RECOV_BANK_END.txt`）：standalone PitchedBattingEnv + frozen 12500 + P3c 表，seed 0 / 6，在觸發步存 root pose/vel、body joint pos/vel、當步 PD 目標、上一動作、hit/miss → `logs/recover_bank.npz`（≥ 2000 筆，seed 6 留作驗證）。
+- Stage 1 RecoverEnv + PPO（≤ 4 GPU h，marker `logs/RECOV_TRAIN_END.txt`）：reset 直接寫 bank 狀態（+ 小雜訊），球停放、無時鐘、無參考動作、無任何揮棒項；obs 只有本體感覺（關節位置 / 速度、骨盆系重力向量、root 線 / 角速度、上一動作、交棒後時間）；action 同揮棒策略的 PD 目標參數化；episode 2.0 s，骨盆 < 0.35 m 或傾角 > 75° 終止；reward = alive + 骨盆高度 + 直立 + 0.5 s 後速度阻尼 + 雙腳觸地 − 動作變化率 − 落地 50。
+- 證偽：held-out seed 6 的 bank 狀態，+300 its 內 2 s 內倒地 < 60%（基線擊中 88% / 揮空 81%），+1000 its < 30%；+300 不到 60% 即停、線關閉。
+- Stage 2 整合（marker `logs/RECOV_DIAG_END.txt`）：BatterSide `after_done = "recover_rl"`；seed 6 falldiag 協定量 2 s 內倒地 / 失去姿態，並做凍結設定檢查（pitch 欄位 + hit_t 與 logs/falldiag2 到 done_t 逐位元相同 64/64）。通過後由 20 重錄一支打席。
+- 20 繼續 hold（無 Isaac）；15 數字回報給 14，由 14 向使用者回報。
+
 ### 10-29 05:0x（規劃 session）Human24 不啟動：接觸後站穩的訓練線在 10-27 已跑過六種設計全敗，維持現狀 + 剪接規則；列為使用者待決
 - 15 的 CPU 答覆：原因確認——12500（Human9b 鏈）訓練回合在接觸後 0.4 s 結束，98% 擊中回合在 clip 末 time_out、跌倒發生在之後（接觸後 0.94 / 1.25 / 1.87 s @ 10 / 50 / 90%）。但 10-27 已從 12500 @ 1.5x 跑過：Human11（隨揮 1.2 s，跌倒 57 -> 65%）、Human12/13（lost = fall、隨揮 2.0 s、回合 3.5 s；13 崩潰、54%）、Human18（diag 跌倒 42 -> 25% 但 ONE OUTS 19.9 -> 16.4%、外野 4.1 -> 0.2%）、Human19 / 20（站立獎勵，+200 判準失敗）、Human21（揮棒凍結 + 站立獎勵，43%、判準失敗）、對照 C（跌倒 23-32% 只因揮棒變弱）。結論不變：跌倒只在揮棒變弱時下降。Human24 = 18 + 21 的變體，非新機制。
 - 裁定 (b)：不啟動 Human24，接觸後路線維持關閉；交付 after_done = policy、剪接規則遮掉跌倒。15 的 hold 正確。
