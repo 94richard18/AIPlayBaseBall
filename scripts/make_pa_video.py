@@ -15,6 +15,18 @@ from PIL import Image, ImageDraw, ImageFont
 RESULT = {"swinging_strike": "Swinging strike", "called_strike": "Called strike", "ball": "Ball", "foul": "Foul ball",
           "in_play": "In play"}
 FONT = "C:/Windows/Fonts/arial.ttf"
+CUT_AFTER_S, TAIL_S, LAND_TAIL_S, MAX_END_S = 0.5, 0.5, 0.3, 4.5  # JointFilm's cut; planning 14 10-28 pacing (user note)
+
+
+def clip_end(p, row):
+    """Joint time the shown clip ends (user 10-28: the pitcher side view stayed too long): the cut (done_t + 0.5 s) + 0.5 s;
+    a ball in play also until 0.3 s after it lands (done_t: the batter's episode ends when the batted ball lands), at
+    most MAX_END_S. The full 6 s clip stays on disk as the debug file."""
+    done = float(row["done_t"])
+    end = done + CUT_AFTER_S + TAIL_S
+    if p["expected"] == "in_play":
+        end = min(max(end, done + LAND_TAIL_S), MAX_END_S)
+    return end
 
 
 def card(w, h, lines, sizes):
@@ -46,6 +58,8 @@ def main():
     a.add_argument("--end", required=True, help="end card lines separated by |")
     a.add_argument("--card_s", type=float, default=2.0)
     a.add_argument("--out", default="videos/m3pa_draft.mp4")
+    a.add_argument("--frame_dt", type=float, default=0.0175, help="joint time per film frame (JointFilm: 7 steps of 2.5 ms)")
+    a.add_argument("--no_trim", action="store_true", help="the full clips (debug)")
     o = a.parse_args()
     plan = list(csv.DictReader(open(o.plan, newline="")))
     first = imageio.get_reader(o.clips.format(**plan[0]))
@@ -67,13 +81,16 @@ def main():
         rows = list(csv.DictReader(open(o.rows.format(**p), newline="")))
         row = rows[int(p["env"])]
         rd = imageio.get_reader(o.clips.format(**p))
+        end = float("inf") if o.no_trim else clip_end(p, row)
         k = 0
-        for fr in rd:
+        for i, fr in enumerate(rd):
+            if i * o.frame_dt > end + 1e-6:
+                break
             wr.append_data(fr)
             k += 1
         rd.close()
         hold(card(w, h, [result_text(p, row)], [60]))
-        print(f"pitch {p['pitch']}: {k} frames, {result_text(p, row)}")
+        print(f"pitch {p['pitch']}: done_t {row['done_t']} end {end:.2f} s, {k} frames, {result_text(p, row)}")
     e = o.end.split("|")
     hold(card(w, h, e, [48] * len(e)), 2 * n_card)
     wr.close()
