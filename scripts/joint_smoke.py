@@ -217,8 +217,8 @@ def main():
 
     def swing_cols(e):  # + delta: the swing reference reaches contact before the ball does (early)
         t_pl = R["t_plane"][e]
-        return dict(t_plane=t_pl, ref_err=R["ref_err"][e], delta_s=R["ref_err"][e] / side.rate[e],
-                    t_sched=t_pl - R["ref_err"][e] / side.rate[e], timing_s=R["t_square"][e] - t_pl,
+        return dict(t_plane=t_pl, ref_err=R["ref_err"][e], delta_s=R["ref_err"][e] / R["rate_plane"][e],
+                    t_sched=t_pl - R["ref_err"][e] / R["rate_plane"][e], timing_s=R["t_square"][e] - t_pl,
                     gap_m=R["gap"][e], t_gap=R["t_gap"][e], dz_m=R["dz"][e], dperp_m=R["dperp"][e],
                     ss_speed_max=R["ss_speed_max"][e],
                     tempo_pre=R["tempo_pre"][e] / R["n_pre"][e].clamp_min(1.0),  # mean tempo action before the hand-off
@@ -251,6 +251,7 @@ def main():
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
             swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
+            take_bat_vmax=round(float(side.take_bat_vmax[e]), 2),
             take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
             handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))

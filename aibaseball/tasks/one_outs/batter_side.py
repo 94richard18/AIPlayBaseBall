@@ -233,6 +233,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 4)).all()), mode
         self.take_dev_t = torch.full((n,), float("nan"), device=self.device)
         self.take_dev_joint = torch.full((n,), -1, dtype=torch.long, device=self.device)
+        self.take_bat_vmax = torch.zeros(n, device=self.device)  # per env, max bat CM speed over the whole run (a take must not swing)
         self.take_mode = torch.where(mode == 1, torch.full_like(mode, -1), mode)  # -1 = swings
         self.swing = mode == 1
 
@@ -386,6 +387,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.trace[-1]["tp"] = self.robot.data.joint_pos_target.clone()
             self.trace[-1]["tv"] = self.robot.data.joint_vel_target.clone()
         self._obs = self._get_observations()["policy"]
+        self.take_bat_vmax = torch.maximum(self.take_bat_vmax, self.robot.data.body_com_lin_vel_w[:, self.bat_id].norm(dim=-1))
         new = ~self.swing & torch.isnan(self.take_dev_t)
         if new.any():  # take fall diagnosis: the first body joint 0.3 rad off its PD target
             err = (self.robot.data.joint_pos[:, self.body_joint_ids] - self.joint_targets[:, self.body_joint_ids]).abs()
@@ -408,7 +410,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         fast, gap / t_gap / dz / dperp = the closest ball-to-bat-surface approach before contact."""
         n, dev = self.num_envs, self.device
         nan = lambda: torch.full((n,), float("nan"), device=dev)  # noqa: E731
-        self.rec = dict(t_plane=nan(), ref_err=nan(), t_square=nan(), sq_ax=torch.ones(n, device=dev), gap=torch.full((n,), 9.0, device=dev),
+        self.rec = dict(t_plane=nan(), ref_err=nan(), rate_plane=nan(), t_square=nan(), sq_ax=torch.ones(n, device=dev), gap=torch.full((n,), 9.0, device=dev),
                         t_gap=nan(), dz=nan(), dperp=nan(), ss_speed_max=torch.zeros(n, device=dev), k=0,
                         tempo_pre=torch.zeros(n, device=dev), n_pre=torch.zeros(n, device=dev),
                         tempo_fly=torch.zeros(n, device=dev), n_fly=torch.zeros(n, device=dev),
@@ -440,6 +442,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         frac = (prev_ball[:, 0] - xr) / (prev_ball[:, 0] - b[:, 0]).clamp_min(1e-9)
         r["t_plane"] = torch.where(cross, t - dt + dt * frac, r["t_plane"])
         r["ref_err"] = torch.where(cross, self.ref_t - self.ref.contact_time[self.clip], r["ref_err"])
+        r["rate_plane"] = torch.where(cross, self.rate, r["rate_plane"])  # the clock rate there (delta_s), not the run's last
         sp = v_ss.norm(dim=-1)
         r["ss_speed_max"] = torch.where(live, torch.maximum(r["ss_speed_max"], sp), r["ss_speed_max"])
         r["t_commit"] = torch.where(live & (sp > 10.0) & torch.isnan(r["t_commit"]), t, r["t_commit"])
