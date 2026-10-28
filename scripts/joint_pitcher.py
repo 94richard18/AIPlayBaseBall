@@ -107,10 +107,13 @@ class JointFilm:
     batted ball landed, or the pitch passed). From the cut both cameras leave the batter: left a side view of the
     pitcher from the first-base side (the batter ~65 deg off its axis), right a high camera behind the plate (8 m up)
     aimed at the batted ball (hit) or at the pitcher (miss / take) - the batter below it, ~30 deg outside the half
-    field of view. The end card / README says so."""
+    field of view. The end card / README says so. M3 s1 k44 (10-28): a dribbler landed 0.6 m from the plate and the
+    ball camera looked straight down at the fallen batter, so the ball is followed only while it is more than
+    MIN_BATTER_DEG away from the batter's pelvis as seen from the camera; otherwise the pitcher."""
     CUT_AFTER_S = 0.5
     SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
     HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
+    MIN_BATTER_DEG = 30.0  # the zoom-1 half field of view is ~18 deg (vertical) / ~30 deg (horizontal)
     CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
     CF_T = (0.42, -0.45, 0.75)
     PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (9.0, 0.6, 1.35), (-10.0, -0.3, 1.35), 1.5
@@ -176,12 +179,18 @@ class JointFilm:
             pel = (b.robot.data.root_link_pos_w[E].cpu().numpy() + [0.0, 0.0, -0.1]).tolist()
             if which == "side":
                 eye, tgt, z = self.side_eye, pel, self.SIDE_ZOOM
-            elif hit:
+            elif hit and self._off_batter(self.high_eye, b.j_pos[E].cpu().numpy()) > self.MIN_BATTER_DEG:
                 eye, tgt, z = self.high_eye, b.j_pos[E].cpu().numpy().tolist(), self.HIGH_ZOOM_BALL
             else:
                 eye, tgt, z = self.high_eye, pel, self.HIGH_ZOOM_P
         b.sim.set_camera_view(eye=eye, target=tgt)
         self._focal(z)
+
+    def _off_batter(self, eye, tgt):
+        """Angle (deg) between the camera's aim at tgt and the batter's pelvis, both seen from eye."""
+        e = np.asarray(eye, dtype=float)
+        a, c = np.asarray(tgt, dtype=float) - e, self.base.batter.data.root_pos_w[self.E].cpu().numpy().astype(float) - e
+        return float(np.degrees(np.arccos(np.clip(a @ c / (np.linalg.norm(a) * np.linalg.norm(c) + 1e-9), -1.0, 1.0))))
 
     def _grab(self):
         for _ in range(6):
@@ -212,7 +221,8 @@ class JointFilm:
         self._view(right, hit)
         self.base.render()
         pv = self._grab()
-        labels = ("from home plate",) if not cut else ("the batted ball" if hit else "from behind home plate",)
+        ball_view = cut and hit and self._off_batter(self.high_eye, self.base.j_pos[self.E].cpu().numpy()) > self.MIN_BATTER_DEG
+        labels = ("from home plate",) if not cut else ("the batted ball" if ball_view else "from behind home plate",)
         if cut:
             txt = (txt + "  " if txt else "") + "play over (batter shown until the play ends)"
         for im, s in ((img, f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, labels[0])):
