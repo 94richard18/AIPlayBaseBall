@@ -20,6 +20,7 @@ parser.add_argument("--ff", type=float, default=1.0, help="velocity feed-forward
 parser.add_argument("--gain_scale", type=float, default=1.0, help="multiplies PD stiffness and damping (not the torque limits)")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--window", type=float, default=0.3, help="s before the reference contact counted as the swing")
+parser.add_argument("--tail", type=float, default=0.2, help="s run past the reference contact (standing check)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app = AppLauncher(args).app
@@ -53,12 +54,16 @@ def main():
     peak = torch.zeros(n, device=dev)
     at_contact = torch.zeros(n, device=dev)
     ref_peak = torch.zeros(n, device=dev)
+    tip_peak = torch.zeros(n, device=dev)
+    w_peak = torch.zeros(n, device=dev)
+    fell = torch.zeros(n, dtype=torch.bool, device=dev)
+    swung = torch.zeros(n, dtype=torch.bool, device=dev)  # reached the contact time without a reset
     prev_tip = None
     groups = {name: a for name, a in env.robot.actuators.items() if name not in ("finger", "thumb")}
     sat_t = {g: torch.zeros((), device=dev) for g in groups}
     sat_v = {g: torch.zeros((), device=dev) for g in groups}
     steps = torch.zeros((), device=dev)
-    for _ in range(int((contact_t.max().item() + 0.2) / env.speed / env.step_dt)):
+    for _ in range(int((contact_t.max().item() + args.tail) / env.speed / env.step_dt)):
         t = env._ref_time()
         r = env._ref(t)
         tip = r["key_pos"][:, -1]
@@ -67,12 +72,17 @@ def main():
             ref_peak = torch.where(alive & (t <= contact_t), torch.maximum(ref_peak, ref_v), ref_peak)
         prev_tip = tip
         env.step(act)
+        fell |= alive & env.fallen
         alive &= ~env.reset_buf
         knob, axis, cm, v_cm, w, _ = env._bat_state()
         _, ssv = env._sweet_spot(knob, axis, cm, v_cm, w)
         s = ssv.norm(dim=-1)
+        tip_v = (v_cm + torch.cross(w, knob + axis * env.bat_spec.length - cm, dim=-1)).norm(dim=-1)
         t = env._ref_time()
+        swung |= alive & (t >= contact_t)
         pre = alive & (t <= contact_t) & ~env.hit
+        tip_peak = torch.where(pre, torch.maximum(tip_peak, tip_v), tip_peak)
+        w_peak = torch.where(pre, torch.maximum(w_peak, w.norm(dim=-1)), w_peak)
         peak = torch.where(pre, torch.maximum(peak, s), peak)
         near = alive & ((t - contact_t).abs() < 0.5 * env.step_dt * env.speed + 1e-6)
         at_contact = torch.where(near, s, at_contact)
@@ -90,13 +100,16 @@ def main():
                 hit_v = (vel >= 0.95 * vlim).any(-1)
                 sat_t[g] += (hit_t & swing).sum()
                 sat_v[g] += (hit_v & swing).sum()
-    ok = alive.sum().item()
+    ok = swung.sum().item()
     print(f"== diag_bat_speed strength={args.strength} effort_scale={args.effort_scale} gain_scale={args.gain_scale} ff={args.ff} "
           f"({ok}/{n} envs swung to the contact time without a reset)")
-    m = alive if ok else torch.ones_like(alive)
+    m = swung if ok else torch.ones_like(swung)
     print(f"sweet spot peak before contact {peak[m].mean():.1f} m/s (min {peak[m].min():.1f}, max {peak[m].max():.1f}); "
           f"at the reference contact time {at_contact[m].mean():.1f} m/s")
-    print(f"reference bat tip peak (kinematic) {ref_peak[m].mean():.1f} m/s")
+    print(f"reference bat tip peak (kinematic) {ref_peak[m].mean():.1f} m/s; sim bat tip peak before contact "
+          f"{tip_peak[m].mean():.1f} m/s (max {tip_peak[m].max():.1f}), bat omega peak {w_peak[m].mean():.1f} rad/s")
+    print(f"standing: fell {fell.sum().item()}/{n} by contact + {args.tail:.1f} s, pelvis z at the end {env.robot.data.root_pos_w[:, 2].mean():.2f} m "
+          f"(envs reset during the run are re-spawned)")
     print("swing window share at the limit (any joint of the group): torque / speed")
     for g in groups:
         print(f"  {g:9s} {100 * (sat_t[g] / steps.clamp_min(1)).item():5.1f}% / {100 * (sat_v[g] / steps.clamp_min(1)).item():5.1f}%")
