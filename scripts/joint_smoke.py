@@ -23,6 +23,7 @@ parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identica
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
 parser.add_argument("--csv", type=str, default=None)
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True
@@ -87,6 +88,23 @@ def main():
     b_fell = torch.zeros_like(p_fell)
     hit = torch.zeros_like(p_fell)
     start_at = torch.full((n,), float("nan"), device=base.device)
+    nan = lambda: torch.full((n,), float("nan"), device=base.device)  # noqa: E731
+    fall_t, cross_t = nan(), nan()
+    feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
+    gz = float(base.field_z)
+    marks = {}  # phase -> (root z, lowest foot z) above the world ground, per env
+    env0 = []
+
+    def heights():
+        d = base.batter.data
+        return d.root_pos_w[:, 2] - gz, d.body_link_pos_w[:, feet, 2].min(-1).values - gz
+
+    def mark(name, m):
+        if m.any():
+            rz, fz = heights()
+            old = marks.setdefault(name, (nan(), nan()))
+            old[0][m], old[1][m] = rz[m], fz[m]
+    mark("t0", torch.ones(n, dtype=torch.bool, device=base.device))
     print(f"[joint] {n} envs, {T} pitcher steps ({cfg.episode_length_s} s), batter start t "
           f"{side.start_t.min():.3f}..{side.start_t.max():.3f} s, release_t_pred {base.release_t_pred[0]:.3f} s", flush=True)
     with torch.inference_mode():
@@ -95,6 +113,17 @@ def main():
             obs, _, _, _ = w.step(pol(obs))
             now = base.episode_length_buf.float() * base.step_dt
             start_at = torch.where(side.active & ~was, now, start_at)
+            if args.diag:
+                mark("t0.4", torch.full((n,), abs(float(now[0]) - 0.4) < 0.5 * base.step_dt, device=base.device))
+                mark("start", side.active & ~was)
+                mark("handoff", torch.isnan(marks.get("handoff", (nan(),))[0]) & side.handed)
+                crossed = torch.isnan(cross_t) & ~torch.isnan(base.j_cross[:, 0])
+                mark("cross", crossed)
+                cross_t = torch.where(crossed, now, cross_t)
+                fell = torch.isnan(fall_t) & side.fallen
+                fall_t = torch.where(fell, now, fall_t)
+                if float(now[0]) <= 1.5 + 1e-6 and int(round(float(now[0]) / base.step_dt)) % 40 == 0:
+                    env0.append((round(float(now[0]), 3), round(float(heights()[0][0]), 3)))
             p_fell |= base.fallen
             b_fell |= side.fallen & side.active
             hit |= side.hit
@@ -125,6 +154,33 @@ def main():
             wr = csv.DictWriter(f, fieldnames=list(out[0]))
             wr.writeheader()
             wr.writerows(out)
+    if args.diag:
+        clip_end = side.start_t + (side.ref.duration[side.clip] - side.t0) / side.speed  # joint time of the ref's end
+        rows, ph = [], {"hold": 0, "start_to_handoff": 0, "after_handoff": 0, "after_clip_end": 0, "never": 0}
+        for e in range(n):
+            ft, st, ho, ce = (float(fall_t[e]), float(start_at[e]), float(base.handoff_t[e]), float(clip_end[e]))
+            p = ("never" if ft != ft else "hold" if not ft >= st else "start_to_handoff" if ft < ho
+                 else "after_handoff" if ft < ce else "after_clip_end")
+            ph[p] += 1
+            row = dict(env=e, clip=names[e % len(names)], fall_t=round(ft, 4), batter_start=round(st, 4), handoff_t=round(ho, 4),
+                       clip_end=round(ce, 4), phase=p, fall_minus_start=round(ft - st, 4), fall_minus_handoff=round(ft - ho, 4),
+                       hit=bool(hit[e]))
+            for k, (rz, fz) in marks.items():
+                row[f"root_z_{k}"], row[f"foot_z_{k}"] = round(float(rz[e]), 3), round(float(fz[e]), 3)
+            rows.append(row)
+        with open(args.diag, "w", newline="") as f:
+            wr = csv.DictWriter(f, fieldnames=list(rows[0]))
+            wr.writeheader()
+            wr.writerows(rows)
+        print(f"[diag] falls by phase: {ph}", flush=True)
+        for k, (rz, fz) in marks.items():
+            print(f"[diag] {k}: root z {rz.nanmedian():.3f} ({rz.nan_to_num(9).min():.3f}..{rz.nan_to_num(-9).max():.3f}), "
+                  f"lowest foot z {fz.nanmedian():.3f} ({fz.nan_to_num(9).min():.3f}..{fz.nan_to_num(-9).max():.3f}) m above field_z {gz}", flush=True)
+        ok = ~torch.isnan(fall_t)
+        if ok.any():
+            print(f"[diag] fall t median {fall_t[ok].median():.3f} s, minus start {(fall_t - start_at)[ok].median():.3f}, "
+                  f"minus hand-off {(fall_t - base.handoff_t)[ok].median():.3f}, clip end median {clip_end.median():.3f}", flush=True)
+        print(f"[diag] env 0 root z (10 Hz, first 1.5 s): {env0}", flush=True)
     print("JOINT_SMOKE_END", flush=True)
 
 
