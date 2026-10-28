@@ -269,7 +269,7 @@ def main():
         joint.j_pos, joint.j_vel, joint.j_omega = (torch.where(m, p, joint.j_pos), torch.where(m, v, joint.j_vel),
                                                    torch.where(m, w, joint.j_omega))
         joint.episode_length_buf += 1
-        if ctrl:
+        if (k + 1) % 4 == 0:  # joint_env.step: post() after the interval's last pitcher step
             side.post()
     assert side.handed.all(), int(side.handed.sum())
     assert side.active.all(), int(side.active.sum())
@@ -339,6 +339,7 @@ def own_timing_check(cfg, art, ckpt):
             ctrl = j % joint.cfg.batter_every == 0
             if ctrl:
                 side.control()
+                pt_ctrl = side.phys_t.clone()
             if j in hand:
                 ids = hand[j]
                 joint.release(ids)
@@ -350,7 +351,10 @@ def own_timing_check(cfg, art, ckpt):
                 joint.j_pos, joint.j_vel, joint.j_omega = (torch.where(m, p, joint.j_pos), torch.where(m, v, joint.j_vel),
                                                            torch.where(m, w, joint.j_omega))
             joint.episode_length_buf += 1
-            if ctrl:
+            if (j + 1) % joint.cfg.batter_every == 0:  # joint_env.step: post() after the interval's last pitcher step
+                live = side.active & (side.episode_length_buf > 0)
+                gap = (side.phys_t - pt_ctrl)[live]  # the obs post() computes: a full control interval after control()
+                assert not len(gap) or (gap - joint.step_dt * joint.cfg.batter_every).abs().max() < 1e-5, gap.unique()
                 side.post()
         return side, joint
 

@@ -58,7 +58,9 @@ class JointPitchEnv(StageEnv):
         self._j_k, self._ctrl = 0, False  # pitcher control steps since the load; this step is a batter control step
 
     # ------------------------------------------------------------------ batter side clocks (batter session 10-28):
-    # control() at 100 Hz before the pitcher's action, ball_world(dt) every physics step (_fly), post() after the step
+    # control() at 100 Hz before the pitcher's action, ball_world(dt) every physics step (_fly), post() after the last
+    # pitcher step of the control interval (10 ms of physics after control, as the native env.step; 10-28 trace diff:
+    # post() right after the control step gave the policy a state 2.5 ms after its action, 7.5 ms stale when used)
     def _pre_physics_step(self, actions: torch.Tensor):
         self._ctrl = self.batter_side is not None and self._j_k % self.cfg.batter_every == 0
         self._j_k += 1
@@ -68,7 +70,7 @@ class JointPitchEnv(StageEnv):
 
     def step(self, action):
         out = super().step(action)
-        if self._ctrl:
+        if self.batter_side is not None and self._j_k % self.cfg.batter_every == 0:  # the next step is a control step
             self.batter_side.post()
         return out
 
