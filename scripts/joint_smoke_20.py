@@ -96,7 +96,7 @@ def main():
     if hasattr(cfg, "assist_force_n"):
         cfg.assist_force_n = 0.0
     if args.video:  # M3 film defaults (10-28), visual only
-        cfg.film_grass, cfg.film_round_mound, cfg.film_wall, cfg.film_landing_ring = True, True, True, True
+        cfg.film_grass, cfg.film_round_mound, cfg.film_wall, cfg.film_landing_ring, cfg.film_sky = True, True, True, True, True
     env = gym.make(TASK, cfg=cfg, render_mode="rgb_array" if args.video else None)
     base = env.unwrapped
     orig = base._get_dones

@@ -15,6 +15,7 @@ One episode = one pitch; no env.reset() between pitches (every later reset drift
 from __future__ import annotations
 
 import math
+import os
 
 import torch
 
@@ -110,9 +111,12 @@ class JointPitchEnv(StageEnv):
             try:
                 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
-                sky = sim_utils.DomeLightCfg(intensity=1000.0, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr")
+                hdr = "Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr"
+                local = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "sky", os.path.basename(hdr))
+                tex = os.path.abspath(local) if os.path.isfile(local) else f"{ISAAC_NUCLEUS_DIR}/{hdr}"  # local copy: no network
+                sky = sim_utils.DomeLightCfg(intensity=1000.0, texture_file=tex)
                 sky.func("/World/Light", sky)
-                print("[joint] film_sky: HDRI dome light", flush=True)
+                print(f"[joint] film_sky: HDRI dome light {tex}", flush=True)
             except Exception as e:  # noqa: BLE001 - a missing asset must not stop the film
                 print(f"[joint] film_sky failed ({type(e).__name__}: {e}) - colour dome instead", flush=True)
                 sky = None

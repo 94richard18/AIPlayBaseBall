@@ -117,7 +117,7 @@ class JointFilm:
     MIN_BATTER_DEG = 30.0  # the zoom-1 half field of view is ~18 deg (vertical) / ~30 deg (horizontal)
     CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
     CF_T = (0.42, -0.45, 0.75)
-    PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (9.0, 0.6, 1.35), (-10.0, -0.3, 1.35), 1.5
+    PV_J_EYE, PV_J_TGT, PV_J_ZOOM = (9.0, 0.6, 1.4), (-10.0, -0.3, 1.4), 1.65  # 10-28: batter 482 px, bat tip 97 px from the top
 
     def __init__(self, base, path, env, slow=2.0, fps=30):
         import imageio
