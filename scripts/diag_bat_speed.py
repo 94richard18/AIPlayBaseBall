@@ -37,6 +37,8 @@ import torch  # noqa: E402
 
 import aibaseball.tasks  # noqa: F401, E402
 from aibaseball.robot.aib1_cfg import make_aib1_cfg  # noqa: E402
+from isaaclab.utils.math import quat_apply  # noqa: E402
+
 from aibaseball.mocap.motion import KEY_BODIES  # noqa: E402
 from aibaseball.tasks.tee_batting.mimic_env_cfg import TeeBattingHumanPlayEnvCfg  # noqa: E402
 
@@ -84,6 +86,10 @@ def main():
     leg_ref = torch.zeros(n, len(legs), device=dev)
     foot_sim = torch.zeros(n, 2, device=dev)
     foot_yaw = torch.zeros(n, 2, device=dev)
+    lift_sim = torch.zeros(n, 2, device=dev)
+    lift_ref = torch.zeros(n, 2, device=dev)
+    tilt = torch.zeros(n, 2, device=dev)
+    z0 = {}
     foot_ref = torch.zeros(n, 2, device=dev)
     fk = [KEY_BODIES.index(f"{s}_foot") for s in "lr"]
     foot_ids = [env.robot.find_bodies(f"{s}_foot")[0][0] for s in "lr"]
@@ -101,8 +107,13 @@ def main():
             ref_peak = torch.where(alive & (t <= contact_t), torch.maximum(ref_peak, ref_v), ref_peak)
         prev_tip = tip
         feet = r["key_pos"][:, fk, :2]
+        fz_r = r["key_pos"][:, fk, 2] - env.scene.env_origins[:, 2:3]
+        fz = env.robot.data.body_link_pos_w[:, foot_ids, 2] - env.scene.env_origins[:, 2:3]
+        if not z0:  # standing heights of the foot frames at the first step
+            z0.update(sim=fz.clone(), ref=fz_r.clone())
         win = alive & (t > contact_t - args.window) & (t <= contact_t)
         w2 = win.unsqueeze(-1)
+        lift_ref = torch.where(w2, torch.maximum(lift_ref, fz_r - z0["ref"]), lift_ref)
         yaw_ref = torch.where(win, torch.maximum(yaw_ref, r["root_ang_vel"][:, 2].abs()), yaw_ref)
         leg_ref = torch.where(w2, torch.maximum(leg_ref, r["joint_vel"][:, legs].abs()), leg_ref)
         if prev_feet is not None:
@@ -131,6 +142,9 @@ def main():
             leg_sim = torch.where(s2, torch.maximum(leg_sim, d.joint_vel[:, env.body_joint_ids][:, legs].abs()), leg_sim)
             fv = d.body_link_lin_vel_w[:, foot_ids, :2].norm(dim=-1)
             foot_sim = torch.where(s2, torch.maximum(foot_sim, fv), foot_sim)
+            lift_sim = torch.where(s2, torch.maximum(lift_sim, d.body_link_pos_w[:, foot_ids, 2] - env.scene.env_origins[:, 2:3] - z0["sim"]), lift_sim)
+            up = quat_apply(d.body_link_quat_w[:, foot_ids].reshape(-1, 4), torch.tensor([0.0, 0.0, 1.0], device=dev).expand(2 * n, 3))
+            tilt = torch.where(s2, torch.maximum(tilt, torch.rad2deg(torch.acos(up.reshape(n, 2, 3)[..., 2].clamp(-1.0, 1.0)))), tilt)
             foot_yaw = torch.where(s2, torch.maximum(foot_yaw, d.body_link_ang_vel_w[:, foot_ids, 2].abs()), foot_yaw)
             steps += swing.sum()
             for g, a in groups.items():
@@ -160,6 +174,8 @@ def main():
         f"{names[j]} {leg_sim[m, k].mean():.1f}/{leg_ref[m, k].mean():.1f}" for k, j in enumerate(legs)))
     print(f"foot horizontal speed peak sim / reference (m/s): l {foot_sim[m, 0].mean():.2f}/{foot_ref[m, 0].mean():.2f}, "
           f"r {foot_sim[m, 1].mean():.2f}/{foot_ref[m, 1].mean():.2f} (slip proxy; no contact sensor in this env)")
+    print(f"foot lift peak sim / reference (m, above the standing height): l {lift_sim[m, 0].mean():.3f}/{lift_ref[m, 0].mean():.3f}, "
+          f"r {lift_sim[m, 1].mean():.3f}/{lift_ref[m, 1].mean():.3f}; sole tilt peak sim l {tilt[m, 0].mean():.1f}, r {tilt[m, 1].mean():.1f} deg")
     print(f"foot yaw rate peak sim (rad/s, world z; the clip has no foot orientation): l {foot_yaw[m, 0].mean():.1f}, r {foot_yaw[m, 1].mean():.1f}")
     print("swing window share at the limit (any joint of the group): torque / speed")
     for g in groups:

@@ -53,6 +53,10 @@ parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
 parser.add_argument("--contact_log", action="store_true",
                     help="per hit, at the contact step: sweet-spot speed, contact station dx, swing-vs-pitch angle, exit speed")
+parser.add_argument("--body_log", action="store_true",
+                    help="lower body vs the reference over the last --body_window s of reference time before contact: pelvis yaw "
+                         "rate, foot translation speed, foot yaw rate, foot lift, sole tilt (peaks); split by hit / miss, fell / stood")
+parser.add_argument("--body_window", type=float, default=0.3)
 parser.add_argument("--sat_log", action="store_true",
                     help="per body joint: fraction of swing steps (ball in flight, before contact) with the torque at its limit")
 parser.add_argument("--phase_log", action="store_true",
@@ -274,6 +278,20 @@ def main():
             feet = d.body_pos_w[:, foot_ids].mean(1)
             return dict(com_v=vcom[:, :2].norm(dim=-1), com_foot=(com[:, :2] - feet[:, :2]).norm(dim=-1),
                         L_orb=L.norm(dim=-1) / m.sum(1).squeeze(-1), yaw_rate=d.root_ang_vel_w[:, 2].abs())
+    if args.body_log:
+        from isaaclab.utils.math import quat_apply
+
+        from aibaseball.mocap.motion import KEY_BODIES
+
+        rob_b = base.robot
+        bl_feet = [rob_b.find_bodies(f"{sd}_foot")[0][0] for sd in "lr"]
+        bl_fk = [KEY_BODIES.index(f"{sd}_foot") for sd in "lr"]
+        BL = ["yaw_sim", "yaw_ref"] + [f"{k}_{sd}" for k in ("foot_v_sim", "foot_v_ref", "foot_yaw", "lift_sim", "lift_ref", "tilt_deg")
+                                       for sd in "lr"]
+        for k in BL:
+            rec[k] = torch.zeros(n, device=dev)
+        bl_prev = {}
+        bl_z0 = {}
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -324,6 +342,34 @@ def main():
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
         prev.update(knob=knob.clone(), axis=axis.clone(), ball=ball, t=t)
         past_end.copy_(torch.where(~finished, base.ref_t - base.ref.duration[base.clip], past_end))
+        if args.body_log:
+            d = rob_b.data
+            rr_b = base._ref(base.ref_t)
+            ct = base.ref.contact_time[base.clip]
+            win = ~finished & (base.ref_t > ct - args.body_window) & (base.ref_t <= ct)
+            fz = d.body_link_pos_w[:, bl_feet, 2] - base.scene.env_origins[:, 2:3]
+            fz_r = rr_b["key_pos"][:, bl_fk, 2] - base.scene.env_origins[:, 2:3]
+            if not bl_z0:  # standing heights at the first step (foot frame above the ground), robot and reference
+                bl_z0.update(sim=fz.clone(), ref=fz_r.clone())
+            up = quat_apply(d.body_link_quat_w[:, bl_feet].reshape(-1, 4),
+                            torch.tensor([0.0, 0.0, 1.0], device=dev).expand(2 * n, 3)).reshape(n, 2, 3)
+            vals = dict(yaw_sim=d.root_ang_vel_w[:, 2].abs(),
+                        yaw_ref=(rr_b["root_ang_vel"][:, 2] * base.rate / base.speed).abs())
+            fv = d.body_link_lin_vel_w[:, bl_feet, :2].norm(dim=-1)
+            if bl_prev:
+                fv_r = (rr_b["key_pos"][:, bl_fk, :2] - bl_prev["kp"]).norm(dim=-1) / base.physics_dt
+            else:
+                fv_r = torch.zeros_like(fv)
+            bl_prev["kp"] = rr_b["key_pos"][:, bl_fk, :2].clone()
+            for i, sd in enumerate("lr"):
+                vals[f"foot_v_sim_{sd}"] = fv[:, i]
+                vals[f"foot_v_ref_{sd}"] = fv_r[:, i]
+                vals[f"foot_yaw_{sd}"] = d.body_link_ang_vel_w[:, bl_feet[i], 2].abs()
+                vals[f"lift_sim_{sd}"] = fz[:, i] - bl_z0["sim"][:, i]
+                vals[f"lift_ref_{sd}"] = fz_r[:, i] - bl_z0["ref"][:, i]
+                vals[f"tilt_deg_{sd}"] = torch.rad2deg(torch.acos(up[:, i, 2].clamp(-1.0, 1.0)))
+            for k, v in vals.items():
+                rec[k] = torch.where(win, torch.maximum(rec[k], v), rec[k])
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -630,6 +676,17 @@ def main():
                                   dx=q(r["dx_contact"][hm]), abs_dz=q(dzh), swing_pitch_deg=q(r["swing_pitch_deg"][hm]),
                                   ev=q(r["ev_contact"][hm]), ref_phase_hit=q(r["ref_phase_hit"][hm]), squared_up=round(float(((dzh <= 0.02) & (dxh <= 0.05)).mean()), 3) if hm.any() else None)
         print("[bat] contact_log: " + json.dumps(out["contact_log"]), flush=True)
+    if args.body_log:
+        q3 = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if len(v) else None
+        hb, fb = r["hit"].astype(bool), r["fell"].astype(bool)
+        ratio = r["yaw_sim"] / np.maximum(r["yaw_ref"], 1e-6)
+        groups = dict(hits=hb, misses=~hb, hit_fell=hb & fb, hit_stood=hb & ~fb, miss_fell=~hb & fb, miss_stood=~hb & ~fb)
+        out["body_log"] = {g: dict(n=int(m.sum()), pelvis_ratio=q3(ratio[m]), yaw_sim=q3(r["yaw_sim"][m]), yaw_ref=q3(r["yaw_ref"][m]),
+                                   **{f"{k}_{sd}": q3(r[f"{k}_{sd}"][m]) for k in ("foot_v_sim", "foot_v_ref", "foot_yaw", "lift_sim",
+                                                                                 "lift_ref", "tilt_deg") for sd in "lr"})
+                           for g, m in groups.items()}
+        for g, v in out["body_log"].items():
+            print(f"[bat] body_log {g}: " + json.dumps(v), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
