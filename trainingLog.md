@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 08:1x F1 否證通過、F1 關閉**：(c) seed 1 好球帶 0.481、擊中後跌倒 43%（278 擊中；08:10–08:13，3 分鐘 GPU）。兩種子平均 0.486 / 40%。同場環境維持 (c) 設定（dt 1/800 × 8、4 個真實高度 clip），不微調。
+
+**10-28 08:2x k = 1 測試兩次失敗、已修（2faa99d）**：第一次對 env 1 底下 288 個 prim 都設可見 → PhysX 重新解析、sim view 壞掉（改成只設 env k 根節點，與 MakeInvisible 對稱，94ccaa2）；第二次被新的隱藏 prim 檢查擋下，因為 plate_yaw 18 下碰撞用的 MoundTop / MoundSlope 本來就是隱藏的（畫的是 ...Shown 視覺副本），檢查改成只算從 env k 上方繼承的隱藏。佇列（film_fixcheck.sh）：等 15 的 F1S1_END + Isaac 0 → 拍 k = 1 → fixcheck_p3c_k01.mp4 + 拼圖 videos/fixcheck_tiles/k01_tile.png（FIXCHECK2_END）→ C1（同場場景 + 打者、64 env、park，約 5 分鐘，logs/joint_c1.log）。
+
+**10-28 08:1x F1 結果（15，07:51–08:05，14 分鐘 GPU；12500 @1.5 倍、diag1024、P3c 球、seed 0）**：基準 好球帶 0.458 / 擊中後跌倒 43% / 288 擊中；(a) dt 1/800 × 8：0.461 / 41% / 271 過；(b) 4 clip 真實高度：0.469 / 44% / 288 過；(c) a+b：0.490 / 37% / 293 超出帶寬但在好的那側（好球帶 +0.032 vs ±0.03、跌倒 −6 vs ±5；約 300 顆好球帶球的 SE ≈ 0.03）。決定：不微調，同場環境用 (c) 設定；便宜否證 (c) seed 1（約 4 分鐘）排在 20 的 k = 1 片段之後，好球帶 < 0.428 或跌倒 > 48% 才要微調提案。GPU 順序：k = 1 片段（F1_END 自動）→ (c) seed 1 → 20 的 C1–C3 → 15 的 M1.5 旋轉測試。
+
 **10-28 07:5x 空影片原因與修正（20，71fbde4）**：拍攝在 k24 停、GPU 交給 15 的 F1。原因：複製的 env 繼承 env_0 的 USD 設定；film() 隱藏 k 以外的所有 env（含 env_0），env k 跟著繼承「不可見」，只有 k00 拍得到。前測只對 k00 做幀檢查、precheck k01 其實也是空的。修正：在 env k 及其下所有 prim 設本地可見性 inherited，再逐 prim ComputeVisibility，任何隱藏 → 拍攝前 RuntimeError。check_video_frames 新增「機器人可見」檢查：本壘視角像素時間標準差 > 20 的比例（每 5 幀、去掉字幕）；k00 3.01%、空片段 0.01%，< 0.5% 判 EMPTY 並 exit 1。k = 1 測試（logs/film_fixcheck.sh）等 F1_END 後拍 → videos/fixcheck_p3c_k01.mp4 + 每 23 幀拼圖 videos/fixcheck_tiles/k01_tile.png；20 和我都看過才重拍 50 球。CSV k0–k23 保留。
 
 **10-28 07:4x 使用者發現重拍的影片是空的（match_full2_p3c_k21）→ 停拍**：我抽圖確認 k13、k21 兩個視角整段只有地板格線，沒有投手 / 投手丘 / 球；k00 正常。檔案大小一致指向同一件事：k00 6.7 MB、k01–k23 全部 8.2–8.5 MB → k ≥ 1 的片段全部是空的。出手列（k8、k13、k21）都和評估相同，所以是 --video_env k 的相機 / 可見性路徑拍到空地（相機沒移到 env k 的原點，或隱藏其他 env 時把 env k 也藏了），不是物理。前測的漏洞：k = 0、1、2 只比對了出手列和「0% 黑畫面」（check_video_frames 只抓全黑），沒有人看 k1 / k2 的畫面——規劃 session 應該自己抽圖看，這次漏了。處理：請 20 立刻停掉 film_match_full2.sh、修好後只拍 k = 1、把每 10 幀拼圖目視確認（兩個視角都要有機器人、投手丘、球），並在 check_video_frames 加「機器人可見」檢查；我也看過才重拍 50 球（k00 與 CSV 保留）。15 的 B / A 鏈解除（它的觸發條件會在壞片段上啟動）；F1 三項檢查提前，GPU 一空就跑。約 1.9 小時 GPU 浪費（k01–k23）。
