@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 09:47 檢查**：GPU 1 個 Isaac（match_full3 重拍閒置填充，k10 / 50；新片段 6.7 MB 與正常的 k00 一致，不是空的）。15 的同場 smoke 尚未取 GPU（hold 檔不存在，應仍在合併）。沒有 trainer、沒有閒置；12 小時影片由同場測試片與重拍涵蓋。
+
 **10-28 10:0x C3c 通過 = 同場拍攝路徑完成**：videos/c3c_joint_k00.mp4、拼圖 videos/fixcheck_tiles/c3c_joint_k00_tile.png 我看過：中外野相機（橡膠板後 40 m、三壘側 4 m、高 3.5 m、6×、瞄準本壘上方 0.3 m）下投手在左（投手丘上）、打者在右（本壘、PD 站姿持棒），兩人全身入鏡、投手丘可見、標記球飛到本壘附近落地；env 0 站穩、出手列 = C1 env 0。M3 相機待辦（CPU）：兩人在畫面裡偏小（揮棒要看得清楚，考慮更長焦或一壘側休息區方向的第二台相機）、本壘視角要含打者（相機在本壘後 1 m，打者在旁邊看不到）、草地、挑 env 用同場 CSV。GPU hold 已移除，match_full3 重拍從 k02 續跑當閒置填充（要 GPU 就 touch logs/gpu_hold_pitcher）；下一個 GPU 使用者是 15 的同場 smoke。
 
 **10-28 09:5x 核准第一次同場 + 即時打者 smoke（15，313e6ba，約 5–8 分鐘 GPU，logs/run_joint_smoke.sh → JSMOKE_END、logs/joint_smoke.csv）**：AIB-OneOutsJoint-v0（park）+ P3c 7600 + BatterSide；dt 1/800、4 個真實高度 clip 輪流、Rz(162°) 代理、12500 @1.5 倍；64 env 一球、6 s、投手 dones 關閉；每 env 一列（clip、km/h、穿越 y/z、交接時間 vs 打者起始、擊中、初速、仰角、方向、飛行、雙方跌倒）。最多 3 次修正重試；用 logs/gpu_hold_pitcher 讓 20 的重拍最多等一段；若 C3c 在跑先讓它跑完。
