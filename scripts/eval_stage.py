@@ -307,6 +307,11 @@ def main():
     if getattr(cfg, "throw_upper", False):
         rel = base.released.cpu().numpy(); cr = base.s_crossed.cpu().numpy(); zone = base.in_zone().cpu().numpy()
         v = base.rel_vel.norm(dim=-1).cpu().numpy(); mx = base.s_ball_maxx.cpu().numpy(); yz = base.s_cross_yz.cpu().numpy()
+        if hasattr(base, "j_cross"):  # joint scene: the PhysX ball is parked after the hand-off, the integrator's flight
+            # (drag + Magnus, ends on the ground) crosses the plate - its crossing is the tiers' (C1: all T1 from PhysX)
+            jc = base.j_cross.cpu().numpy()
+            cr = ~np.isnan(jc[:, 0]); air_cross = cr.copy()
+            yz = np.stack([jc[:, 0] + cfg.zone_center_y, jc[:, 1]], 1)
         say(f"  ball: released {rel.sum()}/{n}, release speed median {np.median(v[rel]) if rel.any() else 0:.1f} m/s; "
             f"crossed the plate {cr.sum()}/{n}, in the zone {zone.sum()}/{n}; farthest x median {np.median(mx):.1f} m"
             + (f"; at the plate median y {np.median(yz[cr, 0]):+.2f} m, z {np.median(yz[cr, 1]):.2f} m" if cr.any() else ""))
