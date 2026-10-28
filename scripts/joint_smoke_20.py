@@ -147,11 +147,18 @@ def main():
             b_fell |= side.fallen & side.active
             b_fell_pre |= side.fallen & side.active & ~was_done  # inside the training episode (native window)
             hit |= side.hit
+            if film:
+                E = args.video_env
+                film.step(float(now[E]), ("HIT" if bool(hit[E]) else "") + ("  batter FELL" if bool(b_fell[E]) else "")
+                          + ("  pitcher FELL" if bool(p_fell[E]) else ""))
+    if film:
+        film.close()
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)
     out = []
     names = list(JOINT_CLIPS)
+    pcols, ccols = pitcher_columns(base, p_fell), count_columns(args.count_csv, n)
     R = side.rec
 
     def swing_cols(e):  # + delta: the swing reference reaches contact before the ball does (early)
