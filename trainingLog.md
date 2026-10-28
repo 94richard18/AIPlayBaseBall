@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-29 04:0x（規劃 session）疑似 bug：聯合打者的跌倒判定用世界 z，但場地低 0.196 m -> 隨揮下蹲被算成跌倒、可能提前關閉擊球窗；診斷 seeds 6 + 1 進行中
+- 15：bat_fall_t = side.fallen & active；side.fallen 來自 TeeBattingEnv._get_dones（tee_batting_env.py:436）：骨盆**世界** z < min_pelvis_height 0.55 或傾角 > 60°。聯合場景 field_z = -0.196（mound_top_z - mound_height），打者站在世界 0 下方 0.196 m -> 世界 z < 0.55 等於離自己地面 < 0.746 m；站立 root ~0.93 -> 下降 ~0.19 m（寬步隨揮就到）即判「跌倒」；原生 tee 場（地面 0）同樣動作不算。與影片相符（PA1 p5 s6 e12 站到 5.6 s，但 logs/m2 標 batter_fell True、done_t 3.3；m2_f055 s1 e12 擊中 2.025、「倒」於 3.15；seed 1 跌倒距揮棒起動中位 2.33 s、最小 1.52 s——慢慢下沉，不是摔倒）。
+- 影響：(1) 報告數字「擊中後跌倒 49.5%」很可能是標籤錯誤；(2) 可能漏進比賽邏輯：side.fallen 關閉 BatterSide 的擊球窗（batter_side.py:414，win = handed & ~done & ~fallen）並決定 done -> 接觸前的「跌倒」可能否決擊中、提早結束。尚未驗證。
+- 裁定：先診斷再修。(a) GPU（現在）：joint_smoke seeds 6 + 1、64 envs、bias 0.055，加唯讀欄位 fall_pelvis_z（相對 field_z）/ fall_tilt_deg（3935ea8），寫入 `logs/falldiag/`，標記 `logs/FALLDIAG_END.txt`，約 14 min；回報擊中時「跌倒」瞬間的骨盆高 / 傾角分佈、高度觸發 vs 傾角觸發數、s6 e12 與 s1 e60。(b) CPU：數 bat_fall_t < hit_t（擊中）或 < t_plane（揮空 / 全部）的列，確認接觸前跌倒是否否決擊球窗或提早結束。
+- 修法（待數字確認後執行）：聯合打者的跌倒判定改為**相對場地**（pelvis z - field_z < 0.55，傾角不變）= 原生環境在地面 0 的語意，屬 bug 修正非規格變更。修後：投球不變（投手看不到打者），但 M2 需重跑（10 seeds ~75 min）、joint_pa 重跑、揮棒列重拍（看球列 take mode 10 跌倒 0，不受影響）。20 尚未通知，等診斷。
+
 ### 10-29 03:5x（規劃 session）bias 0.030 判定無意義（影片窗內跌倒 90% vs 95%）-> 停鏈、維持 0.055、不重拍；追查「跌倒」定義
 - 15 seed 1 兩種 bias：0.055 19 次擊中，接觸後 1.0 s 內倒 6（32%）、2.0 s 內 18（95%）；0.030 20 次擊中，1.0 s 內 8（40%）、2.0 s 內 18（90%）。影片顯示打者到球落地（接觸後約 2 s），兩種 bias 下幾乎每次擊中都在窗內「倒」；之前的 49.5%（in-episode）與 34%（診斷）量的是更早的窗。M2 可重現性：m2_f055 s1 與 logs/m2 每個揮棒 / 投球欄位全同（bit for bit）。
 - 裁定：bias 0.030 作為影片觀感選項**無意義**（跌倒不減、1 s 內略差、好球帶上升換不到勝場）。15 在種子之間乾淨停鏈（Isaac 0、標記寫 stopped），預設維持 0.055，不重拍；`logs/m2_f055/m2_s1.csv` 留作可重現性紀錄。
