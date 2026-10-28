@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 08:4x k = 1 片段確認、C1 通過 = M1 達成（提前到 10-28）**：k01（e0720dc）隱藏 prim 0、229 幀、動態 2.90%（好的 k00 3.01%、空片 0.01%）、出手列 = 評估 env 1（18.03 m/s、y −0.10、z 1.02、T4）；拼圖 videos/fixcheck_tiles/k01_tile.png 我看過：兩個視角都有投手與投手丘、動作完整。C1（同場場景 + 打者、64 env、park，logs/joint_c1_park.csv）vs 門檻（oo_filmcheck_f64.csv）：站穩 53 vs 51（≥ 48）、站穩且 T3+ 51 vs 47（≥ 32）、T4 30 vs 28、y 中位數 0.066 vs 0.050（±0.1）→ M1 PASS；46/64 列與門檻完全相同，其餘 18 列不同（多一個 articulation 改變 GPU solver 批次），打者不碰投手。飛行檢查：積分器穿越 vs simulate_to_plane 60 球 |dy| = |dz| = 0.0000。打者 PD 站姿 root 最多移 0.019 m。待修（CPU）：eval_stage 的 W1 gate 行與 CSV tier 欄用 PhysX 球穿越，park 之下球在地下會全判 T1 → 同場任務改用積分器穿越。GPU 順序（關鍵路徑優先）：15 旋轉測試 → 20 的 C2 / C3（C3 = 同場場景拍 env k，拼圖給我看）→ 之後才以閒置填充的方式重拍 k01–k49（每段前查 Isaac = 0，讓排隊的同場檢查插隊）。分開拍的影片降為草稿 / 備案素材，C3 可用就可能提前停拍。
+
 **10-28 08:1x F1 否證通過、F1 關閉**：(c) seed 1 好球帶 0.481、擊中後跌倒 43%（278 擊中；08:10–08:13，3 分鐘 GPU）。兩種子平均 0.486 / 40%。同場環境維持 (c) 設定（dt 1/800 × 8、4 個真實高度 clip），不微調。
 
 **10-28 08:2x k = 1 測試兩次失敗、已修（2faa99d）**：第一次對 env 1 底下 288 個 prim 都設可見 → PhysX 重新解析、sim view 壞掉（改成只設 env k 根節點，與 MakeInvisible 對稱，94ccaa2）；第二次被新的隱藏 prim 檢查擋下，因為 plate_yaw 18 下碰撞用的 MoundTop / MoundSlope 本來就是隱藏的（畫的是 ...Shown 視覺副本），檢查改成只算從 env k 上方繼承的隱藏。佇列（film_fixcheck.sh）：等 15 的 F1S1_END + Isaac 0 → 拍 k = 1 → fixcheck_p3c_k01.mp4 + 拼圖 videos/fixcheck_tiles/k01_tile.png（FIXCHECK2_END）→ C1（同場場景 + 打者、64 env、park，約 5 分鐘，logs/joint_c1.log）。
