@@ -217,7 +217,9 @@ def main():
     joint = FakeJoint(art)
     if a.own_timing:
         return own_timing_check(cfg, art, a.batter)
-    side = BatterSide(joint, cfg, a.batter, after_done=a.after_done)
+    take = torch.zeros(N, dtype=torch.bool)
+    take[-8:] = True  # the last 8 envs take (ONE OUTS PA swing mask): stance targets the whole pitch, still handed / judged
+    side = BatterSide(joint, cfg, a.batter, after_done=a.after_done, swing=~take)
     side.record_swing()
     art.inner_pivot = side.robot.pivot
     print(f"[cpu] init ok: {N} envs, clips {sorted(set(side.fixed_clip.tolist()))}, start_t pending", flush=True)
@@ -234,11 +236,19 @@ def main():
     steps = int(round(6.0 / 0.0025))  # the smoke run's episode: pitch, contact, batted-ball flight
     h0, bat = min(hand), side.bat_id
     swing = sub[:19]  # judge on an env subset: a bat barrel put in the live ball's path
+    assert not take[swing].any(), "the bat-in-the-path subset must swing"
+    stance = side._ref(torch.zeros(N))["joint_pos"]
+    take_err, swing_dev = 0.0, 0.0
     q_up = torch.tensor([0.70710678, 0.0, -0.70710678, 0.0])  # bat x axis -> world +z (across the pitch line)
     for k in range(steps):
         ctrl = k % 4 == 0
         if ctrl:
             side.control()
+            tq = side.joint_targets[:, side.body_joint_ids]
+            take_err = max(take_err, float((tq[take] - stance[take]).abs().max()), float(side.joint_vel_targets[take].abs().max()))
+            live = side.active & ~take & ~side.done
+            if live.any():  # falsifier: the swinging envs' targets do leave the stance
+                swing_dev = max(swing_dev, float((tq[live] - stance[live]).abs().max()))
         if k in hand:
             joint.release(hand[k])
         if k == h0 + 120:  # a still bat 0.25 m ahead on the ball's path, moving toward the mound
@@ -271,6 +281,8 @@ def main():
         joint.episode_length_buf += 1
         if (k + 1) % 4 == 0:  # joint_env.step: post() after the interval's last pitcher step
             side.post()
+    print(f"[cpu] take ok: {int(take.sum())} take envs |target - stance| max {take_err:.2e} (swinging envs reach {swing_dev:.2f} rad)", flush=True)
+    assert take_err < 1e-6 and swing_dev > 0.1, (take_err, swing_dev)
     assert side.handed.all(), int(side.handed.sum())
     assert side.active.all(), int(side.active.sum())
     fin = torch.isfinite(side.pitch_pos).all() and torch.isfinite(side.tee_pos).all() and torch.isfinite(side.flight_time).all()
