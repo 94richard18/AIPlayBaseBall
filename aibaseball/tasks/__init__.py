@@ -1,3 +1,3 @@
 """Gym registrations for AI baseball tasks."""
 
-from . import one_outs, pitching, tee_batting  # noqa: F401
+from . import one_outs, pitching, recover, tee_batting  # noqa: F401
