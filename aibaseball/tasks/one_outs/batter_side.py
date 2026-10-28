@@ -206,6 +206,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._load_policy(checkpoint)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
+        self._perc = None
         self.shift_hist = shift_hist
         self.handoff_jump = torch.full((n,), float("nan"), device=self.device)
         self.own = None if own_timing is None else torch.as_tensor(own_timing, dtype=torch.float32, device=self.device)
@@ -338,6 +339,12 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.done_t[new] = self._joint_time()[new]
             self.done |= new
         self._obs = self._get_observations()["policy"]
+        if self.rec is not None and self._perc is not None:  # the ball the policy was given (B, z above the field)
+            self.rec["perc"].append((self._joint_time().clone(), self._perc[:, 2].clone()))
+
+    def _perceived_ball(self) -> torch.Tensor:
+        self._perc = super()._perceived_ball()
+        return self._perc
 
     # ------------------------------------------------------------------ swing timing / geometry (diag_bat_contact's)
     def record_swing(self):
@@ -350,7 +357,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.rec = dict(t_plane=nan(), ref_err=nan(), t_square=nan(), sq_ax=torch.ones(n, device=dev), gap=torch.full((n,), 9.0, device=dev),
                         t_gap=nan(), dz=nan(), dperp=nan(), ss_speed_max=torch.zeros(n, device=dev), k=0,
                         tempo_pre=torch.zeros(n, device=dev), n_pre=torch.zeros(n, device=dev),
-                        tempo_fly=torch.zeros(n, device=dev), n_fly=torch.zeros(n, device=dev))
+                        tempo_fly=torch.zeros(n, device=dev), n_fly=torch.zeros(n, device=dev),
+                        t_commit=nan(), perc=[])  # t_commit: sweet spot first > 10 m/s
 
     def _record(self, prev_ball, dt):
         r = self.rec
@@ -380,6 +388,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         r["ref_err"] = torch.where(cross, self.ref_t - self.ref.contact_time[self.clip], r["ref_err"])
         sp = v_ss.norm(dim=-1)
         r["ss_speed_max"] = torch.where(live, torch.maximum(r["ss_speed_max"], sp), r["ss_speed_max"])
+        r["t_commit"] = torch.where(live & (sp > 10.0) & torch.isnan(r["t_commit"]), t, r["t_commit"])
         sq = live & (sp > 10.0) & (axis[:, 0].abs() < r["sq_ax"])
         r["sq_ax"] = torch.where(sq, axis[:, 0].abs(), r["sq_ax"])
         r["t_square"] = torch.where(sq, t, r["t_square"])

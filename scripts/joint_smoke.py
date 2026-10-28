@@ -162,7 +162,20 @@ def main():
                     gap_m=R["gap"][e], t_gap=R["t_gap"][e], dz_m=R["dz"][e], dperp_m=R["dperp"][e],
                     ss_speed_max=R["ss_speed_max"][e],
                     tempo_pre=R["tempo_pre"][e] / R["n_pre"][e].clamp_min(1.0),  # mean tempo action before the hand-off
-                    tempo_fly=R["tempo_fly"][e] / R["n_fly"][e].clamp_min(1.0))  # hand-off -> done (diag_bat_contact tempo_q)
+                    tempo_fly=R["tempo_fly"][e] / R["n_fly"][e].clamp_min(1.0),
+                    t_commit=R["t_commit"][e], perc_z_pre=perc_pre[e], perc_z_commit=perc_commit[e])  # hand-off -> done (diag_bat_contact tempo_q)
+    if R["perc"]:  # perceived crossing z at the last control step before t_plane - 0.10 s and before the commit
+        pt = torch.stack([p[0] for p in R["perc"]], 0)  # (steps, envs)
+        pz = torch.stack([p[1] for p in R["perc"]], 0)
+
+        def perc_at(tq):
+            k = ((pt <= tq.unsqueeze(0)).sum(0) - 1).clamp_min(0)
+            v = pz.gather(0, k.unsqueeze(0)).squeeze(0)
+            return torch.where(torch.isfinite(tq), v, torch.full_like(v, float("nan")))
+        tp_ref = side.own[:, 1] if side.own is not None else R["t_plane"]
+        perc_pre, perc_commit = perc_at(tp_ref - 0.10), perc_at(R["t_commit"])
+    else:
+        perc_pre = perc_commit = torch.full((n,), float("nan"), device=base.device)
     for e in range(n):
         rec = rows.get(e, {})
         jc = base.j_cross[e].tolist()  # (y - zone centre, z above the field); NaN when the bat met it first
