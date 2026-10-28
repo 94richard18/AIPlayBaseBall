@@ -623,12 +623,10 @@ def film(w, base, pol, T, fps=30):
             continue
         UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/envs/env_{i}")).MakeInvisible()
     # the cloned envs inherit env_0's opinions, so hiding env_0 hid env k too (match_full2 10-28: empty clips for k >= 1):
-    # a local "inherited" opinion on env k and every prim under it, then check that nothing under env k is hidden
+    # a local "inherited" opinion on the env k root (as MakeInvisible writes on the others; an opinion on every prim under
+    # it made PhysX re-parse the env and invalidated the sim view), then check that nothing under env k is hidden
     root = stage.GetPrimAtPath(f"/World/envs/env_{E}")
-    for p in Usd.PrimRange(root):
-        im = UsdGeom.Imageable(p)
-        if im:
-            im.CreateVisibilityAttr().Set(UsdGeom.Tokens.inherited)
+    UsdGeom.Imageable(root).GetVisibilityAttr().Set(UsdGeom.Tokens.inherited)
     hidden = [str(p.GetPath()) for p in Usd.PrimRange(root)
               if UsdGeom.Imageable(p) and UsdGeom.Imageable(p).ComputeVisibility() == UsdGeom.Tokens.invisible]
     print(f"[video] env {E}: {sum(1 for _ in Usd.PrimRange(root))} prims, hidden {len(hidden)} {hidden[:3]}", flush=True)
