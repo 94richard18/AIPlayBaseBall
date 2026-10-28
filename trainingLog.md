@@ -68,6 +68,13 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-28 23:4x（規劃 session）arm B（Human22）+100 判準失敗 -> 停；裁定：接受負結果，交付維持 M2 / 9.8%；GPU 交回 20 做圓環重拍
+- 15 的 Human22（力量 1.5x、目標 43 m、w_exit_velo 60，從 h9b 12500 續訓 100 its）：訓練 exit_velo EMA 16.90 -> 16.74（門檻 +2 m/s），hit_rate 反而 0.270 -> 0.357，bat_speed 19.0；12500 基準 diag1024（P3c t18、jitter 0、bias 0.055）：好球帶 0.445、擊中後跌倒 49%、EV 中位 18.4、甜蜜點棒速 20.1 m/s。`logs/H22_END.txt` 23:38，15 已記錄 81bbb0e。
+- 我的裁定：有效的負結果。1.5x 下棒速上限 ~19-20 m/s（與 Human16 甜蜜點獎勵時期一致），加重初速獎勵只換到更多接觸、換不到速度；不跑 +200、不跑 M2。交付版仍是 h9b 12500 @ 1.5x（M2 好球帶 0.515、打者勝率 9.8%）。
+- 力量剩下的唯一槓桿 = arm A（2.0x 續訓），屬規格值，待使用者決定；在那之前不再排打者功率訓練。
+- GPU 空（Isaac 0）：已放行 20 依既定順序動作：套 `logs/ring2_zoom2.patch` -> 重生 joint_smoke_20 -> commit -> p5 單球重拍 + 64/64 比對 + 重接 m3pa_draft -> 本壘視角 -> 天空 HDRI。
+- 小瑕疵：run_human22.sh 第 48 行在第一段前對不存在的 train_human22.txt 做 wc 印了一行錯誤，L0 退回 1，不影響結果。
+
 ### 10-28 23:2x（規劃 session）四壞打席影片驗收 OK -> m3pa2_draft.mp4；Human22 閘門開啟
 - 20 的四壞打席（seed 576，6 球：s10 e62 揮空、s1 e58/33/12/45/56 看球 壞/壞/好/壞/壞 -> 四壞）23:22 M3PA_END。`videos/m3pa2_draft.mp4` 1972 幀 65.7 s，h264 High yuv420p 2560x720，blank 0（我用 ffmpeg -i 複核）。
 - 投球一致性：第 1 球（揮棒列）64/64 與 M2 相同；p2-p6（看球列）各 63/64（只有看球的那個 env 不同，符合設計）；看球 5 球 batter_fell 全 False（take mode 10 在正式打席影片上成立）。格線圖 `videos/fixcheck_tiles/m3pa2_p6_tile.png` 看過：牆 + 好球帶在打者視角可見，看球後站到 6 s 結束。
