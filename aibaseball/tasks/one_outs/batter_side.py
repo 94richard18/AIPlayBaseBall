@@ -150,6 +150,7 @@ class _JointFramework(DirectRLEnv):
         self.reset_buf = torch.zeros_like(self.reset_terminated)
         self.common_step_counter = 0
         self.extras = {}
+        self._is_closed = True  # DirectRLEnv.close() / __del__: the sim belongs to the joint env, never close it here
 
     def _reset_idx(self, env_ids):
         self.robot.reset(env_ids)
