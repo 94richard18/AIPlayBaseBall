@@ -104,15 +104,16 @@ def main():
     base.play_log.clear()
     with torch.inference_mode():
         for _ in range(steps):
-            raw = base._get_observations()["policy"]
             act = policy(obs)
+            raw = obs if torch.is_tensor(obs) else obs["policy"]  # the env's obs (no extra _get_observations call: it updates the percept history)
             O.append(raw.cpu().numpy())
             A.append(act.cpu().numpy())
             live = ~over
-            hit |= base.hit & live
-            fell |= base.fallen & live
             obs, _, done, _ = wrapped.step(act)
-            over |= done.bool()  # the first episode only (a done env auto-resets)
+            done = done.bool()
+            hit |= base.hit & live & ~done  # a done env is already reset here: its hit flag is the new episode's
+            fell |= base.fallen & live  # set in _get_dones before the reset
+            over |= done  # the first episode only (a done env auto-resets)
     seen = set()
     for r in base.play_log:  # first record per env = its first episode's batted ball
         e = int(r["env"])
