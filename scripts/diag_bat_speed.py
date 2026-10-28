@@ -20,6 +20,9 @@ parser.add_argument("--ff", type=float, default=1.0, help="velocity feed-forward
 parser.add_argument("--gain_scale", type=float, default=1.0, help="multiplies PD stiffness and damping (not the torque limits)")
 parser.add_argument("--envs", type=int, default=16)
 parser.add_argument("--window", type=float, default=0.3, help="s before the reference contact counted as the swing")
+parser.add_argument("--friction", type=float, nargs=2, default=None, metavar=("STATIC", "DYNAMIC"),
+                    help="scene default material (the robot's colliders have none) with combine mode max -> the foot / ground "
+                         "contact uses these values (today 1.0 / 0.9 everywhere)")
 parser.add_argument("--tail", type=float, default=0.2, help="s run past the reference contact (standing check)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -43,6 +46,11 @@ def main():
             a.stiffness *= args.gain_scale
             a.damping *= args.gain_scale
     cfg.scene.num_envs = args.envs
+    if args.friction:
+        import isaaclab.sim as sim_utils
+
+        cfg.sim.physics_material = sim_utils.RigidBodyMaterialCfg(static_friction=args.friction[0], dynamic_friction=args.friction[1],
+                                                                  restitution=0.0, friction_combine_mode="max")
     cfg.rsi_prob = 0.0
     cfg.vel_feedforward = args.ff
     cfg.max_key_err = 10.0
@@ -128,6 +136,7 @@ def main():
                 sat_v[g] += (hit_v & swing).sum()
     ok = swung.sum().item()
     print(f"== diag_bat_speed strength={args.strength} effort_scale={args.effort_scale} gain_scale={args.gain_scale} ff={args.ff} "
+          f"friction={args.friction or 'default'} "
           f"({ok}/{n} envs swung to the contact time without a reset)")
     m = swung if ok else torch.ones_like(swung)
     print(f"sweet spot peak before contact {peak[m].mean():.1f} m/s (min {peak[m].min():.1f}, max {peak[m].max():.1f}); "
