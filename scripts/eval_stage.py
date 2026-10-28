@@ -653,7 +653,9 @@ def film(w, base, pol, T, fps=30):
     joint = hasattr(base, "batter")
     # C3 10-28: 25 m back / 5 m up / 4x cut the pitcher's feet off; 40 m back, 3.5 m up, 6x, aimed 0.3 m above the plate:
     # pitcher (feet 4.7 deg, head 2.2 deg below the horizon) and batter (3.4 / 1.7 deg) inside the +-3.1 deg frame height
-    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM, CF_TZ = 40.0, 1.0, 3.5, 6.0, 0.3
+    # C3b: 1 m to the first-base side put the batter (3B side, y -0.9) right behind the pitcher; 4 m to the third-base
+    # side separates them by ~2.7 deg (pitcher +5.7, batter +3.0 deg off the aim line to the plate)
+    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM, CF_TZ = 40.0, -4.0, 3.5, 6.0, 0.3
     if joint:
         base.marker_envs = [E]
 
