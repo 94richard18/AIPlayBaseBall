@@ -11,7 +11,8 @@ exceeds --max_frac or is not yuv420p.
 Empty-scene check (match_full2 10-28: clips for env k >= 1 showed only the floor grid, no robot): the share of pixels
 whose grey value varies over the clip (std > 20 over every 5th frame, caption band excluded) in the fixed plate view
 (right half of a side-by-side film, else the whole frame). The good k00 clip gives 3.0 %, the empty k01 / k21 0.01 %;
-below --min_motion the video is flagged EMPTY.
+below --min_motion (0.1 %) the video is flagged EMPTY. The joint film (m3b) gives 0.42 %: its plate view is filled by
+the batter standing still with the pitcher small behind - 0.5 % flagged it by mistake.
 """
 
 import argparse
@@ -24,7 +25,7 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument("videos", nargs="+")
 parser.add_argument("--max_frac", type=float, default=0.02, help="allowed fraction of blank frames")
-parser.add_argument("--min_motion", type=float, default=0.5, help="% of plate-view pixels that must vary")
+parser.add_argument("--min_motion", type=float, default=0.1, help="% of plate-view pixels that must vary")
 parser.add_argument("--caption_px", type=int, default=60, help="top band with the text overlay, ignored")
 args = parser.parse_args()
 
