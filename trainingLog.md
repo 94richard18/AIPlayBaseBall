@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-29 04:1x（規劃 session）更正：沒有世界 z 跌倒 bug（RotatedArticulation 的 pivot z = field_z，判定本來就是相對場地）；接觸前假跌倒 0 例；跌倒診斷照跑
+- 15 撤回：BatterSide 的 robot 是 RotatedArticulation(j.batter, j.plate_front_w())（batter_side.py:150），位置皆為 x_B = R^T (x_W - pivot)，pivot z = field_z（joint_env.py:328）-> _get_dones 讀到的 pelvis_z 已是相對場地，門檻確實是離打者地面 0.55 m。上一則「標籤錯誤 / 可能否決擊中」的推論**不成立**，無程式變更、無需修正、不重跑 M2。
+- 成立的事實：跌倒 = 骨盆離場地 < 0.55 m 或傾角 > 60°。CPU 檢查（logs/prefall_check.py，m2_f055 s1 / m2_b030 s1）：擊中 0/19、0/20 在接觸前跌倒；揮空 0/45、0/44 在到板前跌倒；最早跌倒在到達後 0.27 s / 0.10 s -> 擊球窗未被否決、回合未提早結束。交付數字（0.515 / 9.8%）不受影響。
+- 待解：影片（PA1 p5 s6 e12 站到 5.6 s）vs 旗標（3.15 s 倒）的矛盾。`logs/falldiag/`（seeds 6 + 1，標記 `logs/FALLDIAG_END.txt`，約 04:25）會分出高度觸發 vs 傾角觸發；若多為傾角 > 60°（隨揮深彎、仍站著），則「擊中後跌倒 49.5%」應改標為「失去姿態（傾角 > 60°）」而非摔倒，報告用語修正即可。
+
 ### 10-29 04:0x（規劃 session）疑似 bug：聯合打者的跌倒判定用世界 z，但場地低 0.196 m -> 隨揮下蹲被算成跌倒、可能提前關閉擊球窗；診斷 seeds 6 + 1 進行中
 - 15：bat_fall_t = side.fallen & active；side.fallen 來自 TeeBattingEnv._get_dones（tee_batting_env.py:436）：骨盆**世界** z < min_pelvis_height 0.55 或傾角 > 60°。聯合場景 field_z = -0.196（mound_top_z - mound_height），打者站在世界 0 下方 0.196 m -> 世界 z < 0.55 等於離自己地面 < 0.746 m；站立 root ~0.93 -> 下降 ~0.19 m（寬步隨揮就到）即判「跌倒」；原生 tee 場（地面 0）同樣動作不算。與影片相符（PA1 p5 s6 e12 站到 5.6 s，但 logs/m2 標 batter_fell True、done_t 3.3；m2_f055 s1 e12 擊中 2.025、「倒」於 3.15；seed 1 跌倒距揮棒起動中位 2.33 s、最小 1.52 s——慢慢下沉，不是摔倒）。
 - 影響：(1) 報告數字「擊中後跌倒 49.5%」很可能是標籤錯誤；(2) 可能漏進比賽邏輯：side.fallen 關閉 BatterSide 的擊球窗（batter_side.py:414，win = handed & ~done & ~fallen）並決定 done -> 接觸前的「跌倒」可能否決擊中、提早結束。尚未驗證。
