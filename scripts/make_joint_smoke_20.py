@@ -29,7 +29,7 @@ rep('from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingHuma
     'from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingHumanPlayEnvCfg  # noqa: E402\n'
     'from joint_pitcher import JointFilm, ball_columns, count_columns, pitcher_columns  # noqa: E402\n')
 rep('    env = gym.make(TASK, cfg=cfg)\n', '''    if args.video:  # M3 film defaults (10-28), visual only
-        cfg.film_grass, cfg.film_round_mound = True, True
+        cfg.film_grass, cfg.film_round_mound, cfg.film_wall = True, True, True
     env = gym.make(TASK, cfg=cfg, render_mode="rgb_array" if args.video else None)
 ''')
 rep('    with torch.inference_mode():\n        for _ in range(T):\n',

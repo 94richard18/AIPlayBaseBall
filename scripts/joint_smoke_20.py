@@ -39,6 +39,8 @@ parser.add_argument("--no_handoff", action="store_true", help="control: the batt
 parser.add_argument("--no_shift_hist", action="store_true", help="BatterSide shift_hist off: the percept sees the release-point jump")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
+parser.add_argument("--effort_probe", type=float, default=None,
+                    help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
 parser.add_argument("--swing_csv", type=str, default=None,
                     help="ONE OUTS PA: env,swing per env (scripts/joint_pa.py); swing 0 = the batter takes (stance held). Default all swing")
 parser.add_argument("--count_csv", type=str, default=None, help="env,balls,strikes per env (count_* columns; default 0 / 0)")
@@ -51,6 +53,9 @@ args = parser.parse_args()
 args.headless = True
 if args.video:
     args.enable_cameras = True
+if args.effort_probe is not None:  # before any cfg import: the batter env cfg reads it at import
+    os.environ["AIB_EFFORT_SCALE"] = str(args.effort_probe)
+    os.environ["AIB_EFFORT_PROBE"] = "1"
 app = AppLauncher(args).app
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -72,8 +77,12 @@ TASK = "AIB-OneOutsJoint-v0"
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5"
+    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or args.effort_probe is not None
     cfg = load_cfg_from_registry(TASK, "env_cfg_entry_point")
+    if args.effort_probe is not None:  # the joint scene's batter articulation (the cfg pins 1.5)
+        from aibaseball.robot.aib1_cfg import make_aib1_cfg
+        cfg.batter = make_aib1_cfg(human_strength=True, effort_scale=args.effort_probe).replace(prim_path="/World/envs/env_.*/Batter")
+        print(f"[joint] EFFORT PROBE: batter effort scale {args.effort_probe} (delivery 1.5)", flush=True)
     cfg.scene.num_envs = args.envs
     cfg.seed = args.seed
     cfg.episode_length_s = args.seconds
@@ -87,7 +96,7 @@ def main():
     if hasattr(cfg, "assist_force_n"):
         cfg.assist_force_n = 0.0
     if args.video:  # M3 film defaults (10-28), visual only
-        cfg.film_grass, cfg.film_round_mound = True, True
+        cfg.film_grass, cfg.film_round_mound, cfg.film_wall = True, True, True
     env = gym.make(TASK, cfg=cfg, render_mode="rgb_array" if args.video else None)
     base = env.unwrapped
     orig = base._get_dones
@@ -114,7 +123,7 @@ def main():
     if args.swing_csv:
         sr = sorted(csv.DictReader(open(args.swing_csv)), key=lambda r: int(r["env"]))
         assert [int(r["env"]) for r in sr] == list(range(args.envs)), args.swing_csv
-        swing = [r["swing"] in ("1", "True") for r in sr]
+        swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
                       no_handoff=args.no_handoff, swing=swing)
@@ -228,8 +237,8 @@ def main():
 
     def swing_cols(e):  # + delta: the swing reference reaches contact before the ball does (early)
         t_pl = R["t_plane"][e]
-        return dict(t_plane=t_pl, ref_err=R["ref_err"][e], delta_s=R["ref_err"][e] / side.rate[e],
-                    t_sched=t_pl - R["ref_err"][e] / side.rate[e], timing_s=R["t_square"][e] - t_pl,
+        return dict(t_plane=t_pl, ref_err=R["ref_err"][e], delta_s=R["ref_err"][e] / R["rate_plane"][e],
+                    t_sched=t_pl - R["ref_err"][e] / R["rate_plane"][e], timing_s=R["t_square"][e] - t_pl,
                     gap_m=R["gap"][e], t_gap=R["t_gap"][e], dz_m=R["dz"][e], dperp_m=R["dperp"][e],
                     ss_speed_max=R["ss_speed_max"][e],
                     tempo_pre=R["tempo_pre"][e] / R["n_pre"][e].clamp_min(1.0),  # mean tempo action before the hand-off
@@ -263,7 +272,9 @@ def main():
             batter_fell_before_done=bool(b_fell_pre[e]), done_t=round(float(side.done_t[e]), 4),
             pred_y=round(float(side.pitch_plate[e, 0]), 4), pred_z=round(float(side.pitch_plate[e, 1]), 4),
             flight_pred=round(float(side.flight_time[e]), 4),
-            swing=bool(side.swing[e]),
+            swing=bool(side.swing[e]), take_mode=int(side.take_mode[e]), take_dev_t=round(float(side.take_dev_t[e]), 4),
+            take_bat_vmax=round(float(side.take_bat_vmax[e]), 2),
+            take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
             handoff_jump_m=round(float(side.handoff_jump[e]), 4),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()},
             **pcols[e], **ball_columns(rec), **ccols[e]))

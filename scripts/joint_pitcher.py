@@ -113,6 +113,7 @@ class JointFilm:
     CUT_AFTER_S = 0.5
     SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
     HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
+    NEAR_BALL_M, HIGH_ZOOM_NEAR = 25.0, 1.5  # planning 14 10-28: a ball within this of the plate gets the closer zoom
     MIN_BATTER_DEG = 30.0  # the zoom-1 half field of view is ~18 deg (vertical) / ~30 deg (horizontal)
     CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 40.0, -4.0, 3.5, 8.0
     CF_T = (0.42, -0.45, 0.75)
@@ -124,7 +125,7 @@ class JointFilm:
         from pxr import Usd, UsdGeom
         self.base, self.path, self.E = base, path, env
         stage = omni.usd.get_context().get_stage()
-        self.stage, self.Usd = stage, Usd
+        self.stage, self.Usd, self.UsdGeom = stage, Usd, UsdGeom
         self.cam = UsdGeom.Camera(stage.GetPrimAtPath("/OmniverseKit_Persp"))
         self.focal0 = self.cam.GetFocalLengthAttr().Get() if self.cam else None
         E = env
@@ -164,7 +165,11 @@ class JointFilm:
                    (g + np.array(rz(pd + self.PV_J_TGT[0], zc + self.PV_J_TGT[1]) + [self.PV_J_TGT[2]])).tolist())
         self.side_eye = (g + np.array(rz(self.SIDE_EYE[0], zc + self.SIDE_EYE[1]) + [self.SIDE_EYE[2]])).tolist()
         self.high_eye = (g + np.array(rz(pd + self.HIGH_EYE[0], zc + self.HIGH_EYE[1]) + [self.HIGH_EYE[2]])).tolist()
+        self.plate_xy = g[:2] + np.array(rz(pd, zc))
         self.cut_at = None  # joint time of the first frame after the cut
+        # film_wall: hidden for a camera behind it (the plate view, the high camera) - its back would fill the frame
+        self.wall = stage.GetPrimAtPath(f"/World/envs/env_{E}/FilmWall") if getattr(base.cfg, "film_wall", False) else None
+        self.wall_x, self.g, self.th = pd + base.cfg.flight_end_behind_plate_m, g, th
 
     def _focal(self, z):
         if self.focal0:
@@ -180,11 +185,23 @@ class JointFilm:
             if which == "side":
                 eye, tgt, z = self.side_eye, pel, self.SIDE_ZOOM
             elif hit and self._off_batter(self.high_eye, b.j_pos[E].cpu().numpy()) > self.MIN_BATTER_DEG:
-                eye, tgt, z = self.high_eye, b.j_pos[E].cpu().numpy().tolist(), self.HIGH_ZOOM_BALL
+                ball = b.j_pos[E].cpu().numpy()
+                eye, tgt, z = self.high_eye, ball.tolist(), self.ball_zoom(np.linalg.norm(ball[:2] - self.plate_xy))
             else:
                 eye, tgt, z = self.high_eye, pel, self.HIGH_ZOOM_P
         b.sim.set_camera_view(eye=eye, target=tgt)
         self._focal(z)
+        if self.wall and self.wall.IsValid():
+            d = np.asarray(eye, dtype=float)[:2] - self.g[:2]
+            behind = np.cos(-self.th) * d[0] - np.sin(-self.th) * d[1] > self.wall_x  # eye in the plate frame
+            vis = self.UsdGeom.Imageable(self.wall).GetVisibilityAttr()
+            vis.Set(self.UsdGeom.Tokens.invisible if behind else self.UsdGeom.Tokens.inherited)
+
+    @classmethod
+    def ball_zoom(cls, dist_m):
+        """Zoom of the high camera on the batted ball: closer for a ball within NEAR_BALL_M of the plate (m3_s3_k12: an
+        18 m ball near the mound read small at zoom 1)."""
+        return cls.HIGH_ZOOM_NEAR if dist_m <= cls.NEAR_BALL_M else cls.HIGH_ZOOM_BALL
 
     def _off_batter(self, eye, tgt):
         """Angle (deg) between the camera's aim at tgt and the batter's pelvis, both seen from eye."""
@@ -204,6 +221,7 @@ class JointFilm:
         done_t: the batter's done time of env k (NaN while it runs) - the cut is CUT_AFTER_S after it (None: no cut)."""
         import cv2
         k, self.k = self.k, self.k + 1
+        self._pose(t)
         if k % self.every:
             return
         cut = done_t is not None and done_t == done_t and t >= done_t + self.CUT_AFTER_S
@@ -233,8 +251,26 @@ class JointFilm:
         self.vw.append_data(self.last)
         self.n += 1
 
+    def _pose(self, t):
+        """Batter posture of env k every step (planning 14 10-28, takes): root height above the field and the tilt from
+        vertical of the pelvis (root) and torso body z axes, written next to the video at close()."""
+        bat = self.base.batter
+        if not hasattr(self, "poses"):
+            self.poses, self.torso_id = [], (bat.body_names.index("torso") if "torso" in bat.body_names else None)
+
+        def tilt(q):  # body z axis vs world z: 1 - 2 (x^2 + y^2) for q = (w, x, y, z)
+            return float(np.degrees(np.arccos(np.clip(1.0 - 2.0 * (q[1] ** 2 + q[2] ** 2), -1.0, 1.0))))
+        z = float(bat.data.root_pos_w[self.E, 2]) - self.base.field_z
+        tp = tilt(bat.data.root_quat_w[self.E].cpu().numpy())
+        tt = tilt(bat.data.body_quat_w[self.E, self.torso_id].cpu().numpy()) if self.torso_id is not None else float("nan")
+        self.poses.append((round(t, 4), round(z, 4), round(tp, 2), round(tt, 2)))
+
     def close(self):
         self.vw.close()
+        if getattr(self, "poses", None):
+            out = os.path.splitext(self.path)[0] + "_batter_pose.csv"
+            with open(out, "w", newline="") as f:
+                f.write("t,root_z,pelvis_tilt_deg,torso_tilt_deg\n" + "".join(",".join(map(str, r)) + "\n" for r in self.poses))
         self._focal(1.0)
         print(f"[video] wrote {self.path} ({self.n} frames, {self.rep} repeated after a failed grab), env {self.E}, cut at "
               f"{'none' if self.cut_at is None else f'{self.cut_at:.2f} s'}", flush=True)

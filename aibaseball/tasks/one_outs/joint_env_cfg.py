@@ -49,6 +49,11 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     film_round_mound: bool = False
     # film (M3): HDRI sky dome from Nucleus (falls back to the colour dome if it cannot be spawned)
     film_sky: bool = False
+    # film (M3, user 10-28): a wall behind the plate with the judge's strike zone (StrikeZone: plate half width + ball
+    # radius, 0.50-1.10 m) painted on it - visual only (no collider; the judge reads the plate-plane crossing); the
+    # flight marker stops at its face. Distance = the integrated flight's end behind the plate.
+    film_wall: bool = False
+    film_wall_size_m: tuple = (4.0, 2.5)  # width (centred on the zone), height
 
     def __post_init__(self):
         super().__post_init__()

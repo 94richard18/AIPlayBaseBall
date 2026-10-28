@@ -92,6 +92,8 @@ class JointPitchEnv(StageEnv):
                 diffuse_color=(0.20, 0.42, 0.16), roughness=0.9))  # no collision / rigid-body props: nothing physical
             sheet.func("/World/grass", sheet, translation=(0.0, 0.0, self.field_z + 0.002))
         self._spawn_mound("/World/envs/env_0")
+        if c.film_wall:
+            self._spawn_film_wall("/World/envs/env_0")
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])
         self._filter_ball_batter()
@@ -117,6 +119,37 @@ class JointPitchEnv(StageEnv):
             light.func("/World/Light", light)
         if c.play_mode:
             self._spawn_zone_markers()
+
+    def _spawn_film_wall(self, env_path: str):
+        """film_wall: a slate wall flight_end_behind_plate_m behind the plate front with the StrikeZone rectangle (pale panel,
+        red border) on its face, plate-centred, turned with plate_yaw_deg. Visual only: no collision / rigid-body props."""
+        from aibaseball.game.agents import StrikeZone
+
+        c, zone = self.cfg, StrikeZone()
+        th = -math.radians(c.plate_yaw_deg)
+        q = (math.cos(th / 2), 0.0, 0.0, math.sin(th / 2))
+        xw = c.plate_distance + c.flight_end_behind_plate_m  # the wall face (plate frame x)
+
+        def put(name, x, y, z, size, color, emissive=(0.0, 0.0, 0.0)):  # plate frame (x, y off the zone centre, z above the field)
+            px, py = x, c.zone_center_y + y
+            pos = (math.cos(th) * px - math.sin(th) * py, math.sin(th) * px + math.cos(th) * py, self.field_z + z)
+            cfg = sim_utils.CuboidCfg(size=size, visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=color, emissive_color=emissive, roughness=0.8))
+            cfg.func(f"{env_path}/FilmWall/{name}", cfg, translation=pos, orientation=q)
+
+        import omni.usd
+        from pxr import UsdGeom
+
+        UsdGeom.Xform.Define(omni.usd.get_context().get_stage(), f"{env_path}/FilmWall")  # one prim the film can hide
+        w, h = c.film_wall_size_m
+        put("Wall", xw + 0.05, 0.0, h / 2, (0.1, w, h), (0.22, 0.26, 0.30))
+        hw, z0, z1, b = zone.half_width_m, zone.bottom_m, zone.top_m, 0.03
+        put("Zone", xw - 0.004, 0.0, (z0 + z1) / 2, (0.008, 2 * hw, z1 - z0), (0.86, 0.86, 0.80))
+        red, glow = (0.85, 0.08, 0.06), (0.25, 0.02, 0.0)
+        for name, y, z, size in (("ZoneTop", 0.0, z1, (0.012, 2 * hw + b, b)), ("ZoneBottom", 0.0, z0, (0.012, 2 * hw + b, b)),
+                                 ("ZoneLeft", -hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b)),
+                                 ("ZoneRight", hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b))):
+            put(name, xw - 0.008, y, z, size, red, glow)
 
     def _spawn_mound(self, env_path: str):
         """The colliding mound as in PitchEnv; film_round_mound: the visual copy (two 5.5 m wide boxes, a long plank seen
@@ -246,7 +279,18 @@ class JointPitchEnv(StageEnv):
         ids = torch.arange(self.num_envs, device=self.device) if self.marker_envs is None else torch.as_tensor(
             self.marker_envs, device=self.device)
         on = (self.j_fly | self.j_done)[ids]
-        p = torch.where(on.unsqueeze(-1), self.j_pos[ids], self.j_pos[ids] * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
+        p = self.j_pos[ids]
+        if self.cfg.film_wall:  # the marker stops at the wall face (plate frame x), the integrated state is untouched
+            th = math.radians(self.cfg.plate_yaw_deg)  # env frame -> plate frame: Rz(+plate_yaw)
+            o = self.scene.env_origins[ids]
+            x, y = p[:, 0] - o[:, 0], p[:, 1] - o[:, 1]
+            xp, yp = math.cos(th) * x - math.sin(th) * y, math.sin(th) * x + math.cos(th) * y
+            w, h = self.cfg.film_wall_size_m
+            r = self.phys.ball.radius
+            hit = ((yp - self.cfg.zone_center_y).abs() <= w / 2 + r) & (p[:, 2] - self.field_z <= h + r)  # over / past it: free
+            xp = torch.where(hit, xp.clamp(max=self.cfg.plate_distance + self.cfg.flight_end_behind_plate_m - 0.012 - r), xp)
+            p = torch.stack([o[:, 0] + math.cos(th) * xp + math.sin(th) * yp, o[:, 1] - math.sin(th) * xp + math.cos(th) * yp, p[:, 2]], -1)
+        p = torch.where(on.unsqueeze(-1), p, p * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
         self.ball_marker.visualize(translations=p)
 
     def plate_front_w(self) -> torch.Tensor:
