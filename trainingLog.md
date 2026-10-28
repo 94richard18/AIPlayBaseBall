@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-28 12:47 檢查 + 同場 smoke 第 1 次失敗**：20 的 match_full3 重拍 12:45 完成（50 段、幀 / 動態檢查全過、出手列 50/50 = 評估；CSV tier T4 27 / T3 18 / T2 3 / T1 2、未站穩 8、y 中位數 0.041；算投手 12 小時影片，下次 ~00:45）。GPU 空、15 的 smoke 腳本 09:07 就備好但沒啟動 → 我 12:47 直接啟動 logs/run_joint_smoke.sh（核准過的那一份、313e6ba）。立即失敗（約 1 分鐘 GPU，第 1 / 3 次）：batter_side.py:143 `self.device, self.num_envs = j.device, j.num_envs` → `AttributeError: can't set attribute 'device'`（DirectRLEnv 的 device 是唯讀 property，_JointFramework 在 MRO 裡沒蓋掉它）；traceback 在 logs/joint_smoke.txt。交 15 修（建議在 _JointFramework 定義 device / num_envs property）、修好 commit 後 15 自己重跑（GPU 空、不用 hold 檔）。沒有 trainer、沒有閒置（smoke 排隊中）。20 的 CPU 待辦不變：W1 行 / tier 欄改積分器穿越、M3 相機（更緊的構圖或第二台、本壘視角含打者）、film_grass 已進（0410455）下次同場拍攝試。match_full2 k01–k23 空片段請 20 刪除（避免再被誤認）。
+
 **10-28 09:47 檢查**：GPU 1 個 Isaac（match_full3 重拍閒置填充，k10 / 50；新片段 6.7 MB 與正常的 k00 一致，不是空的）。15 的同場 smoke 尚未取 GPU（hold 檔不存在，應仍在合併）。沒有 trainer、沒有閒置；12 小時影片由同場測試片與重拍涵蓋。
 
 **10-28 10:0x C3c 通過 = 同場拍攝路徑完成**：videos/c3c_joint_k00.mp4、拼圖 videos/fixcheck_tiles/c3c_joint_k00_tile.png 我看過：中外野相機（橡膠板後 40 m、三壘側 4 m、高 3.5 m、6×、瞄準本壘上方 0.3 m）下投手在左（投手丘上）、打者在右（本壘、PD 站姿持棒），兩人全身入鏡、投手丘可見、標記球飛到本壘附近落地；env 0 站穩、出手列 = C1 env 0。M3 相機待辦（CPU）：兩人在畫面裡偏小（揮棒要看得清楚，考慮更長焦或一壘側休息區方向的第二台相機）、本壘視角要含打者（相機在本壘後 1 m，打者在旁邊看不到）、草地、挑 env 用同場 CSV。GPU hold 已移除，match_full3 重拍從 k02 續跑當閒置填充（要 GPU 就 touch logs/gpu_hold_pitcher）；下一個 GPU 使用者是 15 的同場 smoke。
