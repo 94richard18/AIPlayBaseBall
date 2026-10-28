@@ -2495,3 +2495,28 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - 打者站著，用 PD 維持預設姿勢。
   - `eval_stage` 印出交接後的飛行和 simulate_to_plane 的差（C2），以及打者根部的位移。
   - GPU 檢查 C1 要在影片錄完之後跑。
+
+## 50 段影片是空的 → 修正；C1 聯合場景通過 M1（10-28 07:40–08:21）
+
+- 使用者發現 `match_full2_p3c_k21.mp4` 只有地板格線（規劃 14 轉達）。k >= 1 全部是空的，只有 k00 有畫面。07:4x 在 k24 停掉。出球列 k0–k23 是對的，保留。
+  - 原因：clone 出來的 env 繼承 env_0 的 USD 設定。film() 把 env k 以外都隱藏，也包含 env_0，所以 env k 跟著不可見。
+  - 預檢沒抓到，因為畫面檢查只跑了 k00；`precheck_p3c_k01` 其實也是空的。
+- 修正（71fbde4 → 94ccaa2 → 2faa99d）：
+  - 只在 env k 的根節點寫 visibility "inherited"。第一版寫在 env k 底下全部 288 個 prim，PhysX 重新解析，sim view 失效。
+  - 錄影前檢查 env k 底下有沒有被上層隱藏的 prim，有就報錯。plate_yaw 下的碰撞投手丘是刻意隱藏的，畫的是 "...Shown" 複本，不算。
+  - `check_video_frames` 加上空畫面檢查：本壘視角時間標準差 > 20 的像素比例。k00 3.01%，空片 0.01%，低於 0.5% 判為 EMPTY。
+- k=1 重測（08:13）：
+  - 隱藏 0；229 格；motion 2.90%；High / yuv420p。
+  - 出球列和評估 env 1 相同（18.03 m/s、y -0.10、z 1.02、T4）。
+  - 拼圖 `videos/fixcheck_tiles/k01_tile.png`：兩個視角都有投手和投手丘。50 段重錄等規劃 14 確認。
+- C1（08:17，聯合場景 + 打者，64 env，park，`logs/joint_c1_park.csv`）：
+  - 和 gate（`oo_filmcheck_f64.csv`）比，用 aero 落點分 tier：
+    - 站穩：53 vs 51；
+    - 站穩且 T3+：51 vs 47（>= 32）；
+    - 站穩且 T4：30 vs 28；
+    - y 中位數 0.066 vs 0.050。
+  - M1 通過。
+  - 逐列：64 列裡 46 列和 gate 完全相同，其餘 18 列不同。打者沒有碰到投手，推測是多了一個 articulation，GPU 求解的分批改變。
+  - 飛行檢查：60 球的積分過本壘點和 simulate_to_plane 差 0.0000 m。
+  - 打者 PD 站姿：根部最多移動 0.019 m，z 0.742–0.749（開始 0.749）。
+  - 注意：eval 的「W1 gate」那行和 CSV 的 tier 欄用 PhysX 球的過本壘點。park 把球停在場地下面，所以聯合場景裡全部是 T1。這兩個在聯合場景要改用 aero 落點（待辦）。
