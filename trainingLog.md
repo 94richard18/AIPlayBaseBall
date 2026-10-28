@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 07:3x（14）Human25-R +1000 通過（RECOV_TRAIN_END 07:26）：model_998 s6 保留庫 2 s 內倒地 0.9%，stage 2 進行中**
+- model_998（`logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b`）：擊中 2/294 = 0.7%、揮空 7/730 = 1.0%、全部 0.9%、失去姿態 1.0%；骨盆最低 z 中位 0.86 / 0.87 m。門檻 < 30%。對照 model_299 2.5%、a = 0 96.4%、falldiag2 88% / 81%。
+- 最終 checkpoint = model_998（兩者較佳）。stage 2（seed 6 同場：policy 重跑 + recover_rl）正在跑，結束寫 RECOV_DIAG_END。
+
 **10-29 06:47（14）3 小時檢查**：Isaac 1（Human25-R +1000 續訓 h25r_b，model_400 已存，ETA 約 40 min）；RECOV_BANK_END 06:07 已落，RECOV_TRAIN_END 未落；stage 2 鏈（run_recov_diag.sh）排隊等 RECOV_TRAIN_END，之後寫 RECOV_DIAG_END。GPU 非閒置、無需接手。影片：最近成片 02:18（sky 重錄），下次最晚 14:18，未到期。20 hold。git 乾淨（僅未追蹤 usd）。
 
 **10-29 06:4x（14）Human25-R +300 通過證偽：s6 保留庫 2 s 內倒地 2.5%（基線 96.4%）→ 續訓到 +1000，stage 2 接著做**
