@@ -68,6 +68,14 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 07:5x（14）Human25-R stage 2 通過（RECOV_DIAG_END 07:43）：同場 seed 6 揮棒後倒地 0/64，凍結列 64/64 → 交棒給 20 重錄 PA1 驗收外觀**
+- 最終 checkpoint `logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b/model_998.pt`；CSV 在 `logs/recov_diag/`（15 commit 7877f09）。
+- (b) 凍結設定：recover_rl 與 policy 重跑的 pitch + hit_t + swing outcome + done_t + t_plane 欄位與 falldiag2 完全相同 64/64。
+- (a) 接觸 / 到達後 2 s（falldiag2 定義）：recover_rl 倒地 擊中 0/16、揮空 0/48（到 episode 結束也 0/64）、失去姿態 0/16、1/48；policy 重跑 = falldiag2（88% / 81%，失去姿態 94%）。
+- (c) 擊中後球距任何身體連桿最近 0.44 m（policy 0.43 m），0/16 進 0.15 m。
+- (d) 觸發後 2 s：PD 目標每步變化 rms 中位 0.018 rad（q90 0.023）vs policy 0.601（0.683）；關節速度 rms 2.6 vs 8.4 rad/s；最大值相近（40 vs 43，交棒後最初幾步仍是隨揮）。→ 收棒站穩，不是抽搐。
+- 裁定：Human25-R model_998 成為交付的 after_done（待影片目視通過）。GPU 交給 20 重錄 PA1：`--after_done recover_rl --recover_ckpt <model_998>`，其餘凍結設定；打者畫面不再在 done_t + 0.5 s 切掉，跑到使用者定的約 3.1 s 換球點，p5 界內球照舊到落地；每片 pitch 欄位比對；marker 如 `logs/M3PA_RECOV_END.txt`。外觀過了再錄 PA2，兩支成為最終草稿。15 閒置（可在 CPU 補 recovery policy 的 obs / action 契約到第 3 節）。
+
 **10-29 07:3x（14）Human25-R +1000 通過（RECOV_TRAIN_END 07:26）：model_998 s6 保留庫 2 s 內倒地 0.9%，stage 2 進行中**
 - model_998（`logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b`）：擊中 2/294 = 0.7%、揮空 7/730 = 1.0%、全部 0.9%、失去姿態 1.0%；骨盆最低 z 中位 0.86 / 0.87 m。門檻 < 30%。對照 model_299 2.5%、a = 0 96.4%、falldiag2 88% / 81%。
 - 最終 checkpoint = model_998（兩者較佳）。stage 2（seed 6 同場：policy 重跑 + recover_rl）正在跑，結束寫 RECOV_DIAG_END。
