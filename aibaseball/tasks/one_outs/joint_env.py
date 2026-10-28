@@ -104,6 +104,51 @@ class JointPitchEnv(StageEnv):
         if c.play_mode:
             self._spawn_zone_markers()
 
+    def _spawn_mound(self, env_path: str):
+        """The colliding mound as in PitchEnv; film_round_mound: the visual copy (two 5.5 m wide boxes, a long plank seen
+        from centre field) hidden and replaced by a round visual-only mesh. Height = min(collider profile along the pitch
+        line, round mound: 5.5 m across, centre 0.84 m in front of the rubber, flat to 1.3 m, then down to the field), so
+        on the pitch line it never rises above the collider (the round slope is steeper) and the front edge stays at the
+        collider's; the rubber and the back foot (x >= -0.3 m) are on the flat. Turned with plate_yaw_deg like the copy."""
+        super()._spawn_mound(env_path)
+        c = self.cfg
+        h = c.mound_height
+        if not c.film_round_mound or h <= 0:
+            return
+        import numpy as np
+        import omni.usd
+        from pxr import Gf, UsdGeom, Vt
+
+        stage = omni.usd.get_context().get_stage()
+        for name in ("MoundTopShown", "MoundSlopeShown"):
+            p = stage.GetPrimAtPath(f"{env_path}/{name}")
+            if p:
+                UsdGeom.Imageable(p).MakeInvisible()
+        x0, s = c.mound_slope_start_x, c.mound_slope
+        cx, R, r0 = x0 + h / s - 2.75, 2.75, 1.3
+        xs, ys = np.arange(cx - R - 0.1, cx + R + 0.1001, 0.1), np.arange(-R - 0.1, R + 0.1001, 0.1)
+        X, Y = np.meshgrid(xs, ys, indexing="ij")
+        prof = np.where(X <= x0, h, h - s * (X - x0))
+        rho = np.hypot(X - cx, Y)
+        Z = np.clip(np.minimum(prof, h - h / (R - r0) * np.clip(rho - r0, 0.0, None)), 0.0, None) + 0.003
+        yaw = -math.radians(getattr(c, "plate_yaw_deg", 0.0))
+        Xr, Yr = math.cos(yaw) * X - math.sin(yaw) * Y, math.sin(yaw) * X + math.cos(yaw) * Y
+        nx, ny = X.shape
+        pts = [Gf.Vec3f(float(a), float(b), float(z + self.field_z)) for a, b, z in zip(Xr.ravel(), Yr.ravel(), Z.ravel())]
+        idx = []
+        for i in range(nx - 1):
+            for j in range(ny - 1):
+                k = i * ny + j
+                idx += [k, k + ny, k + ny + 1, k + 1]
+        mesh = UsdGeom.Mesh.Define(stage, f"{env_path}/MoundRound")
+        mesh.CreatePointsAttr(Vt.Vec3fArray(pts))
+        mesh.CreateFaceVertexCountsAttr(Vt.IntArray([4] * ((nx - 1) * (ny - 1))))
+        mesh.CreateFaceVertexIndicesAttr(Vt.IntArray(idx))
+        mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
+        look = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.55, 0.38, 0.24), roughness=0.9)
+        look.func(f"{env_path}/MoundRoundLook", look)
+        sim_utils.bind_visual_material(f"{env_path}/MoundRound", f"{env_path}/MoundRoundLook")
+
     def _filter_ball_batter(self):
         """No PhysX contact between each env's ball and its batter (the flight model owns the bat contact)."""
         import omni.usd

@@ -45,6 +45,8 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     flight_end_behind_plate_m: float = 3.0
     # film (M3): a 200 m grass-green ground instead of the grey grid - visual only, the physics material is the same
     film_grass: bool = False
+    # film (M3): a round visual-only mound (5.5 m across) instead of the wide box copy; the collider is unchanged
+    film_round_mound: bool = False
 
     def __post_init__(self):
         super().__post_init__()
