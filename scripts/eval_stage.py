@@ -651,7 +651,9 @@ def film(w, base, pol, T, fps=30):
     # joint scene (C3, 10-28): the first panel is a centre-field view instead of the side view - far behind the mound
     # on the first-base side, zoomed, so the pitcher and the batter are in one frame; the flight marker of env k only
     joint = hasattr(base, "batter")
-    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM = 25.0, 1.0, 5.0, 4.0
+    # C3 10-28: 25 m back / 5 m up / 4x cut the pitcher's feet off; 40 m back, 3.5 m up, 6x, aimed 0.3 m above the plate:
+    # pitcher (feet 4.7 deg, head 2.2 deg below the horizon) and batter (3.4 / 1.7 deg) inside the +-3.1 deg frame height
+    CF_BACK, CF_SIDE, CF_UP, CF_ZOOM, CF_TZ = 40.0, 1.0, 3.5, 6.0, 0.3
     if joint:
         base.marker_envs = [E]
 
@@ -664,7 +666,7 @@ def film(w, base, pol, T, fps=30):
         rz = lambda x, y: [np.cos(th) * x - np.sin(th) * y, np.sin(th) * x + np.cos(th) * y]
         zc = base.cfg.zone_center_y
         base.sim.set_camera_view(eye=(g + np.array(rz(-CF_BACK, zc + CF_SIDE) + [CF_UP])).tolist(),
-                                 target=(g + np.array(rz(base.cfg.plate_distance, zc - 0.3) + [1.0])).tolist())
+                                 target=(g + np.array(rz(base.cfg.plate_distance, zc - 0.3) + [CF_TZ])).tolist())
         if focal0:
             set_focal(focal0 * CF_ZOOM)
 
