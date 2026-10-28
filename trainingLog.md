@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 06:1x（14）Human25-R stage 0 完成（RECOV_BANK_END 06:07），+300 訓練進行中**
+- 狀態庫：s0 2048 筆（擊中 29.1%）訓練、s6 1024 筆（擊中 28.7%）保留；觸發時已倒 5 / 1，全部在 1.35 s 內觸發。
+- 觸發瞬間（s6）：骨盆 z 中位 0.86 m（擊中）/ 0.88 m（揮空，少數已倒 min 0.21）、傾角中位約 20°（擊中 max 40°）、root 速度中位 0.81 / 0.68 m/s（max 4.2）、揮空時常有一腳離地（foot z 中位 0.20 m）。→ 交棒時身體多半還直立，是「帶動量的平衡」問題，不是起身問題。
+- a = 0 基線（開迴路錨點滑向站姿）s6 2 s 內倒地：擊中 92.5%（中位 0.92 s）、揮空 97.9%（0.65 s）、全部 96.4%；與 10-29 04:4x PD blend 100% 一致。+300 / +1000 同時對照此基線與 falldiag2 的 88% / 81%。
+
 **10-29 05:3x（14）使用者裁定「直接做新機制」→ 開 Human25-R：獨立的接觸後平衡策略（two-policy hand-off），GPU 分給 15**
 - 原則：揮棒策略 h9b 12500 @ 1.5x 到交棒點前完全不動（投球 / 擊球 / M2 逐位元不變）；交棒點 = `_recover` 的觸發 `active & (hit | done)` 的第一個控制步，之後由第二個 actor 驅動同一組 PD 目標，唯一任務是站穩。
 - Stage 0 state bank（~20 min，marker `logs/RECOV_BANK_END.txt`）：standalone PitchedBattingEnv + frozen 12500 + P3c 表，seed 0 / 6，在觸發步存 root pose/vel、body joint pos/vel、當步 PD 目標、上一動作、hit/miss → `logs/recover_bank.npz`（≥ 2000 筆，seed 6 留作驗證）。
