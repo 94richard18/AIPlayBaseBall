@@ -28,6 +28,8 @@ parser.add_argument("--after_done", choices=("policy", "hold", "blend"), default
 parser.add_argument("--zero_ff", action="store_true", help="cfg.zero_ff_after_ref_end: no velocity feed-forward past the clip end")
 parser.add_argument("--timing_csv", type=str, default=None,
                     help="two-pass oracle timing: per env handoff_t, t_plane of this seed's pitch (scripts/make_timing_csv.py)")
+parser.add_argument("--trace", type=str, default=None,
+                    help="npz: per env (first per clip) obs / action / body joints per control step from its start; perception noise 0")
 parser.add_argument("--no_handoff", action="store_true", help="control: the batter plays its own predicted pitch (native)")
 parser.add_argument("--no_shift_hist", action="store_true", help="BatterSide shift_hist off: the percept sees the release-point jump")
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
@@ -81,6 +83,9 @@ def main():
     bcfg.pitch_release_csv = args.release_csv
     bcfg.scene.num_envs = args.envs
     bcfg.zero_ff_after_ref_end = args.zero_ff
+    if args.trace:  # deterministic percept and placement, as the native trace (diag_bat_contact --trace)
+        for k in ("ball_obs_noise_std", "ball_obs_bias_std", "tee_xy_noise", "tee_height_noise", "joint_pos_noise"):
+            setattr(bcfg, k, 0.0)
     own = None
     if args.timing_csv:
         tr = sorted(csv.DictReader(open(args.timing_csv)), key=lambda r: int(r["env"]))
@@ -90,6 +95,8 @@ def main():
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
                       no_handoff=args.no_handoff)
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
+    if args.trace:
+        side.trace = []
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}, "
           f"timing {'own pitch (' + args.timing_csv + ')' if own else 'median-flight row'}, bias {side.cfg.timing_bias_s}, shift_hist {not args.no_shift_hist}, no_handoff {args.no_handoff}", flush=True)
     base.batter_side = side
@@ -149,6 +156,18 @@ def main():
             b_fell |= side.fallen & side.active
             b_fell_pre |= side.fallen & side.active & ~was_done  # inside the training episode (native window)
             hit |= side.hit
+    if args.trace:
+        import numpy as np
+        names_t = [os.path.splitext(os.path.basename(f))[0] for f in side.cfg.motion_files]
+        tr, out_t = side.trace, {}
+        for e in range(n):
+            c = names_t[int(side.clip[e])]
+            if c in out_t:
+                continue
+            ks = [i for i, s in enumerate(tr) if bool(s["active"][e])][:150]
+            out_t[c] = {f: np.stack([tr[i][f][e].cpu().numpy() for i in ks]) for f in ("obs", "act", "q", "k")}
+        np.savez(args.trace, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
+        print(f"[joint] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)

@@ -39,6 +39,8 @@ parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from th
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): phase input scale, e.g. the training episode 2.6")
 parser.add_argument("--aim_offset_z", type=float, default=None, help="override cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--timing_noise", type=float, default=None, help="override cfg.timing_noise_s (+- arrival offset, s)")
+parser.add_argument("--trace", type=str, default=None,
+                    help="npz: first env per clip, obs / action / body joints per control step (150); perception noise 0")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -99,6 +101,9 @@ def main():
               "w_miss", "w_tempo"):
         setattr(cfg, k, getattr(train, k))
     cfg.pitch_ramp_steps = 0  # full speed range and timing noise
+    if args.trace:  # deterministic percept and placement (the joint trace sets the same)
+        for k in ("ball_obs_noise_std", "ball_obs_bias_std", "tee_xy_noise", "tee_height_noise", "joint_pos_noise"):
+            setattr(cfg, k, 0.0)
     if args.timing_bias is not None:
         cfg.timing_bias_s = args.timing_bias
     if args.aim_offset_z is not None:
@@ -354,10 +359,16 @@ def main():
     obs, _ = wrapped.reset()
     # the pitch of each env's (first) episode: read now - finished envs are reset to a new pitch before the end
     kmh0, plate0 = base.pitch_kmh.clone(), base.pitch_plate.clone()
+    clip_first = base.clip.clone()  # the first episode's clip (the trace keeps that episode)
     prev.clear()
+    trace = [] if args.trace else None
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
-            obs, _, dones, _ = wrapped.step(policy(obs))
+            act = policy(obs)
+            if trace is not None and len(trace) < 150:
+                trace.append(dict(obs=obs.clone(), act=act.clone(), q=base.robot.data.joint_pos[:, base.body_joint_ids].clone(),
+                                  k=base.episode_length_buf.clone()))
+            obs, _, dones, _ = wrapped.step(act)
         t_now = (base.episode_length_buf.float() * base.step_dt)
         new_hit = base.hit & ~finished & torch.isnan(rec["t_hit"])
         rec["t_hit"] = torch.where(new_hit, t_now, rec["t_hit"])
@@ -587,6 +598,19 @@ def main():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
     print(f"[bat] wrote {path}", flush=True)
+    if trace:  # first env per clip, steps while its first episode runs
+        names_t = [os.path.splitext(os.path.basename(f))[0] for f in base.cfg.motion_files]
+        out_t = {}
+        for e in range(n):
+            c = names_t[int(clip_first[e])]
+            if c in out_t:
+                continue
+            ks = [0]
+            while len(ks) < len(trace) and int(trace[len(ks)]["k"][e]) > int(trace[len(ks) - 1]["k"][e]):
+                ks.append(len(ks))  # until its first reset
+            out_t[c] = {f: np.stack([trace[i][f][e].cpu().numpy() for i in ks]) for f in ("obs", "act", "q", "k")}
+        np.savez(args.trace, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
+        print(f"[bat] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
 
 
 if __name__ == "__main__":

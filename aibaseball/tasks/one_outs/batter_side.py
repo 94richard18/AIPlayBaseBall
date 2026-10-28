@@ -210,6 +210,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec = None  # per-env swing timing / geometry (record_swing), off by default
         self._perc = None
+        self.trace = None  # list: per control step, the policy's input / output and body joints (trace diff vs native)
         self.shift_hist = shift_hist
         self.no_handoff = no_handoff
         assert not (no_handoff and own_timing is not None), "no_handoff flies the predicted row on its own schedule"
@@ -294,6 +295,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self._obs = self._get_observations()["policy"]
         with torch.inference_mode():
             act = self._actor.act_inference(self._norm(self._obs))
+        if self.trace is not None:
+            self.trace.append(dict(active=self.active.clone(), k=self.episode_length_buf.clone(), obs=self._obs.clone(),
+                                   act=act.clone(), q=self.robot.data.joint_pos[:, self.body_joint_ids].clone()))
         self._pre_physics_step(act)
         if self.rec is not None:  # mean tempo action (the clipped one the clock used): before the hand-off / from it to done (diag_bat_contact's window)
             r, tempo = self.rec, self.actions[:, -1].clamp(-1.0, 1.0)
