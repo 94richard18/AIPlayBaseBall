@@ -100,7 +100,19 @@ class JointPitchEnv(StageEnv):
                                                    update_period=0.0, history_length=c.contact_history))
         self.scene.sensors["feet"] = self.feet
         light = sim_utils.DomeLightCfg(intensity=2500.0, color=(0.9, 0.9, 0.9))
-        light.func("/World/Light", light)
+        sky = None
+        if c.film_sky:  # M3 (planning 14): an HDRI sky from Nucleus; any failure falls back to the colour dome
+            try:
+                from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+
+                sky = sim_utils.DomeLightCfg(intensity=1000.0, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr")
+                sky.func("/World/Light", sky)
+                print("[joint] film_sky: HDRI dome light", flush=True)
+            except Exception as e:  # noqa: BLE001 - a missing asset must not stop the film
+                print(f"[joint] film_sky failed ({type(e).__name__}: {e}) - colour dome instead", flush=True)
+                sky = None
+        if sky is None:
+            light.func("/World/Light", light)
         if c.play_mode:
             self._spawn_zone_markers()
 

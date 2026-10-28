@@ -47,6 +47,8 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     film_grass: bool = False
     # film (M3): a round visual-only mound (5.5 m across) instead of the wide box copy; the collider is unchanged
     film_round_mound: bool = False
+    # film (M3): HDRI sky dome from Nucleus (falls back to the colour dome if it cannot be spawned)
+    film_sky: bool = False
 
     def __post_init__(self):
         super().__post_init__()
