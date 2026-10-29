@@ -62,6 +62,8 @@ def main():
     lost = torch.zeros(n, dtype=torch.bool, device=dev)
     over = torch.zeros(n, dtype=torch.bool, device=dev)
     t_ground = torch.full((n,), float("nan"), device=dev)
+    sp0 = torch.zeros(n, device=dev)  # Human25-R2: sweet-spot speed at the first step (the hand-off value)
+    rise = torch.zeros(n, device=dev)  # its largest rise over the first 0.2 s
     for k in range(int(base.max_episode_length) - 1):  # 1.99 s: the time-out step resets after it
         with torch.inference_mode():
             act = torch.zeros(n, base.cfg.action_space, device=dev) if pol is None else pol(obs["policy"])
@@ -71,6 +73,11 @@ def main():
         lost |= (pz < 0.55) | (tilt > 60.0)
         over |= tilt > 75.0
         t_ground = torch.where(torch.isnan(t_ground) & (pz < 0.35), torch.full_like(pz, (k + 1) * base.step_dt), t_ground)
+        if k == 0:
+            sp0 = base.sp.clone()
+        elif (k + 1) * base.step_dt <= 0.2 + 1e-6:
+            rise = torch.maximum(rise, base.sp - sp0)
+        torso_end = base.torso_tilt.clone()  # the last step's (t = 1.99 s)
     g = min_pz < 0.35
     tag = args.tag or ("zero" if args.zero else os.path.basename(args.checkpoint))
 
@@ -82,6 +89,15 @@ def main():
         print(f"[reval] {tag} {nm}: on the ground within 2 s {pct(g, sel)}, lost posture {pct(lost, sel)}, tilted > 75 deg "
               f"{pct(over, sel)}; min pelvis z {q(min_pz[sel])}; t on the ground med "
               f"{np.nanmedian(t_ground[sel].cpu().numpy()) if (g & sel).any() else float('nan'):.2f} s", flush=True)
+    tt = torso_end.cpu().numpy()
+    rr = rise.cpu().numpy()
+    print(f"[reval] {tag} torso tilt at 2 s: med {np.median(tt):.1f} q90 {np.quantile(tt, 0.9):.1f} max {tt.max():.1f} deg "
+          f"(hits med {np.median(tt[hit.cpu().numpy()]):.1f}, misses {np.median(tt[~hit.cpu().numpy()]):.1f}); bat sweet-spot "
+          f"speed above its first-step value within 0.2 s: > 0.05 m/s {int((rr > 0.05).sum())}/{n}, > 0.5 m/s "
+          f"{int((rr > 0.5).sum())}/{n}, max {rr.max():.2f} m/s (first-step speed med {np.median(sp0.cpu().numpy()):.2f})",
+          flush=True)
+    print(f"RTORSO {tag} med {np.median(tt):.1f} q90 {np.quantile(tt, 0.9):.1f} rise05 {int((rr > 0.05).sum())} rmax {rr.max():.2f}",
+          flush=True)
     print(f"REVAL {tag} ground {g.float().mean().item():.3f} hits {g[hit].float().mean().item():.3f} "
           f"misses {g[~hit].float().mean().item():.3f} lost {lost.float().mean().item():.3f}", flush=True)
     env.close()

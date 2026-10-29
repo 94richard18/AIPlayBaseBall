@@ -56,6 +56,7 @@ sys.path.insert(0, ROOT)
 
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
+from isaaclab.utils.math import quat_apply  # noqa: E402
 from rsl_rl.runners import OnPolicyRunner  # noqa: E402
 
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
@@ -154,6 +155,8 @@ def main():
     fall_pz, fall_tilt = nan(), nan()  # at that fall: pelvis z above field_z (m), pelvis tilt (deg); the criterion uses world z
     pel = base.batter.find_bodies("pelvis")[0][0]
     pz_tr, t_tr = [], []  # read-only: pelvis z above field_z per step (min over the film window, after the run)
+    tor = base.batter.find_bodies("torso")[0][0]
+    tt_tr = []  # read-only: torso (chest) link tilt from world up per step, deg (Human25-R2: at t_ref + 1.5 s)
     arr_t = nan()  # the pitch's first plate-plane crossing (misses; j_cross)
     ball_body = torch.full((n,), float("inf"), device=base.device)  # read-only: batted ball to the nearest batter link origin, from hit_t + 0.05 s
     feet = base.batter.find_bodies(["l_foot", "r_foot"])[0]
@@ -202,6 +205,8 @@ def main():
             bat_fall_t = torch.where(torch.isnan(bat_fall_t) & side.fallen & side.active, now, bat_fall_t)
             hit_t = torch.where(torch.isnan(hit_t) & side.hit, now, hit_t)
             pz_tr.append(dd.body_link_pos_w[:, pel, 2] - gz); t_tr.append(now.clone())
+            up = quat_apply(dd.body_link_quat_w[:, tor], torch.tensor([0.0, 0.0, 1.0], device=base.device).expand(n, 3))
+            tt_tr.append(torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0))))
             arr_t = torch.where(torch.isnan(arr_t) & ~torch.isnan(base.j_cross[:, 0]), now, arr_t)
             late_hit = side.hit & (now >= hit_t + 0.05)
             if late_hit.any():
@@ -236,6 +241,9 @@ def main():
     after = t_all >= t_ref.unsqueeze(1)
     min_pz_2s = torch.where(after & (t_all <= t_ref.unsqueeze(1) + 2.0), pz_all, inf).min(1).values
     min_pz_end = torch.where(after, pz_all, inf).min(1).values
+    k15 = (t_all - (t_ref.unsqueeze(1) + 1.5)).abs().nan_to_num(9e9).argmin(1)
+    torso_15 = torch.stack(tt_tr, 1).gather(1, k15.unsqueeze(1)).squeeze(1)
+    torso_15 = torch.where(t_all[:, -1] >= t_ref + 1.5 - 0.02, torso_15, nan())  # the run ended before t_ref + 1.5 s
     low = (pz_all < 0.35) & (t_all >= start_at.nan_to_num(9e9).unsqueeze(1))
     t_low = torch.where(low.any(1), torch.where(low, t_all, inf).min(1).values, nan())
     out = []
@@ -286,6 +294,7 @@ def main():
             take_dev_joint=(side.robot.joint_names[side.body_joint_ids[int(side.take_dev_joint[e])]] if int(side.take_dev_joint[e]) >= 0 else ""),
             handoff_jump_m=round(float(side.handoff_jump[e]), 4),
             pt_t=round(float(side.pt_t[e]), 4), ball_body_min_m=round(float(ball_body[e]), 3),
+            torso_tilt_1p5_deg=round(float(torso_15[e]), 1),
             **{f"pt_{k}": round(float(side.pt_stats[k][e] / side.pt_stats["n"][e].clamp_min(1.0)), 4) for k in ("tgt_rate", "jv_rms")},
             pt_jv_max=round(float(side.pt_stats["jv_max"][e]), 2),  # live release vs the predicted pre-release ball  # fly_to_x at the hand-off: release to the contact plane
             **{k: round(float(v), 4) for k, v in swing_cols(e).items()}))

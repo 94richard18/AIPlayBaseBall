@@ -51,10 +51,32 @@ class RecoverEnvCfg(TeeBattingEnvCfg):
     sigma_com: float = 0.15
     w_action_rate: float = 0.01
     w_ground: float = 50.0  # terminal: on the ground / tilted over
+    # Human25-R2 (planning 14, 10-29): model_998 stands but finishes hunched (torso ~74 deg, bat up) and yanks the bat for
+    # a few steps after the hand-off. 0 = the Human25-R reward (model_998); RecoverR2EnvCfg turns these on.
+    w_torso: float = 0.0  # torso (chest) link upright: its z axis vs world up
+    sigma_torso: float = 0.35  # rad
+    w_pose: float = 0.0  # toward the stance (default_joint_pos), ramps in over pose_ramp_s from t = pose_after_s
+    pose_after_s: float = 0.5
+    pose_ramp_s: float = 0.5
+    sigma_pose: float = 0.3  # rad, weighted rms over the body joints
+    pose_w_waist: float = 3.0
+    pose_w_arm: float = 1.0
+    pose_w_leg: float = 0.3
+    w_arm_jv: float = 0.0  # x sum of squared arm joint speeds (shoulder / elbow / wrist), from t = 0
+    w_bat_rise: float = 0.0  # x (sweet-spot speed - its first-step value)+, m/s, for t < bat_rise_s
+    bat_rise_s: float = 0.3
 
 
 @configclass
-class RecoverEvalEnvCfg(RecoverEnvCfg):
+class RecoverR2EnvCfg(RecoverEnvCfg):
+    w_torso: float = 2.0
+    w_pose: float = 1.5
+    w_arm_jv: float = 0.0005
+    w_bat_rise: float = 0.5
+
+
+@configclass
+class RecoverEvalEnvCfg(RecoverR2EnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1024, env_spacing=4.0, replicate_physics=True)
     bank_path: str = "logs/recover_bank_s6.npz"
     bank_vel_noise: float = 0.0

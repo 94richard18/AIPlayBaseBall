@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import torch
+from isaaclab.utils.math import quat_apply
 
 from aibaseball.tasks.tee_batting.tee_batting_env import TeeBattingEnv
 
@@ -68,8 +69,17 @@ class RecoverEnv(TeeBattingEnv):
         self.body_mass = self.robot.root_physx_view.get_masses().to(dev)
         self.stand_z = float(self.robot.data.default_root_state[0, 2])
         self.next_eval = 0  # eval: bank states in order, one per env
+        # Human25-R2: torso upright, posture toward the stance, arm damping, no bat speed-up after the hand-off
+        self.torso_id = self.robot.find_bodies("torso")[0][0]
+        names = [self.robot.joint_names[i] for i in self.body_joint_ids]
+        arm = [any(k in nm for k in ("shoulder", "elbow", "wrist")) for nm in names]
+        self.arm_cols = [i for i, a in enumerate(arm) if a]
+        self.pose_w = torch.tensor([cfg.pose_w_waist if nm.startswith("waist") else cfg.pose_w_arm if a else cfg.pose_w_leg
+                                    for nm, a in zip(names, arm)], device=dev)
+        self.sp0 = torch.zeros(n, device=dev)
         self.rstats = {k: torch.zeros((), device=dev) for k in
-                       ("ground_rate", "ground_rate_hit", "ground_rate_miss", "ep_len_s", "height", "tilt_deg", "still")}
+                       ("ground_rate", "ground_rate_hit", "ground_rate_miss", "ep_len_s", "height", "tilt_deg", "still",
+                        "torso_tilt_deg", "torso_tilt_end_deg", "pose_rms", "bat_rise")}
 
     # ------------------------------------------------------------------ actions
     def _pre_physics_step(self, actions: torch.Tensor):
@@ -97,6 +107,13 @@ class RecoverEnv(TeeBattingEnv):
         tilt = torch.rad2deg(torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0)))
         self.on_ground = (pz < self.cfg.ground_pelvis_z) | (tilt > self.cfg.max_tilt_deg)
         self.pz, self.tilt = pz, tilt
+        up = quat_apply(d.body_link_quat_w[:, self.torso_id], torch.tensor([0.0, 0.0, 1.0], device=self.device).expand(
+            self.num_envs, 3))
+        self.torso_tilt = torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0)))
+        knob, axis, cm, v_cm, w, _ = self._bat_state()
+        self.sp = self._sweet_spot(knob, axis, cm, v_cm, w)[1].norm(dim=-1)
+        first = self.episode_length_buf == 1  # the first step after a reset: the hand-off value
+        self.sp0 = torch.where(first, self.sp, self.sp0)
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         term = self.on_ground if self.cfg.terminate else torch.zeros_like(self.on_ground)
         return term, time_out
@@ -124,8 +141,17 @@ class RecoverEnv(TeeBattingEnv):
         ground = self.on_ground & bool(c.terminate)
         rew = (c.w_alive + c.w_height * height + c.w_upright * upright + c.w_still * still + c.w_feet * feet_r
                + c.w_com * com_r - c.w_action_rate * rate - c.w_ground * ground.float())
+        torso_r = torch.exp(-(torch.deg2rad(self.torso_tilt) / c.sigma_torso) ** 2)
+        dq = d.joint_pos[:, self.body_joint_ids] - d.default_joint_pos[:, self.body_joint_ids]
+        pose_rms = ((dq ** 2 * self.pose_w).sum(-1) / self.pose_w.sum()).sqrt()
+        ramp = ((self.t - c.pose_after_s) / c.pose_ramp_s).clamp(0.0, 1.0)
+        pose_r = ramp * torch.exp(-(pose_rms / c.sigma_pose) ** 2)
+        arm_jv = d.joint_vel[:, self.body_joint_ids][:, self.arm_cols].pow(2).sum(-1)
+        rise = (self.sp - self.sp0).clamp_min(0.0) * (self.t < c.bat_rise_s).float()
+        rew = rew + c.w_torso * torso_r + c.w_pose * pose_r - c.w_arm_jv * arm_jv - c.w_bat_rise * rise
         done = self.reset_terminated | self.reset_time_outs
         if done.any():
+            self.rstats["torso_tilt_end_deg"] = 0.98 * self.rstats["torso_tilt_end_deg"] + 0.02 * self.torso_tilt[done].mean()
             g = self.on_ground[done].float()
             h = self.bank_hit[self.idx[done]]
             a_ = 0.02
@@ -136,7 +162,8 @@ class RecoverEnv(TeeBattingEnv):
                 self.rstats["ground_rate_miss"] = (1 - a_) * self.rstats["ground_rate_miss"] + a_ * g[~h].mean()
             self.rstats["ep_len_s"] = (1 - a_) * self.rstats["ep_len_s"] + a_ * self.t[done].mean()
         a_ = 0.01
-        for k, v in (("height", self.pz.mean()), ("tilt_deg", self.tilt.mean()), ("still", still.mean())):
+        for k, v in (("height", self.pz.mean()), ("tilt_deg", self.tilt.mean()), ("still", still.mean()),
+                     ("torso_tilt_deg", self.torso_tilt.mean()), ("pose_rms", pose_rms.mean()), ("bat_rise", rise.mean())):
             self.rstats[k] = (1 - a_) * self.rstats[k] + a_ * v
         self.extras["log"] = {f"recover/{k}": v.clone() for k, v in self.rstats.items()}
         return rew
