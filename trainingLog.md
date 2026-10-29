@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 23:xx（14）使用者問「打者無法打出內野的原因？力量不夠？沒打中球心？」→ 14 答：主因棒速（20 m/s vs 需約 25；力矩已飽和，損失在動力鏈時序）、其次接觸品質（初速只 0.8 倍棒速，正中約可 1.3 倍，未單獨量過）、來球慢（64 km/h 只貢獻約 3.6 m/s）。使用者裁定「好先做接觸偏移量測」→ 派 15：凍結 M2 設定，每次擊中記錄球心 / 甜蜜點 / 棒軸 / 速度，拆解沿軸與法向偏移，用引擎自己的碰撞模型算 exit_actual / exit_centred（同棒速零偏移）/ exit_target（25 m/s 正中），分出 loss_contact 與 loss_speed；輸出 `logs/contact_offset/`，marker `logs/CONTACT_END.txt`；GPU 等 20 的 M3CLEAN2_END 後再用，CPU 先備。純量測，不提設計，下一條線由使用者決定。**
+
 **10-29 22:5x（14）好球帶立體框測試通過（20 commit b244a16，`videos/zonetest_p3.mp4`，marker M3ZONE_TEST_END）→ GO 11 球 clean + zone frame 重錄 → `videos/final_cut_v2.mp4`（marker `logs/M3CLEAN2_END.txt`，v1 保留）**
 - 旗標 `AIB_FILM_ZONE_FRAME=1`（cfg.film_zone_frame）：本壘前緣平面四條 2 cm 白色微發光邊框（StrikeZone ±0.2525 m、0.50–1.10 m，獨立 prim ZoneFrame、無碰撞）；通過點圓盤半徑 6 cm、平面前 2 cm、顯示 0.6 s（綠 = 好球帶內或揮棒，紅 = 壞球；擊中則不顯示）；牆保留、牆上框移除。
 - 測試 PA1 p3（s1 e34 判好球）：對 M2 63/64（take env 如常）、對 clean_film_p3 嚴格 52 欄 64/64 → 純視覺。14 看 f117 / f136：兩個視角框與綠點清楚，+0.34 s 球已落到牆腳（即舊牆框看起來沒碰到的原因）。
