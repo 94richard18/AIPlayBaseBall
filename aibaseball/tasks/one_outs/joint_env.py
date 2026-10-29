@@ -37,6 +37,7 @@ class JointPitchEnv(StageEnv):
         self.batter_side = None  # set before the first reset (the env's construction already reset once: call env.reset())
         self.ball_marker = None
         self.ring_marker = None
+        self.call_marker = None
         self.marker_envs = None  # park: envs whose flight marker is drawn (None = all)
         super().__init__(cfg, render_mode, **kwargs)
         n, dev = self.num_envs, self.device
@@ -55,6 +56,7 @@ class JointPitchEnv(StageEnv):
         # the batter's swing clock starts before the release: the gate's release reference time, as episode time
         self.release_t_pred = torch.full((n,), cfg.release_t_pred_s / self.speed, device=dev)
         self.j_cross = torch.full((n, 2), float("nan"), device=dev)  # (y - zone centre, z above the field) at the plate
+        self.j_cross_t = torch.full((n,), float("nan"), device=dev)  # episode time of that crossing (film_zone_frame)
         self._aero_c = _aero_consts(self.phys, self.j_vel)
         self.j_bat_z = torch.tensor([[1e9, -1e9]], device=dev).repeat(n, 1)  # batter root z min / max since the load
         self._j_k, self._ctrl = 0, False  # pitcher control steps since the load; this step is a batter control step
@@ -96,6 +98,8 @@ class JointPitchEnv(StageEnv):
         self._spawn_mound("/World/envs/env_0")
         if c.film_wall:
             self._spawn_film_wall("/World/envs/env_0")
+        if c.film_zone_frame:
+            self._spawn_zone_frame("/World/envs/env_0")
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])
         self._filter_ball_batter()
@@ -148,6 +152,8 @@ class JointPitchEnv(StageEnv):
         UsdGeom.Xform.Define(omni.usd.get_context().get_stage(), f"{env_path}/FilmWall")  # one prim the film can hide
         w, h = c.film_wall_size_m
         put("Wall", xw + 0.05, 0.0, h / 2, (0.1, w, h), (0.22, 0.26, 0.30))
+        if c.film_zone_frame:  # planning 14 10-29 (user): the zone is the frame at the plate front, the wall is a backdrop
+            return
         hw, z0, z1, b = zone.half_width_m, zone.bottom_m, zone.top_m, 0.03
         put("Zone", xw - 0.004, 0.0, (z0 + z1) / 2, (0.008, 2 * hw, z1 - z0), (0.86, 0.86, 0.80))
         red, glow = (0.85, 0.08, 0.06), (0.25, 0.02, 0.0)
@@ -155,6 +161,29 @@ class JointPitchEnv(StageEnv):
                                  ("ZoneLeft", -hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b)),
                                  ("ZoneRight", hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b))):
             put(name, xw - 0.008, y, z, size, red, glow)
+
+    def _spawn_zone_frame(self, env_path: str):
+        """film_zone_frame (planning 14 10-29, user: a called strike missed the box painted 3 m back on the wall): the StrikeZone
+        rectangle as four thin white bars standing in the judged plate plane (plate frame x = plate_distance), centred on
+        zone_center_y, turned with plate_yaw_deg. Visual only: no collision / rigid-body props."""
+        from aibaseball.game.agents import StrikeZone
+
+        import omni.usd
+        from pxr import UsdGeom
+
+        c, zone = self.cfg, StrikeZone()
+        th = -math.radians(c.plate_yaw_deg)
+        q = (math.cos(th / 2), 0.0, 0.0, math.sin(th / 2))
+        UsdGeom.Xform.Define(omni.usd.get_context().get_stage(), f"{env_path}/ZoneFrame")
+        hw, z0, z1, b = zone.half_width_m, zone.bottom_m, zone.top_m, 0.02
+        for name, y, z, size in (("Top", 0.0, z1, (0.01, 2 * hw + b, b)), ("Bottom", 0.0, z0, (0.01, 2 * hw + b, b)),
+                                 ("Left", -hw, (z0 + z1) / 2, (0.01, b, z1 - z0 + b)),
+                                 ("Right", hw, (z0 + z1) / 2, (0.01, b, z1 - z0 + b))):
+            px, py = c.plate_distance, c.zone_center_y + y
+            pos = (math.cos(th) * px - math.sin(th) * py, math.sin(th) * px + math.cos(th) * py, self.field_z + z)
+            cfg = sim_utils.CuboidCfg(size=size, visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.95, 0.95, 0.90), emissive_color=(0.45, 0.45, 0.42), roughness=0.6))
+            cfg.func(f"{env_path}/ZoneFrame/{name}", cfg, translation=pos, orientation=q)
 
     def _spawn_mound(self, env_path: str):
         """The colliding mound as in PitchEnv; film_round_mound: the visual copy (two 5.5 m wide boxes, a long plank seen
@@ -219,6 +248,8 @@ class JointPitchEnv(StageEnv):
             self.batter.set_joint_position_target(self.batter.data.default_joint_pos)
             self.batter.set_joint_velocity_target(torch.zeros_like(self.batter.data.default_joint_pos))
         self._fly(self.physics_dt)
+        if self.cfg.film_zone_frame:
+            self._show_call()
         bz = self.batter.data.root_pos_w[:, 2]  # C1: does the ball (mirror / park) disturb the batter's footing
         self.j_bat_z = torch.stack([torch.minimum(self.j_bat_z[:, 0], bz), torch.maximum(self.j_bat_z[:, 1], bz)], -1)
 
@@ -255,6 +286,7 @@ class JointPitchEnv(StageEnv):
             q = a[cr] + f * (b[cr] - a[cr])
             self.j_cross[cr, 0] = q[:, 1] - self.cfg.zone_center_y
             self.j_cross[cr, 1] = q[:, 2] - self.field_z
+            self.j_cross_t[cr] = self.episode_length_buf[cr].float() * self.step_dt
         end = self.j_fly & ((b[:, 2] <= self.field_z + self.phys.ball.radius) | (b[:, 0] > pd + self.cfg.flight_end_behind_plate_m))
         if self.cfg.ball_after_handoff == "mirror":
             ids = self.j_fly.nonzero(as_tuple=False).squeeze(-1)
@@ -320,6 +352,40 @@ class JointPitchEnv(StageEnv):
         self.ring_marker.visualize(translations=torch.cat([p, p], 0),
                                    marker_indices=torch.cat([torch.zeros(k, dtype=torch.long), torch.ones(k, dtype=torch.long)]).to(self.device))
 
+    def _show_call(self):
+        """film_zone_frame: from the plate-plane crossing for film_call_s, a disc on that plane at the judged (y, z) (j_cross)
+        facing the pitcher - green = strike (in the StrikeZone, or swung at), red = ball; nothing once the bat met the ball.
+        Drawn for marker_envs only; visual, reads j_cross and touches no state."""
+        from aibaseball.game.agents import StrikeZone
+
+        if self.call_marker is None:
+            from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+
+            disc = lambda col: sim_utils.CylinderCfg(radius=0.06, height=0.01, visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=col, emissive_color=tuple(0.6 * x for x in col)))
+            self.call_marker = VisualizationMarkers(VisualizationMarkersCfg(prim_path="/Visuals/joint_call", markers={
+                "strike": disc((0.10, 0.85, 0.20)), "ball": disc((0.92, 0.10, 0.05))}))
+        ids = torch.arange(self.num_envs, device=self.device) if self.marker_envs is None else torch.as_tensor(
+            self.marker_envs, device=self.device)
+        zone, c = StrikeZone(), self.cfg
+        jc = self.j_cross[ids]
+        now = self.episode_length_buf[ids].float() * self.step_dt
+        on = ~torch.isnan(jc[:, 0]) & (now - self.j_cross_t[ids] <= c.film_call_s)
+        strike = (jc[:, 0].abs() <= zone.half_width_m) & (jc[:, 1] >= zone.bottom_m) & (jc[:, 1] <= zone.top_m)
+        if self.batter_side is not None:
+            on &= ~self.batter_side.hit[ids]
+            strike |= self.batter_side.swing[ids]
+        th = -math.radians(c.plate_yaw_deg)  # plate frame -> env frame: Rz(-plate_yaw)
+        px, py = c.plate_distance - 0.02, c.zone_center_y + jc[:, 0]  # 2 cm in front of the plane: in front of the frame bars
+        o = self.scene.env_origins[ids]
+        p = torch.stack([o[:, 0] + math.cos(th) * px - math.sin(th) * py, o[:, 1] + math.sin(th) * px + math.cos(th) * py,
+                         self.field_z + jc[:, 1]], -1)
+        p = torch.where(on.unsqueeze(-1), p, p * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
+        p = torch.nan_to_num(p, nan=-50.0)
+        a, s, r = math.cos(th / 2), math.sin(th / 2), math.sqrt(0.5)  # Rz(th) * Ry(90 deg): the disc axis along plate x
+        quat = torch.tensor([[a * r, -s * r, a * r, s * r]], device=self.device).repeat(len(ids), 1)
+        self.call_marker.visualize(translations=p, orientations=quat, marker_indices=(~strike).long())
+
     def plate_front_w(self) -> torch.Tensor:
         """(n, 3) world point of the judged plate plane (plate frame x = plate_distance, y = zone_center_y) at field level:
         the plane the pitcher's tiers and j_cross are measured on (batter session pivot for its frame)."""
@@ -358,4 +424,5 @@ class JointPitchEnv(StageEnv):
             for b in (self.j_fly, self.j_done):
                 b[env_ids] = False
             self.j_cross[env_ids] = float("nan")
+            self.j_cross_t[env_ids] = float("nan")
             self.handoff_t[env_ids] = float("nan")

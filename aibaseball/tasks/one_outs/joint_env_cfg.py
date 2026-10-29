@@ -57,6 +57,11 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     # film (M3, planning 14 10-28): a red-orange ground ring (1.2 m across) at the batted ball's integrated landing point,
     # shown from the landing on - visual only (the ~7 cm ball is lost at the batted-ball camera's range)
     film_landing_ring: bool = False
+    # film (planning 14 10-29, user: a called strike visibly missed the wall's box, 3 m behind the judged plane): the zone as
+    # a thin frame standing in the plate-front plane (the wall loses its painted box) + a disc at the judged crossing for
+    # film_call_s, green = strike / red = ball (not on a batted ball) - visual only
+    film_zone_frame: bool = False
+    film_call_s: float = 0.6
 
     def __post_init__(self):
         super().__post_init__()
