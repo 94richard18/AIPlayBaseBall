@@ -1,0 +1,1 @@
+RECOV2_DIAG_END 09:22 done (logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2/model_1297.pt): R2 frozen 64/64, on the ground 2/64, torso tilt at +1.5 s med 6.8 q90 11.8 deg (n 64), ss_speed_max above the swing alone 1/64

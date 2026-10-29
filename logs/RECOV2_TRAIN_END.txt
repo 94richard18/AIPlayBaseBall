@@ -1,0 +1,1 @@
+RECOV2_TRAIN_END 09:13 model_1297 (logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2): ground 0.018 PASS, torso med 5.7 q90 13.3 PASS, bat rise rows 418 FAIL | model_998 med 74.1 q90 74.5 rise05 520 rmax 9.08

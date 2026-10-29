@@ -1,0 +1,8 @@
+RD2 R2 vs falldiag2: pitch + hit_t + swing columns identical 64/64
+RD2 model_998 hits n 16: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 3 (max +1.16 m/s)
+RD2 model_998 misses n 48: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 0 (max +0.00 m/s)
+RD2 R2 hits n 16: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 1 (max +0.45 m/s)
+RD2 R2 misses n 48: on the ground within 2 s 2; ss_speed_max above the swing alone (> 0.01 m/s) 0 (max +0.00 m/s)
+RD2 R2 hits: torso tilt at t_ref + 1.5 s med 5.2 max 15.7 deg
+RD2 R2 misses: torso tilt at t_ref + 1.5 s med 7.4 max 126.5 deg
+RD2 RESULT R2 frozen 64/64, on the ground 2/64, torso tilt at +1.5 s med 6.8 q90 11.8 deg (n 64), ss_speed_max above the swing alone 1/64

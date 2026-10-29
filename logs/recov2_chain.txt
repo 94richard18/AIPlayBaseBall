@@ -1,0 +1,22 @@
+[reval] m998 hits: on the ground within 2 s 2/294 (0.7%), lost posture 2/294 (0.7%), tilted > 75 deg 2/294 (0.7%); min pelvis z 0.11 / 0.84 / 0.86 / 0.87 / 0.94; t on the ground med 0.91 s
+[reval] m998 misses: on the ground within 2 s 7/730 (1.0%), lost posture 8/730 (1.1%), tilted > 75 deg 4/730 (0.5%); min pelvis z 0.17 / 0.85 / 0.87 / 0.88 / 0.93; t on the ground med 0.82 s
+[reval] m998 torso tilt at 2 s: med 74.1 q90 74.5 max 126.7 deg (hits med 74.2, misses 74.1); bat sweet-spot speed above its first-step value within 0.2 s: > 0.05 m/s 520/1024, > 0.5 m/s 426/1024, max 9.08 m/s (first-step speed med 14.49)
+RTORSO m998 med 74.1 q90 74.5 rise05 520 rmax 9.08
+REVAL m998 ground 0.009 hits 0.007 misses 0.010 lost 0.010
+09:12 run logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2: 4 checkpoints
+[reval] m1297 hits: on the ground within 2 s 4/294 (1.4%), lost posture 4/294 (1.4%), tilted > 75 deg 4/294 (1.4%); min pelvis z 0.28 / 0.84 / 0.86 / 0.87 / 0.93; t on the ground med 1.25 s
+[reval] m1297 misses: on the ground within 2 s 14/730 (1.9%), lost posture 20/730 (2.7%), tilted > 75 deg 13/730 (1.8%); min pelvis z 0.16 / 0.83 / 0.85 / 0.87 / 0.93; t on the ground med 0.94 s
+[reval] m1297 torso tilt at 2 s: med 5.7 q90 13.3 max 128.1 deg (hits med 6.1, misses 5.6); bat sweet-spot speed above its first-step value within 0.2 s: > 0.05 m/s 418/1024, > 0.5 m/s 350/1024, max 9.09 m/s (first-step speed med 14.00)
+RTORSO m1297 med 5.7 q90 13.3 rise05 418 rmax 9.09
+REVAL m1297 ground 0.018 hits 0.014 misses 0.019 lost 0.023
+RECOV2_TRAIN_END 09:13 model_1297 (logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2): ground 0.018 PASS, torso med 5.7 q90 13.3 PASS, bat rise rows 418 FAIL | model_998 med 74.1 q90 74.5 rise05 520 rmax 9.08
+recover_rl 09:22 [joint] summary: handed 64/64, hits 0.250, batter falls 3, pitcher falls 11, released before the batter's start 0 
+RD2 R2 vs falldiag2: pitch + hit_t + swing columns identical 64/64
+RD2 model_998 hits n 16: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 3 (max +1.16 m/s)
+RD2 model_998 misses n 48: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 0 (max +0.00 m/s)
+RD2 R2 hits n 16: on the ground within 2 s 0; ss_speed_max above the swing alone (> 0.01 m/s) 1 (max +0.45 m/s)
+RD2 R2 misses n 48: on the ground within 2 s 2; ss_speed_max above the swing alone (> 0.01 m/s) 0 (max +0.00 m/s)
+RD2 R2 hits: torso tilt at t_ref + 1.5 s med 5.2 max 15.7 deg
+RD2 R2 misses: torso tilt at t_ref + 1.5 s med 7.4 max 126.5 deg
+RD2 RESULT R2 frozen 64/64, on the ground 2/64, torso tilt at +1.5 s med 6.8 q90 11.8 deg (n 64), ss_speed_max above the swing alone 1/64
+RECOV2_DIAG_END 09:22 done (logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2/model_1297.pt): R2 frozen 64/64, on the ground 2/64, torso tilt at +1.5 s med 6.8 q90 11.8 deg (n 64), ss_speed_max above the swing alone 1/64
