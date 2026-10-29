@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 12:3x（14）`videos/final_cut_v1.mp4` 驗收通過 = 11-26 交付的現行候選（118.8 s、3563 幀、2560x720 30 fps、High yuv420p、blank 0；14 自行 ffmpeg -i + 抽幀確認：clips 無 QA 字幕、揮棒後站立、中文卡片）**
+- clean 重錄 10:25–12:20（marker `logs/M3CLEAN_END.txt`，兼 12 小時錄影，下次最晚 00:20）：11 球全錄；揮棒球（PA1 p1 / p4 / p5、PA2 p1）對 M2 64/64，take 7 球 63/64（僅 take env 不同，如常）；對現行 clips 列：揮棒 82 欄 64/64，take 的拍攝 env 全欄相同（其他 env 因舊 take clips 來自更早設定而不同，不在畫面內）。結果同前：PA1 p4 界外 40 km/h 9.1 m、p5 界內 57 km/h / 20° / 17.9 m、PA2 p6 四壞；倒 0。20 log commit ff695d2。
+- 待使用者：影片語言 / 內容意見；打者力量倍率 1.5x 確認。GPU 閒置、無排程，20 / 15 hold。
+
 **10-29 10:5x（14）`videos/final_cut_v0.mp4` 結構通過（118.8 s、3563 幀、blank 0、High yuv420p 2560x720；`scripts/make_final_cut.py`）：片頭 → 規則卡 → PA1（球數卡 / clip / 結果卡，p5 後 0.5x 慢動作）→「內野出局，投手勝」→ PA2（p1 揮空慢動作）→「四壞，打者勝」→ 片尾統計卡。v1 改動：所有卡片改中文主行 + 英文小字副行（與 10-28 進度影片一致；使用者可改語言），等 clean 重錄（`logs/m3clean.sh`，marker `logs/M3CLEAN_END.txt`，進行中）落下後換乾淨 clips → `videos/final_cut_v1.mp4`。**
 
 **10-29 10:3x（14）最終剪輯腳本裁定（20 的 `logs/final_cut_storyboard.md`）：順序 PA1 → PA2 → 統計片尾；卡片時間照提案；去除片內除錯字幕 → JointFilm clean 旗標 + 11 球乾淨重錄（GPU 閒置，兼作 12 小時錄影）；PA1 p5 接觸 0.5x 慢動作重播（既有幀）**
