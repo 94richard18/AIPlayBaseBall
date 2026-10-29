@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 06:47（14）3 小時檢查 + Human26 +100 FAIL（06:46，15 commit 79184f3，model_12599 @ `logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_06-31-15_human_pitched26_1`）→ 同線重試一次 Human26b。** Isaac 0；20 的例行錄影鏈已觸發（HUMAN26_100_END 存在）→ `videos/routine_1030_p5.mp4` / M3ROUTINE2_END，錄完 GPU 回 15。
+- diag1024 好球帶內 12500 → 12599：hit 0.445 → 0.643（門檻 ≥ 0.31 PASS）；|dx| 中位 10.36 → 10.79 cm（門檻 ≤ 7.77 FAIL）；D 落在 [0, 2.5 cm] 0.125 → 0.154（門檻 > 0.20 FAIL）；D 中位 +1.5 → +0.8 cm；仰角中位 23.1 → 21.3°；exit 中位 19.0 → 18.4。Trainer bat/contact_abs_dx 0.153 → 0.139（有動但不夠）。
+- 原因（14 規格錯誤）：sigma_dx 0.04 在起點 |dx| ≈ 10 cm 處 exp(−(0.10/0.04)²) ≈ 0.002，無梯度（Human23 sigma 同款失誤）；D 視窗則成了「任何碰到球都有機會拿」的平均紅利，策略走最便宜的路 = 多碰球、品質不變。注意 diag1024 的 |dx| 基線 10.4 cm 比 joint 35 球的 7.4 cm 大，門檻是同口徑比較。
+- Human26b：碰撞步 r = 4·g_dx + 3·g_dx·g_D，g_dx = exp(−(dx/0.12)²)（10 cm 處 ≈ 0.5，有梯度），g_D 不變；D 紅利乘上 g_dx，握把側接觸拿不到。其餘全同；門檻全同；markers HUMAN26B_100_END / _300_END；等 M3ROUTINE2_END + Isaac 0 再啟動（約 07:1x，+100 ≈ 07:45）。再敗 = A 線正式關閉，回使用者選 B。
+- 副產物：12599 好球帶內擊中率 0.643（交付 0.445 / 0.458）、exit 同級；是否做採用檢查（5 seeds × 3 tables + joint s6）留給使用者。
+
 **10-30 06:3x（14）Human26 已啟動（15 06:26，commit b6ae2ef，`logs/run_human26.sh`，AIB-PitchedBatting-Human26-v0）：14 判定在框架內，照跑。** Human15 cfg（P3c 形狀的好球帶內投球）、從 12500 @ 1.5x、2048 envs、obs 不變、recover_rl 不動。碰撞步新增 3·exp(−(dx/0.04)²) + 3·exp(−((D − 0.015)/0.012)²)（D 由 `TeeBattingEnv._check_impact` 新 buffer contact_D 提供，唯讀無 RNG；對比：內野出局的擊中約 +3、揮空 −20）。揮棒平面併入 D、不另加仰角項，證據（`logs/contact_offset/d15_check.py`，35 球重播）：接觸時甜蜜點速度仰角已 +12.2° [7.9, 16.5] 對來球下降 20.5°；D 0 → 仰角 6.8°、+1.0 cm → 17.4°、+1.5 → 23.1° [19.7, 27.5] 帶約 470 rpm 倒旋、+2.0 → 28.5°；exit 22.8 → 21.9。基線修正：3.3 cm 是帶號 dx 中位，joint |dx| 中位 7.4 cm → +100 門檻用 12500 新跑的 diag1024 基線（hit ≥ 0.7×、|dx| 中位 ≤ 0.75×、D 落在 [0, 2.5 cm] 比例 > 基線且 > 0.20）。+100 ≈ 07:00（marker HUMAN26_100_END → 20 錄例行片 → M3ROUTINE2_END）→ +200 → diag + 1 張 showcase（好球帶內 ≥ 0.40、仰角中位 15–30、exit ≥ 18、≥ 1 球界內 ≥ 38.9 m，marker HUMAN26_300_END，約錄完後 45 min）；採用檢查另起。到 +300 約 1.5 GPU h。
 
 **10-30 0x:xx（14）使用者裁定「做 A，先做接觸精度 + 揮棒平面線」→ 派 15 開 Human26（GPU 給 15，20 hold）。**
