@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 09:3x（14）Human25-R2 完成（09:22，15 commit 0f4fdfc）：駝背修好 → 裁定 (a) 採用 model_1297，20 補錄 PA1 p1 / p4 / p5**
+- 候選 `logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2/model_1297.pt`。s6 保留庫 model_998 → 1297：2 s 內倒地 0.9% → 1.8%（PASS < 5%）；t = 2 s 軀幹傾角中位 74.1° → 5.7°、q90 74.5° → 13.3°（PASS）；「交棒後 0.2 s 棒速上升」閘門 520 → 418 列（FAIL，但閘門本身有缺陷：庫無身體速度，基準是第一步 10 ms 後的速度，隨揮本來就會再加速，改看同場比對）。
+- 同場 seed 6（64 envs）：凍結列 64/64；2 s 內倒地 擊中 0/16、揮空 2/48（998 為 0/64，一列到 126°）；t_ref + 1.5 s 軀幹傾角中位 6.8°、q90 11.8°（擊中中位 5.2°、max 15.7°）；ss_speed_max 高於單獨揮棒的列 3 → 1（最大超出 +1.16 → +0.45 m/s）。
+- 裁定：(a) 採用 1297，GPU 給 20 只補錄 PA1 揮棒球 p1 / p4 / p5（`--recover_ckpt .../h25r2/model_1297.pt`），與 p2 / p3 合併為新 `videos/m3rec_draft.mp4`（舊版留 m3rec_draft_v1.mp4），marker `logs/M3PA_RECOV2_END.txt`。揮空 2/48 的小退步先接受；錄完若 GPU 閒置，15 做 (c) 評 R2 其他 checkpoint（倒地 vs 傾角取捨），只有倒地更好且傾角 q90 仍 < 15° 才換。
+
 **10-29 08:5x（14）PA1 recover_rl 成片目視：每球都站住（0/5 倒），但收尾駝背（軀幹前傾約 74°、棒仍舉著）→ 開 Human25-R2 修姿勢，GPU 回 15，20 hold**
 - 成片 `videos/m3rec_draft.mp4`（1783 幀、blank 0、High yuv420p；20 commit 4a218aa，marker `logs/M3PA_RECOV_END.txt` 08:43）。比對：對 PA1 現行草稿列 5 球全 64/64（COMPARE_SKIP 4 個接觸後統計欄：batter_fell_before_done / tempo_fly / take_bat_vmax / ss_speed_max，batter_fell 照舊跳過）；對 M2 p1 / p4 / p5 64/64、takes 63/64 如常。hit_t p4 2.015、p5 2.0225。
 - 姿態（切鏡前 0.3 s）：全部站著 root z 0.94–0.96 m；takes 軀幹 12–14° 穩定；揮棒 p1 48→74° 仍在動（3.10 s 切）、p4 55→75°（3.40 s）、p5 73.9–74.4° 穩定但駝背。原因：終止條件 tilt > 75° 被貼著用，直立獎勵只算骨盆，腰彎了沒人付代價。
