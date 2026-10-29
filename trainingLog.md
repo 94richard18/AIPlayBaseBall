@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 10:1x（14）Human25-R2 (c) 結果：留 model_1297 為交付的 recover_rl（RECOV2C_END 10:01，15 commit 4a8468a）；20 接著補錄 PA2 p1**
+- s6 庫（倒地 / 2 s 軀幹傾角中位、q90）：m1000 0.009 / 74.3°、74.7°（≈ 998）；m1100 0.013 / 27.3°、74.1°；m1200 0.019 / 8.5°、13.8°；m1297 0.018 / 5.7°、13.3°。倒地隨站直而升，是站直的代價，接受。沒有 checkpoint 過「倒地 < 0.018 且 q90 < 15°」門檻，未做同場重跑。
+- PA2 只有 p1（s10 e62，揮空）是揮棒球，p2–p6 為 take：20 的 `logs/m3rec_pa2.sh`（單球、約 10 min）等 RECOV2C_END + Isaac 0 後自動啟動，marker `logs/M3PA2_RECOV_END.txt`，舊版留 m3pa2_draft_v2.mp4。15 閒置。
+
 **10-29 10:0x（14）PA1 R2 成片目視通過：站直、球棒放低橫於身前、無駝背 → `videos/m3rec_draft.mp4` 取代 m3pa_draft.mp4 成為可展示的 PA1；下一件 = PA2 揮棒球補錄（等 RECOV2C_END）**
 - 20 成片 09:56（marker `logs/M3PA_RECOV2_END.txt`）：1783 幀、blank 0、High yuv420p；舊版留 m3rec_draft_v1.mp4（列 / clips 在 logs/m3/rec_v1/）。p1 / p4 / p5 用 R2 model_1297 補錄，p2 / p3 沿用。
 - 比對：對 M2 p1 / p4 / p5 64/64（COMPARE_SKIP 4 欄）；對 PA1 草稿列 63 欄 64/64；倒 0/3；hit_t p4 2.015、p5 2.0225。
