@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 22:2x（14）使用者回報：「視覺上好球的判定有些問題，球未碰到後面的框卻判好球」→ 原因 = 好球帶畫在本壘前緣後方 3.0 m 的牆上（`flight_end_behind_plate_m`），裁判讀的是本壘前緣平面的通過點；球再飛 3 m（約 0.17 s）會再掉 / 橫移 0.2–0.5 m，所以好球常打在牆框下方。裁判無誤，畫法誤導。**
+- 派 20 修（視覺旗標，每片比對 64/64 照舊）：(1) `film_zone_frame` 立體框浮在本壘前緣平面（StrikeZone 半寬 0.2525 m、0.50–1.10 m）；(2) 通過點標記：球過平面時在框上留一個圓點約 0.6 s，綠 = 好球 / 紅 = 壞球（裁判的判定 j_cross）；(3) 牆保留當背景並停飛行標記，但移除牆上的框（最多留淡影）。
+- 流程：先錄一顆今日看得出問題的 take 好球（PA1 p2 / p3）給 14 目視（marker `logs/M3ZONE_TEST_END.txt`），通過後 11 球 clean 重錄 → `videos/final_cut_v2.mp4`（marker `logs/M3CLEAN2_END.txt`）。GPU 給 20。
+
 **10-29 22:0x（14）例行 12 小時錄影完成（M3ROUTINE_END 21:58）：`videos/routine_1029_p5.mp4`，343 幀、blank 0、High yuv420p；對 M2 s6 env 12 64/64（COMPARE_SKIP）、對 final-cut clean_film_p5 嚴格 52 欄 64/64；列：hit、exit 15.92 m/s、launch 20.3°、carry 17.9 m；無倒、min_pelvis_z_end 0.868 m、torso_tilt_1p5 5.2°。下次最晚 10-30 10:00。GPU 閒置、無排程，20 / 15 hold。待使用者：final_cut_v1 意見、力量倍率 1.5x、接受「打者只靠四壞獲勝」（22:xx 已向使用者列出三項決定）。**
 
 **10-29 21:47（14）3 小時檢查**：Isaac 0；GPU 閒置、無排程、無變動。例行 12 小時錄影最晚 00:20 → 已派 20 錄一球（PA1 p5，s6 e12 界內球，final 設定 recover_rl @ 1297、QA 字幕開）→ `videos/routine_1029_p5.mp4`，marker `logs/M3ROUTINE_END.txt`，列比對 64/64。錄完 20 繼續 hold。待使用者：final_cut_v1 意見、力量倍率 1.5x 確認。
