@@ -1,0 +1,27 @@
+Q1 hits: timing vs contact geometry (delivery 12500, bias 0.055, diag1024 seed 0)
+  hits n 277: corr(dx, timing) -0.10, corr(D, timing) +0.03, corr(dx, ref_phase_hit) +0.11, corr(D, ref_phase_hit) +0.16, corr(|dx|, ref_phase_hit) -0.03
+    timing_hit (s, < 0 = bat squared before contact) -0.1375 [-0.1525, -0.0150]; ref_phase_hit (s, + = early) +0.0113 [+0.0076, +0.0161]; plane swing_pitch_deg +16.9959 [+11.0153, +23.4245]
+    latest third (ref_phase_hit low)     n  68: ref_phase_hit +0.0068 [+0.0055, +0.0076]  dx -0.0743 [-0.1384, +0.0828]  |dx| med 0.1112  D +0.0076 [-0.0158, +0.0278]
+    middle third                         n  67: ref_phase_hit +0.0113 [+0.0107, +0.0126]  dx -0.0553 [-0.1291, +0.0569]  |dx| med 0.1054  D +0.0291 [-0.0078, +0.0423]
+    earliest third (ref_phase_hit high)  n  68: ref_phase_hit +0.0197 [+0.0161, +0.0249]  dx +0.0012 [-0.1477, +0.1057]  |dx| med 0.1204  D +0.0245 [-0.0133, +0.0423]
+  in-zone hits n 248: corr(dx, timing) -0.17, corr(D, timing) +0.02, corr(dx, ref_phase_hit) +0.24, corr(D, ref_phase_hit) +0.15, corr(|dx|, ref_phase_hit) -0.11
+    timing_hit (s, < 0 = bat squared before contact) -0.1387 [-0.1525, -0.0150]; ref_phase_hit (s, + = early) +0.0112 [+0.0075, +0.0157]; plane swing_pitch_deg +16.8833 [+10.8108, +22.6073]
+    latest third (ref_phase_hit low)     n  60: ref_phase_hit +0.0066 [+0.0054, +0.0074]  dx -0.0823 [-0.1384, +0.0391]  |dx| med 0.1074  D +0.0076 [-0.0158, +0.0347]
+    middle third                         n  59: ref_phase_hit +0.0112 [+0.0107, +0.0125]  dx -0.0463 [-0.1043, +0.0569]  |dx| med 0.0976  D +0.0264 [-0.0078, +0.0413]
+    earliest third (ref_phase_hit high)  n  60: ref_phase_hit +0.0197 [+0.0158, +0.0255]  dx +0.0312 [-0.0875, +0.1134]  |dx| med 0.1033  D +0.0233 [-0.0136, +0.0449]
+  joint hits: timing_s / ref_err are NaN on every joint hit row (the ball never crosses the plane) - no joint timing
+Q2 misses at closest approach (bias 0.055; all in-zone misses / all misses)
+  misses n 747: station from the sweet spot (m, + tip) +0.0523 [-0.1767, +0.1524]; surface gap (m) +0.0802 [+0.0396, +0.1431]; dz (ball above the axis point, m) +0.0465 [-0.0812, +0.1010]; dperp (along the swing, m) -0.0047 [-0.0372, +0.0403]
+    timing (ms, < 0 = bat squares before the ball crosses the plane) -50.9576 [-170.6949, -32.6055]; ref_err (ms, + = early) +35.9551 [+32.7045, +41.4535]; bat at the tip end of the barrel or past it (station > +0.10 m) 334, at the handle side (< -0.10 m) 247
+  in-zone misses n 309: station from the sweet spot (m, + tip) -0.0240 [-0.1359, +0.0997]; surface gap (m) +0.0414 [+0.0187, +0.0709]; dz (ball above the axis point, m) +0.0742 [-0.0524, +0.1010]; dperp (along the swing, m) -0.0261 [-0.0410, +0.0174]
+    timing (ms, < 0 = bat squares before the ball crosses the plane) -52.4524 [-173.3972, -34.0871]; ref_err (ms, + = early) +36.1078 [+33.0434, +46.9869]; bat at the tip end of the barrel or past it (station > +0.10 m) 77, at the handle side (< -0.10 m) 98
+Q2b sweet-spot miss vector at closest approach (bias 0.055), hits and misses, in-zone
+  in-zone hits    n 248: along axis -0.0229 [-0.1088, +0.0927] (|.| med 0.1018); vertical +0.0240 [-0.0033, +0.0427] (|.| 0.0302); along swing +0.0270 [+0.0028, +0.0593] (|.| 0.0270); gap -0.0113 [-0.0284, +0.0050]
+  in-zone misses  n 309: along axis -0.0240 [-0.1359, +0.0997] (|.| med 0.1243); vertical +0.0742 [-0.0524, +0.1010] (|.| 0.0886); along swing -0.0261 [-0.0410, +0.0174] (|.| 0.0346); gap +0.0414 [+0.0187, +0.0709]
+  all hits        n 277: along axis -0.0320 [-0.1280, +0.0990] (|.| med 0.1106); vertical +0.0219 [-0.0033, +0.0410] (|.| 0.0283); along swing +0.0264 [+0.0022, +0.0584] (|.| 0.0264); gap -0.0110 [-0.0281, +0.0031]
+  all misses      n 747: along axis +0.0523 [-0.1767, +0.1524] (|.| med 0.1524); vertical +0.0465 [-0.0812, +0.1010] (|.| 0.0937); along swing -0.0047 [-0.0372, +0.0403] (|.| 0.0383); gap +0.0802 [+0.0396, +0.1431]
+Q3 swing-start bias sweep (same policy, diag1024 seed 0, contact_log; in-zone)
+  bias 0.030: in-zone hit 0.479 (n 557); |dx| med 0.1125; dx med -0.0642; D med +0.0093, in [0, 2.5 cm] 0.199; launch med 2.2; exit med 17.8; misses early 265 late 25; ref_phase_hit med +1 ms; timing_hit med -132 ms; miss vector |axis| / |vertical| / |swing| med 0.126 / 0.058 / 0.021 (all in-zone)
+  bias 0.055: in-zone hit 0.445 (n 557); |dx| med 0.1036; dx med -0.0333; D med +0.0146, in [0, 2.5 cm] 0.125; launch med 23.1; exit med 19.0; misses early 309 late 0; ref_phase_hit med +11 ms; timing_hit med -139 ms; miss vector |axis| / |vertical| / |swing| med 0.110 / 0.062 / 0.032 (all in-zone)
+  bias 0.080: in-zone hit 0.375 (n 557); |dx| med 0.0953; dx med +0.0495; D med +0.0048, in [0, 2.5 cm] 0.129; launch med 24.7; exit med 17.0; misses early 339 late 9; ref_phase_hit med +23 ms; timing_hit med -150 ms; miss vector |axis| / |vertical| / |swing| med 0.121 / 0.062 / 0.035 (all in-zone)
+  bias 0.105: in-zone hit 0.203 (n 557); |dx| med 0.1078; dx med +0.1047; D med +0.0234, in [0, 2.5 cm] 0.124; launch med 33.9; exit med 15.1; misses early 361 late 83; ref_phase_hit med +35 ms; timing_hit med -162 ms; miss vector |axis| / |vertical| / |swing| med 0.152 / 0.061 / 0.041 (all in-zone)
