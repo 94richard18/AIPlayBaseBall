@@ -44,8 +44,8 @@ train() {  # $1 chunk tag $2 its $3 load_run $4 ckpt
 }
 cp logs/diag_bat_contact_h26_base.json logs/diag_bat_contact_h26b_base.json  # Human26's 12500 baseline, same diag
 read Z0 X0 S0 L0 E0 <<< "$(st base)"
-W=0  # 20's routine film (fired on HUMAN26_100_END) first
-until [ -f logs/M3ROUTINE2_END.txt ]; do sleep 60; W=$((W + 1)); [ $W -ge 180 ] && { MSG="no logs/M3ROUTINE2_END.txt within 3 h"; exit 1; }; done
+W=0  # 20's routine refilm (the 06:57 one rendered washed out): its marker line says "refilm"
+until grep -qi refilm logs/M3ROUTINE2_END.txt 2>/dev/null; do sleep 60; W=$((W + 1)); [ $W -ge 180 ] && { MSG="no logs/M3ROUTINE2_END.txt within 3 h"; exit 1; }; done
 echo "$(date +%H:%M) film done: $(cat logs/M3ROUTINE2_END.txt)"
 echo "$(date +%H:%M) baseline 12500: in-zone $Z0 |dx| med $X0 D in [0, 2.5 cm] $S0 launch med $L0 ev med $E0"
 train 1 100 2026-10-25_13-56-51_human_pitched9b model_12500.pt; D1=$D; I1=$I
