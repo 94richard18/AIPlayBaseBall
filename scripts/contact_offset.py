@@ -98,8 +98,10 @@ for run in args.runs:
         ex = float(d["ball_vel"][i].norm())
         rows.append(dict(
             run=os.path.basename(run), env=int(e_), t=round(float(z["t"][first[i]]), 4), csv_hit=r["hit"],
-            csv_exit_mps=r["exit_mps"], plate_y=r["plate_y"], plate_z=r["plate_z"],
-            in_zone=zone.contains(float(r["plate_y"]), float(r["plate_z"])),
+            csv_exit_mps=r["exit_mps"], pred_y=r["pred_y"], pred_z=r["pred_z"],
+            # the pitch's plate location: the hand-off prediction (plate_y / z is the batted ball's crossing on hits;
+            # pred_y = -plate_y on the misses, the zone is symmetric in y)
+            in_zone=zone.contains(float(r["pred_y"]), float(r["pred_z"])),
             pitch_speed=round(float(d["bv"][i].norm()), 3), ss_speed=round(float(v_ss[i].norm()), 3),
             contact_bat_speed=round(float(vb_c[i].norm()), 3), rel_speed=round(float(vr[i].norm()), 3),
             normal_speed=round(float(z["normal_speed"][first[i]]), 3), rel_angle_deg=round(float(rel_angle[i]), 2),
