@@ -60,6 +60,24 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-30 07:52：(1) 擊中點 vs 來球位置（CPU）+ Human27 已備妥（未啟動，等 14 放行）**
+> - (1) 資料：bias 0.055 diag dump。axis_off = 最接近點的擊中位置 − 甜蜜點（+ 往棒頭）。
+>   - axis_off 對 plate_y：好球帶內擊中 slope −0.79、r −0.86（殘差 sd 6.3 cm，原始 12.2 cm）；揮空 −0.80 / −0.86；全部 −0.80 / −0.86。
+>   - joint 的 35 次擊中，dx 對 pred_y：slope −0.72、r −0.94。對 plate_z：slope −0.4 ~ −0.5、r −0.42 ~ −0.52。
+>   - 依 plate_y 分三等分（低 / 中 / 高）的 axis_off 中位數：擊中 +11.3 / −4.3 / −14.5 cm。
+>   - 解讀：slope 接近 −1，表示甜蜜點幾乎落在固定的水平位置，伸手距離只跟著來球調整約 20%。
+> - obs 裡已經有來球的預測橫向位置：`ball_seen − root_p`、`ss_p − ball_seen`（root frame，clip 1.5），另有 t_arrive、|v_seen|。
+>   - ball_seen 是由延遲 0.10 s、每步 1 cm 雜訊、每局 2 cm 偏差的觀測，只用重力外插（不算阻力 / Magnus）到擊球面的交點。
+>   - 推測（未驗證）：mimic 追蹤（w_track 1、w_key 0.3）把揮棒綁在參考動作的擊球點。
+> - Human27（`AIB-PitchedBatting-Human27-v0`，Human15 的投球，從 12500 @ 1.5x，obs 不變，recover 不動）：
+>   - 瞄準項：每次揮棒（擊中或揮空）付一次，6 × exp(−(axis_off/0.08)²) × exp(−(gap/0.05)²)。gap = 最接近時的表面距離，取 ≥ 0，所以有碰到時這一項的 gap 因子為 1。
+>   - 擊中項：20 × exp(−(dx/0.08)²) × exp(−((D − 0.010)/0.015)²)。
+>   - 關掉：w_distance、w_success、w_exit_velo、w_backspin、mimic 的 w_contact 2.0。保留：w_launch 20、w_spray 10（這兩項都乘上出棒速度）、w_miss 20。
+>   - 64 / 256 env smoke 測試可以跑（aim_reward / hit_q 都有在記錄）。chain：`logs/run_human27.sh`，marker 為 HUMAN27_100_END / HUMAN27_300_END。
+>   - +100 門檻：好球帶內擊中與揮空的 |axis_off| 中位數都 ≤ 基準的 0.75（基準 10.2 / 12.4 cm）、|dx| ≤ 8.0 cm、擊中率 ≥ 0.31。
+>   - +300 門檻：|dx| ≤ 6.0 cm、D 落在 [0, 2.5 cm] 的比例 ≥ 0.25、擊中率 ≥ 0.40、出棒速度中位數 ≥ 19 m/s（基準 19.0）。
+>   - 預估：+100 約 1.5 h，+300 再約 2.5 h。
+
 > **打者 10-30 07:41：揮棒時機 vs 擊中點量測（`logs/timing_contact/`，只量測）**
 > - 設定：交付版 12500 @ 1.5x，diag1024 seed 0（P3c t18，jitter 0，aim 0，`--contact_log`），揮棒起始 bias 0.030 / 0.055 / 0.080 / 0.105。分析程式 `scripts/timing_contact.py`。
 > - 時機的正負號：`ref_phase_hit` 和 `ref_err` 為 + 代表揮棒早。擊中的球到不了擊球面，`timing` 是 NaN，所以改用 timing_hit = t_square − t_hit（< 0 代表早）。同場那 35 次擊中也沒有時機資料。

@@ -86,6 +86,10 @@ class TeeBattingEnv(DirectRLEnv):
         self.contact_x = torch.zeros(n, device=dev)
         self.contact_D = torch.zeros(n, device=dev)  # Human26: normal offset at contact (cfg.w_contact_D's definition)
         self.hit_reward = torch.zeros(n, device=dev)
+        # Human27 aim: closest approach of the ball to the bat over the swing (surface gap, station - sweet spot)
+        self.aim_gap = torch.full((n,), float("inf"), device=dev)
+        self.aim_ax = torch.zeros(n, device=dev)
+        self.aim_paid = torch.zeros(n, dtype=torch.bool, device=dev)
         self.carry = torch.zeros(n, device=dev)
         self.landed = torch.zeros(n, dtype=torch.bool, device=dev)
         self.dist_valid = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -107,7 +111,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -210,6 +214,8 @@ class TeeBattingEnv(DirectRLEnv):
         c = detect_contact(self.bat_geom, b_now, self.phys.ball.radius,
                            self.prev_knob, self.prev_axis, knob, axis, n_sub=self.cfg.contact_substeps, ball_prev=b_prev)
         c.hit &= active
+        if self.cfg.w_aim > 0:
+            self._track_aim(active, b_now, b_now if b_prev is None else b_prev, knob, axis)
         if c.hit.any():  # single host sync per physics step
             h = c.hit.nonzero(as_tuple=False).squeeze(-1)
             sub = type(c)(*(t[c.hit] for t in (c.hit, c.frac, c.x_on_bat, c.normal, c.point)))
@@ -230,6 +236,8 @@ class TeeBattingEnv(DirectRLEnv):
             e = torch.nn.functional.normalize(torch.cross(axis[h], u, dim=-1), dim=-1, eps=1e-9)
             e = torch.where(e[:, 2:3] < 0, -e, e)
             self.contact_D[h] = ((ball_c - a) * e).sum(-1)
+            self.aim_gap[h] = 0.0
+            self.aim_ax[h] = sub.x_on_bat - self.bat_geom.sweet_spot_x
             if self.cfg.play_mode:
                 self.pending_impulse[h] = -res.impulse_on_ball
                 self.pending_point[h] = sub.point
@@ -240,6 +248,19 @@ class TeeBattingEnv(DirectRLEnv):
         self.prev_knob[:] = knob
         self.prev_axis[:] = axis
         self.prev_valid[:] = True
+
+    def _track_aim(self, active, b_now, b_prev, knob, axis):
+        """Human27: closest approach over this physics step (the bat and ball interpolated, cfg.contact_substeps)."""
+        L = self.bat_geom.length
+        for f in torch.linspace(0.0, 1.0, self.cfg.contact_substeps + 1, device=self.device)[1:]:
+            k = self.prev_knob + (knob - self.prev_knob) * f
+            a = torch.nn.functional.normalize(self.prev_axis + (axis - self.prev_axis) * f, dim=-1, eps=1e-9)
+            b = b_prev + (b_now - b_prev) * f
+            x = ((b - k) * a).sum(-1).clamp(0.0, L)
+            gap = (b - k - a * x.unsqueeze(-1)).norm(dim=-1) - self.bat_geom.radius_at(x) - self.phys.ball.radius
+            better = active & (gap < self.aim_gap)
+            self.aim_gap = torch.where(better, gap, self.aim_gap)
+            self.aim_ax = torch.where(better, x - self.bat_geom.sweet_spot_x, self.aim_ax)
 
     def _apply_pending_impulse(self):
         """Play mode: bat reaction impulse spread over one physics step (forces are in the body frame)."""
@@ -396,6 +417,9 @@ class TeeBattingEnv(DirectRLEnv):
         g_dx = torch.exp(-((dx / cfg.sigma_contact_dx) ** 2))
         g_D = torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2))
         r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
+        hq = torch.exp(-((dx / cfg.sigma_hit_q_dx) ** 2) - ((D - cfg.hit_q_D_target) / cfg.sigma_hit_q_D) ** 2)
+        r = r + cfg.w_hit_q * hq
+        self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
         self.hit_reward[ids] = r
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)
@@ -429,6 +453,16 @@ class TeeBattingEnv(DirectRLEnv):
         # falling before contact, or during the follow-through (no "dive at the ball" swings)
         rew = rew - torch.where(self.hit, cfg.w_fall_after_hit, cfg.w_fall) * self.fallen.float()
         timeout_miss = self.reset_time_outs & ~self.hit
+        if cfg.w_aim > 0:  # once per swing: at the hit, or at the episode end without one
+            pay = (self.new_hit | ((self.reset_terminated | self.reset_time_outs) & ~self.hit)) & ~self.aim_paid
+            if pay.any():
+                gap = self.aim_gap.clamp_min(0.0).nan_to_num(1.0, posinf=1.0)
+                r_aim = cfg.w_aim * torch.exp(-((self.aim_ax / cfg.sigma_aim_ax) ** 2) - (gap / cfg.sigma_aim_gap) ** 2)
+                rew = rew + torch.where(pay, r_aim, torch.zeros_like(r_aim))
+                self.aim_paid |= pay
+                for k, v in (("aim_abs_ax", self.aim_ax[pay].abs().mean()), ("aim_gap", gap[pay].mean()),
+                             ("aim_reward", r_aim[pay].mean())):
+                    self.stats[k] = 0.98 * self.stats[k] + 0.02 * v
         rew = rew - cfg.w_miss * timeout_miss.float()
 
         # logging
@@ -498,6 +532,9 @@ class TeeBattingEnv(DirectRLEnv):
         self.prev_actions[env_ids] = 0.0
         self.hit[env_ids] = False
         self.new_hit[env_ids] = False
+        self.aim_gap[env_ids] = float("inf")
+        self.aim_ax[env_ids] = 0.0
+        self.aim_paid[env_ids] = False
         self.landed[env_ids] = False
         self.prev_valid[env_ids] = False
         self.carry[env_ids] = 0.0

@@ -101,6 +101,18 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     contact_D_target: float = 0.015
     sigma_contact_D: float = 0.012
     contact_D_times_dx: bool = False  # Human26b: the D term x the dx score (no D bonus on handle / tip contacts)
+    # Human27 (planning 14, 10-30): the miss is aim scatter along the bat axis (+-10 cm, sweet spot lands at a ~fixed spot).
+    # Aim: once per swing (at the hit, or at episode end without one), w_aim x exp(-(axis_off / sigma_aim_ax)^2) x
+    # exp(-(gap / sigma_aim_gap)^2) at the closest approach of the ball to the bat (axis_off = station - sweet spot,
+    # gap = surface gap clamped >= 0, so a contact scores the gap factor 1).
+    w_aim: float = 0.0
+    sigma_aim_ax: float = 0.08
+    sigma_aim_gap: float = 0.05
+    # hit quality: w_hit_q x exp(-(dx / sigma_hit_q_dx)^2) x exp(-((D - hit_q_D_target) / sigma_hit_q_D)^2) at the impact
+    w_hit_q: float = 0.0
+    sigma_hit_q_dx: float = 0.08
+    hit_q_D_target: float = 0.010
+    sigma_hit_q_D: float = 0.015
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002

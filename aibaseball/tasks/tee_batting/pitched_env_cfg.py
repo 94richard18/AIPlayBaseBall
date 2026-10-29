@@ -376,3 +376,23 @@ class PitchedBattingHuman26bEnvCfg(PitchedBattingHuman26EnvCfg):
     sigma_contact_dx: float = 0.12
     w_contact_D: float = 3.0
     contact_D_times_dx: bool = True
+
+
+@configclass
+class PitchedBattingHuman27EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-30 contact accuracy (user: sweet-spot contact; planning 14). Timing x contact station (bias sweep, diag1024):
+    |dx| ~10 cm at every swing-start bias, within-bias corr(dx, timing) <= 0.24; the miss vector is along the bat axis
+    (10.2 cm hits / 12.4 cm misses) and axis_off tracks the pitch's plate_y at slope -0.80 (r -0.86): the sweet spot lands
+    at a ~fixed spot, the reach barely follows the pitch. Human26 / 26b (contact bonuses on hits only) were farmed by more
+    contact. Change: an aim term on EVERY swing (hit or miss) at the closest approach, 6 x exp(-(axis_off / 0.08)^2) x
+    exp(-(gap / 0.05)^2); the hit reward becomes 20 x quality, quality = exp(-(dx / 0.08)^2) x exp(-((D - 0.010) / 0.015)^2);
+    flat per-hit terms off (distance, success, exit speed, backspin, the mimic contact approach w_contact); the launch and
+    spray terms (exit-speed scaled) and w_miss 20 stay. Obs unchanged. Run with AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    w_aim: float = 6.0
+    w_hit_q: float = 20.0
+    w_distance: float = 0.0
+    w_success: float = 0.0
+    w_exit_velo: float = 0.0
+    w_backspin: float = 0.0
+    w_contact: float = 0.0
