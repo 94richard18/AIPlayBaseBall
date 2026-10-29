@@ -84,6 +84,7 @@ class TeeBattingEnv(DirectRLEnv):
         self.launch_omega = torch.zeros(n, 3, device=dev)
         self.launch_pos = torch.zeros(n, 3, device=dev)
         self.contact_x = torch.zeros(n, device=dev)
+        self.contact_D = torch.zeros(n, device=dev)  # Human26: normal offset at contact (cfg.w_contact_D's definition)
         self.hit_reward = torch.zeros(n, device=dev)
         self.carry = torch.zeros(n, device=dev)
         self.landed = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -106,7 +107,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -222,6 +223,13 @@ class TeeBattingEnv(DirectRLEnv):
             self.launch_omega[h] = res.ball_omega
             self.launch_pos[h] = ball_c
             self.contact_x[h] = sub.x_on_bat
+            a = knob[h] + sub.x_on_bat.unsqueeze(-1) * axis[h]  # bat-axis point at the contact station
+            v_rel = b_vel[h] - (v_cm[h] + torch.cross(w[h], a - cm[h], dim=-1))
+            v_perp = v_rel - (v_rel * axis[h]).sum(-1, keepdim=True) * axis[h]
+            u = -torch.nn.functional.normalize(v_perp, dim=-1, eps=1e-9)  # head-on normal (bat -> ball side)
+            e = torch.nn.functional.normalize(torch.cross(axis[h], u, dim=-1), dim=-1, eps=1e-9)
+            e = torch.where(e[:, 2:3] < 0, -e, e)
+            self.contact_D[h] = ((ball_c - a) * e).sum(-1)
             if self.cfg.play_mode:
                 self.pending_impulse[h] = -res.impulse_on_ball
                 self.pending_point[h] = sub.point
@@ -383,13 +391,18 @@ class TeeBattingEnv(DirectRLEnv):
              + cfg.w_launch * ev_n * self._launch_score(v, ev, la)
              + cfg.w_backspin * ev_n * (backspin / 2000.0).clamp(-1.0, 1.0)
              + cfg.w_spray * ev_n * fair.float() * torch.exp(-(spray / cfg.spray_sigma_deg) ** 2))
+        dx = self.contact_x[ids] - self.bat_geom.sweet_spot_x
+        D = self.contact_D[ids]
+        r = (r + cfg.w_contact_dx * torch.exp(-((dx / cfg.sigma_contact_dx) ** 2))
+             + cfg.w_contact_D * torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2)))
         self.hit_reward[ids] = r
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)
         a = 0.05
         for k, val in (("carry", carry.mean()), ("exit_velo", ev.mean()), ("launch_angle", la.mean()),
                        ("backspin_rpm", backspin.mean()), ("success_rate", success.float().mean()),
-                       ("fair_rate", fair.float().mean())):
+                       ("fair_rate", fair.float().mean()), ("contact_abs_dx", dx.abs().mean()), ("contact_D", D.mean()),
+                       ("contact_D_in", ((D >= 0.0) & (D <= 0.025)).float().mean())):
             self.stats[k] = (1 - a) * self.stats[k] + a * val
         self.stats["carry_max"] = torch.maximum(self.stats["carry_max"] * 0.999, (carry * fair).max())
         self.best_carry = max(self.best_carry, float((carry * fair).max()))

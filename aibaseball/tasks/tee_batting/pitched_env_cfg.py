@@ -350,3 +350,17 @@ class PitchedBattingHuman23bEnvCfg(PitchedBattingHuman23EnvCfg):
 
     w_cvel: float = 3.0
     sigma_cvel: float = 20.0
+
+
+@configclass
+class PitchedBattingHuman26EnvCfg(PitchedBattingHuman15EnvCfg):
+    """2026-10-30 contact precision (user decision A; planning 14): the contact-offset replay of the frozen M2 (35 joint
+    hits) put 67% of the exit-speed gap on bat speed and 33% on contact (|dx| median 7.4 cm, 24/35 beyond 5 cm; D +0.8
+    [-2.6, +3.7] cm, launch tracks D at r +0.97); centred at today's bat speed exit is 22.8 m/s, and D +1.5 cm gives
+    launch ~23 deg with backspin (logs/contact_offset/d15_check.py) - the corner outfield needs centred contact with a
+    slight undercut. Change: impact-step contact terms, w 3 x exp(-(dx / 0.04)^2) + w 3 x exp(-((D - 0.015) / 0.012)^2),
+    on top of the existing hit terms. The swing plane is folded into D (sweet-spot velocity elevation already +12 deg
+    median). Human15's pitches. Run with AIB_EFFORT_SCALE 1.5. From 12500."""
+
+    w_contact_dx: float = 3.0
+    w_contact_D: float = 3.0

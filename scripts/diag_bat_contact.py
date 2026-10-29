@@ -260,7 +260,7 @@ def main():
         chain_chk = {k: torch.full((n,), float("nan"), device=dev) for k in ("v", "joints", "res_link", "res_com")}
         pw_pos, pw_neg = torch.zeros(nj, device=dev), torch.zeros(nj, device=dev)
     if args.contact_log:
-        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit"):
+        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit", "D_contact", "launch_contact"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.fall_state:
         rob = base.robot
@@ -458,6 +458,8 @@ def main():
             for k, val in (("ss_contact", sp), ("dx_contact", base.contact_x - geom.sweet_spot_x),
                            ("swing_pitch_deg", torch.rad2deg(torch.acos(cosang.clamp(-1.0, 1.0)))),
                            ("ev_contact", base.launch_vel.norm(dim=-1)),
+                           ("D_contact", base.contact_D),  # Human26: normal offset (+ = undercut, contact_offset.py's D)
+                           ("launch_contact", torch.rad2deg(torch.atan2(base.launch_vel[:, 2], base.launch_vel[:, :2].norm(dim=-1)))),
                            # reference clock at the hit step minus the clip's contact time (+ = the reference is past contact)
                            ("ref_phase_hit", ref_t_pre - base.ref.contact_time[base.clip])):
                 rec[k] = torch.where(nh, val, rec[k])
@@ -705,6 +707,14 @@ def main():
                                   dx=q(r["dx_contact"][hm]), abs_dz=q(dzh), swing_pitch_deg=q(r["swing_pitch_deg"][hm]),
                                   ev=q(r["ev_contact"][hm]), ref_phase_hit=q(r["ref_phase_hit"][hm]), squared_up=round(float(((dzh <= 0.02) & (dxh <= 0.05)).mean()), 3) if hm.any() else None)
         print("[bat] contact_log: " + json.dumps(out["contact_log"]), flush=True)
+        zone_c = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)  # StrikeZone
+        for nm, m in (("hits", hm), ("in-zone hits", hm & zone_c)):  # Human26 falsifier quantities
+            Dm = r["D_contact"][m]
+            out.setdefault("contact_geom", {})[nm] = dict(
+                n=int(m.sum()), abs_dx_med=round(float(np.nanmedian(np.abs(r["dx_contact"][m]))), 4) if m.any() else None,
+                D=q(Dm), D_in_0_25=round(float(((Dm >= 0) & (Dm <= 0.025)).mean()), 3) if m.any() else None,
+                launch=q(r["launch_contact"][m]), ev=q(r["ev_contact"][m]))
+            print(f"[bat] contact_geom {nm}: " + json.dumps(out["contact_geom"][nm]), flush=True)
     if args.body_log:
         q3 = lambda v: [round(float(x), 3) for x in np.nanpercentile(v, [25, 50, 75])] if len(v) else None
         hb, fb = r["hit"].astype(bool), r["fell"].astype(bool)

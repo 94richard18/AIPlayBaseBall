@@ -92,6 +92,14 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     foul_factor: float = 0.2
     w_spray: float = 0.0  # x exit speed x exp(-(spray / sigma)^2): toward centre field
     spray_sigma_deg: float = 20.0
+    # Human26 contact geometry at the impact step (scripts/contact_offset.py's definitions): dx = contact station - sweet
+    # spot (m, + toward the tip); D = ball centre - the bat-axis point, along unit(axis x u) signed up, u = the head-on
+    # normal -unit(ball-bat relative velocity normal to the axis) (+ = ball above = undercut, backspin, higher launch)
+    w_contact_dx: float = 0.0  # x exp(-(dx / sigma_contact_dx)^2)
+    sigma_contact_dx: float = 0.04
+    w_contact_D: float = 0.0  # x exp(-((D - contact_D_target) / sigma_contact_D)^2)
+    contact_D_target: float = 0.015
+    sigma_contact_D: float = 0.012
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002
