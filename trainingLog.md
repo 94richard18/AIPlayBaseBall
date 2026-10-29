@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 22:5x（14）好球帶立體框測試通過（20 commit b244a16，`videos/zonetest_p3.mp4`，marker M3ZONE_TEST_END）→ GO 11 球 clean + zone frame 重錄 → `videos/final_cut_v2.mp4`（marker `logs/M3CLEAN2_END.txt`，v1 保留）**
+- 旗標 `AIB_FILM_ZONE_FRAME=1`（cfg.film_zone_frame）：本壘前緣平面四條 2 cm 白色微發光邊框（StrikeZone ±0.2525 m、0.50–1.10 m，獨立 prim ZoneFrame、無碰撞）；通過點圓盤半徑 6 cm、平面前 2 cm、顯示 0.6 s（綠 = 好球帶內或揮棒，紅 = 壞球；擊中則不顯示）；牆保留、牆上框移除。
+- 測試 PA1 p3（s1 e34 判好球）：對 M2 63/64（take env 如常）、對 clean_film_p3 嚴格 52 欄 64/64 → 純視覺。14 看 f117 / f136：兩個視角框與綠點清楚，+0.34 s 球已落到牆腳（即舊牆框看起來沒碰到的原因）。
+
 **10-29 22:2x（14）使用者回報：「視覺上好球的判定有些問題，球未碰到後面的框卻判好球」→ 原因 = 好球帶畫在本壘前緣後方 3.0 m 的牆上（`flight_end_behind_plate_m`），裁判讀的是本壘前緣平面的通過點；球再飛 3 m（約 0.17 s）會再掉 / 橫移 0.2–0.5 m，所以好球常打在牆框下方。裁判無誤，畫法誤導。**
 - 派 20 修（視覺旗標，每片比對 64/64 照舊）：(1) `film_zone_frame` 立體框浮在本壘前緣平面（StrikeZone 半寬 0.2525 m、0.50–1.10 m）；(2) 通過點標記：球過平面時在框上留一個圓點約 0.6 s，綠 = 好球 / 紅 = 壞球（裁判的判定 j_cross）；(3) 牆保留當背景並停飛行標記，但移除牆上的框（最多留淡影）。
 - 流程：先錄一顆今日看得出問題的 take 好球（PA1 p2 / p3）給 14 目視（marker `logs/M3ZONE_TEST_END.txt`），通過後 11 球 clean 重錄 → `videos/final_cut_v2.mp4`（marker `logs/M3CLEAN2_END.txt`）。GPU 給 20。
