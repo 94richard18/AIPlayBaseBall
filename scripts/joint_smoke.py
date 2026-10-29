@@ -41,6 +41,8 @@ parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 parser.add_argument("--effort_probe", type=float, default=None,
                     help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
+parser.add_argument("--contact_dump", type=str, default=None,
+                    help="npz: every bat-ball impact's resolve_impact inputs + outputs (env, time; read-only, contact_offset.py)")
 parser.add_argument("--swing_csv", type=str, default=None,
                     help="ONE OUTS PA: env,swing per env (scripts/joint_pa.py); swing 0 = the batter takes (stance held). Default all swing")
 AppLauncher.add_app_launcher_args(parser)
@@ -129,6 +131,24 @@ def main():
             env.close()
             return
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
+    cdump = []
+    if args.contact_dump:  # read-only taps on the batter's impact model (TeeBattingEnv._check_impact's module names)
+        import aibaseball.tasks.tee_batting.tee_batting_env as tbe
+        _dc, _ri, last = tbe.detect_contact, tbe.resolve_impact, {}
+
+        def dc_tap(*a, **k):
+            last["c"] = _dc(*a, **k)
+            return last["c"]
+
+        def ri_tap(geom, spec, contact, ball_c, bv, bw, cm, axis, vcm, w):
+            r = _ri(geom, spec, contact, ball_c, bv, bw, cm, axis, vcm, w)
+            h = last["c"].hit.nonzero(as_tuple=False).squeeze(-1)  # _check_impact's h (hit &= active applied in place)
+            cdump.append({"env": h, "t": base.episode_length_buf[h].float() * base.step_dt, "x_on_bat": contact.x_on_bat,
+                          "normal": contact.normal, "point": contact.point, "ball_c": ball_c, "ball_vel_in": bv,
+                          "ball_omega_in": bw, "bat_cm": cm, "bat_axis": axis, "bat_vel_cm": vcm, "bat_omega": w,
+                          "ball_vel": r.ball_vel, "ball_omega": r.ball_omega, "cor": r.cor, "normal_speed": r.normal_speed})
+            return r
+        tbe.detect_contact, tbe.resolve_impact = dc_tap, ri_tap
     if args.trace:
         side.trace = []
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}, "
@@ -232,6 +252,11 @@ def main():
                  "all__clip": np.array([names_t[int(c)] for c in side.clip])}
         np.savez(args.trace, **all_t, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
         print(f"[joint] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
+    if args.contact_dump:
+        import numpy as np
+        np.savez(args.contact_dump, **{k: torch.cat([d[k] for d in cdump]).cpu().numpy() if cdump else np.zeros(0)
+                                       for k in (cdump[0] if cdump else {"env": 0})})
+        print(f"[joint] contact dump -> {args.contact_dump}: {sum(len(d['env']) for d in cdump)} impacts", flush=True)
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)
