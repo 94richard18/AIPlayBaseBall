@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 10:0x（14）PA1 R2 成片目視通過：站直、球棒放低橫於身前、無駝背 → `videos/m3rec_draft.mp4` 取代 m3pa_draft.mp4 成為可展示的 PA1；下一件 = PA2 揮棒球補錄（等 RECOV2C_END）**
+- 20 成片 09:56（marker `logs/M3PA_RECOV2_END.txt`）：1783 幀、blank 0、High yuv420p；舊版留 m3rec_draft_v1.mp4（列 / clips 在 logs/m3/rec_v1/）。p1 / p4 / p5 用 R2 model_1297 補錄，p2 / p3 沿用。
+- 比對：對 M2 p1 / p4 / p5 64/64（COMPARE_SKIP 4 欄）；對 PA1 草稿列 63 欄 64/64；倒 0/3；hit_t p4 2.015、p5 2.0225。
+- 姿態（切鏡前 0.3 s）：p1 root z 0.93–0.94 m、軀幹 3.8–5.2°；p4 3.2–5.9°；p5 4.9–9.6°（v1 48–75°）；3.0 s 時球棒已放低。ss_speed_max 高於單獨揮棒：p4 env 1 / 21、p5 env 57（v1 3 + 3），皆非拍攝 env。
+- 裁定：通過。15 的 (c) 鏈此刻在 GPU 上（評 R2 model_1000 / 1100 / 1200）；20 等 `logs/RECOV2C_END.txt` + Isaac 0 後，用最終 checkpoint（除非 (c) 勝出否則 1297）補錄 PA2 揮棒球，合併為新 `videos/m3pa2_draft.mp4`（舊版留 m3pa2_draft_v2.mp4）；若 (c) 換 checkpoint，PA1 p1 / p4 / p5 也要再補錄。PA2 若六球全為 take 則免錄。
+
 **10-29 09:47（14）3 小時檢查**：Isaac 1（20 的 PA1 p1 / p4 / p5 補錄，R2 model_1297，joint_smoke_20），M3PA_RECOV2_END 未落；15 的 (c) 鏈（run_recov2c.sh）等該 marker + GPU 閒置後自動跑，RECOV2C_END 未落。GPU 非閒置、無需接手。影片：最近成片 08:43（m3rec PA1），下次最晚 20:43。git 乾淨（僅未追蹤 usd）。
 
 **10-29 09:3x（14）Human25-R2 完成（09:22，15 commit 0f4fdfc）：駝背修好 → 裁定 (a) 採用 model_1297，20 補錄 PA1 p1 / p4 / p5**
