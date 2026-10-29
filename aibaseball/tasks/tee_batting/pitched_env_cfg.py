@@ -364,3 +364,15 @@ class PitchedBattingHuman26EnvCfg(PitchedBattingHuman15EnvCfg):
 
     w_contact_dx: float = 3.0
     w_contact_D: float = 3.0
+
+
+@configclass
+class PitchedBattingHuman26bEnvCfg(PitchedBattingHuman26EnvCfg):
+    """2026-10-30 Human26 +100 failed: sigma_dx 0.04 paid ~0.002 at the ~10 cm |dx| median (no gradient) and the flat D
+    bonus was farmed by more contact (in-zone hit 0.445 -> 0.643, |dx| / D unchanged). One retry (planning 14): contact
+    term 4 x g_dx + 3 x g_dx x g_D, g_dx = exp(-(dx / 0.12)^2) (~0.5 at 10 cm), g_D unchanged. From 12500."""
+
+    w_contact_dx: float = 4.0
+    sigma_contact_dx: float = 0.12
+    w_contact_D: float = 3.0
+    contact_D_times_dx: bool = True

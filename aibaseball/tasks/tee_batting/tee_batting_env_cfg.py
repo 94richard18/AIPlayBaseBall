@@ -100,6 +100,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_contact_D: float = 0.0  # x exp(-((D - contact_D_target) / sigma_contact_D)^2)
     contact_D_target: float = 0.015
     sigma_contact_D: float = 0.012
+    contact_D_times_dx: bool = False  # Human26b: the D term x the dx score (no D bonus on handle / tip contacts)
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002

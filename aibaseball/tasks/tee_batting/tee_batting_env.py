@@ -393,8 +393,9 @@ class TeeBattingEnv(DirectRLEnv):
              + cfg.w_spray * ev_n * fair.float() * torch.exp(-(spray / cfg.spray_sigma_deg) ** 2))
         dx = self.contact_x[ids] - self.bat_geom.sweet_spot_x
         D = self.contact_D[ids]
-        r = (r + cfg.w_contact_dx * torch.exp(-((dx / cfg.sigma_contact_dx) ** 2))
-             + cfg.w_contact_D * torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2)))
+        g_dx = torch.exp(-((dx / cfg.sigma_contact_dx) ** 2))
+        g_D = torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2))
+        r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
         self.hit_reward[ids] = r
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)
