@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 22:0x（14）例行 12 小時錄影完成（M3ROUTINE_END 21:58）：`videos/routine_1029_p5.mp4`，343 幀、blank 0、High yuv420p；對 M2 s6 env 12 64/64（COMPARE_SKIP）、對 final-cut clean_film_p5 嚴格 52 欄 64/64；列：hit、exit 15.92 m/s、launch 20.3°、carry 17.9 m；無倒、min_pelvis_z_end 0.868 m、torso_tilt_1p5 5.2°。下次最晚 10-30 10:00。GPU 閒置、無排程，20 / 15 hold。待使用者：final_cut_v1 意見、力量倍率 1.5x、接受「打者只靠四壞獲勝」（22:xx 已向使用者列出三項決定）。**
+
 **10-29 21:47（14）3 小時檢查**：Isaac 0；GPU 閒置、無排程、無變動。例行 12 小時錄影最晚 00:20 → 已派 20 錄一球（PA1 p5，s6 e12 界內球，final 設定 recover_rl @ 1297、QA 字幕開）→ `videos/routine_1029_p5.mp4`，marker `logs/M3ROUTINE_END.txt`，列比對 64/64。錄完 20 繼續 hold。待使用者：final_cut_v1 意見、力量倍率 1.5x 確認。
 
 **10-29 18:47（14）3 小時檢查**：Isaac 0；GPU 閒置（12:20 起）、無排程、無變動；一切定案，閒置可接受（同 15:47 理由）。錄影下次最晚 00:20（21:47 檢查時若仍無事，排 20 用 final 設定錄一支 PA 當例行錄影）。待使用者：final_cut_v1 意見、力量倍率 1.5x 確認。
