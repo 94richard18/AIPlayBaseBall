@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 10:5x（14）`videos/final_cut_v0.mp4` 結構通過（118.8 s、3563 幀、blank 0、High yuv420p 2560x720；`scripts/make_final_cut.py`）：片頭 → 規則卡 → PA1（球數卡 / clip / 結果卡，p5 後 0.5x 慢動作）→「內野出局，投手勝」→ PA2（p1 揮空慢動作）→「四壞，打者勝」→ 片尾統計卡。v1 改動：所有卡片改中文主行 + 英文小字副行（與 10-28 進度影片一致；使用者可改語言），等 clean 重錄（`logs/m3clean.sh`，marker `logs/M3CLEAN_END.txt`，進行中）落下後換乾淨 clips → `videos/final_cut_v1.mp4`。**
+
 **10-29 10:3x（14）最終剪輯腳本裁定（20 的 `logs/final_cut_storyboard.md`）：順序 PA1 → PA2 → 統計片尾；卡片時間照提案；去除片內除錯字幕 → JointFilm clean 旗標 + 11 球乾淨重錄（GPU 閒置，兼作 12 小時錄影）；PA1 p5 接觸 0.5x 慢動作重播（既有幀）**
 - 先用現有 clips 在 CPU 組 `videos/final_cut_v0.mp4`（看結構），clean 重錄（marker `logs/M3CLEAN_END.txt`，recover_rl @ model_1297，視覺旗標 → 每球 pitch 欄位比對 64/64、姿態數字重現）完成後換成 `videos/final_cut_v1.mp4`。預計 GPU 約 2 h。15 閒置。
 
