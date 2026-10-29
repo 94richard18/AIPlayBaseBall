@@ -1,0 +1,1 @@
+HUMAN26_100_END 06:46 FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_06-31-15_human_pitched26_1): in-zone 0.643 (base 0.445) |dx| med 0.1079 (base 0.1036) D in [0, 2.5 cm] 0.154 (base 0.125, joint 0.20) launch 21.279 ev 18.421 - line closed

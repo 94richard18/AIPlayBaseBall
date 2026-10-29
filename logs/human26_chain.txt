@@ -1,0 +1,10 @@
+[bat] slow in zone: {"n": 557, "hit_rate": 0.445, "misses": 309, "early": 309, "late": 0, "tempo_q": [-0.077, -0.069, -0.052], "ref_err_s_q": [0.033, 0.036, 0.047], "kmh_q": [63.4, 64.1, 64.7]}
+[bat] contact_geom hits: {"n": 277, "abs_dx_med": 0.112, "D": [-0.012, 0.015, 0.04], "D_in_0_25": 0.137, "launch": [-2.273, 23.434, 52.206], "ev": [13.292, 18.368, 21.985]}
+[bat] contact_geom in-zone hits: {"n": 248, "abs_dx_med": 0.1036, "D": [-0.013, 0.015, 0.041], "D_in_0_25": 0.125, "launch": [-1.729, 23.113, 53.667], "ev": [13.939, 19.006, 22.29]}
+06:30 baseline 12500: in-zone 0.445 |dx| med 0.1036 D in [0, 2.5 cm] 0.125 launch med 23.113 ev med 19.006
+[bat] slow in zone: {"n": 557, "hit_rate": 0.643, "misses": 199, "early": 199, "late": 0, "tempo_q": [-0.083, -0.071, -0.054], "ref_err_s_q": [0.031, 0.035, 0.048], "kmh_q": [63.4, 64.1, 64.7]}
+[bat] contact_geom hits: {"n": 423, "abs_dx_med": 0.129, "D": [-0.016, 0.009, 0.036], "D_in_0_25": 0.156, "launch": [-12.55, 20.258, 51.523], "ev": [13.403, 16.904, 22.092]}
+[bat] contact_geom in-zone hits: {"n": 358, "abs_dx_med": 0.1079, "D": [-0.016, 0.008, 0.035], "D_in_0_25": 0.154, "launch": [-9.248, 21.279, 51.725], "ev": [14.06, 18.421, 22.74]}
+06:46 +100 model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_06-31-15_human_pitched26_1): in-zone 0.643 (base 0.445) |dx| med 0.1079 (base 0.1036) D in [0, 2.5 cm] 0.154 (base 0.125, joint 0.20) launch 21.279 ev 18.421
+HUMAN26_100_END 06:46 FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_06-31-15_human_pitched26_1): in-zone 0.643 (base 0.445) |dx| med 0.1079 (base 0.1036) D in [0, 2.5 cm] 0.154 (base 0.125, joint 0.20) launch 21.279 ev 18.421 - line closed
+HUMAN26_300_END 06:46 not started (FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_06-31-15_human_pitched26_1): in-zone 0.643 (base 0.445) |dx| med 0.1079 (base 0.1036) D in [0, 2.5 cm] 0.154 (base 0.125, joint 0.20) launch 21.279 ev 18.421 - line closed)
