@@ -1,0 +1,1 @@
+RECOV2C_END 10:01 no earlier R2 checkpoint beats model_1297 (ground 0.018) with torso q90 < 15 - keep model_1297

@@ -1,0 +1,8 @@
+09:56 film marker: M3PA_RECOV2_END 09:56 M3PA_END
+RTORSO m1000 med 74.3 q90 74.7 rise05 519 rmax 9.05
+REVAL m1000 ground 0.009 hits 0.007 misses 0.010 lost 0.010
+RTORSO m1100 med 27.3 q90 74.1 rise05 410 rmax 7.33
+REVAL m1100 ground 0.013 hits 0.014 misses 0.012 lost 0.018
+RTORSO m1200 med 8.5 q90 13.8 rise05 421 rmax 9.39
+REVAL m1200 ground 0.019 hits 0.014 misses 0.021 lost 0.019
+RECOV2C_END 10:01 no earlier R2 checkpoint beats model_1297 (ground 0.018) with torso q90 < 15 - keep model_1297
