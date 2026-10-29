@@ -68,6 +68,13 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 08:5x（14）PA1 recover_rl 成片目視：每球都站住（0/5 倒），但收尾駝背（軀幹前傾約 74°、棒仍舉著）→ 開 Human25-R2 修姿勢，GPU 回 15，20 hold**
+- 成片 `videos/m3rec_draft.mp4`（1783 幀、blank 0、High yuv420p；20 commit 4a218aa，marker `logs/M3PA_RECOV_END.txt` 08:43）。比對：對 PA1 現行草稿列 5 球全 64/64（COMPARE_SKIP 4 個接觸後統計欄：batter_fell_before_done / tempo_fly / take_bat_vmax / ss_speed_max，batter_fell 照舊跳過）；對 M2 p1 / p4 / p5 64/64、takes 63/64 如常。hit_t p4 2.015、p5 2.0225。
+- 姿態（切鏡前 0.3 s）：全部站著 root z 0.94–0.96 m；takes 軀幹 12–14° 穩定；揮棒 p1 48→74° 仍在動（3.10 s 切）、p4 55→75°（3.40 s）、p5 73.9–74.4° 穩定但駝背。原因：終止條件 tilt > 75° 被貼著用，直立獎勵只算骨盆，腰彎了沒人付代價。
+- ss_speed_max 差異列：p1 9 列全較低；p4 / p5 各 3 列擊中列較高（最多 +1.16 m/s，env 12 / 21 / 34、38 / 47 / 57），交棒後前幾步會拉一下球棒。
+- 裁定：不是剪接問題，不補錄 p4。Human25-R2 = 從 model_998 續訓 +300：加軀幹（chest）直立項、0.5 s 後向 default pose 的姿勢項（腰 pitch、手臂）、從 t 0 起的小手臂關節速度懲罰。證偽（s6 保留庫，`RECOV2_TRAIN_END.txt`）：倒地仍 < 5%、t = 2 s 軀幹傾角中位 < 30°、q90 < 45°、交棒後 0.2 s 內棒頭速度不超過交棒值；再 seed 6 同場重跑（`RECOV2_DIAG_END.txt`）：64/64、倒地、接觸後 1.5 s 傾角、ss_speed_max 較高列歸零。過了 20 只補錄 p1 / p4 / p5 與 p2 / p3 合併。
+- 可展示草稿暫仍為 `videos/m3pa_draft.mp4`（sky 版）；`m3rec_draft.mp4` 為過渡版。
+
 **10-29 07:5x（14）Human25-R stage 2 通過（RECOV_DIAG_END 07:43）：同場 seed 6 揮棒後倒地 0/64，凍結列 64/64 → 交棒給 20 重錄 PA1 驗收外觀**
 - 最終 checkpoint `logs/rsl_rl/aib1_recover/2026-10-29_06-33-05_h25r_b/model_998.pt`；CSV 在 `logs/recov_diag/`（15 commit 7877f09）。
 - (b) 凍結設定：recover_rl 與 policy 重跑的 pitch + hit_t + swing outcome + done_t + t_plane 欄位與 falldiag2 完全相同 64/64。
