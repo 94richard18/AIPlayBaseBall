@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 00:2x（14）`videos/final_cut_v2.mp4` 驗收通過（M3CLEAN2_END 00:16，20 commit ac4168d）：11 球全部以本壘前緣立體框 + 通過點圓盤重錄，3563 幀 / 118.8 s、High yuv420p、blank 0；揮棒球對 M2 64/64、take 63/64（take env 如常）；對 v1 的 clean_film 列嚴格 52 欄 11/11 IDENTICAL → 純視覺差異。揮棒後站立：PA1 p1 / p4 / p5、PA2 p1 骨盆最低 0.83–0.88 m、+1.5 s 軀幹傾角 3.0–10.3°，batter_fell 全 False。14 目視交叉幀 `videos/fixcheck_tiles/v2_ball_f118.png`（PA1 p2 壞球：紅盤在框外右側、球在其下）與 `v2_called_strike_f117.png`（PA1 p3 好球：綠盤在框內）→ 使用者回報的「球沒碰框卻判好球」已修正；**v2 取代 v1 成為 11-26 交付候選**（v1 保留）。此次亦計為 12 小時例行錄影（00:16），下次最晚 10-30 12:00。GPU 隨即交 15：`logs/run_contact.sh` 00:17 起跑（seed 6、seed 1 各 64 env 重播 + CPU 分析，marker `logs/CONTACT_END.txt`，預計 00:50–01:00）。20 hold。**
+
 **10-29 23:xx（14）使用者問「打者無法打出內野的原因？力量不夠？沒打中球心？」→ 14 答：主因棒速（20 m/s vs 需約 25；力矩已飽和，損失在動力鏈時序）、其次接觸品質（初速只 0.8 倍棒速，正中約可 1.3 倍，未單獨量過）、來球慢（64 km/h 只貢獻約 3.6 m/s）。使用者裁定「好先做接觸偏移量測」→ 派 15：凍結 M2 設定，每次擊中記錄球心 / 甜蜜點 / 棒軸 / 速度，拆解沿軸與法向偏移，用引擎自己的碰撞模型算 exit_actual / exit_centred（同棒速零偏移）/ exit_target（25 m/s 正中），分出 loss_contact 與 loss_speed；輸出 `logs/contact_offset/`，marker `logs/CONTACT_END.txt`；GPU 等 20 的 M3CLEAN2_END 後再用，CPU 先備。純量測，不提設計，下一條線由使用者決定。**
 
 **10-29 22:5x（14）好球帶立體框測試通過（20 commit b244a16，`videos/zonetest_p3.mp4`，marker M3ZONE_TEST_END）→ GO 11 球 clean + zone frame 重錄 → `videos/final_cut_v2.mp4`（marker `logs/M3CLEAN2_END.txt`，v1 保留）**
