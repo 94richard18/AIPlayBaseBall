@@ -1,0 +1,9 @@
+07:08 film done: M3ROUTINE2_END refilm 07:08
+07:08 baseline 12500: in-zone 0.445 |dx| med 0.1036 D in [0, 2.5 cm] 0.125 launch med 23.113 ev med 19.006
+trainer bat/contact_abs_dx it 1 0.0000 (EMA from 0), its 11-20 0.1203, last 10 0.1270 (n 100)
+[bat] slow in zone: {"n": 557, "hit_rate": 0.591, "misses": 228, "early": 228, "late": 0, "tempo_q": [-0.062, -0.046, -0.027], "ref_err_s_q": [0.041, 0.048, 0.054], "kmh_q": [63.4, 64.1, 64.7]}
+[bat] contact_geom hits: {"n": 387, "abs_dx_med": 0.1276, "D": [-0.018, 0.01, 0.037], "D_in_0_25": 0.171, "launch": [-7.729, 22.882, 50.852], "ev": [13.515, 17.451, 21.812]}
+[bat] contact_geom in-zone hits: {"n": 329, "abs_dx_med": 0.1148, "D": [-0.018, 0.01, 0.037], "D_in_0_25": 0.173, "launch": [-3.523, 26.692, 50.403], "ev": [14.419, 17.947, 22.662]}
+07:24 +100 model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_07-09-56_human_pitched26b_1): in-zone 0.591 (base 0.445) |dx| med 0.1148 (base 0.1036) D in [0, 2.5 cm] 0.173 (base 0.125, joint 0.20) launch 26.692 ev 17.947 | trainer bat/contact_abs_dx it 1 0.0000 (EMA from 0), its 11-20 0.1203, last 10 0.1270 (n 100)
+HUMAN26B_100_END 07:24 FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_07-09-56_human_pitched26b_1): in-zone 0.591 (base 0.445) |dx| med 0.1148 (base 0.1036) D in [0, 2.5 cm] 0.173 (base 0.125, joint 0.20) launch 26.692 ev 17.947 | trainer bat/contact_abs_dx it 1 0.0000 (EMA from 0), its 11-20 0.1203, last 10 0.1270 (n 100) - line closed
+HUMAN26B_300_END 07:24 not started (FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_07-09-56_human_pitched26b_1): in-zone 0.591 (base 0.445) |dx| med 0.1148 (base 0.1036) D in [0, 2.5 cm] 0.173 (base 0.125, joint 0.20) launch 26.692 ev 17.947 | trainer bat/contact_abs_dx it 1 0.0000 (EMA from 0), its 11-20 0.1203, last 10 0.1270 (n 100) - line closed)

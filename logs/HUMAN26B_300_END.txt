@@ -1,0 +1,1 @@
+HUMAN26B_300_END 07:24 not started (FAIL +100: model_12599 (logs/rsl_rl/aib1_tee_batting_mimic/2026-10-30_07-09-56_human_pitched26b_1): in-zone 0.591 (base 0.445) |dx| med 0.1148 (base 0.1036) D in [0, 2.5 cm] 0.173 (base 0.125, joint 0.20) launch 26.692 ev 17.947 | trainer bat/contact_abs_dx it 1 0.0000 (EMA from 0), its 11-20 0.1203, last 10 0.1270 (n 100) - line closed)
