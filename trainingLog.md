@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 08:0x（14）來球位置相關出爐 → GO Human27（15 commit 7c797dc，`logs/run_human27.sh`，markers HUMAN27_100_END / _300_END）。** 關鍵數字：axis_off 對來球左右位置 plate_y 的斜率 −0.79、r −0.86（好球帶內擊中；揮空 −0.80 / −0.86；joint 35 球 dx 對 pred_y −0.72 / −0.94）；去掉位置斜率後殘差 sd 6.3 cm（原 12.2）；plate_y 低 / 中 / 高三分位 axis_off +11.3 / −4.3 / −14.5 cm → **甜蜜點落在幾乎固定的水平點，伸棒只跟著來球 ~20%**；球的左右位置在觀測裡（root 座標的 ball_seen − root_p、ss_p − ball_seen），感知 = 延遲 0.10 s、每步 1 cm 噪聲、每局 2 cm 偏差、重力外推。15 假說（未驗）：mimic 追蹤（w_track 1、w_key 0.3）把揮棒釘在參考片的接觸點。
+- Human27 = Human15 投球、從 12500 @ 1.5x、2048 envs、obs 不變、recover 不動。每次揮棒付一次瞄準分 6·exp(−(axis_off/0.08)²)·exp(−(gap/0.05)²)（擊中步或局末；最近點逐物理步追蹤含 contact_substeps 插值；gap = 表面間隙 ≥ 0，接觸 = 1）；擊中分 20·exp(−(dx/0.08)²)·exp(−((D − 0.010)/0.015)²)；關閉 w_distance / w_success / w_exit_velo / w_backspin / mimic w_contact 2.0；保留 w_launch 20、w_spray 10（乘 ev_n）、w_miss 20、跌倒項、追蹤。Smoke 64 / 256 envs OK。
+- 門檻 +100：axis_off |中位| ≤ 0.75× 基線（擊中 10.2、揮空 12.4）、|dx| ≤ 8.0 cm、hit ≥ 0.31；+300：|dx| ≤ 6.0、D 落窗 ≥ 0.25、hit ≥ 0.40、exit ≥ 19。加報 axis_off vs plate_y 斜率 / r / 殘差 sd（歸因測試）：若 +100 時 axis_off 不動且斜率仍 ≈ −0.8 → 追蹤假說成立 → Human27b（只在 27 失敗時）：預測到達前 0.15 s 手臂關節（肩 / 肘 / 腕）w_track / w_key 減半，腿 / 軀幹不變；15 先備 cfg 旗標（預設關），不經 14 不啟動。ETA +100 ≈ 09:30、+300 ≈ 12:00。20 hold。
+
 **10-30 07:5x（14）時機 × 接觸位置量測完成（TIMING_END 07:41，15 commit e5f37fd，`logs/timing_contact/summary.txt` / `hits.csv`）：沒打中球心的主因 = 沿棒軸的「瞄準」散佈（±10 cm），時機只平移整體分布（約 0.5 cm / ms），不碰散佈。**
 - Q1（bias 0.055、248 好球帶內擊中）：corr(dx, 早晚相位) +0.24、corr(|dx|, ·) −0.11；晚 / 準 / 早三分位 dx 中位 −8.2 / −4.6 / +3.1 cm 但 |dx| 10.7 / 9.8 / 10.3 cm 不變；棒徑對球線交角中位 17°。
 - Q2（309 揮空，最近點）：棒軸站位 −2.4 [−13.6, +10.0] cm、表面間隙 4.1 cm、球在軸上方 +7.4 cm、沿揮棒 −2.6 cm、ref_err +36 ms 全早。甜蜜點偏差向量 |中位| 沿軸 / 垂直 / 沿揮棒：擊中 10.2 / 3.0 / 2.7 cm，揮空 12.4 / 8.9 / 3.5 cm。
