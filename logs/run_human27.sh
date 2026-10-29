@@ -37,6 +37,16 @@ P = {k: np.array(v, dtype=float) for k, v in json.load(open('$1'))['per_pitch'].
 z = (np.abs(P['plate_y']) <= 0.2525) & (P['plate_z'] >= 0.50) & (P['plate_z'] <= 1.10); h = P['hit'].astype(bool)
 ax = np.abs(P['x_on_bat'] - 0.7112); D = P['D_contact'][h & z]
 print(f\"{(h & z).sum() / z.sum():.3f} {np.nanmedian(ax[h & z]):.4f} {np.nanmedian(ax[~h & z]):.4f} {np.nanmedian(np.abs(P['dx_contact'][h & z])):.4f} {((D >= 0) & (D <= 0.025)).mean():.3f} {np.nanmedian(P['ev_contact'][h & z]):.1f} {np.nanmedian(P['launch_contact'][h & z]):.1f}\")"; }
+sl() {  # axis_off (signed) vs plate_y, in-zone hits / misses: slope, r, residual sd (m) - planning 14's attribution test
+$P -c "
+import json, numpy as np
+P = {k: np.array(v, dtype=float) for k, v in json.load(open('$1'))['per_pitch'].items()}
+z = (np.abs(P['plate_y']) <= 0.2525) & (P['plate_z'] >= 0.50) & (P['plate_z'] <= 1.10); h = P['hit'].astype(bool)
+o = []
+for nm, m in (('hits', h & z), ('misses', ~h & z)):
+    y, a = P['plate_y'][m], P['x_on_bat'][m] - 0.7112; k = np.isfinite(y) & np.isfinite(a); y, a = y[k], a[k]
+    b = np.polyfit(y, a, 1); o.append(f'{nm} slope {b[0]:+.2f} r {np.corrcoef(y, a)[0, 1]:+.2f} resid sd {np.std(a - np.polyval(b, y)):.3f} (raw {np.std(a):.3f}, n {k.sum()})')
+print('axis_off vs plate_y: ' + '; '.join(o))"; }
 train() {  # $1 chunk tag $2 its $3 load_run $4 ckpt
     idle
     $P -u scripts/train.py --task $TASK --headless --num_envs 2048 --max_iterations $2 --run_name human_pitched27_$1 --resume True --load_run $3 --checkpoint $4 >> $TL 2>&1
@@ -44,17 +54,19 @@ train() {  # $1 chunk tag $2 its $3 load_run $4 ckpt
     [ -n "$I" ] || { MSG="chunk $1: no checkpoint"; exit 1; }
 }
 read Z0 AH0 AM0 X0 S0 E0 L0 <<< "$(st logs/diag_bat_contact_h26_base.json)"
+SL0=$(sl logs/diag_bat_contact_h26_base.json)
+echo "$(date +%H:%M) baseline 12500 $SL0"
 echo "$(date +%H:%M) baseline 12500: in-zone $Z0 axis_off hits $AH0 misses $AM0 |dx| $X0 D share $S0 ev $E0 launch $L0"
 train 1 100 2026-10-25_13-56-51_human_pitched9b model_12500.pt; D1=$D; I1=$I
 diag $D1/model_$I1.pt $I1; read Z AH AM X S E L <<< "$(st logs/diag_bat_contact_h27_$I1.json)"
-LINE="model_$I1 ($D1): in-zone $Z (base $Z0) axis_off hits $AH (base $AH0) misses $AM (base $AM0) |dx| $X (base $X0) D share $S (base $S0) ev $E launch $L"
+LINE="model_$I1 ($D1): in-zone $Z (base $Z0) axis_off hits $AH (base $AH0) misses $AM (base $AM0) |dx| $X (base $X0) D share $S (base $S0) ev $E launch $L | $(sl logs/diag_bat_contact_h27_$I1.json)"
 echo "$(date +%H:%M) +100 $LINE"
 if ! $P -c "import sys; sys.exit(0 if $AH <= 0.75 * $AH0 and $AM <= 0.75 * $AM0 and $X <= 0.080 and $Z >= 0.31 else 1)"; then MSG="FAIL +100: $LINE"; exit 0; fi
 MSG="PASS +100: $LINE"; echo "HUMAN27_100_END $(date +%H:%M) $MSG" > $M1; cat $M1
 STAGE=300; MSG="aborted after +100"
 train 2 200 $(basename $D1) model_$I1.pt; D3=$D; I3=$I
 diag $D3/model_$I3.pt $I3; read Z AH AM X S E L <<< "$(st logs/diag_bat_contact_h27_$I3.json)"
-LINE="model_$I3 ($D3): in-zone $Z axis_off hits $AH misses $AM |dx| $X D share $S ev $E launch $L"
+LINE="model_$I3 ($D3): in-zone $Z axis_off hits $AH misses $AM |dx| $X D share $S ev $E launch $L | $(sl logs/diag_bat_contact_h27_$I3.json)"
 echo "$(date +%H:%M) +300 $LINE"
 V=$($P -c "print('PASS' if $X <= 0.060 and $S >= 0.25 and $Z >= 0.40 and $E >= 19 else 'FAIL')")
 MSG="$V +300: $LINE"
