@@ -396,3 +396,14 @@ class PitchedBattingHuman27EnvCfg(PitchedBattingHuman15EnvCfg):
     w_exit_velo: float = 0.0
     w_backspin: float = 0.0
     w_contact: float = 0.0
+
+
+@configclass
+class PitchedBattingHuman27bEnvCfg(PitchedBattingHuman27EnvCfg):
+    """Human27b (planning 14, 10-30; only if Human27 fails +100 with axis_off unmoved and the plate_y slope still ~-0.8):
+    Human27 + the arm-relax switch - in the last 0.15 s before the predicted arrival (until the hit) the shoulder / elbow /
+    wrist joints and the hand / bat key points count x0.5 in the pose / velocity / key tracking errors; legs, torso and
+    root tracking unchanged. From 12500 @ 1.5x."""
+
+    arm_relax_s: float = 0.15
+    arm_relax_factor: float = 0.5

@@ -48,6 +48,10 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.ss_ref_contact_speed = None
         # contact-window joint-velocity tracking (Human23): body-joint columns of cfg.cvel_joints
         self.cvel_cols = [i for i, n in enumerate(self.body_joint_names) if re.match(cfg.cvel_joints, n)] if cfg.w_cvel > 0 else []
+        # Human27b arm relax: per-joint / per-key-point weights (1 outside the window)
+        self.arm_cols = torch.tensor([bool(re.match(cfg.arm_relax_joints, n)) for n in self.body_joint_names], device=dev)
+        self.arm_keys = torch.tensor([b in ("l_hand", "r_hand", "bat") for b in KEY_BODIES] + [True], device=dev)  # + bat tip
+        self.track_stats["arm_relax_frac"] = torch.zeros((), device=dev)
         if cfg.post_clip_balance:
             self.track_stats.update({k: torch.zeros((), device=dev) for k in ("post_bal_score", "post_bal_reward")})
             self.hit_reward_ep = torch.zeros(self.num_envs, device=dev)  # this episode's hit reward (one-shot in rew)
@@ -121,14 +125,22 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         r = self._ref(self._ref_time())
         q = d.joint_pos[:, self.body_joint_ids]
         qd = d.joint_vel[:, self.body_joint_ids]
-        pose_err = ((q - r["joint_pos"]) ** 2).mean(-1)
-        vel_err = ((qd - r["joint_vel"]) ** 2).mean(-1)
         knob, axis, *_ = self._bat_state()
         key = torch.cat([d.body_link_pos_w[:, self.key_body_ids], (knob + axis * self.bat_geom.length).unsqueeze(1)], 1)
-        key_err = ((key - r["key_pos"]) ** 2).sum(-1).mean(-1)
+        c = self.cfg
+        if c.arm_relax_s > 0 and hasattr(self, "t_arrive"):  # Human27b: arm terms x arm_relax_factor near the arrival
+            win = self.released_seen & ~self.hit & (self.t_arrive > 0) & (self.t_arrive <= c.arm_relax_s)
+            f = torch.where(win, c.arm_relax_factor, 1.0).unsqueeze(-1)
+            wj = torch.where(self.arm_cols, f, torch.ones_like(f))
+            wk = torch.where(self.arm_keys, f, torch.ones_like(f))
+            self.track_stats["arm_relax_frac"] = 0.99 * self.track_stats["arm_relax_frac"] + 0.01 * win.float().mean()
+        else:
+            wj = wk = 1.0
+        pose_err = (wj * (q - r["joint_pos"]) ** 2).mean(-1)
+        vel_err = (wj * (qd - r["joint_vel"]) ** 2).mean(-1)
+        key_err = (wk * ((key - r["key_pos"]) ** 2).sum(-1)).mean(-1)
         root_err = ((d.root_link_pos_w - r["root_pos"]) ** 2).sum(-1)
         rot_err = quat_error_magnitude(d.root_link_quat_w, r["root_quat"]) ** 2
-        c = self.cfg
         rew = (c.w_pose * torch.exp(-pose_err / c.sigma_pose ** 2)
                + c.w_vel * torch.exp(-vel_err / c.sigma_vel ** 2)
                + c.w_key * torch.exp(-key_err / c.sigma_key ** 2)

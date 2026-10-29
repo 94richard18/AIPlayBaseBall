@@ -64,6 +64,12 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     sigma_key: float = 0.10  # m RMS
     sigma_root: float = 0.10  # m
     sigma_rot: float = 0.30  # rad
+    # Human27b switch (planning 14, 10-30; off at 0): in the last arm_relax_s before the predicted arrival (the pitched env's
+    # t_arrive, until the hit) the arm joints (arm_relax_joints) and the hand / bat key points count arm_relax_factor in
+    # the pose / velocity / key errors (legs, torso, root unchanged) - lets the reach follow the pitch.
+    arm_relax_s: float = 0.0
+    arm_relax_factor: float = 0.5
+    arm_relax_joints: str = r".*(shoulder|elbow|wrist).*"
     # contact guidance near the reference contact time
     w_contact: float = 2.0
     sigma_contact: float = 0.08  # m
