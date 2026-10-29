@@ -114,6 +114,9 @@ class JointFilm:
     # planning 14 10-29 (recover_rl films: the batter now stays up): a pitch not hit keeps the batter views this long after
     # done_t - past the PA video's clip end (done_t + 1.0 s), so no cut is shown; a hit still cuts to the ball at CUT_AFTER_S
     CUT_AFTER_MISS_S = float(os.environ.get("AIB_FILM_CUT_AFTER_MISS_S", CUT_AFTER_S))
+    # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
+    # right panel's view name; visual only. Default: the QA overlay
+    CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
     SIDE_EYE, SIDE_ZOOM = (0.5, 8.0, 1.3), 1.5  # plate frame: x from the rubber, y off the zone centre (+ first base), z
     HIGH_EYE, HIGH_ZOOM_BALL, HIGH_ZOOM_P = (6.0, 0.0, 8.0), 1.0, 1.5  # x behind the plate front
     NEAR_BALL_M, HIGH_ZOOM_NEAR = 25.0, 2.0  # planning 14 10-28: a ball within this of the plate gets the closer zoom
@@ -246,8 +249,8 @@ class JointFilm:
         labels = ("from home plate",) if not cut else ("the batted ball" if ball_view else "from behind home plate",)
         if cut:
             txt = (txt + "  " if txt else "") + "play over (batter shown until the play ends)"
-        for im, s in ((img, f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, labels[0])):
-            if im is not None:
+        for im, s in ((img, None if self.CLEAN else f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, labels[0])):
+            if im is not None and s:
                 cv2.putText(im, s, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 5, cv2.LINE_AA)
                 cv2.putText(im, s, (18, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
         self.last = np.concatenate([img, np.zeros_like(img) if pv is None else pv], 1)
