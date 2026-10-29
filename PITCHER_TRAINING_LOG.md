@@ -2699,3 +2699,17 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 第 2 個打席（6 球，保送）：揮棒的第 1 球 64/64；不揮的第 2–6 球 63/64。草稿 `videos/m3pa2_draft.mp4` 1972 格，空白 0，High。
 - 7 球不揮棒都沒有跌倒（batter_fell False）。
 - 舊版保留：`videos/m3pa_draft_v3.mp4`、`videos/m3pa2_draft_v1.mp4`。
+
+## 第一個打席：打者恢復策略版（Human25-R，10-29 07:47–08:43）
+
+- 15 的恢復策略（after_done recover_rl，model_998）接在揮棒之後；場景同 ee850e1。
+- 第一次開拍失敗：產生 joint_smoke_20 時把 film.close 插在 `hit |= side.hit` 後面，15 在 cbad249 加長了迴圈 → IndentationError。改成迴圈結束後再關（4a218aa）。
+- 比對：第 1 球拍攝的 env 一致，但只有 45/64 列完全相同，差在擊球後的打者統計（batter_fell_before_done、ss_speed_max、tempo_fly、take_bat_vmax）。14 同意恢復版略過這 4 欄（COMPARE_SKIP）。
+- 結果：5 球跟目前第一個打席草稿的評估列逐欄比（63 欄）都是 64/64，投球、擊球結果、done_t 全部不變。草稿 `videos/m3rec_draft.mp4` 1783 格，空白 0，High。
+- 沒打到的球不再在 done_t + 0.5 s 切鏡，打者畫面放到約 3.1 s。
+- 打者姿勢（切鏡前最後 0.3 s）：
+  - 都沒跌倒，重心高 0.94–0.96 m。
+  - 不揮棒的第 2、3 球：軀幹傾斜 12–14°，穩定。
+  - 揮棒的第 1、4 球：軀幹傾斜還在變（48→74°、55→75°）；第 5 球穩定但彎腰 74°。
+  - 也就是站得住，但停在彎腰姿勢，沒有回到直立。
+- ss_speed_max 跟原本不同的列：第 1 球 9 列全部變低；第 4、5 球各有 3 列（都是擊中的球）比原本高 0.003–1.16 m/s。
