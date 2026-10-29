@@ -68,6 +68,9 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-29 10:3x（14）最終剪輯腳本裁定（20 的 `logs/final_cut_storyboard.md`）：順序 PA1 → PA2 → 統計片尾；卡片時間照提案；去除片內除錯字幕 → JointFilm clean 旗標 + 11 球乾淨重錄（GPU 閒置，兼作 12 小時錄影）；PA1 p5 接觸 0.5x 慢動作重播（既有幀）**
+- 先用現有 clips 在 CPU 組 `videos/final_cut_v0.mp4`（看結構），clean 重錄（marker `logs/M3CLEAN_END.txt`，recover_rl @ model_1297，視覺旗標 → 每球 pitch 欄位比對 64/64、姿態數字重現）完成後換成 `videos/final_cut_v1.mp4`。預計 GPU 約 2 h。15 閒置。
+
 **10-29 10:2x（14）PA2 R2 成片目視通過 → 兩支打席草稿定案（皆 after_done recover_rl @ model_1297）：PA1 `videos/m3rec_draft.mp4`、PA2 `videos/m3pa2_draft.mp4`；GPU 閒置、無排程，20 / 15 hold**
 - 20 成片 10:14（marker `logs/M3PA2_RECOV_END.txt`）：只補錄 p1（s10 e62 揮空），p2–p6 take 沿用；1972 幀、blank 0、High yuv420p；舊版留 m3pa2_draft_v2.mp4（logs/m3/pa2_v2/）。比對：對 M2 env 62 64/64、對前版 PA2 列 63 欄 64/64；ss_speed_max 高於單獨揮棒只 env 44（非拍攝）。姿態：無倒，3.13 s 切前 root z 0.94 m、軀幹 1.2–3.4°，3.0 s 球棒已放低。
 - 今日 Human25-R 全線總結：使用者 05:3x 裁定「直接做新機制」→ 獨立平衡策略（交棒給第二個 actor）→ +300 2.5% / +1000 0.9%（s6 庫倒地）→ 同場 0/64 但駝背 → R2 修姿勢（6.8° / 11.8°，倒地 2/64）→ 兩支 PA 補錄通過。GPU 合計約 2.5 h。交付：揮棒策略 h9b 12500 @ 1.5x 不變，接觸 / 通過後交棒 `logs/rsl_rl/aib1_recover/2026-10-29_08-51-50_h25r2/model_1297.pt`（介面契約見第 3 節 56b098d）。
