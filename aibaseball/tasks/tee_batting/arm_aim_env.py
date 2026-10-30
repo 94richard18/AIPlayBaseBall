@@ -64,6 +64,14 @@ class ArmAimEnv(PitchedBattingEnv):
             g = json.load(open(cfg.aim_scripted))
             assert g["joints"] == list(cfg.aim_joints)
             self._scripted = (torch.tensor(g["gain_plus"], device=dev), torch.tensor(g["gain_minus"], device=dev))
+            self._scripted_z = None
+            if cfg.aim_scripted_z:  # + a height offset: raise the sweet spot by D_fit(true plate y, z) - D target (12500 fit)
+                self._scripted_z = (torch.tensor(g["gain_zplus"], device=dev), torch.tensor(g["gain_zminus"], device=dev))
+            self._prev_off_z = torch.zeros_like(self.res_a)
+            self._rl_num_z = torch.zeros(n, device=dev)
+            self._rl_den_z = torch.zeros(n, device=dev)
+            self._rl_frac_z = []
+            self._raw_z = torch.zeros_like(self.res_a)
             self.res_sat_ep = torch.zeros(n, dtype=torch.bool, device=dev)  # this pitch's offset reached the bound
             self.res_dy_ep = torch.zeros(n, device=dev)  # dy at the window's last step
             self.res_dyt_ep = torch.zeros(n, device=dev)  # the true plate y (pitch_plate) at the same step
@@ -99,6 +107,8 @@ class ArmAimEnv(PitchedBattingEnv):
         import numpy as np
         fr = " ".join(f"{g} {np.median(v):.2f}" if v else f"{g} nan" for g, v in self._rl_frac.items())
         cm = np.median(self._rl_cmd_ep) if self._rl_cmd_ep else float('nan')
+        if self._rl_frac_z:
+            fr += f"; z part {np.median(self._rl_frac_z):.2f}"
         print(f"[armaim scripted] realised fraction of the commanded offset (median over pitches): {fr}; "
               f"commanded mean |offset| {cm:.3f} rad, window {self.cfg.aim_window_s} s", flush=True)
         print(f"[armaim scripted] sign {self.cfg.aim_scripted_sign:+.0f}: episodes {n}, offset at the +-{self.cfg.aim_bound} "
@@ -123,6 +133,12 @@ class ArmAimEnv(PitchedBattingEnv):
             dy = dy * c.aim_scripted_sign
             gp, gm = self._scripted
             raw = torch.where((dy >= 0).unsqueeze(-1), gp, gm) * dy.abs().unsqueeze(-1) / c.aim_bound
+            if self._scripted_z is not None:
+                a0, ay, az = c.aim_scripted_D_fit
+                dz = a0 + ay * self.pitch_plate[:, 0] + az * self.pitch_plate[:, 1] - c.aim_scripted_D_target
+                zp, zm = self._scripted_z
+                self._raw_z = torch.where((dz >= 0).unsqueeze(-1), zp, zm) * dz.abs().unsqueeze(-1) / c.aim_bound
+                raw = raw + self._raw_z
             w = self.res_win
             self.res_sat_ep |= w & (raw.abs() > 1.0).any(-1)
             self.res_dy_ep = torch.where(w, dy, self.res_dy_ep)
@@ -150,9 +166,14 @@ class ArmAimEnv(PitchedBattingEnv):
                 self._rl_num[g] += ((q[:, ix] - self._prev_st[:, ix]) * o).sum(-1) * pw
                 self._rl_den[g] += (o ** 2).sum(-1) * pw
             self._rl_cmd += self._prev_off.abs().mean(-1) * pw
+            if self._scripted_z is not None:
+                oz = self._prev_off_z
+                self._rl_num_z += ((q - self._prev_st) * oz).sum(-1) * pw
+                self._rl_den_z += (oz ** 2).sum(-1) * pw
             self._rl_steps += pw.float()
             self._prev_st = self.joint_targets[:, self.aim_ids].clone()
             self._prev_off = self.res_off.clone()
+            self._prev_off_z = c.aim_bound * self._raw_z * self.res_win.unsqueeze(-1)  # the z part (before the bound clamp)
             self._prev_win = self.res_win.clone()
         tgt = self.joint_targets[:, self.aim_ids] + self.res_off
         self.joint_targets[:, self.aim_ids] = torch.clamp(tgt, self.q_lo[self.aim_cols], self.q_hi[self.aim_cols])
@@ -228,6 +249,11 @@ class ArmAimEnv(PitchedBattingEnv):
                 self._rl_frac[g] += (self._rl_num[g][env_ids][m] / den[m]).tolist()
                 self._rl_num[g][env_ids] = 0.0
                 self._rl_den[g][env_ids] = 0.0
+            if self._scripted_z is not None:
+                m = ok & (self._rl_den_z[env_ids] > 1e-8)
+                self._rl_frac_z += (self._rl_num_z[env_ids][m] / self._rl_den_z[env_ids][m]).tolist()
+                self._rl_num_z[env_ids] = 0.0
+                self._rl_den_z[env_ids] = 0.0
             self._rl_cmd_ep += (self._rl_cmd[env_ids][ok] / self._rl_steps[env_ids][ok]).tolist()
             self._rl_cmd[env_ids] = 0.0
             self._rl_steps[env_ids] = 0.0

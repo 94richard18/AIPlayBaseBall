@@ -52,6 +52,7 @@ parser.add_argument("--aim_bound", type=float, default=None, help="--armaim: ove
 parser.add_argument("--aim_scripted", type=str, default=None, help="--armaim: scripted-aim gain JSON (the residual policy is ignored)")
 parser.add_argument("--aim_scripted_sign", type=float, default=1.0, help="--aim_scripted: -1 = sign-flipped control")
 parser.add_argument("--aim_scripted_true", action="store_true", help="--aim_scripted: dy from the true plate y (privileged)")
+parser.add_argument("--aim_scripted_z", action="store_true", help="--aim_scripted: + the height offset toward D = 1 cm")
 parser.add_argument("--aim_window", type=float, default=None, help="--armaim: override cfg.aim_window_s")
 parser.add_argument("--aim_hold", action="store_true", help="--armaim: ArmAim2 (one held action per swing on the scripted aim)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
@@ -126,6 +127,7 @@ def main():
             cfg.aim_scripted_sign = args.aim_scripted_sign
         cfg.aim_hold = args.aim_hold
         cfg.aim_scripted_true = args.aim_scripted_true
+        cfg.aim_scripted_z = args.aim_scripted_z
         if args.aim_window is not None:
             cfg.aim_window_s = args.aim_window
     else:

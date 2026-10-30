@@ -1,5 +1,6 @@
 """ArmAim scripted-aim falsifier (after the +300 FAIL, 10-30): per-metre joint offsets that move the sweet spot sideways
-with the top hand held on the handle and the sweet-spot height held (step 0's "z held", joint set C). CPU only.
+with the top hand held on the handle and the sweet-spot height held (step 0's "z held", joint set C); and the same for a
+height shift with y held (zplus / zminus, 4 cm, for D). CPU only.
 
 For each two-hand clip at its contact frame: min ||dq||^2 s.t. sweet-spot world y shift = +-shift, grip + height held,
 |dq| <= 0.4 and the joint limits (SLSQP on the full FK). gain = dq / shift, median over clips per joint, separately for the
@@ -61,14 +62,15 @@ def with_dq(q, dq):
     return q2
 
 
-def solve(q, p, R, target):
+def solve(q, p, R, target, axis=1):
     ss0, g0 = feats(q, p, R)
     lo = np.minimum([max(-args.bound, lim[j][0] - q[j]) for j in JS], 0)
     hi = np.maximum([min(args.bound, lim[j][1] - q[j]) for j in JS], 0)
 
     def cons(dq):
         ss, g = feats(with_dq(q, dq), p, R)
-        return np.concatenate([g - g0, [ss[2] - ss0[2], ss[1] - ss0[1] - target]])
+        other = 3 - axis  # y (1) moves -> z (2) held, and the other way round
+        return np.concatenate([g - g0, [ss[other] - ss0[other], ss[axis] - ss0[axis] - target]])
 
     r = minimize(lambda dq: dq @ dq, np.zeros(len(JS)), method="SLSQP", bounds=list(zip(lo, hi)),
                  constraints=[dict(type="eq", fun=cons)], options=dict(maxiter=300, ftol=1e-10))
@@ -79,14 +81,14 @@ def solve(q, p, R, target):
 clips = [(f, float(np.load(f)["contact_time"])) for f in sorted(glob.glob("assets/motions/obp_*.npz"))
          if float(np.load(f)["grip_gap"].max()) <= 0.010]
 out = {"joints": JS, "shift": args.shift, "bound": args.bound, "clips": [os.path.basename(c) for c, _ in clips]}
-for side, sgn in (("plus", 1.0), ("minus", -1.0)):
+for side, sgn, axis in (("plus", 1.0, 1), ("minus", -1.0, 1), ("zplus", 1.0, 2), ("zminus", -1.0, 2)):
     G, E = [], []
     for c, tc in clips:
-        dq, err = solve(*frame(c, tc), sgn * args.shift)
-        G.append(dq / args.shift)
+        dq, err = solve(*frame(c, tc), sgn * args.shift * (1 if axis == 1 else 0.5), axis)
+        G.append(dq / (args.shift * (1 if axis == 1 else 0.5)))
         E.append(err)
     G = np.array(G)
-    out[f"gain_{side}"] = np.median(G, 0).tolist()  # rad per metre of sweet-spot y shift (in that side's direction)
+    out[f"gain_{side}"] = np.median(G, 0).tolist()  # rad per metre of sweet-spot y (z: zplus / zminus) shift, that direction
     out[f"err_{side}"] = E
     print(f"{side}: constraint err per clip (m) " + " ".join(f"{e:.3f}" for e in E))
     print("  median gain rad/m: " + " ".join(f"{j}={g:+.2f}" for j, g in zip(JS, out[f"gain_{side}"])))
