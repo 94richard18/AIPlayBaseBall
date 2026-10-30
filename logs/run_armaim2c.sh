@@ -4,7 +4,7 @@
 # obs comp), aim_bound = the SAIM_ADOPT pick (row 9 0.4 / row 10 0.6), reward = aim term + w_hit_q x q + 0.5 x clamp(exit - 18,
 # 0, 10) on hits. Waits for logs/SAIM_ADOPT_END.txt. Gates = ArmAim's +300 / +1000 -> ARMAIM2_300_END / ARMAIM2_1000_END.
 # Film slot 10-31 06:41 (20): the +700 resume (~2.4 h) launches only if it can end before 06:30 (launch <= 03:50), else it
-# waits for 20's film marker (a logs/M3*END*.txt newer than 06:00 on 10-31, or 08:00).
+# waits for 20's film marker (logs/M3ROUTINE4_END.txt newer than this chain's start, written by logs/routine1031.sh; or 08:00).
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=50
@@ -19,6 +19,7 @@ R=assets/game/p3c_identical_t18_release.csv
 O=logs/armaim2c; mkdir -p $O
 M3=logs/ARMAIM2_300_END.txt; M=logs/ARMAIM2_1000_END.txt
 rm -f $M3 $M; MSG="aborted"; M3DONE=0
+touch $O/chain.stamp
 trap '[ $M3DONE -eq 1 ] || echo "ARMAIM2_300_END $(date +%H:%M) $MSG" > $M3; echo "ARMAIM2_1000_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
 isaac() { powershell.exe -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'isaaclab_env' -and \$_.CommandLine -match 'scripts/' }).Count" | tr -d '\r'; }
 idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ]; do sleep 30; done; }
@@ -27,8 +28,7 @@ last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; ech
 filmwait() {  # $1 latest launch time on 10-31: later (before 08:00) -> wait for 20's film marker
   NOW=$(date +%s)
   if [ $NOW -gt $(date -d "2026-10-31 $1" +%s) ] && [ $NOW -lt $(date -d "2026-10-31 08:00" +%s) ]; then
-    touch -d "2026-10-31 06:00" $O/film.stamp
-    until [ -n "$(find logs -maxdepth 1 -name 'M3*END*.txt' -newer $O/film.stamp 2>/dev/null)" ] || [ $(date +%s) -ge $(date -d "2026-10-31 08:00" +%s) ]; do sleep 60; done
+    until [ logs/M3ROUTINE4_END.txt -nt $O/chain.stamp ] || [ $(date +%s) -ge $(date -d "2026-10-31 08:00" +%s) ]; do sleep 60; done
   fi
 }
 diag() {  # $1 residual ckpt, $2 tag, [$3 extra args]
