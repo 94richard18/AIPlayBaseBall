@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 00:04 H29_ADOPT_END（00:02）：無贏家，Human29 在遊戲層是退步（12799 單獨 ONE OUTS 13.1%、+saim 13.9%，交付 17.6）；ArmAim2c 以 12500 + saim 開跑；R3 排在 +300 後；Human30 改以 12500 為基底、加 exit hinge，等機制數字確認後才啟動。**
+- h29（12799 單獨）：ONE OUTS 5×3 13.1%（13.5 / 12.5 / 13.3）、outfield 2.6%；joint s6 落地 3/64（差一球）、31 hits。h29s A（+saim）：13.9%（14.3 / 14.0 / 13.4）、outfield 1.8%；落地 13/64、16 hits。h29s B（+失投淡出）：表格同、落地 15/64。門檻 19.1；12500 + saim 16.0。
+- diag 的 hit 0.908 / launch 19.6° 在 showcase（timing noise 0.03）沒撐住：表 1 launch 中位 h29 2.6°、h29s −5.6°、12500+saim 5.0°；exit 中位 16.6 / 16.9 / 17.0；carry ≥ 38.9 m 佔 5.0% / 3.7% / 8.1%。Human29 用仰角與飛距換接觸 = 滾地球。交接時手臂最近鄰距離（落地 vs 其他）：h29 0.974 vs 0.699；h29s A 1.188 vs 0.921（觸發時 offset 中位 0.12、max 0.40）。
+- 我的假說（令 15 用表格 json 驗證：各設定的界外比例、fair 比例、PA 結果分布、每 PA 投球數）：12500 贏在「打界外 + 保送」——偏離球心的接觸多為界外，界外永遠不是第三好球，PA 拉長就多保送；「打扎實但沒飛距」把界外變成 fair 滾地 = 出局，所以 hit 0.908 在遊戲層反而輸。若成立：日後打者獎勵只付 fair 球的 carry / launch / exit，不付接觸或 hit rate；in-zone hit gate 只當下限。
+- Human30 改版：自 12500 @ 1.5x 續訓、迴圈內 saim 層、濾波知覺、launch 20° × q、hits-only exit hinge（同 ArmAim2c）、hit 項僅留失投罰；排在 ARMAIM2_300_END 判定 + R3 之後（ArmAim2c 過 +300 則等 +700），+1000 採用線加「3-table ONE OUTS ≥ 19.1% 且 outfield ≥ 3%」。機制數字確認後我再放行。
+
 **10-30 23:01 SAIM_ADOPT_END（22:59）：12500 + 腳本瞄準不可採用——ONE OUTS 5×3 16.0%（< 交付 17.6）、joint s6 on the ground 12/64。決定：ArmAim2c 加安打 launch 項（目標 20°，× q）；h29s 先試「失投時自穿越平面起 0.2 s 淡出偏移 / 補償」的環境端修法，仍 > 2/64 則排 Human25-R3（以贏家揮棒 + saim 重建 bank，自 model_1297 續訓 +300，RECOV3_END，在 ARMAIM2_300_END 之後、+700 之前）。**
 - 零差：旗標關閉 joint s6 vs falldiag2 64/64 列、50 欄相同。列 10（bound 0.6）：hit 0.549、|axis_off| 0.066、slope −0.47（列 9 −0.40）、launch 8.8 → 取列 9（bound 0.4）。
 - ONE OUTS 5×3：16.0%（17.2 / 15.7 / 15.0），outfield 3.1%；hit 0.526 vs 0.458 卻低於交付。原因：launch 中位 13° → 1.6–6.0°（LA < 10° 比例 0.48 → 0.55）、ev 中位不變（17.0–17.7）、carry 中位 9.2 → 6.9–8.4 → 腳本瞄準把棒子移到球上但壓平/傾斜了棒面，滾地球變多 = 出局變多。
