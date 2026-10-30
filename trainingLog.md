@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 23:01 SAIM_ADOPT_END（22:59）：12500 + 腳本瞄準不可採用——ONE OUTS 5×3 16.0%（< 交付 17.6）、joint s6 on the ground 12/64。決定：ArmAim2c 加安打 launch 項（目標 20°，× q）；h29s 先試「失投時自穿越平面起 0.2 s 淡出偏移 / 補償」的環境端修法，仍 > 2/64 則排 Human25-R3（以贏家揮棒 + saim 重建 bank，自 model_1297 續訓 +300，RECOV3_END，在 ARMAIM2_300_END 之後、+700 之前）。**
+- 零差：旗標關閉 joint s6 vs falldiag2 64/64 列、50 欄相同。列 10（bound 0.6）：hit 0.549、|axis_off| 0.066、slope −0.47（列 9 −0.40）、launch 8.8 → 取列 9（bound 0.4）。
+- ONE OUTS 5×3：16.0%（17.2 / 15.7 / 15.0），outfield 3.1%；hit 0.526 vs 0.458 卻低於交付。原因：launch 中位 13° → 1.6–6.0°（LA < 10° 比例 0.48 → 0.55）、ev 中位不變（17.0–17.7）、carry 中位 9.2 → 6.9–8.4 → 腳本瞄準把棒子移到球上但壓平/傾斜了棒面，滾地球變多 = 出局變多。
+- joint s6（recover_rl + saim）：on the ground 12/64（recover_rl 單獨 2/64），12 球全是失投（done_t ~2.1 s）：恢復政策從 bank 外的手臂姿勢接手。hits 21/64（swing alone 16）。檢查器 bug 已修（6bf2c8a：pitch 欄誤含 plate_y/plate_z），真實 pitch 欄 64/64。H29_ADOPT 於 23:0x 帶修正重啟（GPU 尚未跑過）。
+- 令 15 在 h29s 記錄交接時手臂姿勢到 recover bank 的最近鄰距離（12 落地 vs 52 其他）與偏移 / 補償是否仍非零。採用規則不變：h29 單獨過門檻而 h29s 不過 → h29 為贏家，ArmAim2c 仍以 saim 初始化跑在其上。
+
 **10-30 22:22 Human29 +300（H29_300_END 22:21，15 commit abe1892）：幾何 gate FAIL，但 in-zone hit 0.519 → 0.908。決定：採用鏈（12500 + saim）之後加 12799 + row-9 與 12799 單獨的 diag / 5×3 tables / joint s6（H29_ADOPT_END），ArmAim2c 改以表格贏家為凍結揮棒。**
 - model_12799（2026-10-30_21-28-13_human_pitched29_1），diag1024 s0 濾波開：in-zone hit 0.908（reachable 0.926）、exit 中位 19.2（q25 14.4 / q75 23.5）、D share 0.298（已過 +1000 的 0.25）、launch 19.6；FAIL 項：slope −0.86、|axis_off| 0.122（dx 中位 −0.096，偏握把側）。對照 pf2 零樣本：0.519 / 0.104 / −0.81 / 18.0 / 0.194。
 - 判讀：乾淨知覺修好了「何時」碰球（幾乎每球都碰到），沒修「在哪」碰（仍是固定點）；第 9 列的腳本瞄準修「在哪」→ 12799 + row 9 是第一個可能兩者都動的候選；exit 19.2 仍是距離缺口。鏈依規則在 +300 停（H29_1000_END 22:19 寫入）→ run_saim_adopt.sh 已開跑（12500：零差 → 列 10 → tables → joint）。
