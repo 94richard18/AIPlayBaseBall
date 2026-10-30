@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from isaaclab.assets import ArticulationCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
@@ -415,3 +417,57 @@ class PitchedBattingHuman27bEnvCfg(PitchedBattingHuman27EnvCfg):
     sigma_hit_q_dx: float = 0.15
     sigma_hit_q_D: float = 0.032
     launch_spray_times_q: bool = True
+
+
+_ARMAIM_JOINTS = [f"{s}_{j}" for s in ("l", "r") for j in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow")] + \
+    [f"{s}_wrist_{j}" for s in ("l", "r") for j in ("roll", "pitch", "yaw")] + ["waist_yaw"]
+_SWING_12500 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "rsl_rl", "aib1_tee_batting_mimic",
+                                            "2026-10-25_13-56-51_human_pitched9b", "model_12500.pt"))
+
+
+@configclass
+class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
+    """Human28 "ArmAim" (planning 14, user 10-30 "動打者架構"; arm_aim_env.ArmAimEnv): a separate residual policy on 15 joints
+    (shoulders + elbows + wrists of both arms, waist_yaw), bound +-0.4 rad (step 0, scripts/armaim_authority.py: at contact,
+    top hand held, sweet-spot height held, +42 / -13 cm), over the FROZEN swing policy 12500 @ 1.5x on Human15's pitches.
+    Reward once per swing: 6 x exp(-(axis_off / 0.20)^2) x exp(-(gap / 0.10)^2) at the closest approach; 20 x q at contact,
+    q = exp(-(dx / 0.15)^2) x exp(-((D - 0.010) / 0.032)^2); miss 20 and the falls as Human15; - 0.01 x sum(tanh(a)^2) in the
+    window. No tracking / speed / distance terms. Run with AIB_EFFORT_SCALE 1.5. From scratch."""
+
+    swing_checkpoint: str = _SWING_12500
+    aim_joints: list = _ARMAIM_JOINTS
+    aim_bound: float = 0.4
+    aim_window_s: float = 0.30  # reference-clock seconds before the clip's contact: the window opens (the swing start)
+    aim_decay_tau_s: float = 0.05  # after the window: the offset decays with this time constant
+    w_res: float = 0.01
+    w_aim: float = 6.0
+    sigma_aim_ax: float = 0.20
+    sigma_aim_gap: float = 0.10
+    w_hit_q: float = 20.0
+    sigma_hit_q_dx: float = 0.15
+    hit_q_D_target: float = 0.010
+    sigma_hit_q_D: float = 0.032
+    w_distance: float = 0.0
+    w_success: float = 0.0
+    w_exit_velo: float = 0.0
+    w_launch: float = 0.0
+    w_backspin: float = 0.0
+    w_spray: float = 0.0
+    w_contact_dx: float = 0.0
+    w_contact_D: float = 0.0
+    w_contact: float = 0.0
+
+
+@configclass
+class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
+    """Eval / diag (diag_bat_contact --armaim): ArmAim on the play env (ball flight, 9 s episodes)."""
+
+    swing_checkpoint: str = _SWING_12500
+    aim_joints: list = _ARMAIM_JOINTS
+    aim_bound: float = 0.4
+    aim_window_s: float = 0.30
+    aim_decay_tau_s: float = 0.05
+    w_res: float = 0.01
+    w_aim: float = 6.0
+    sigma_aim_ax: float = 0.20
+    sigma_aim_gap: float = 0.10

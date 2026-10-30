@@ -46,6 +46,9 @@ parser.add_argument("--diag_add_pitcher", action="store_true",
                     help="diagnostic: the joint scene's pitcher articulation + dynamic ball in every env, 18 m away")
 parser.add_argument("--trace", type=str, default=None,
                     help="npz: first env per clip, obs / action / body joints per control step (150); perception noise 0")
+parser.add_argument("--armaim", type=str, default=None,
+                    help="Human28 ArmAim residual checkpoint: --checkpoint is the frozen swing policy run inside AIB-ArmAim-Play-v0")
+parser.add_argument("--aim_bound", type=float, default=None, help="--armaim: override cfg.aim_bound (0 = the swing alone)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -106,7 +109,15 @@ FAST_SS = 10.0  # m/s: sweet-spot speed that counts as "swinging" for the square
 
 
 def main():
-    cfg = PitchedBattingHumanPlayEnvCfg()
+    if args.armaim:
+        from aibaseball.tasks.tee_batting.pitched_env_cfg import ArmAimPlayEnvCfg
+
+        cfg = ArmAimPlayEnvCfg()
+        cfg.swing_checkpoint = os.path.abspath(args.checkpoint)
+        if args.aim_bound is not None:
+            cfg.aim_bound = args.aim_bound
+    else:
+        cfg = PitchedBattingHumanPlayEnvCfg()
     train = PitchedBattingHuman3EnvCfg()
     for k in ("tee_xy_noise", "tee_height_noise", "joint_pos_noise", "ball_obs_bias_std", "ball_obs_noise_std",
               "ball_obs_delay_s", "pitch_speed_range_start", "pitch_speed_range_final", "timing_noise_s",
@@ -197,11 +208,16 @@ def main():
 
         TeeBattingEnv._setup_scene = _setup_with_pitcher
         print(f"[diag] + pitcher ({type(pcfg.actuators).__name__}, {len(pcfg.actuators)} groups) and dynamic ball at x -18", flush=True)
-    env = gym.make("AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
+    env = gym.make("AIB-ArmAim-Play-v0" if args.armaim else "AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
-    agent = TeeBattingMimicPPORunnerCfg()
+    if args.armaim:
+        from aibaseball.tasks.tee_batting.agents.rsl_rl_ppo_cfg import ArmAimPPORunnerCfg
+
+        agent = ArmAimPPORunnerCfg()
+    else:
+        agent = TeeBattingMimicPPORunnerCfg()
     runner = OnPolicyRunner(wrapped, agent.to_dict(), log_dir=None, device=agent.device)
-    runner.load(args.checkpoint)
+    runner.load(args.armaim or args.checkpoint)
     if args.post_clip_teacher:  # Human21: as train.py --post_clip_teacher
         from aibaseball.rl.arm_teacher import attach_post_release_student, post_clip_rows
 

@@ -42,3 +42,18 @@ class TeeBattingMimicPPORunnerCfg(TeeBattingPPORunnerCfg):
         critic_hidden_dims=[512, 256, 128],
         activation="elu",
     )
+
+
+@configclass
+class ArmAimPPORunnerCfg(TeeBattingPPORunnerCfg):
+    """Human28 ArmAim: a small residual policy from scratch (the swing policy is frozen inside the env)."""
+
+    experiment_name = "aib1_armaim"
+    max_iterations = 1000
+    save_interval = 50
+    policy = RslRlPpoActorCriticCfg(
+        init_noise_std=0.3,
+        actor_hidden_dims=[256, 128],
+        critic_hidden_dims=[256, 128],
+        activation="elu",
+    )
