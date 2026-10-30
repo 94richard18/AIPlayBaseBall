@@ -68,6 +68,13 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 05:09 ARMAIM2_1000_END（05:07）：ArmAim2c +1000 FAIL → 殘差瞄準線關閉（不再給 GPU、不排 5×3 表格），model_999 留作參考；瞄準改由腳本瞄準層（saim bound 0.4 + q + 完整補償）承擔，Human30（迴圈內 saim 的揮棒續訓）成為唯一「瞄準 + 飛距」線，05:0x 已進 smoke（+300 約 06:40）。RAM 修正有效：trainer private 峰值 10 GB、看門狗未觸發。**
+- model_999（2026-10-31_04-05-23_armaim2c_3，diag1024）：in-zone hit 0.526（+300 0.506）、slope hits −0.40（與 +300 相同；需 > −0.30）、|dx| 0.065（≤ 0.06）、exit 19.4（≥ 20）、D share 0.232（≥ 0.25）、launch 19.8；reachable hit 0.616、slope −0.41。四項未過；+700 its 只換到 hit +0.02、exit +0.1、D +0.03，斜率完全沒動。
+- 判讀：殘差政策學不到腳本初始值以外的 plate_y 依賴——每揮棒一次持住動作、std 0.1、entropy 0 下，斜率上的獎勵差遠小於安打/失投變異；而列 10 已證明更大偏移會壓平棒面（launch 8.8），所以剩下的 −0.40 來自 bound 0.4 上限 + 凍結揮棒的棒路本身，不是殘差頭的容量。要再平斜率得讓揮棒本體配合偏移 = Human30 的設計，殘差線沒有更便宜的下一步。
+- 不排表格的理由：model_999 相對列 9（12500 + saim，ONE OUTS 16.0%）在 diag 只多 launch +2°、exit +1.4，而 saim 的 diag launch 在 showcase（timing noise 0.03）曾由 13° 塌到 2–6°；達 19.1% 的機率低，不值一次 ~40 min GPU，且 Human30 正在用 GPU。
+- 下一步：H30_300_END 以 ArmAim +300 幾何 gate 當下限（slope > −0.50、|axis_off| ≤ 0.08、hit ≥ 0.36），另看 carry 欄位相對列 9 起點（launch 17.7、exit 18.0、D 0.164）有沒有往上；carry 不動 → 轉 exit-speed 線 C（節奏殘差，先跑腳本 tempo 1.1 的 falsifier）；過 → +1000 → 5×3 表格（≥ 19.1%、OF ≥ 3%、joint s6 with R3 ≤ 2/64）→ 20 重錄 PA。Human30 失敗則交付仍是 12500（17.6%），手腕 / 前臂 effort spec 問題（視窗內 |τ|/limit 中位 1.00）仍待使用者。
+- 狀態 05:09：Isaac 1 = Human30 smoke（joint_smoke_20.py，PID 65416，WS 5.8 GB）、GPU 42%、free RAM 42 GB；錄影 03:42 完成，下次最晚 15:42。
+
 **10-31 04:05 RAM 原因確定並修正（15 commits 77b4751 / b96fd3d / 94bf24b）：ArmAimEnv 的腳本診斷累積器（_rows 每球 .cpu()、_tq 每視窗步 GPU tensor、_rl_frac / _rl_cmd_ep 列表）在訓練全程保留——探針 bookkeeping 開 60 its private 10.39 → 11.34 GB 且加速（+0.13 / +0.32 / +0.43 GB 每 2 min，每 240 步多 ~1000 個 Tensor）；關（AIB_ARMAIM_NOBOOK=1）40 its 持平 10.39。logger 與 pinned buffer 排除。探針斜率遠低於觀察到的 1.3 GB/min，加速成長可解釋但未證明。修法：訓練一律 NOBOOK=1（diag 保留 bookkeeping）；run_armaim2d.sh 自 model_650 續 +350 → diag → +1000 gate → ARMAIM2_1000_END（ETA ~05:20），附 RAM 看門狗（trainer private > 30 GB → kill、保留 checkpoint，峰值寫進 marker）。Human30（SaimSwingEnv 無此類列表）重排為只等 ARMAIM2_1000_END（marker 為 watchdog / aborted / crash 則暫停），錄影等待取消，+300 約 05:25–06:45。記憶：chain-script-pitfalls 加「診斷累積器在訓練中要關、長訓練加 RAM 看門狗、3 小時檢查要看 free RAM」。**
 
 **10-31 03:47 例行檢查：Isaac 1 = 15 的記憶體探針（armaim2c_memprobe_on，03:44 起，自 model_650，bookkeeping 開 60 its → 關 40 its，RSS 每 15 s + [memdbg] 物件型別；GPU 5.3 GB、RAM free 43 GB）；錄影 10-31 03:42 完成（20 commit f71cde0：videos/routine_1031_p5.mp4，343 幀、washed 0、High，vs M2 31 欄 64/64、vs v2 52 欄 64/64，hit 15.9 m/s / 20° / 17.9 m fair，無跌倒），下次最晚 10-31 15:42。探針判定後：修正 → 自 650 續 +350 → ARMAIM2_1000_END → Human30（錄影等待已由本次錄影滿足）。無閒置。**
