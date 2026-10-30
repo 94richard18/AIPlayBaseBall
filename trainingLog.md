@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 07:24 H30B_ADOPT_END（07:22）：Human30b 不採用——ONE OUTS 5×3 16.0%（15.9 / 15.4 / 16.7；門檻 19.1、交付 17.6）、外野安打 3.9%（歷來最高）、joint s6 落地 3/64（限 2）。與 h29 同一型：接觸多了（每 PA 0.74 → 0.94）但多出的接觸變成 fair 出局（37.6 → 56.4%）、K 44.8 → 27.6、PA 變短 3.66 → 3.27 球、保送 8.6 → 7.2；showcase 中位 launch −1.4°、exit 18.1、fair carry 5.6 m，diag 的 launch 12.3° 在 timing noise 0.03 下沒撐住。→ 放行 Human30c（logs/h30c/GO 07:24；+300 約 08:20，H30C_300_END）。**
+- 機制欄（12500 → h30b）：界外比 0.446 → 0.355；HBP 5.5 → 4.8；fair 球 launch ≥ 10° 比例 0.477 → 0.314、exit 中位 20.7 → 20.9；P(OF | fair) 0.085 → 0.065。交接 NN 手臂距離落地 1.240 vs 其他 0.830（R3 bank 外的姿勢）。
+- 判讀：exit hinge 付 fair 球不限仰角 → 仰角沒守住，與 Human30c 的理由一致（直接付 carry）。另一個系統性問題：diag（jitter 0）的仰角兩次都在 showcase 的擺動起點噪聲 0.03 s 下塌掉（h29 19.6 → 2.6、h30b 12.3 → −1.4）——若訓練環境沒有同樣的起點噪聲，政策學到的是精準時序下的仰角；已問 15 訓練是否含該噪聲，沒有則 Human30d = 30c + 訓練時 swing-start 噪聲 0.03 排在其後。
+- H30C +300 判定：幾何下限不變（slope > −0.50、hit ≥ 0.36、|axis_off| ≤ 0.08 軟性）；carry 欄以 h30b 為起點（diag：launch 12.3、exit 20.3、fair 0.710、D 0.226），須 launch 回升且 exit 不降；過 → 直接跑 5×3 表格（採用線同前）。
+- 狀態：Isaac 0 → Human30c smoke 啟動中；錄影下次最晚 15:42。
+
 **10-31 06:51 H30B_300_END（06:49）：Human30b +300 幾何 PASS（hit 0.645、slope −0.46、|axis_off| 0.063），carry 四欄三升一降（exit 中位 18.0 → 20.3、fair 0.635 → 0.710、D 0.164 → 0.226；launch 中位 17.7 → 12.3）→ 依「不得下降」規則形式上 FAIL，但這是第一個同時過幾何、exit 上升的揮棒，10–35° 安打數量反而增加 → 由遊戲層決定：下令 5×3 ONE OUTS 表格 + joint s6（H30B_ADOPT_END，約 55 min）；同時備妥 Human30c（carry 直付）武裝其後。**
 - model_12799（2026-10-31_06-09-39_human_pitched30b_1；trainer private 峰值 11 GB）：launch q25/50/75 −24.8 / 17.7 / 49.2 → −18.7 / 12.3 / 44.9（兩尾都收窄，10–35° 比例 0.191 → 0.195 持平、安打多 22%）；exit q25/med/q75 15.6 / 20.3 / 24.5；spray 中位 6.1 → −12.5。訓練趨勢的隱憂：batch launch 均值 10.3 → 1.0 持續下降、fair_rate 0.63 → 0.61、train hit 0.24 → 0.38、carry 均值持平 ~13.5 → 政策仍在用仰角換接觸，+700 大概率延續。
 - 判讀：exit hinge 只限 fair 球但沒限仰角，fair 滾地球照樣領 exit 獎勵 → 仰角沒有被守住。Human30c（我定、先寫不跑）：拿掉 launch 高斯與 exit hinge，改付 fair 球的 carry 項 20 × clamp((carry − 10 m) / 30 m, 0, 1)（用環境判 fair 的同一段飛行落點），其餘同 Human30b。理由：carry 就是 ONE OUTS 目標本身（外野 ≥ 38.9 m），線性項無 sigma 問題（起始均值 ~13.5 m）。
