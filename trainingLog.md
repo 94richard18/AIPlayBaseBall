@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 04:05 RAM 原因確定並修正（15 commits 77b4751 / b96fd3d / 94bf24b）：ArmAimEnv 的腳本診斷累積器（_rows 每球 .cpu()、_tq 每視窗步 GPU tensor、_rl_frac / _rl_cmd_ep 列表）在訓練全程保留——探針 bookkeeping 開 60 its private 10.39 → 11.34 GB 且加速（+0.13 / +0.32 / +0.43 GB 每 2 min，每 240 步多 ~1000 個 Tensor）；關（AIB_ARMAIM_NOBOOK=1）40 its 持平 10.39。logger 與 pinned buffer 排除。探針斜率遠低於觀察到的 1.3 GB/min，加速成長可解釋但未證明。修法：訓練一律 NOBOOK=1（diag 保留 bookkeeping）；run_armaim2d.sh 自 model_650 續 +350 → diag → +1000 gate → ARMAIM2_1000_END（ETA ~05:20），附 RAM 看門狗（trainer private > 30 GB → kill、保留 checkpoint，峰值寫進 marker）。Human30（SaimSwingEnv 無此類列表）重排為只等 ARMAIM2_1000_END（marker 為 watchdog / aborted / crash 則暫停），錄影等待取消，+300 約 05:25–06:45。記憶：chain-script-pitfalls 加「診斷累積器在訓練中要關、長訓練加 RAM 看門狗、3 小時檢查要看 free RAM」。**
+
 **10-31 03:47 例行檢查：Isaac 1 = 15 的記憶體探針（armaim2c_memprobe_on，03:44 起，自 model_650，bookkeeping 開 60 its → 關 40 its，RSS 每 15 s + [memdbg] 物件型別；GPU 5.3 GB、RAM free 43 GB）；錄影 10-31 03:42 完成（20 commit f71cde0：videos/routine_1031_p5.mp4，343 幀、washed 0、High，vs M2 31 欄 64/64、vs v2 52 欄 64/64，hit 15.9 m/s / 20° / 17.9 m fair，無跌倒），下次最晚 10-31 15:42。探針判定後：修正 → 自 650 續 +350 → ARMAIM2_1000_END → Human30（錄影等待已由本次錄影滿足）。無閒置。**
 
 **10-31 03:31 ArmAim2c +300 PASS（01:44）、R3 恢復 PASS（02:18）；+700 訓練中但 RAM 鋸齒 31–46 GB（系統 free 曾降至 2.8/64 GB，殺掉 15 的背景 wrapper 與 20 的錄影 gate）→ 令 15 停訓、保留 model_650、修記憶體累積後自 650 續 +350；Human30 暫停到修好；錄影改由我以訊息給 20 時段（不再輪詢）。**
