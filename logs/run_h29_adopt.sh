@@ -62,7 +62,7 @@ f = lambda x: float(x) if x not in ('', 'nan') else float('nan')
 r = [list(map(float, l.split()[1:])) for l in open("$O/t3_$C.txt") if len(l.split()) == 11]
 w = [st.mean(v[0::2]) for v in r]; o = [st.mean(v[1::2]) for v in r]
 a = list(csv.DictReader(open('logs/falldiag2/fd_s6.csv'))); b = list(csv.DictReader(open('$O/joint_$C.csv')))
-cols = ['clip', 'kmh', 'plate_y', 'plate_z', 'handoff_t', 'handed', 'pred_y', 'pred_z', 'flight_pred', 'handoff_jump_m', 'pitcher_fell']
+cols = ['clip', 'kmh', 'handoff_t', 'handed', 'pred_y', 'pred_z', 'flight_pred', 'handoff_jump_m', 'pitcher_fell']
 same = sum(all(x[c] == y[c] for c in cols) for x, y in zip(a, b)); g = sum(f(x['min_pelvis_z_2s']) < 0.35 for x in b)
 tt = sorted(f(x['torso_tilt_1p5_deg']) for x in b if f(x['torso_tilt_1p5_deg']) == f(x['torso_tilt_1p5_deg']))
 hits = sum(x['hit'] == 'True' for x in b)

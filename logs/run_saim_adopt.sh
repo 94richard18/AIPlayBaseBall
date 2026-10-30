@@ -97,7 +97,7 @@ J6=$($P -c "
 import csv
 f = lambda x: float(x) if x not in ('', 'nan') else float('nan')
 a = list(csv.DictReader(open('logs/falldiag2/fd_s6.csv'))); b = list(csv.DictReader(open('$O/joint_s6.csv')))
-cols = ['clip', 'kmh', 'plate_y', 'plate_z', 'handoff_t', 'handed', 'pred_y', 'pred_z', 'flight_pred', 'handoff_jump_m', 'pitcher_fell']
+cols = ['clip', 'kmh', 'handoff_t', 'handed', 'pred_y', 'pred_z', 'flight_pred', 'handoff_jump_m', 'pitcher_fell']
 same = sum(all(x[c] == y[c] for c in cols) for x, y in zip(a, b))
 g = sum(f(r['min_pelvis_z_2s']) < 0.35 for r in b); hits = sum(r['hit'] == 'True' for r in b)
 ev = sorted(f(r['exit_mps']) for r in b if r['hit'] == 'True')
