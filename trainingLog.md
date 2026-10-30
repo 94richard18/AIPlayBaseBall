@@ -68,6 +68,15 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 22:2x 腳本化瞄準 v3 結果（ARMAIM_SCRIPT_END，15）：PD 路徑「通但只傳 3–9%」→ 揮棒視窗內的 PD 目標 offset 路線幾乎無效；ArmAim2（視窗 0.30）不啟動。決定：GO 乾濕配對列 + 第 5 列（y+z，視窗 0.60）+ 第 6 列（觀測補償），並在 CPU 上拆解 12 cm 的知覉誤差。**
+- 基準 12500：hit 0.445、|axis_off| 0.103、slope −0.80、reachable −0.81、exit 18.9、D share 0.181。
+- 列 1 真實 dy +1 視窗 0.30：slope −0.78 / reachable −0.80、hit 0.499、|axis_off| 0.095、exit 18.2、D share 0.201、offset 頂到邊界 57%。列 2 反號對照：slope −0.86 / −0.92、hit 0.460、exit 16.7（反向移動 → 路徑有傳）。列 3 percept dy +1：slope −0.79、hit 0.458、100% 頂到邊界。列 4 真實 dy +1 視窗 0.60：slope −0.73 / −0.75、hit 0.481、exit 18.1、D share 0.257。
+- 判讀：完整實現腳本映射應讓 reachable slope ≈ 0；列 1 只動 +0.02、列 4 +0.07 → 傳輸約 3%（0.30）/ 9%（0.60）。提早視窗好 3 倍，符合「力矩飽和前先瞄準」。
+- 修正：15 先前「v1 無效」的判斷部分錯誤——全部投球的平均 |plate_y| 是 0.27 m（非 in-zone 的 0.12），v1 的 100% 飽和來自知覺誤差。**知覺很差**：視窗最後一步，打者預測的穿越 y 與真實差 |dy − true| 平均 0.122 m，可能是 12500 從不瞄準的原因之一；來源待拆（pitch_plate 與真實穿越不一致 / 僅重力外推 vs 阻力+Magnus / 0.10 s 延遲+噪聲）。realised-fraction 代理量不可用（>1 與負值，揮棒本身的追蹤誤差蓋過投影）→ 改成乾濕配對列（offset 算出並記錄但不施加，同 seed 位元相同），realised = Σ(wet − dry)·off / Σoff²。
+- 我的新假說：凍結的 swing policy 觀測 q，加在它之後的 offset 對它是擾動、會被修正 → 第 6 列把 offset 關節的觀測 q 改成 q − offset（qd 不變）讓政策不再對抗；若第 6 列傳輸遠高於第 4 列，ArmAim2 / fallback 的修法是觀測補償而非更大權限。
+- 已下 GO（一次一個 Isaac，各 diag1024 seed 0 + gate，marker ARMAIM_ROWS2_END）：(i) 與列 4 配對的乾列，並同時記錄每球在接觸平面的真實 y/z、pitch_plate、知覺最後一步預測；(ii) 第 5 列 y+z 視窗 0.60（目標 D = +1 cm）；(iii) 第 6 列 = 列 4 + 觀測補償。CPU 並行：拆解 0.122 m 誤差三個來源，並報視窗開啟步（contact − 0.60）的誤差。
+- 若傳輸 ~10% 成立且補償無效：槓桿只剩更早瞄準（跨步期、不同的揮棒起始姿勢）或力量 spec（使用者的）；會附乾濕配對數字再向使用者提。錄影時段 10-31 06:41 保留給 20；C/A falsifier 排在該錄影之後。
+
 **10-30 21:0x 腳本化瞄準 +1 列無效（offset 100% 飽和）→ v2 重跑中（15 commit 8b25bdb，ETA 21:40）；D 檢查：接觸位置本身就能解釋大部分缺少的出棒速度 → 「打遠 + 打扎實」主線 = 瞄準（y 與 z），出棒速度選項 C/A/B 降為備援。**
 - +1 列無效原因：percept 版 dy（預測穿越 y − 名義 y）平均 |dy| 0.30 m，但真實 |plate_y| 約 0.12 → 等於常數 +0.4 rad 最大 offset；結果 hit 0.458、|axis_off| 0.096、slope −0.79、exit 18.0。附帶線索：15 個關節常數 ±0.4 rad 只讓 |axis_off| 動 0.7 cm，視窗內力矩飽和 84–97%，PD 目標 offset 可能根本沒被跟到。
 - v2 列（各 diag1024 seed 0 + gate，ARMAIM_SCRIPT_END）：1 真實 plate_y（特權，物理 falsifier 可用）+1；2 同 −1 對照；3 percept dy +1 並印 |dy − true| 找 percept 偏差。我加：每列印「關節實際實現的 offset 比例」；若列 1 實現比例 < 0.5 加列 4 = 視窗提早到 contact − 0.60 s（上桿/跨步期力矩未飽和）；若 y 路徑通，加列 5 = y + z offset（目標 D = +1 cm）。
