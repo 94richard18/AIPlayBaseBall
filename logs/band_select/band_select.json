@@ -1,0 +1,114 @@
+{
+ "y0": -0.05522724722506803,
+ "fit": [
+  -0.7971145357020888,
+  -0.04402244152991457
+ ],
+ "bands": {
+  "|plate_y - y0| <= 3 cm": {
+   "share": 0.09694793536804308,
+   "hit": 0.5555555555555556,
+   "batter_win": 0.3122,
+   "seeds": [
+    0.311,
+    0.296,
+    0.311,
+    0.323,
+    0.32
+   ],
+   "how": {
+    "strikeout": 0.567,
+    "walk": 0.2252,
+    "infield_ball": 0.1208,
+    "hit_by_pitch": 0.0716,
+    "outfield_hit": 0.0154
+   },
+   "n_hits": 30,
+   "outfield": 5
+  },
+  "|plate_y - y0| <= 5 cm": {
+   "share": 0.15080789946140036,
+   "hit": 0.42857142857142855,
+   "batter_win": 0.31260000000000004,
+   "seeds": [
+    0.309,
+    0.298,
+    0.304,
+    0.326,
+    0.326
+   ],
+   "how": {
+    "strikeout": 0.5654,
+    "walk": 0.2282,
+    "outfield_hit": 0.013,
+    "hit_by_pitch": 0.0714,
+    "infield_ball": 0.122
+   },
+   "n_hits": 36,
+   "outfield": 5
+  },
+  "|plate_y - y0| <= 8 cm": {
+   "share": 0.2980251346499102,
+   "hit": 0.3313253012048193,
+   "batter_win": 0.3198,
+   "seeds": [
+    0.321,
+    0.305,
+    0.313,
+    0.329,
+    0.331
+   ],
+   "how": {
+    "strikeout": 0.543,
+    "walk": 0.2232,
+    "infield_ball": 0.1372,
+    "hit_by_pitch": 0.0716,
+    "outfield_hit": 0.025
+   },
+   "n_hits": 55,
+   "outfield": 10
+  },
+  "|plate_y - y0| <= 12 cm": {
+   "share": 0.4236983842010772,
+   "hit": 0.4364406779661017,
+   "batter_win": 0.30779999999999996,
+   "seeds": [
+    0.32,
+    0.285,
+    0.305,
+    0.313,
+    0.316
+   ],
+   "how": {
+    "strikeout": 0.414,
+    "walk": 0.2026,
+    "infield_ball": 0.2782,
+    "hit_by_pitch": 0.0672,
+    "outfield_hit": 0.038
+   },
+   "n_hits": 103,
+   "outfield": 12
+  },
+  "all in-zone": {
+   "share": 1.0,
+   "hit": 0.4452423698384201,
+   "batter_win": 0.2584000000000001,
+   "seeds": [
+    0.258,
+    0.258,
+    0.262,
+    0.261,
+    0.253
+   ],
+   "how": {
+    "infield_ball": 0.5414,
+    "walk": 0.1682,
+    "strikeout": 0.2002,
+    "hit_by_pitch": 0.0536,
+    "outfield_hit": 0.0366
+   },
+   "n_hits": 248,
+   "outfield": 21
+  }
+ }
+}
