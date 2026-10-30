@@ -2,7 +2,7 @@
 # ArmAim2 + comp (planning 14, 10-30 21:3x): ArmAim2 (one held residual per swing, +-0.2 rad = aim_delta 0.2 / bound, actor head
 # zeroed = the row-9 scripted aim, std fixed 0.1, entropy 0) on the row-9 base (quadratic-filtered percept, window 0.60, full
 # obs comp), aim_bound = the SAIM_ADOPT pick (row 9 0.4 / row 10 0.6), reward = aim term + w_hit_q x q + 0.5 x clamp(exit - 18,
-# 0, 10) on hits. Waits for logs/SAIM_ADOPT_END.txt. Gates = ArmAim's +300 / +1000 -> ARMAIM2_300_END / ARMAIM2_1000_END.
+# 0, 10) on hits. Waits for SAIM_ADOPT_END + H29_ADOPT_END; the frozen swing = logs/h29adopt/winner.txt (AIB_SAIM_SWING). Gates = ArmAim's +300 / +1000 -> ARMAIM2_300_END / ARMAIM2_1000_END.
 # Film slot 10-31 06:41 (20): the +700 resume (~2.4 h) launches only if it can end before 06:30 (launch <= 03:50), else it
 # waits for 20's film marker (logs/M3ROUTINE4_END.txt newer than this chain's start, written by logs/routine1031.sh; or 08:00).
 cd /d/MyProject/AIPlayBaseBall
@@ -38,7 +38,10 @@ diag() {  # $1 residual ckpt, $2 tag, [$3 extra args]
   grep -q Traceback $O/diag_$2.txt && fail $O/diag_$2.txt "diag $2"
   [ -f logs/diag_bat_contact_$2.json ] || { MSG="diag $2: no json"; exit 1; }
 }
-until [ -f logs/SAIM_ADOPT_END.txt ]; do sleep 60; done
+until [ -f logs/SAIM_ADOPT_END.txt ] && [ -f logs/H29_ADOPT_END.txt ] && [ logs/H29_ADOPT_END.txt -nt $O/chain.stamp ]; do sleep 60; done
+read SW WTAG < logs/h29adopt/winner.txt
+[ -f "$SW" ] || { MSG="no winner swing in logs/h29adopt/winner.txt"; exit 1; }
+export AIB_SAIM_SWING=$(cd $(dirname $SW) && pwd -W)/$(basename $SW)  # the frozen swing (ArmAim2CompEnvCfg.swing_checkpoint)
 export AIB_SAIM_BOUND=$(grep -o "aim_bound [0-9.]*" $PR 2>/dev/null | tail -1 | awk '{print $2}')
 [ -n "$AIB_SAIM_BOUND" ] || { MSG="no aim_bound pick in $PR"; exit 1; }
 DELTA=$($P -c "print(0.2 / $AIB_SAIM_BOUND)")
@@ -48,7 +51,7 @@ $P -u scripts/train.py --task $TASK --headless --num_envs 256 --max_iterations 2
 grep -q Traceback $O/train_smoke.txt && fail $O/train_smoke.txt smoke
 DS=$(ls -td $B/*armaim2c_smoke 2>/dev/null | head -1); IS=$([ -n "$DS" ] && last $DS)
 [ -n "$IS" ] || { MSG="smoke: no checkpoint"; exit 1; }
-ZC="aim_bound $AIB_SAIM_BOUND delta $DELTA | adopt: $(head -c 400 logs/SAIM_ADOPT_END.txt)"
+ZC="swing $WTAG ($SW) aim_bound $AIB_SAIM_BOUND delta $DELTA | adopt: $(head -c 300 logs/SAIM_ADOPT_END.txt) | $(head -c 300 logs/H29_ADOPT_END.txt)"
 BASE=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_band12500.json --label 12500 | tr '\n' ' ')
 # 3. train 300 (~1 h + diag): only if its diag lands before 06:30
 filmwait 05:15

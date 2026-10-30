@@ -510,6 +510,7 @@ class ArmAim2CompEnvCfg(ArmAim2EnvCfg):
     (the row 9 / row 10 pick, default 0.4), the held residual +-0.2 rad (aim_delta = 0.2 / aim_bound). Reward = the aim
     term + w_hit_q x q (dx 0.15 / D 0.032) + 0.5 x clamp(exit - 18, 0, 10) m/s on hits (the +1000 gap is quality)."""
 
+    swing_checkpoint: str = os.environ.get("AIB_SAIM_SWING", _SWING_12500)  # the H29_ADOPT winner's frozen swing
     aim_bound: float = float(os.environ.get("AIB_SAIM_BOUND", "0.4"))
     aim_delta: float = 0.2 / float(os.environ.get("AIB_SAIM_BOUND", "0.4"))
     aim_window_s: float = 0.60
