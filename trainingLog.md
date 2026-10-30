@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 20:59 rows2 結果（ARMAIM_ROWS2_END 20:57）：第 6 列「觀測補償」讓腳本瞄準不經訓練就把斜率從 −0.80 推到 −0.50（reachable −0.43）、|axis_off| 7.1 cm、hit 0.485 → 傳輸損失主因是凍結 swing policy 透過 q / nxt_ref − q 對抗偏移，不是致動器。決定：z 暫停；重排 GPU：PFILTER_END → 第 8 列（完整補償）→ 第 9 列（濾波知覺驅動的第 6 列 = 可部署腳本瞄準）→ Human29；手腕/前臂力矩 spec 問題交使用者。**
+- 各列（diag1024 seed 0、真實 dy、視窗 0.60；基準 hit 0.445 / |axis_off| 0.103 / slope −0.80 / reachable −0.81 / exit 18.9 / D share 0.181）：列 4 y：hit 0.481、|axis_off| 0.096、slope −0.73、reachable −0.75 / 0.088、exit 18.1、D share 0.257、launch 20.1；列 5 y+z：0.465、0.099、−0.76、−0.77 / 0.085、18.6、0.212、20.4；**列 6 y + obs comp：0.485、0.071、−0.50（r −0.73）、−0.43 / 0.065、18.3、0.222、launch 24.4**；列 6 misses slope −0.71。
+- 實現比例（wet − dry 配對）：列 4 l_arm 0.32 / r_arm 0.37 / wrists −0.07 / waist 0.55；列 5 同 + z −0.16；列 6 l_arm 0.64 / r_arm 0.69 / wrists 0.13 / waist 0.98。補償後腰全跟、手臂約 2/3、手腕仍近零；z 不傳且吃 D share → 暫停 z。
+- 視窗內力矩使用 |applied_torque|/limit（IsaacLab implicit actuator 的 PD effort 截斷估計，非 PhysX drive force）：12500 單獨（r5dry）步數 ≥ 0.95 比例：l_wrist_roll 0.94、l_wrist_pitch 0.75、l_wrist_yaw 0.90、r_wrist_roll 0.38、r_wrist_pitch 0.68、r_wrist_yaw 0.54、l_elbow 0.81、l_shoulder_pitch 0.92、l_shoulder_roll 0.98、l_shoulder_yaw 0.55；r6wet 幾乎相同；中位數除 r_wrist_roll 0.52 外全為 1.00 → 前臂與手腕在 12500 自己的揮棒裡整個視窗都頂在極限。這是向使用者提手腕 / 前臂力量 spec 的證據；未答覆前不改。
+- 第 6 列用的是特權真實 dy；原始知覺上腳本映射會飽和，所以可部署版必須靠濾波知覺（第 9 列）。重排：15 停掉尚未開跑的 run_human29.sh（含內層 PID），改成 PFILTER_END → 列 8（列 6 + 完整補償：參考棒頭 / key target 依 Jacobian 映射偏移）→ 列 9（列 6 以濾波知覺逐步追蹤驅動）→ Human29 GO 自檢。Human29 +300 延至 ~22:25、+1000 ~00:20，仍在 06:41 錄影前。列 9 若達 +300 線（slope > −0.50、|axis_off| ≤ 8 cm、hit ≥ 0.40）即列為採用候選（下個空檔跑 5 seeds × 3 tables + joint seed 6），並作為 ArmAim2+comp 的初始化；ArmAim2+comp 排在 Human29 gates 之後（互補，非取代）。
+
 **10-30 20:42 知覺濾波建好（15 commit 3523534，cfg.percept_filter 預設 OFF）；Human29 已備妥並由鏈自動條件啟動（9720a5d，logs/run_human29.sh）。**
 - 濾波：自出手起每 env 的 running sums（1、t、t²、p、t·p；z 先加 ½g t² 再擬合），以擬合的 p0、v 在延遲時刻取代 seen / v，t_arrive 用擬合 vx；< 3 個樣本時退回原法；旗標關時無新 RNG 抽樣，凍結設定與 M2 位元不變（rows2 已用此檔預設關跑過）。離線（38 m/s、1 cm 噪聲、0.10 s 延遲、100 Hz、2000 球）最後一步 y 誤差：直線擬合 0.4 cm vs 原法 12.9 cm；側向 2 m/s² 時直線 6.7 / 二次 1.0 cm；P3c 彎曲約 0.6 m/s² → 先用直線，零樣本知覺欄 > 3 cm 才加 y 二次項（≥ 15 樣本）。
 - 鏈：ARMAIM_ROWS2_END → 第 7 列（ARMAIM_ROW7_END）→ logs/run_pfilter.sh（12500 凍結 + 濾波 ON；再 + noise/bias 0；皆 scripted DRY，PFILTER_END ~21:15）→ Human29 自檢兩條件：in-zone hit ≥ 0.40 且 mean |perc_y_last − act_y| ≤ 0.03 m，否則 marker 寫 HOLD 停止。
