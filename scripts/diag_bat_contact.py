@@ -260,7 +260,8 @@ def main():
         chain_chk = {k: torch.full((n,), float("nan"), device=dev) for k in ("v", "joints", "res_link", "res_com")}
         pw_pos, pw_neg = torch.zeros(nj, device=dev), torch.zeros(nj, device=dev)
     if args.contact_log:
-        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit", "D_contact", "launch_contact"):
+        for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit", "D_contact", "launch_contact",
+                  "ev_any", "launch_any", "dx_any", "D_any", "spray_contact", "backspin_contact"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
     if args.fall_state:
         rob = base.robot
@@ -463,6 +464,18 @@ def main():
                            # reference clock at the hit step minus the clip's contact time (+ = the reference is past contact)
                            ("ref_phase_hit", ref_t_pre - base.ref.contact_time[base.clip])):
                 rec[k] = torch.where(nh, val, rec[k])
+            # every hit, also the ones made in _get_dones' last-sub-step impact check (missed by the keys above: ~27% of
+            # the 12500 hits): read from the env's stored launch / contact buffers on the next physics step. The game's
+            # BattedBall inputs: spray = initial azimuth (+ = +Y, left field), backspin about v_h x z (the env's), rpm.
+            na = base.hit & torch.isnan(rec["ev_any"]) & ~finished
+            lv = base.launch_vel
+            vh = torch.nn.functional.normalize(lv * torch.tensor([1.0, 1.0, 0.0], device=dev), dim=-1)
+            back = torch.cross(vh, torch.tensor([0.0, 0.0, 1.0], device=dev).expand_as(lv), dim=-1)
+            for k, val in (("ev_any", lv.norm(dim=-1)), ("launch_any", torch.rad2deg(torch.atan2(lv[:, 2], lv[:, :2].norm(dim=-1)))),
+                           ("dx_any", base.contact_x - geom.sweet_spot_x), ("D_any", base.contact_D),
+                           ("spray_contact", torch.rad2deg(torch.atan2(lv[:, 1], lv[:, 0]))),
+                           ("backspin_contact", (base.launch_omega * back).sum(-1) * (30.0 / np.pi))):
+                rec[k] = torch.where(na, val, rec[k])
         rec["hit"] |= base.hit & ~finished
 
     base._apply_action = hooked_apply
