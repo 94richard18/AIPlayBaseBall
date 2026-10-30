@@ -68,6 +68,13 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 03:31 ArmAim2c +300 PASS（01:44）、R3 恢復 PASS（02:18）；+700 訓練中但 RAM 鋸齒 31–46 GB（系統 free 曾降至 2.8/64 GB，殺掉 15 的背景 wrapper 與 20 的錄影 gate）→ 令 15 停訓、保留 model_650、修記憶體累積後自 650 續 +350；Human30 暫停到修好；錄影改由我以訊息給 20 時段（不再輪詢）。**
+- ArmAim2c model_299（logs/rsl_rl/aib1_armaim2/2026-10-31_00-47-55_armaim2c_1，凍結揮棒 12500 + saim bound 0.4 / delta 0.5）：in-zone hit 0.506、|axis_off| 0.069、|dx| 0.069、exit 19.3、D share 0.202、launch 17.0、slope hits −0.40（misses −0.50）；reachable hit 0.585、slope −0.41。+1000 尚缺：slope > −0.30、|dx| ≤ 0.06、exit ≥ 20、D ≥ 0.25。
+- R3 h25r3 model_1596（bank = armaim + saim 交接姿勢，2048 states，hits 0.328）：joint s6 pitch 欄 64/64、on the ground 1/64（原 12–15）、hits 21/64、軀幹傾角 +1.5 s 中位 1.3°；交接 NN 手臂距離 other 0.544（原 ~0.92–0.97）。ckpt logs/rsl_rl/aib1_recover/2026-10-31_01-47-37_h25r3/model_1596.pt（logs/recov3/recover_ckpt.txt），Human30 的 joint 用它。
+- RAM 事件：+700 trainer（PID 87644，02:19 起）03:28 WS 44.8 → 40 s 後 45.6 GB、free 2.8 GB；03:30 free 回 16.2、WS 30.9（checkpoint 存檔 03:24 model_650 附近釋放）→ 非單調洩漏，但每個成長期都把 free 壓到 3 GB 以下。推測 ArmAim2Comp env 的 Python 端逐步累積（腳本列的 per-pitch dump / 配對 bookkeeping）。決定：停、保留 model_650、找出並修正、短跑量 RSS 20 its 前後、再自 650 續 +350 至 ARMAIM2_1000_END；修好前 Human30 不啟動。
+- 20 的 routine1031.sh 被系統因低記憶體殺掉（03:2x，未錄影、無 marker）；改為我在 Isaac 0 且 free RAM > 8 GB 時以訊息給時段（預計 04:00–06:41，最晚 07:15），不寫 SKIPPED marker（Human30 +700 等真實錄影 marker）。
+- 記憶：chain-script-pitfalls 加「CPU 工作被 Isaac 計數誤判」一則（00:05–00:47 的閒置原因）。
+
 **10-31 00:47 例行檢查：Isaac 0、GPU 閒置——ArmAim2c 在 00:05 smoke 完成後沒有進入 +300（logs/armaim2c_chain.txt 空、無 ARMAIM2_* marker），已緊急要 15 查因並重啟；ONE OUTS 機制拆解（15，logs/one_outs_mechanism.txt，commit d57ccf2）證實假說；Human30 放行（w_aim 0）。**
 - 機制（3 tables × 5 seeds × 1000 場；欄：每 PA 接觸 | 界外/fair 比 | 勝、K、BB、HBP、in-play out、OF hit（PA 佔比 %）| 每 PA 投球 | fair 球 launch ≥ 10° 比例、exit 中位 | P(OF | fair)）：12500：0.74 | 0.446/0.554 | 17.6、44.8、8.6、5.5、37.6、3.5 | 3.66 | 0.477、20.7 | 0.085；12500+saim：0.82 | 0.384/0.616 | 16.0、36.9、7.7、5.2、47.1、3.1 | 3.48 | 0.411、20.2 | 0.061；h29：1.20 | 0.387/0.613 | 13.1、15.8、6.3、4.2、71.1、2.6 | 3.01 | 0.365、19.5 | 0.035；h29s：1.02 | 0.398/0.602 | 13.9、26.7、7.4、4.7、59.4、1.8 | 3.29 | 0.274、19.3 | 0.029。
 - 判讀：12500 的 17.6% 有 14.1 pt 是 BB + HBP、只有 3.5 pt 是外野安打；h29 的 hit 0.908 把三振（44.8 → 15.8%）變成 fair 出局（37.6 → 71.1%）、PA 變短（3.66 → 3.01 球）少了保送；且每次 fair 接觸更差（P(OF | fair) 0.085 → 0.035、launch ≥ 10° 0.477 → 0.365、exit 20.7 → 19.5）。**規則：接觸沒有飛距在 ONE OUTS 下是負值；日後打者獎勵只付 fair 球的 carry / launch / exit，in-zone hit gate 只當下限。**
