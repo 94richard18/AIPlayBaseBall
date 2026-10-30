@@ -99,6 +99,11 @@ class ArmAimEnv(PitchedBattingEnv):
             self._bk = {k: torch.zeros(n, device=dev) for k in ("act_y", "act_z", "grav_y_open", "grav_y_last", "perc_y_open",
                                                                 "perc_y_last", "perc_z_last")}
             self._was_open = torch.zeros(n, dtype=torch.bool, device=dev)
+            # torque use in the window (planning 14: wrist effort evidence): |applied torque| / effort limit, pooled steps
+            jn = list(self.robot.joint_names)
+            self._tq_names = [f"{s}_wrist_{j}" for s in ("l", "r") for j in ("roll", "pitch", "yaw")] + ["l_elbow", "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw"]
+            self._tq_ids = torch.tensor([jn.index(j) for j in self._tq_names], device=dev)
+            self._tq = []
             atexit.register(self._print_scripted)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         # the ArmAim policy's spaces (the swing env's 30 / 152 stay what the swing actor uses)
@@ -121,6 +126,11 @@ class ArmAimEnv(PitchedBattingEnv):
         cm = np.median(self._rl_cmd_ep) if self._rl_cmd_ep else float('nan')
         if self._rl_frac_z:
             fr += f"; z part {np.median(self._rl_frac_z):.2f}"
+        if self._tq:
+            r = torch.cat(self._tq).float()
+            print("[armaim scripted] window torque |tau|/limit (pooled steps, applied_torque): " + ", ".join(
+                f"{j} sat>=0.95 {(r[:, i] >= 0.95).float().mean().item():.2f} med {r[:, i].median().item():.2f}"
+                for i, j in enumerate(self._tq_names)), flush=True)
         print(f"[armaim scripted] realised fraction of the commanded offset (median over pitches): {fr}; "
               f"commanded mean |offset| {cm:.3f} rad, window {self.cfg.aim_window_s} s", flush=True)
         print(f"[armaim scripted] sign {self.cfg.aim_scripted_sign:+.0f}: episodes {n}, offset at the +-{self.cfg.aim_bound} "
@@ -154,6 +164,10 @@ class ArmAimEnv(PitchedBattingEnv):
             bk["perc_y_last"] = torch.where(self.res_win, self._ball_seen[:, 1] - nom[:, 1], bk["perc_y_last"])
             bk["perc_z_last"] = torch.where(self.res_win, self._ball_seen[:, 2] - nom[:, 2], bk["perc_z_last"])
             self._was_open |= self.res_win
+            if self.res_win.any():
+                d = self.robot.data
+                lim = d.joint_effort_limits[:, self._tq_ids].clamp_min(1e-6)
+                self._tq.append((d.applied_torque[:, self._tq_ids].abs() / lim)[self.res_win].half())
             dyt = self.pitch_plate[:, 0]  # the true plate y (world target y = nominal y + this)
             dy = dyt if c.aim_scripted_true else self._ball_seen[:, 1] - self.nominal_target[:, 1]
             self.res_dyt_ep = torch.where(self.res_win, dyt, self.res_dyt_ep)
