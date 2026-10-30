@@ -1,0 +1,5 @@
+config | contacts per PA, foul / fair of contacts | PA: batter win, strikeout, walk, HBP, infield out, outfield hit | pitches per PA | fair contacts: launch >= 10 deg, exit med
+12500      | 0.74, foul 0.446 fair 0.554 | win 0.176, K 0.448, BB 0.086, HBP 0.055, in-play out 0.376, OF hit 0.035 | 3.66 | 0.477, 20.7
+12500+saim | 0.82, foul 0.384 fair 0.616 | win 0.160, K 0.369, BB 0.077, HBP 0.052, in-play out 0.471, OF hit 0.031 | 3.48 | 0.411, 20.2
+h29        | 1.20, foul 0.387 fair 0.613 | win 0.131, K 0.158, BB 0.063, HBP 0.042, in-play out 0.711, OF hit 0.026 | 3.01 | 0.365, 19.5
+h29s       | 1.02, foul 0.398 fair 0.602 | win 0.139, K 0.267, BB 0.074, HBP 0.047, in-play out 0.594, OF hit 0.018 | 3.29 | 0.274, 19.3
