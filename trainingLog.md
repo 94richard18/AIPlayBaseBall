@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 06:51 H30B_300_END（06:49）：Human30b +300 幾何 PASS（hit 0.645、slope −0.46、|axis_off| 0.063），carry 四欄三升一降（exit 中位 18.0 → 20.3、fair 0.635 → 0.710、D 0.164 → 0.226；launch 中位 17.7 → 12.3）→ 依「不得下降」規則形式上 FAIL，但這是第一個同時過幾何、exit 上升的揮棒，10–35° 安打數量反而增加 → 由遊戲層決定：下令 5×3 ONE OUTS 表格 + joint s6（H30B_ADOPT_END，約 55 min）；同時備妥 Human30c（carry 直付）武裝其後。**
+- model_12799（2026-10-31_06-09-39_human_pitched30b_1；trainer private 峰值 11 GB）：launch q25/50/75 −24.8 / 17.7 / 49.2 → −18.7 / 12.3 / 44.9（兩尾都收窄，10–35° 比例 0.191 → 0.195 持平、安打多 22%）；exit q25/med/q75 15.6 / 20.3 / 24.5；spray 中位 6.1 → −12.5。訓練趨勢的隱憂：batch launch 均值 10.3 → 1.0 持續下降、fair_rate 0.63 → 0.61、train hit 0.24 → 0.38、carry 均值持平 ~13.5 → 政策仍在用仰角換接觸，+700 大概率延續。
+- 判讀：exit hinge 只限 fair 球但沒限仰角，fair 滾地球照樣領 exit 獎勵 → 仰角沒有被守住。Human30c（我定、先寫不跑）：拿掉 launch 高斯與 exit hinge，改付 fair 球的 carry 項 20 × clamp((carry − 10 m) / 30 m, 0, 1)（用環境判 fair 的同一段飛行落點），其餘同 Human30b。理由：carry 就是 ONE OUTS 目標本身（外野 ≥ 38.9 m），線性項無 sigma 問題（起始均值 ~13.5 m）。
+- 分流規則：h30b 表格 ≥ 19.1%、OF ≥ 3%、s6 ≤ 2/64 → 採用 + 令 20 重錄 PA（W1 11-05）+ h30b +700；不過 → 放行 Human30c +300（H30C_300_END，carry 中位對 h30b 起點須上升、幾何下限同前）。
+- 線 C 結論不變（DEAD）；GPU 現在跑 h30b 表格。
+
 **10-31 06:47 例行檢查：Isaac 1 = Human30b 的 +300 diag（diag_bat_contact.py，PID 8928，WS 3.7 GB；訓練 2026-10-31_06-09-39_human_pitched30b_1 已存 model_12799，訓練尾段 fair_rate 0.58–0.61、hit_rate 0.38、launch 0.96 — 對照 Human30 的 0.25 / −15.9，方向對了），H30B_300_END 數分鐘內；GPU 28%、free RAM 44 GB；錄影 03:42 完成，下次最晚 15:42；無閒置。線 C 判定 DEAD（TEMPO_FALSIFIER_END 06:06，15 紀錄 05675e7）：tempo 1.1（有效 1.077）exit 中位 18.0 → 18.8（規則 ≥ 19.0）、launch 17.7 → 14.2、hit 0.524、|axis_off| 0.075、slope −0.42、D 0.202；就算補到有效 1.10 也只勉強過線且離 24 m/s 仍遠 → 不單獨訓練，節奏自由度留給 Human30 系列的揮棒本體學。**
 
 **10-31 06:00 H30_300_END（05:57）：Human30 +300 FAIL——幾何首次過 +1000 斜率（slope −0.28）但飛距崩掉（launch 17.7 → −14.4、fair share 0.635 → 0.278、拉打 spray 中位 −63.6°）。判定原因是獎勵實作沒照 10-31 規則（exit hinge 未限 fair 球、w_miss 20 壓過 launch 項、cos 方向分對仰角太寬），不是設計被證偽 → 下令 Human30b（修獎勵、自 12500 重跑 +300、H30B_300_END），GPU 空檔先跑 exit-speed 線 C 的腳本 falsifier（tempo 1.1 diag）。15 紀錄 e3d463b。**
