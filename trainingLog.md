@@ -68,6 +68,9 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 07:27 時序噪聲事實（15，CPU cfg 印出）：訓練 timing_noise_s 0、timing_bias_s 0.055（承自 Human6，10-21 使用者決定遊戲揮棒起點用引擎真實到達時間）；showcase 表格把 play env 設 timing_noise_s 0.03（uniform ±0.03 s）作為穩健性協定；聯合模擬 / 遊戲本身（m2lite timing csv）沒有抖動。→ 兩次「diag 仰角在表格塌掉」是政策對訓練沒見過的起點抖動不穩健，不是遊戲會發生的時序。決定：Human30d（30c + 訓練 timing_noise_s 0.03、timing_noise_ramp False 以免 resume 重算 48000 步 ramp 只到 15%；15 commit 1a7ba9f）現在就放行（logs/h30d/GO 07:27），自動排在 H30C_300_END 之後；表格協定不改（所有歷史數字可比），但候選到表格階段時加跑一組 jitter 0 的 3 表（並補 12500 的 jitter 0 參考一次），因為交付的聯合模擬是無抖動的。**
+- Human30c 已於 07:24 重啟（15 在 python 啟動前砍掉舊鏈、加 jitter 0.03 diag 列；452de5d），H30C_300_END 將含 jitter 0 gate + carry、jitter 0.03 列、h30b 與列 9 的起點 carry。順序：30c +300（~08:20）→ 30d +300（~09:20）→ 兩者中過幾何且 carry 上升者跑 5×3（0.03）+ 3 表（jitter 0）+ s6。
+
 **10-31 07:24 H30B_ADOPT_END（07:22）：Human30b 不採用——ONE OUTS 5×3 16.0%（15.9 / 15.4 / 16.7；門檻 19.1、交付 17.6）、外野安打 3.9%（歷來最高）、joint s6 落地 3/64（限 2）。與 h29 同一型：接觸多了（每 PA 0.74 → 0.94）但多出的接觸變成 fair 出局（37.6 → 56.4%）、K 44.8 → 27.6、PA 變短 3.66 → 3.27 球、保送 8.6 → 7.2；showcase 中位 launch −1.4°、exit 18.1、fair carry 5.6 m，diag 的 launch 12.3° 在 timing noise 0.03 下沒撐住。→ 放行 Human30c（logs/h30c/GO 07:24；+300 約 08:20，H30C_300_END）。**
 - 機制欄（12500 → h30b）：界外比 0.446 → 0.355；HBP 5.5 → 4.8；fair 球 launch ≥ 10° 比例 0.477 → 0.314、exit 中位 20.7 → 20.9；P(OF | fair) 0.085 → 0.065。交接 NN 手臂距離落地 1.240 vs 其他 0.830（R3 bank 外的姿勢）。
 - 判讀：exit hinge 付 fair 球不限仰角 → 仰角沒守住，與 Human30c 的理由一致（直接付 carry）。另一個系統性問題：diag（jitter 0）的仰角兩次都在 showcase 的擺動起點噪聲 0.03 s 下塌掉（h29 19.6 → 2.6、h30b 12.3 → −1.4）——若訓練環境沒有同樣的起點噪聲，政策學到的是精準時序下的仰角；已問 15 訓練是否含該噪聲，沒有則 Human30d = 30c + 訓練時 swing-start 噪聲 0.03 排在其後。
