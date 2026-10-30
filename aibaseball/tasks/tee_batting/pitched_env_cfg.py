@@ -407,3 +407,11 @@ class PitchedBattingHuman27bEnvCfg(PitchedBattingHuman27EnvCfg):
 
     arm_relax_s: float = 0.15
     arm_relax_factor: float = 0.5
+    # planning 14 (10-30, after Human27 +100 FAIL: sigma_aim_ax 0.08 paid 0.008 at the ~17.5 cm start - only the gap factor
+    # had a gradient). Rule: sigma >= 1.2 x the quantity's starting median (12500 diag1024: |axis_off| 0.152, gap 0.056,
+    # |dx| 0.112, |D - 0.010| 0.026 -> sigma_hit_q_D 0.032 instead of 14's 0.025).
+    sigma_aim_ax: float = 0.20
+    sigma_aim_gap: float = 0.10
+    sigma_hit_q_dx: float = 0.15
+    sigma_hit_q_D: float = 0.032
+    launch_spray_times_q: bool = True

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Human27b = Human27 + arm relax (arm joints / hand-bat key points x0.5 in tracking, last 0.15 s before the perceived arrival). Same gates.
+# 10-30 planning 14: + aim sigma 0.20 / gap 0.10, hit q dx 0.15 / D 0.032 (1.2x start rule), launch / spray x q.
 # Human27 (planning 14, 10-30, contact accuracy): AIB-PitchedBatting-Human27b-v0 = Human15 pitches + aim term on every swing
 # 6 x exp(-(axis_off/0.08)^2) x exp(-(gap/0.05)^2) at the closest approach (gap clamped >= 0) + hit reward 20 x
 # exp(-(dx/0.08)^2) x exp(-((D - 0.010)/0.015)^2); distance / success / exit / backspin / mimic w_contact off; launch,

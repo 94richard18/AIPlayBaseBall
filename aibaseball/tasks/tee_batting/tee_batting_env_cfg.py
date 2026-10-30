@@ -113,6 +113,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     sigma_hit_q_dx: float = 0.08
     hit_q_D_target: float = 0.010
     sigma_hit_q_D: float = 0.015
+    launch_spray_times_q: bool = False  # Human27b: the launch / spray terms x hit quality instead of the exit-speed fraction
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002
