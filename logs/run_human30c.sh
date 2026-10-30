@@ -24,7 +24,8 @@ idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(
 fail() { grep -A14 Traceback $1 | tail -10; MSG="crash $2"; exit 1; }
 last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; echo ${L%.pt}; }
 priv() { powershell.exe -NoProfile -Command "\$x = Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match '$1' } | Select-Object -First 1; if (\$x) { [int]((Get-Process -Id \$x.ProcessId).PrivateMemorySize64/1GB) } else { -1 }" | tr -d '\r'; }
-until [ -f logs/H30B_ADOPT_END.txt ] && [ logs/H30B_ADOPT_END.txt -nt $O/chain.stamp ] && [ -f $O/GO ]; do sleep 60; done
+# relaunched 07:2x (14 released GO 07:24; H30B_ADOPT_END 07:22 already written)
+until [ -f logs/H30B_ADOPT_END.txt ] && [ -f $O/GO ]; do sleep 60; done
 # smoke
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 256 --max_iterations 2 --run_name human_pitched30c_smoke --resume True \
@@ -56,4 +57,12 @@ grep -q Traceback $O/diag_h30c_$I.txt && fail $O/diag_h30c_$I.txt "diag $I"
 G=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_h30c_$I.json --stage 300 --label "model_$I ($D)" | head -1)
 C=$($P scripts/carry_cols.py --diag logs/diag_bat_contact_h30c_$I.json --label h30c_$I)
 C9=$($P scripts/carry_cols.py --diag logs/diag_bat_contact_r9wet.json --label r9)
-MSG="$G | $C | start $C9 | trainer private peak ${PK} GB"
+# 14 (10-31 07:25): one jittered diag row (timing noise 0.03 = the showcase's, same 1024 pitches) for launch robustness
+idle
+timeout 1500 $P -u scripts/diag_bat_contact.py --headless --checkpoint $D/model_$I.pt $SAIM --envs 1024 --seed 0 --tag h30c_${I}_j3 --timing_noise 0.03   --timing_bias 0.055 --aim_offset_z 0 --release_csv $R --contact_log > $O/diag_h30c_${I}_j3.txt 2>&1
+J3="jitter 0.03: crash or no json"
+if ! grep -q Traceback $O/diag_h30c_${I}_j3.txt && [ -f logs/diag_bat_contact_h30c_${I}_j3.json ]; then
+  J3="jitter 0.03: $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_h30c_${I}_j3.json --stage 300 --label j3 | head -1 | cut -c1-200) | $($P scripts/carry_cols.py --diag logs/diag_bat_contact_h30c_${I}_j3.json --label j3)"
+fi
+C0=$($P scripts/carry_cols.py --diag logs/diag_bat_contact_h30b_12799.json --label h30b)
+MSG="$G | $C | $J3 | start $C0 | row 9 $C9 | trainer private peak ${PK} GB"
