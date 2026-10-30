@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+### 10-31 03:28 ArmAim2c +300 PASS、R3 PASS；+700 進行中
+
+- ARMAIM2_300_END 01:44 **PASS**（armaim2c_1 model_299）：in-zone hit 0.506（n 557）、|axis_off| 0.069、|dx| 0.069、exit 19.3、D share 0.202、launch 17.0°、slope hits −0.40（+1000 門檻 −0.30、|dx| ≤ 0.06、exit ≥ 20、D ≥ 0.25 都還沒到）。
+- RECOV3_END 02:18 **PASS**（h25r3 model_1596，bank 用 armaim + saim 的交接姿勢）：joint s6 pitch columns 64/64、倒地 **1/64**（之前 12–15/64）、hits 21/64；交接 NN arm 距離 other 0.544（之前約 0.92–0.97）。`logs/recov3/recover_ckpt.txt` 已寫入，Human30 的 joint 會用它。
+- ArmAim2c +700 02:18 開跑，03:28 在 iteration 673/999，預估約 04:30 訓完、約 04:50 出 ARMAIM2_1000_END。Human30 等它，+300 在 05:15 前可啟動，約 06:20 前結束，06:41 拍片前不撞；之後的 +700 等拍片結束。
+- 03:2x 系統記憶體不足，Claude Code 收掉了兩條鏈的背景外殼（wrapper），但內層 `run_armaim2c.sh`（PID 21556）、`run_human30.sh`（PID 82284）和訓練行程都還在跑，沒有重開。剩餘記憶體約 3.3 / 64 GB。
+
 ### 10-31 00:50 ArmAim2c +300 延遲 42 分的原因；Human30 GO
 
 - 原因：我在 CPU 跑 `scripts/one_outs_mechanism.py`（00:05–00:46，兩次），它用 isaaclab_env 的 python 跑 `scripts/` 路徑，被鏈的 `isaac()` 當成 Isaac 行程，`idle` 一直等。CPU 工作結束後 +300 在 00:47 自動開跑（armaim2c_1，2048 envs）。之後 CPU 長工作改從 scratchpad 跑，不經 `scripts/` 路徑。
