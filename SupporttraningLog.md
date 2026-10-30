@@ -60,6 +60,17 @@
 
 ## 3. 打者目前進度
 
+### 10-31 07:22 Human30b 採用：NO
+
+- ONE OUTS 3 表 × 5 seeds：**16.0%**（15.9 / 15.4 / 16.7），外野安打 **3.9%**（目前最高；門檻 19.1% / 3%）。delivery 12500 是 17.6%，12500 + saim 是 16.0%。
+- joint s6（R3 model_1596 + saim）：pitch columns 64/64、倒地 **3/64**（上限 2）、hits 16/64、torso tilt 中位 1.6°。交接 NN arm 距離 ground 1.240 / other 0.830。
+- 機制拆解（12500 → h30b）：
+  - 每 PA 接觸 0.74 → 0.94，界外比例 0.446 → 0.355；
+  - win 17.6 → 16.0、K 44.8 → 27.6、BB 8.6 → 7.2、HBP 5.5 → 4.8、場內出局 37.6 → **56.4**、外野 3.5 → 3.9；
+  - 每 PA 球數 3.66 → 3.27；P(外野 | fair 接觸) 0.085 → 0.065。
+- showcase 中位：launch **−1.4°**、exit 18.1、fair 飛距 5.6 m。diag 的 launch 12.3 沒有延續到 showcase（timing noise 0.03 下更多滾地球）。
+- 判讀：多出來的接觸多半變成場內出局，又是「接觸沒有飛距」的模式，跟 h29 一樣。Human30c（fair 球飛距獎勵）已備好，等 14 建立 `logs/h30c/GO`。
+
 ### 10-31 06:49 Human30b +300：幾何下限過、exit 上升，但 launch 下降（照 14 的規則不合格）
 
 - model_12799（human_pitched30b_1）gate +300 PASS：in-zone hit **0.645**（列 9 0.526）、slope hits −0.46（> −0.50）、|axis_off| **0.063**（≤ 0.08）。訓練 private 峰值 11 GB。
