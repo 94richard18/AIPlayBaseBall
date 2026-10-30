@@ -443,6 +443,21 @@ _SWING_12500 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
                                             "2026-10-25_13-56-51_human_pitched9b", "model_12500.pt"))
 
 
+
+@configclass
+class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
+    """Human30 (planning 14, 10-30, backup): Human29 with the row-9 scripted arm aim IN the loop (SaimSwingEnv: offset on
+    the aim joints from the filtered percept, window 0.60 s, bound 0.4, tau 0.05; the swing policy observes q - offset and
+    the bat moved back by J x offset). Fine-tune 12799 so the swing adapts to the layer (h29s zero-shot: hit 0.908 ->
+    0.700, launch 19.6 -> 5.9 deg). Same rewards as Human29 (no launch term)."""
+
+    aim_joints: list = _ARMAIM_JOINTS
+    saim_gain: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "armaim_auth", "scripted_gain.json"))
+    saim_bound: float = float(os.environ.get("AIB_SAIM_BOUND", "0.4"))
+    saim_window_s: float = 0.60
+    saim_tau_s: float = 0.05
+    saim_comp_full: bool = True
+
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     """Human28 "ArmAim" (planning 14, user 10-30 "動打者架構"; arm_aim_env.ArmAimEnv): a separate residual policy on 15 joints
