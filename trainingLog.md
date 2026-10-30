@@ -68,6 +68,13 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 21:0x 腳本化瞄準 +1 列無效（offset 100% 飽和）→ v2 重跑中（15 commit 8b25bdb，ETA 21:40）；D 檢查：接觸位置本身就能解釋大部分缺少的出棒速度 → 「打遠 + 打扎實」主線 = 瞄準（y 與 z），出棒速度選項 C/A/B 降為備援。**
+- +1 列無效原因：percept 版 dy（預測穿越 y − 名義 y）平均 |dy| 0.30 m，但真實 |plate_y| 約 0.12 → 等於常數 +0.4 rad 最大 offset；結果 hit 0.458、|axis_off| 0.096、slope −0.79、exit 18.0。附帶線索：15 個關節常數 ±0.4 rad 只讓 |axis_off| 動 0.7 cm，視窗內力矩飽和 84–97%，PD 目標 offset 可能根本沒被跟到。
+- v2 列（各 diag1024 seed 0 + gate，ARMAIM_SCRIPT_END）：1 真實 plate_y（特權，物理 falsifier 可用）+1；2 同 −1 對照；3 percept dy +1 並印 |dy − true| 找 percept 偏差。我加：每列印「關節實際實現的 offset 比例」；若列 1 實現比例 < 0.5 加列 4 = 視窗提早到 contact − 0.60 s（上桿/跨步期力矩未飽和）；若 y 路徑通，加列 5 = y + z offset（目標 D = +1 cm）。
+- D 檢查（15，12500 diag1024 seed 0，277 hits，中位 exit m/s）：全部 17.6；|dx| < 3 cm 21.7、3–6 22.3、6–10 20.9、10–15 19.0、15–25 15.1、> 25 11.1；D −2~0 cm 22.6、0~2.5 21.9、2.5~5 15.3、> 5 12.1、< −2 16.8；|dx| < 5 且 D ∈ [0, 2.5]（n=10）27.5。→ 同一支揮棒打到甜蜜點已可達 ~22（穩健值）到 27（n=10 指標值），接近所需的 24；111/277 hits 的 D > 2.5 cm，所以垂直方向與 dx 一樣重要。
+- ArmAim2 已備妥未啟動（AIB-ArmAim2-v0，logs/run_armaim2.sh，ARMAIM2_300_END / ARMAIM2_1000_END）：視窗第一步取樣一次並保持；offset = 腳本瞄準 + 0.5·tanh(a)（±0.2 rad）；AIB_FIX_STD=1 actor head 歸零（起點 = 腳本瞄準）、std 固定 0.1、entropy 0；reward / gates 同 ArmAim。
+- 出棒速度選項（皆為分離式政策、swing policy 凍結、spec 不動），順序與預先判準：C 節奏 residual（falsifier：腳本 tempo 1.1，20 min；exit ≥ +1 且 hit ≥ 0.40 才訓練）→ A 腰/髖時序 residual（falsifier：12500 接觸時軀幹 yaw 率與 waist_yaw 速度符號，20 min；中位 hit 已 ≥ 0 朝投手則放棄）→ B 手腕釋放 residual（CPU 上限 < +2 m/s 則放棄）。只在瞄準線中位 exit 卡在 24 以下時才用 GPU。
+
 **10-30 20:1x 使用者：「授權延到11/2，這段時間盡可能找方法讓打者把球打遠打扎實」→ 規劃 session 自主授權延至 2026-11-02 整天；期間目標 = 打者打遠（exit / carry）+ 打扎實（甜蜜點接觸）。**
 - 影響：ArmAim #2 重訓、mimic key-target 變形 fallback、以及出棒速度線（政策提早出棒、腰在接觸時反轉 −4.1 m/s）都由我依結果決定與啟動，不再逐項等核准；每個結果與決定照舊回報 + 記錄。spec 值（力量倍率、關節極限、摩擦）仍屬使用者，只提案不自改；AIB_EFFORT_SCALE 1.5 維持。
 - 目前：腳本化瞄準診斷 20:00 啟動（15 commit 8a8f5a7，logs/run_armaim_script.sh：正號列 → 反號對照列，ARMAIM_SCRIPT_END，ETA 20:40）。增益（rad/m）：+ 側 l_wrist_yaw +1.65、l_shoulder_roll −0.79、l_elbow +0.70、waist_yaw +0.63；− 側 l_elbow −2.79、l_shoulder_roll +2.18、waist_yaw −1.56；±0.4 飽和在 |dy| ≈ 24 cm（+）/ 14 cm（−）。
