@@ -226,6 +226,15 @@ class ArmAimEnv(PitchedBattingEnv):
             self.track_stats["aim_sat"] = (1 - a) * self.track_stats["aim_sat"] + a * (self.res_a[w].abs() > 0.95).float().mean()
 
     # ------------------------------------------------------------------ observations
+    def _bat_state(self):
+        out = super()._bat_state()
+        bc = getattr(self, "_bat_comp", None)
+        if bc is None:
+            return out
+        knob, axis, cm, v_cm, w, quat = out
+        dp, dw = bc  # the knob's linear and the bat's angular displacement from the offset (first order)
+        return (knob - dp, axis - torch.cross(dw, axis, dim=-1), cm - dp - torch.cross(dw, cm - knob, dim=-1), v_cm, w, quat)
+
     def _perceived_ball(self) -> torch.Tensor:
         self._ball_seen = super()._perceived_ball()
         return self._ball_seen
@@ -236,9 +245,15 @@ class ArmAimEnv(PitchedBattingEnv):
         if comp:  # the swing policy sees q - offset on the offset joints: the shift is not a disturbance it corrects
             jp = self.robot.data.joint_pos
             jp[:, self.aim_ids] -= self.res_off
+            if c_.aim_obs_comp_full:  # + the bat (knob / axis / com) moved back by the Jacobian-mapped offset
+                J = self.robot.root_physx_view.get_jacobians()[:, self.bat_id]  # (n, 6, dofs [+6 floating base])
+                cols = self.aim_ids + (J.shape[-1] - self.robot.num_joints)
+                dx = torch.einsum("nij,nj->ni", J[:, :, cols], self.res_off)
+                self._bat_comp = (dx[:, :3], dx[:, 3:])
         self._swing_obs = super()._get_observations()["policy"]  # once per step: advances the percept history
         if comp:
             jp[:, self.aim_ids] += self.res_off
+            self._bat_comp = None
         c = self.cfg
         d = self.robot.data
         rq, rp = d.root_link_quat_w, d.root_link_pos_w

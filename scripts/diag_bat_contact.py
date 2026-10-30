@@ -55,6 +55,7 @@ parser.add_argument("--aim_scripted_true", action="store_true", help="--aim_scri
 parser.add_argument("--aim_scripted_z", action="store_true", help="--aim_scripted: + the height offset toward D = 1 cm")
 parser.add_argument("--aim_scripted_dry", action="store_true", help="--aim_scripted: compute + log the offset, do not apply it")
 parser.add_argument("--aim_scripted_dump", type=str, default=None, help="--aim_scripted: npz of per-pitch realised sums")
+parser.add_argument("--aim_obs_comp_full", action="store_true", help="--aim_obs_comp + the bat pose compensated (row 8)")
 parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the swing policy sees q - offset (row 6)")
 parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter: ballistic LSQ crossing prediction")
 parser.add_argument("--percept_clean", action="store_true", help="ball percept noise + bias 0 (delay kept)")
@@ -136,6 +137,7 @@ def main():
         cfg.aim_scripted_dry = args.aim_scripted_dry
         cfg.aim_scripted_dump = args.aim_scripted_dump
         cfg.aim_obs_comp = args.aim_obs_comp
+        cfg.aim_obs_comp_full = args.aim_obs_comp_full
         if args.aim_window is not None:
             cfg.aim_window_s = args.aim_window
     else:
