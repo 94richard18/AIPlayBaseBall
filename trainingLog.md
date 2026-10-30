@@ -68,6 +68,15 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 19:5x ArmAim +300 FAIL（15 回報 19:50，commit 693af13）→ 決定：GO 腳本化瞄準診斷（#1，約 20 min GPU、不訓練）；#2 重訓與 fallback 等 #1 結果後交使用者決定（自主授權今晚到期）。**
+- model_299 diag1024 seed 0（in-zone，*_any 鍵）：hit 0.460（base 0.445）；|axis_off| 0.1026（base 0.1033，gate ≤ 0.08）；exit 18.1（18.9）；D share 0.195（0.181）；launch 19.7°（21.7°）。
+- 斜率 hits −0.80（r −0.85）、misses −0.82 = base −0.80 / −0.80，完全沒動；reachable 子集（plate_y ≥ −0.185，448/557）hit 0.473、slope −0.83（base −0.81）、|axis_off| 0.086（0.095）。結論：是「沒學到」不是「碰不到」。
+- 訓練曲線：mean reward −11.2 → −10.1 平；aim_reward 2.61 → 2.70；aim_abs_ax 0.181 → 0.174；action noise std 0.30 → 0.78 全程上升（entropy_coef 0.005 沿用）。零檢查仍 OK（277/277）。sigma_ax 0.20 vs 起始中位數 0.15 符合 1.2× 規則，不是 sigma 問題。
+- 判讀（15 提、我同意）：每步白噪 residual 經 PD 平均掉，一次揮棒一筆的 aim reward 埋在 ±20 的 hit/miss 變異裡 → 無梯度。
+- 已下 GO 的 #1：offset = (預測 plate_y − y0) × step-0 SLSQP 每公尺 dq（9 clips 中位數，± 分開，z 固定），只在視窗內施加，diag1024 + gate script；加一列反號對照。判準：若斜率仍比 −0.50 陡 → 物理/PD 路徑擋住橫移，放棄 ArmAim 改 mimic fallback（視窗內把手/棒頭 key target 依 Δy 變形）；若反號列反向移動 → 路徑通、增益問題；若兩者都不動 → PD 路徑擋住。marker ARMAIM_SCRIPT_END。
+- #2（視窗開啟時取樣一次並保持、entropy 0、std 0.1、以腳本增益初始化，同 gates）：未核准，15 備好 cfg 與啟動說明，等使用者。
+- GPU：19:51 Isaac 0、閒置；下次錄影最晚 10-31 06:41，#1 不衝突。
+
 **10-30 18:47（14）3 小時檢查**：Isaac 1（ArmAim 鏈的零檢查 diag，18:44 起，GPU 28% / 5.7 GB），其後進入 300 its 訓練 → ARMAIM_300_END ≈ 19:50–20:00。12 小時例行錄影 18:41 完成（20：`videos/routine_1030b_p5.mp4`，343 幀、High、過曝 0/343、對 M2 64/64、嚴格 52 欄 64/64、站立不變），下次最晚 10-31 06:41。使用者 18:4x 問「CPU 沒使用量真的在訓練嗎」→ 已答：訓練在 GPU，CPU 本來就低，看 nvidia-smi / `logs/armaim/`。使用者指示：+300 結果出來再報。
 
 **10-30 18:0x（14）ArmAim step 1 建好、鏈已上膛（15 commit 4b4d961，`logs/run_armaim.sh` 等 M3ROUTINE3_END 後才開 Isaac）。** 預檢（18:25 前完成）：256 envs × 15 its smoke 乾淨（hit 0.37、視窗占 22% 步、無倒）；**零檢查：aim_bound 0 的 ArmAim diag1024 s0 與 12500 基線逐位元相同（277/277 擊中、每球 hit 旗標相同、站位差 0.0、plate_y 相同）→ 包裝層不碰投球與揮棒。** 設計補充：視窗 = 參考時鐘 ≥ 接觸 − 0.30 s（Human15 無 oracle 觸發，以此代揮棒起動）至首次接觸或過接觸面，之後偏移以 tau 0.05 s 衰減；動作罰 0.01·Σtanh(a)² 只在視窗內；obs 72 維（15 關節 q / qd / (揮棒目標 − q) / 上一步偏移、ss − ball_seen、v_seen、棒軸、t_arrive、released、視窗相位）；PPO [256,128]、init_noise 0.3、從零、2048 envs、~8–9 s/it；沿用 Human15 的 lost（key_err 0.45）與 ref-end 終止。基線（armaim_gate.py、好球帶內、*_any）：hit 0.445（n 557）、|axis_off| 0.103、|dx| 0.103、exit 18.9、D 落窗 0.181、仰角 21.7；斜率擊中 −0.80（r −0.85）、揮空 −0.80、可及子集（plate_y ≥ −0.185，448/557）−0.81。起始中位：|axis_off| 0.152（好球帶 0.110）、gap 0.056、|dx| 0.103、|D − 0.010| 0.028 → sigma 0.20 / 0.10 / 0.15 / 0.032 皆 ≥ 1.2×。鏈：smoke + 零檢查 → 300 its → diag → ARMAIM_300_END（門檻列 + 可及斜率列 + 基線）→ 通過才 +700 → ARMAIM_1000_END；失敗即停，備案（mimic 目標位移）備而不發。ETA 300 ≈ 19:45、1000 ≈ 22:00。
