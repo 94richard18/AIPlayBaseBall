@@ -265,9 +265,10 @@ class ArmAimEnv(PitchedBattingEnv):
 
     # ------------------------------------------------------------------ reset
     def _reset_idx(self, env_ids: Sequence[int] | None):
-        super()._reset_idx(env_ids)
+        ids_in = env_ids
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
+        # the scripted bookkeeping runs BEFORE the parent reset (which draws the next pitch: pitch_plate etc.)
         if self._scripted is not None and self.common_step_counter > 0:
             done = self.res_closed[env_ids]  # pitches whose window ran
             k0 = self._sat_n[0] // 256
@@ -277,6 +278,11 @@ class ArmAimEnv(PitchedBattingEnv):
             self._sat_n[3] += float(self.res_dyt_ep[env_ids][done].abs().sum())
             self._sat_n[4] += float((self.res_dy_ep[env_ids] * self.cfg.aim_scripted_sign - self.res_dyt_ep[env_ids])[done].abs().sum())
             ok = done & (self._rl_steps[env_ids] > 0)
+            if ok.any():
+                e = env_ids[ok] if torch.is_tensor(env_ids) else torch.as_tensor(env_ids, device=self.device)[ok]
+                cols = [e.float(), self._ep_idx[e].float()] + [self._rl_num[g][e] for g in self._grp] + [self._rl_den[g][e] for g in self._grp]
+                cols += [self._rl_num_z[e], self._rl_den_z[e], self.pitch_plate[e, 0], self.pitch_plate[e, 1]] + [b[e] for b in self._bk.values()]
+                self._rows.append(torch.stack(cols, -1).cpu())
             for g in self._grp:
                 den = self._rl_den[g][env_ids]
                 m = ok & (den > 1e-8)
@@ -288,11 +294,6 @@ class ArmAimEnv(PitchedBattingEnv):
                 self._rl_frac_z += (self._rl_num_z[env_ids][m] / self._rl_den_z[env_ids][m]).tolist()
                 self._rl_num_z[env_ids] = 0.0
                 self._rl_den_z[env_ids] = 0.0
-            if ok.any():
-                e = env_ids[ok] if torch.is_tensor(env_ids) else torch.as_tensor(env_ids, device=self.device)[ok]
-                cols = [e.float(), self._ep_idx[e].float()] + [self._rl_num[g][e] for g in self._grp] + [self._rl_den[g][e] for g in self._grp]
-                cols += [self._rl_num_z[e], self._rl_den_z[e], self.pitch_plate[e, 0], self.pitch_plate[e, 1]] + [b[e] for b in self._bk.values()]
-                self._rows.append(torch.stack(cols, -1).cpu())
             self._ep_idx[env_ids] += 1
             for b in self._bk.values():
                 b[env_ids] = 0.0
@@ -306,6 +307,7 @@ class ArmAimEnv(PitchedBattingEnv):
             self.res_dy_ep[env_ids] = 0.0
             if self._sat_n[0] // 256 > k0:
                 self._print_scripted()
+        super()._reset_idx(ids_in)
         self.res_a[env_ids] = 0.0
         self.res_off[env_ids] = 0.0
         self.res_win[env_ids] = False
