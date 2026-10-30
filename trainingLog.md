@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 00:47 例行檢查：Isaac 0、GPU 閒置——ArmAim2c 在 00:05 smoke 完成後沒有進入 +300（logs/armaim2c_chain.txt 空、無 ARMAIM2_* marker），已緊急要 15 查因並重啟；ONE OUTS 機制拆解（15，logs/one_outs_mechanism.txt，commit d57ccf2）證實假說；Human30 放行（w_aim 0）。**
+- 機制（3 tables × 5 seeds × 1000 場；欄：每 PA 接觸 | 界外/fair 比 | 勝、K、BB、HBP、in-play out、OF hit（PA 佔比 %）| 每 PA 投球 | fair 球 launch ≥ 10° 比例、exit 中位 | P(OF | fair)）：12500：0.74 | 0.446/0.554 | 17.6、44.8、8.6、5.5、37.6、3.5 | 3.66 | 0.477、20.7 | 0.085；12500+saim：0.82 | 0.384/0.616 | 16.0、36.9、7.7、5.2、47.1、3.1 | 3.48 | 0.411、20.2 | 0.061；h29：1.20 | 0.387/0.613 | 13.1、15.8、6.3、4.2、71.1、2.6 | 3.01 | 0.365、19.5 | 0.035；h29s：1.02 | 0.398/0.602 | 13.9、26.7、7.4、4.7、59.4、1.8 | 3.29 | 0.274、19.3 | 0.029。
+- 判讀：12500 的 17.6% 有 14.1 pt 是 BB + HBP、只有 3.5 pt 是外野安打；h29 的 hit 0.908 把三振（44.8 → 15.8%）變成 fair 出局（37.6 → 71.1%）、PA 變短（3.66 → 3.01 球）少了保送；且每次 fair 接觸更差（P(OF | fair) 0.085 → 0.035、launch ≥ 10° 0.477 → 0.365、exit 20.7 → 19.5）。**規則：接觸沒有飛距在 ONE OUTS 下是負值；日後打者獎勵只付 fair 球的 carry / launch / exit，in-zone hit gate 只當下限。**
+- Human30（d38f851）：12500 @ 1.5x、迴圈內 saim、launch 20 朝 20° × q、hits-only exit hinge 0.5·clamp(ev − 18, 0, 10)、w_hit_q 0、w_miss 20 作下限、**w_aim 0**（我定：不付接觸幾何，exit hinge 已透過 dx 獎勵甜蜜點）；鏈 logs/run_human30.sh 以 logs/h30/GO 放行，排在 ARMAIM2_300_END + RECOV3_END 之後（ArmAim2c 過 +300 則等 +1000）；+1000 採用線 = ArmAim gate + 3-table ONE OUTS ≥ 19.1% 且 OF ≥ 3%。
+- 錄影：18:41 完成，下次 = ARMAIM2_1000_END 或 06:41 閒置，最晚 07:15（20 的 routine1031.sh 武裝中）。閒置 42 min 屬鏈故障，非無工作，不觸發接手。
+
 **10-31 00:04 H29_ADOPT_END（00:02）：無贏家，Human29 在遊戲層是退步（12799 單獨 ONE OUTS 13.1%、+saim 13.9%，交付 17.6）；ArmAim2c 以 12500 + saim 開跑；R3 排在 +300 後；Human30 改以 12500 為基底、加 exit hinge，等機制數字確認後才啟動。**
 - h29（12799 單獨）：ONE OUTS 5×3 13.1%（13.5 / 12.5 / 13.3）、outfield 2.6%；joint s6 落地 3/64（差一球）、31 hits。h29s A（+saim）：13.9%（14.3 / 14.0 / 13.4）、outfield 1.8%；落地 13/64、16 hits。h29s B（+失投淡出）：表格同、落地 15/64。門檻 19.1；12500 + saim 16.0。
 - diag 的 hit 0.908 / launch 19.6° 在 showcase（timing noise 0.03）沒撐住：表 1 launch 中位 h29 2.6°、h29s −5.6°、12500+saim 5.0°；exit 中位 16.6 / 16.9 / 17.0；carry ≥ 38.9 m 佔 5.0% / 3.7% / 8.1%。Human29 用仰角與飛距換接觸 = 滾地球。交接時手臂最近鄰距離（落地 vs 其他）：h29 0.974 vs 0.699；h29s A 1.188 vs 0.921（觸發時 offset 中位 0.12、max 0.40）。
