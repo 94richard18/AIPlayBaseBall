@@ -60,6 +60,19 @@
 
 ## 3. 打者目前進度
 
+> **打者 10-30 08:49：(1) Human27b 續訓到 +400（14 放行，只在 +400 判定）；(2) 選球路線的量測（CPU，給使用者做決定用）**
+> - (1) chain：`logs/run_human27b_400.sh`，marker `logs/HUMAN27B_400_END.txt`。
+>   - 門檻：擊中 |axis_off| ≤ 8.7 cm、擊中的 plate_y slope 比 −0.70 平、擊中率 ≥ 0.31；結果行附每 50 iteration 的 aim_abs_ax。
+>   - 沒過就關閉精度線的訓練路線，不做 27c。
+> - (2) `scripts/band_select.py` + `logs/run_band.sh`（等 +400 結束 → 重跑 12500 diag，新增欄位 → `logs/band_select/`，marker `BAND_END`）。
+> - 發現 diag 的漏記：`--contact_log` 的接觸欄位漏記了在 `_get_dones` 最後一個 substep 發生的擊中。12500 共 277 次擊中，其中 74 次沒有 ev / dx / D。
+>   - 之前所有 |dx| / D / exit 統計都只用了約 73% 的擊中。
+>   - 新增 `ev_any` / `launch_any` / `dx_any` / `D_any` / `spray_contact` / `backspin_contact`，在下一個 physics step 從 env 存好的 buffer 補記；原本欄位不變。
+> - 先用舊 dump（不含自旋）算的初步結果：
+>   - 擬合 axis_off = −0.797 plate_y − 0.044（好球帶內擊中 + 揮空），y0 = −5.5 cm。
+>   - 各帶寬（佔好球帶比例 / 擊中率 / |dx| 中位數）：±3 cm 0.097 / 0.556 / 4.0 cm；±5 cm 0.151 / 0.429 / 4.1 cm；±8 cm 0.298 / 0.331 / 4.3 cm；±12 cm 0.424 / 0.436 / 5.7 cm；全部 1.000 / 0.445 / 10.4 cm。
+>   - 飛行距離和 ONE OUTS 要等新 diag 提供自旋與方向後才能算。
+
 > **打者 10-30 08:42：Human27b +100 FAIL（model_12599）**
 > - 好球帶內（括號內為基準）：
 >   - 擊中率 0.558（0.445）
