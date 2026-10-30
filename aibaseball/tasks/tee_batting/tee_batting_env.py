@@ -414,7 +414,7 @@ class TeeBattingEnv(DirectRLEnv):
         r = (cfg.w_distance * (carry.clamp(0, 200) / cfg.target_distance) ** 2 * torch.where(fair, 1.0, cfg.foul_factor)
              + cfg.w_success * success.float()
              + cfg.w_exit_velo * ev_n
-             + cfg.w_launch * ls_n * self._launch_score(v, ev, la)
+             + cfg.w_launch * ls_n * self._launch_score(v, ev, la) * (fair.float() if cfg.launch_fair_only else 1.0)
              + cfg.w_backspin * ev_n * (backspin / 2000.0).clamp(-1.0, 1.0)
              + cfg.w_spray * ls_n * fair.float() * torch.exp(-(spray / cfg.spray_sigma_deg) ** 2))
         g_dx = torch.exp(-((dx / cfg.sigma_contact_dx) ** 2))
@@ -422,7 +422,7 @@ class TeeBattingEnv(DirectRLEnv):
         r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
         r = r + cfg.w_hit_q * hq
         if cfg.w_exit_hinge:
-            r = r + cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap)
+            r = r + cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap) * (fair.float() if cfg.exit_hinge_fair_only else 1.0)
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
         self.hit_reward[ids] = r
         self.carry[ids] = carry

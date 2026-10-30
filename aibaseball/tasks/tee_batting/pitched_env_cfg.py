@@ -473,6 +473,19 @@ class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     w_hit_q: float = 0.0
     w_aim: float = 0.0  # 14 (10-31 00:4x): no pay for contact geometry (the exit hinge rewards the sweet spot through dx)
 
+
+@configclass
+class PitchedBattingHuman30bEnvCfg(PitchedBattingHuman30EnvCfg):
+    """Human30b (planning 14, 10-31 06:01): Human30 with the 10-31 reward rule actually applied - Human30 +300 pulled
+    (spray med -64 deg) and drove launch to -14 deg because w_miss 20 bought contact, the exit hinge paid fouls and the cos
+    direction score was flat on elevation. Launch: Gaussian exp(-((LA - 20) / 15)^2 / 2) x q (launch_sigma_deg = 15 x
+    sqrt 2), fair balls only; exit hinge fair only; spray 10 x q kept; w_miss 20 -> 5."""
+
+    launch_sigma_deg: float = 15.0 * 2 ** 0.5
+    launch_fair_only: bool = True
+    exit_hinge_fair_only: bool = True
+    w_miss: float = 5.0
+
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     """Human28 "ArmAim" (planning 14, user 10-30 "動打者架構"; arm_aim_env.ArmAimEnv): a separate residual policy on 15 joints
