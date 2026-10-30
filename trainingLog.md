@@ -68,6 +68,14 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 06:00 H30_300_END（05:57）：Human30 +300 FAIL——幾何首次過 +1000 斜率（slope −0.28）但飛距崩掉（launch 17.7 → −14.4、fair share 0.635 → 0.278、拉打 spray 中位 −63.6°）。判定原因是獎勵實作沒照 10-31 規則（exit hinge 未限 fair 球、w_miss 20 壓過 launch 項、cos 方向分對仰角太寬），不是設計被證偽 → 下令 Human30b（修獎勵、自 12500 重跑 +300、H30B_300_END），GPU 空檔先跑 exit-speed 線 C 的腳本 falsifier（tempo 1.1 diag）。15 紀錄 e3d463b。**
+- model_12799（human_pitched30_1，diag1024 in-zone）：hit 0.490、slope hits −0.28（過 −0.50 下限、也過 +1000 的 −0.30）、|axis_off| 0.094（FAIL ≤ 0.08；列 9 起點 0.071）、D share 0.212（列 9 0.164）；carry：launch −14.4、exit q25/med/q75 14.6 / 16.7 / 19.7（列 9 13.8 / 18.0 / 21.6）、fair share 0.278（spray 定義）。訓練趨勢 fair_rate 0.51 → 0.25、launch 0.9 → −15.9、hit_q 0.19 → 0.29。
+- 判讀：政策用提早、拉打的揮棒買接觸——w_miss 20 遠大於 launch 20 × q（q ~0.29）× 方向分；cos 方向分（launch_sigma 0）對 −15° 滾地球仍給 ~0.83；exit hinge 付在界外球上。這三點都違反「只付 fair 球的 carry / launch / exit、miss 罰只當下限」的規則，所以 +300 沒有真正測到「揮棒本體配合偏移能否保住飛距」。我的 05:09 規則（carry 不動 → 轉線 C）前提是獎勵照規則實作，前提不成立，不機械套用。
+- Human30b 獎勵（我定）：launch 項改高斯 exp(−((LA − 20°)/15°)²/2) × q，**只付 fair 球**（|spray| ≤ 45°）；exit hinge 0.5·clamp(ev − 18, 0, 10) **只付 fair 球**；spray 10 × q 保留；w_miss 20 → 5；w_aim 0、w_hit_q 0 不變；其餘（12500 @ 1.5x 續訓、迴圈內 saim bound 0.4、濾波知覺、視窗 0.60、模仿 / 跌倒項）同 Human30。sigma 15° 符合 1.2× 起始散佈規則（15 確認）。
+- H30B +300 判定：幾何下限 slope > −0.50、hit ≥ 0.36（低於 0.36 代表 w_miss 5 太低 → 回 10 再跑一次，不另設計）、|axis_off| ≤ 0.08 軟性；carry 相對列 9 起點（launch 17.7、exit 18.0、fair 0.635、D 0.164）全部不得下降，且 launch 或 exit 至少一項上升；過 → +1000（採用線 5×3 ≥ 19.1%、OF ≥ 3%、joint s6 with R3 ≤ 2/64）；不過 → 線 C 殘差訓練（若 falsifier 正）。
+- 線 C falsifier（先跑，約 10 min）：12500 + saim（列 9 設定）腳本 tempo 1.1 的 diag1024，報 hit、exit 中位 / q75、launch、|axis_off|；exit 中位沒升 ≥ 1 m/s 則線 C 不訓練。
+- 狀態 06:00：Isaac 0、GPU 空；錄影下次最晚 15:42。
+
 **10-31 05:09 ARMAIM2_1000_END（05:07）：ArmAim2c +1000 FAIL → 殘差瞄準線關閉（不再給 GPU、不排 5×3 表格），model_999 留作參考；瞄準改由腳本瞄準層（saim bound 0.4 + q + 完整補償）承擔，Human30（迴圈內 saim 的揮棒續訓）成為唯一「瞄準 + 飛距」線，05:0x 已進 smoke（+300 約 06:40）。RAM 修正有效：trainer private 峰值 10 GB、看門狗未觸發。**
 - model_999（2026-10-31_04-05-23_armaim2c_3，diag1024）：in-zone hit 0.526（+300 0.506）、slope hits −0.40（與 +300 相同；需 > −0.30）、|dx| 0.065（≤ 0.06）、exit 19.4（≥ 20）、D share 0.232（≥ 0.25）、launch 19.8；reachable hit 0.616、slope −0.41。四項未過；+700 its 只換到 hit +0.02、exit +0.1、D +0.03，斜率完全沒動。
 - 判讀：殘差政策學不到腳本初始值以外的 plate_y 依賴——每揮棒一次持住動作、std 0.1、entropy 0 下，斜率上的獎勵差遠小於安打/失投變異；而列 10 已證明更大偏移會壓平棒面（launch 8.8），所以剩下的 −0.40 來自 bound 0.4 上限 + 凍結揮棒的棒路本身，不是殘差頭的容量。要再平斜率得讓揮棒本體配合偏移 = Human30 的設計，殘差線沒有更便宜的下一步。
