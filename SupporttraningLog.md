@@ -60,7 +60,7 @@
 
 ## 3. 打者目前進度
 
-### 10-30 23:4x Human30 備案 cfg 就緒（CPU，未訓練）
+### 10-30 23:22 Human30 備案 cfg 就緒（CPU，未訓練）
 
 - 14 判讀：h29s 對 12799 掉 20 分 hit（0.908 → 0.700）、launch 少 14°（19.6 → 5.9°），先驗是 12799 單獨勝出，瞄準須與揮棒一起學。備案 = **Human30：12799 在訓練迴圈內帶 saim + comp 微調**，讓揮棒適應這層。
 - `aibaseball/tasks/tee_batting/saim_swing_env.py`（SaimSwingEnv）：PitchedBattingEnv 寫完目標後加 row-9 腳本瞄準 offset（濾波 percept、window 0.60、bound 0.4 = `AIB_SAIM_BOUND`、tau 0.05），揮棒策略觀測 q − offset 與 J × offset 補償後的球棒；TensorBoard `saim/*`。
