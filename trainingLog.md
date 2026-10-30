@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 03:47 例行檢查：Isaac 1 = 15 的記憶體探針（armaim2c_memprobe_on，03:44 起，自 model_650，bookkeeping 開 60 its → 關 40 its，RSS 每 15 s + [memdbg] 物件型別；GPU 5.3 GB、RAM free 43 GB）；錄影 10-31 03:42 完成（20 commit f71cde0：videos/routine_1031_p5.mp4，343 幀、washed 0、High，vs M2 31 欄 64/64、vs v2 52 欄 64/64，hit 15.9 m/s / 20° / 17.9 m fair，無跌倒），下次最晚 10-31 15:42。探針判定後：修正 → 自 650 續 +350 → ARMAIM2_1000_END → Human30（錄影等待已由本次錄影滿足）。無閒置。**
+
 **10-31 03:31 ArmAim2c +300 PASS（01:44）、R3 恢復 PASS（02:18）；+700 訓練中但 RAM 鋸齒 31–46 GB（系統 free 曾降至 2.8/64 GB，殺掉 15 的背景 wrapper 與 20 的錄影 gate）→ 令 15 停訓、保留 model_650、修記憶體累積後自 650 續 +350；Human30 暫停到修好；錄影改由我以訊息給 20 時段（不再輪詢）。**
 - ArmAim2c model_299（logs/rsl_rl/aib1_armaim2/2026-10-31_00-47-55_armaim2c_1，凍結揮棒 12500 + saim bound 0.4 / delta 0.5）：in-zone hit 0.506、|axis_off| 0.069、|dx| 0.069、exit 19.3、D share 0.202、launch 17.0、slope hits −0.40（misses −0.50）；reachable hit 0.585、slope −0.41。+1000 尚缺：slope > −0.30、|dx| ≤ 0.06、exit ≥ 20、D ≥ 0.25。
 - R3 h25r3 model_1596（bank = armaim + saim 交接姿勢，2048 states，hits 0.328）：joint s6 pitch 欄 64/64、on the ground 1/64（原 12–15）、hits 21/64、軀幹傾角 +1.5 s 中位 1.3°；交接 NN 手臂距離 other 0.544（原 ~0.92–0.97）。ckpt logs/rsl_rl/aib1_recover/2026-10-31_01-47-37_h25r3/model_1596.pt（logs/recov3/recover_ckpt.txt），Human30 的 joint 用它。
