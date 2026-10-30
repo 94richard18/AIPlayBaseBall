@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 20:42 知覺濾波建好（15 commit 3523534，cfg.percept_filter 預設 OFF）；Human29 已備妥並由鏈自動條件啟動（9720a5d，logs/run_human29.sh）。**
+- 濾波：自出手起每 env 的 running sums（1、t、t²、p、t·p；z 先加 ½g t² 再擬合），以擬合的 p0、v 在延遲時刻取代 seen / v，t_arrive 用擬合 vx；< 3 個樣本時退回原法；旗標關時無新 RNG 抽樣，凍結設定與 M2 位元不變（rows2 已用此檔預設關跑過）。離線（38 m/s、1 cm 噪聲、0.10 s 延遲、100 Hz、2000 球）最後一步 y 誤差：直線擬合 0.4 cm vs 原法 12.9 cm；側向 2 m/s² 時直線 6.7 / 二次 1.0 cm；P3c 彎曲約 0.6 m/s² → 先用直線，零樣本知覺欄 > 3 cm 才加 y 二次項（≥ 15 樣本）。
+- 鏈：ARMAIM_ROWS2_END → 第 7 列（ARMAIM_ROW7_END）→ logs/run_pfilter.sh（12500 凍結 + 濾波 ON；再 + noise/bias 0；皆 scripted DRY，PFILTER_END ~21:15）→ Human29 自檢兩條件：in-zone hit ≥ 0.40 且 mean |perc_y_last − act_y| ≤ 0.03 m，否則 marker 寫 HOLD 停止。
+- Human29 = AIB-PitchedBatting-Human29-v0 = Human27b + percept_filter（每次揮棒瞄準項；hit 20·q，dx 0.15 / D 0.032；w_miss 20；最後 0.15 s 手臂追蹤 ×0.5；launch / spray × q；距離 / 成功 / exit / backspin 關），12500 @ 1.5x、2048 envs。sigma_ax = max(0.20, 1.2 × 零樣本 |axis_off| 中位數)、sigma_gap = max(0.10, 1.2 × gap 中位數)，記在 logs/h29/check.txt。Gates（diag1024 seed 0，--percept_filter）：+300 H29_300_END slope > −0.50、|axis_off| ≤ 0.08、hit ≥ 0.36（FAIL 停鏈）；+1000 H29_1000_END slope > −0.30、|dx| ≤ 0.06、hit ≥ 0.40、exit ≥ 20、D share ≥ 0.25。ETA：+300 ~22:10、+1000 ~00:05，皆在 06:41 錄影之前。
+- 預期（記錄用）：零樣本斜率可能不動（12500 已學會忽略該輸入），零樣本只是濾波與 hit 的健全檢查，+300 才是真考驗；原始知覺 12 cm 誤差是先前 reward-only 失敗不算 Human29 反證的理由。
+
 **10-30 20:38 根因候選找到：打者知覺的球速是「相鄰兩個含噪樣本的一步差分」，速度 std ≈ 1.4 m/s/軸，穿越點預測晃 10–40 cm → 12500 學到忽略球的位置資訊（甜蜜點固定點、reach 只跟 20%）。決定：建知覺濾波（旗標預設關、凍結設定位元不變）→ 12500 零樣本 re-diag → 若 hit 守住，Human29 = 濾波知覺 + 瞄準獎勵微調。**
 - 程式證據：`aibaseball/tasks/tee_batting/pitched_env.py` `_perceived_ball` 第 152 行 `v = (hist[:, -2] - hist[:, -1]) / self.step_dt`；step_dt = 1/400 × 4 = 0.01 s；`mimic_env_cfg.py` ball_obs_noise_std 0.01、bias_std 0.02、delay 0.10。√2 × 0.01 / 0.01 = 1.41 m/s；預測 = seen + v·t + ½g t²，t ≥ 0.10 s（延遲）→ 最後一步 y 誤差 ≈ 14 cm σ，與 rows2 量到的 |percept − 重力外推| 平均 0.117 / p90 0.25 吻合（15 在程式中確認一致）。另：重力外推 vs 真實穿越在視窗開啟（contact − 0.60）差 6.0 cm（阻力 + Magnus），最後一步 0；視窗開啟時多數球尚未「看到出手」（percept = 名義目標），所以任何 0.60 視窗的瞄準都必須每步依最新知覺重算（ArmAim2：腳本部分逐步追蹤、只 latch 政策 residual）。
 - 含義：Human26/26b/27/27b 與 ArmAim 都在「沒有可用訊號」的輸入上失敗，這些失敗不能再當作「reward-only 學不到瞄準」的證據；修知覺是工程修正（延遲 / 噪聲 / 偏差數值不變），不是 spec 變更。
