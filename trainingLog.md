@@ -68,6 +68,14 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 21:22 里程碑：第 9 列「腳本瞄準（二次擬合濾波知覺 + q + 完整觀測補償，視窗 0.60）」不經訓練通過 +300 幾何 gate（ROWS89_END 21:22，15 commit 21e0175）→ 列為採用候選；下令接進遊戲 / 聯合模擬並排採用鏈；Human29 鏈 21:20 已啟動（pf2 零樣本先跑）。**
+- 第 7 列（noise/bias 0、延遲保留）：知覺最後一步誤差 0.003 m（有噪聲 0.117）→ 延遲只佔 3 mm、誤差全為一步差分噪聲；視窗開啟 0.069（6.0 cm 重力外推 + 1 cm 延遲）。乾淨知覺讓凍結 12500 hit 0.481 → 0.549，斜率不動（−0.78）。
+- pf（直線濾波）：hit 0.531、|axis_off| 0.102、slope −0.82、最後一步 |err| 0.038（pfclean 0.036 → 模型偏差：直線把 1.05 s 曲線飛行的速度平均掉）→ 15 改二次 LSQ（float64 running sums、≥ 6 樣本，09a0ceb；離線 62 條 P3c：直線 0.045 vs 二次 0.021，下限 ~1.6 cm = 2 cm 單球偏差 spec）；視窗開啟誤差離線二次 ≤ 直線（0.067–0.077 vs 0.076–0.080），早期為重力外推預測器所限（真實狀態 + 重力外推 0.057–0.068），不做混合；後續可改用擬合加速度外推（離線 0.048–0.058）。
+- 第 8 列（完整補償：swing obs 讀到的棒子姿態經 PhysX Jacobian × res_off 反推；真實 dy）：hit 0.490、|axis_off| 0.078、slope −0.36（reachable −0.42）、exit 18.9、D share 0.209；實現比例 l_arm 0.67 / r_arm 0.80 / wrists 0.86 / waist 0.86（第 6 列只補 q 時 wrists 0.13 → 棒頭向量輸入是手腕不跟的主因）。
+- **第 9 列（濾波知覺 dy，逐步追蹤，q + 完整補償）：hit 0.526（reachable 0.612）、|axis_off| 0.071、slope −0.40（reachable −0.42）、exit 18.0、D share 0.164、launch 17.7；知覺總誤差開啟 0.085 / 最後 0.019（原始 0.121）。+300 幾何 gate 全過（slope > −0.50、|axis_off| ≤ 0.08、hit ≥ 0.36）。距 +1000 差在品質：slope > −0.30、exit ≥ 20、D share ≥ 0.25。**偏移頂到 ±0.4 邊界 69.7%。力矩：前臂與手腕仍整窗頂極限。
+- 下令：(1) CPU 立刻：把腳本瞄準接進遊戲 / 聯合模擬打者側（旗標，關閉時 M2 與凍結列 64/64 位元不變），備採用鏈：diag1024 → 3 showcase tables → 5 seeds × 3 ONE OUTS → joint seed 6 + recover_rl（on the ground ≤ 2/64、pitch rows 64/64），marker SAIM_ADOPT_END。(2) GPU 在 Human29 鏈釋出後（H29_300_END fail ~22:45 或 H29_1000_END ~00:40）：列 10 = 列 9 + aim_bound 0.6（6 min；判準：斜率較平且 hit ≥ 0.45、|axis_off| ≤ 8 cm 者採用）→ 採用鏈 → ArmAim2+comp（以最佳列初始化，residual ±0.2 每揮棒一次保持，reward = 瞄準項 + hit·q + hits-only exit 項 0.5·clamp(exit − 18, 0, 10)，gates 同 ArmAim，ARMAIM2_300_END / ARMAIM2_1000_END）。(3) 06:41 錄影時段保留給 20；ArmAim2 若會跨到該時段則延後或排在錄影後。
+- Human29：pf2 零樣本 → GO 自檢（hit ≥ 0.40、|err| ≤ 0.03）→ +300 ~22:45 → +1000 ~00:40。
+
 **10-30 20:59 rows2 結果（ARMAIM_ROWS2_END 20:57）：第 6 列「觀測補償」讓腳本瞄準不經訓練就把斜率從 −0.80 推到 −0.50（reachable −0.43）、|axis_off| 7.1 cm、hit 0.485 → 傳輸損失主因是凍結 swing policy 透過 q / nxt_ref − q 對抗偏移，不是致動器。決定：z 暫停；重排 GPU：PFILTER_END → 第 8 列（完整補償）→ 第 9 列（濾波知覺驅動的第 6 列 = 可部署腳本瞄準）→ Human29；手腕/前臂力矩 spec 問題交使用者。**
 - 各列（diag1024 seed 0、真實 dy、視窗 0.60；基準 hit 0.445 / |axis_off| 0.103 / slope −0.80 / reachable −0.81 / exit 18.9 / D share 0.181）：列 4 y：hit 0.481、|axis_off| 0.096、slope −0.73、reachable −0.75 / 0.088、exit 18.1、D share 0.257、launch 20.1；列 5 y+z：0.465、0.099、−0.76、−0.77 / 0.085、18.6、0.212、20.4；**列 6 y + obs comp：0.485、0.071、−0.50（r −0.73）、−0.43 / 0.065、18.3、0.222、launch 24.4**；列 6 misses slope −0.71。
 - 實現比例（wet − dry 配對）：列 4 l_arm 0.32 / r_arm 0.37 / wrists −0.07 / waist 0.55；列 5 同 + z −0.16；列 6 l_arm 0.64 / r_arm 0.69 / wrists 0.13 / waist 0.98。補償後腰全跟、手臂約 2/3、手腕仍近零；z 不傳且吃 D share → 暫停 z。
