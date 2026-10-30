@@ -60,6 +60,14 @@
 
 ## 3. 打者目前進度
 
+### 10-30 22:3x 14 GO：H29 採用流程（12799 單獨 / 12799 + saim）排在 ArmAim2c 之前
+- 14 的定位：Human29 解決的是「何時碰到」（hit 0.519 → 0.908，D share 0.298 已高於 +1000 門檻）；第 9 列解決的是「打在哪裡」。兩者合起來，是第一個可能同時改善兩項的候選。距離上的差距仍在 exit 19.2。
+- `logs/run_h29_adopt.sh`（等 SAIM_ADOPT_END，結束標記 H29_ADOPT_END）：
+  - (i) diag 12799 + saim（bound 用第 10 列的選擇）；
+  - (ii) 兩個候選各跑：3 表 × 5 ONE OUTS，加聯合模擬 seed 6 recover_rl（投球欄位 64/64、倒地 ≤ 2/64、+1.5 s 軀幹傾角 = 揮棒後站姿）。
+- 採用規則：必須高於交付門檻（19.1%，外野率 ≥ 3%），也必須高於 12500 + saim 的結果；通過者中取平均較高的，差距在 1.5 分內則取斜率較平的。
+- 勝出者寫入 `logs/h29adopt/winner.txt`，ArmAim2c 用它當凍結的揮棒（`AIB_SAIM_SWING`）。
+
 ### 10-30 22:19 H29_300_END：幾何門檻 FAIL，但擊中率從 0.519 跳到 0.908
 - Human29 是 12500 在二次濾波 percept 上 fine-tune 300 its，得到 model_12799（`2026-10-30_21-28-13_human_pitched29_1`）。sigma_ax 0.200、gap 0.100。
 - diag1024 seed 0（濾波開）：in-zone hit **0.908**（reachable 0.926）、exit 中位數 19.2（q25 14.4 / q75 23.5）、D share **0.298**、launch 19.6。
