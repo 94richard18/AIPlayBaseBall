@@ -60,6 +60,16 @@
 
 ## 3. 打者目前進度
 
+### 10-31 04:08 ArmAim2c 記憶體問題：停止、量測、修正、續訓
+
+- 03:30 依 14 緊急要求停掉 armaim2c_2 訓練（PID 87644，private 58.9 GB，系統剩約 2.8 GB）和兩條鏈；保留 **model_650**（03:24 存）。
+- 量測（20 的影片 03:42 結束後，`logs/armaim2c/memprobe`，2048 envs，從 model_650）：
+  - bookkeeping 開（60 its，含 700 存檔）：private 10.39 → 11.34 GB，且越跑越快（每 2 分鐘 +0.13 → +0.32 → +0.43 GB）；每 240 步多約 1000 個 Tensor（_rows / _tq）。
+  - bookkeeping 關（`AIB_ARMAIM_NOBOOK=1`，40 its）：private 固定 10.39 GB。
+  - 原因：ArmAimEnv 的 scripted 診斷累積（`_rows`、`_tq`、`_rl_frac`、`_rl_cmd_ep`）在訓練中一直保留；+300 只跑 300 its 所以沒爆。rsl_rl logger 和 train.py 的 KL wrapper 不累積；env 沒有每步 `.cpu()`。SaimSwingEnv（Human30）沒有這類 list。
+- 修正：訓練時 `AIB_ARMAIM_NOBOOK=1`（diag 照舊保留）；`run_armaim2d.sh` 從 model_650 續訓 +350 → model_999，加 30 GB RAM 守門，再跑 +1000 gate → ARMAIM2_1000_END（預估約 05:20）。
+- Human30 重新啟動：只等 ARMAIM2_1000_END，並且要乾淨結束（守門、abort 或 crash 都會停住）；拍片等待已拿掉（20 的影片 03:35–03:42 已拍）。
+
 ### 10-31 03:28 ArmAim2c +300 PASS、R3 PASS；+700 進行中
 
 - ARMAIM2_300_END 01:44 **PASS**（armaim2c_1 model_299）：in-zone hit 0.506（n 557）、|axis_off| 0.069、|dx| 0.069、exit 19.3、D share 0.202、launch 17.0°、slope hits −0.40（+1000 門檻 −0.30、|dx| ≤ 0.06、exit ≥ 20、D ≥ 0.25 都還沒到）。
