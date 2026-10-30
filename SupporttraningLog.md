@@ -60,6 +60,15 @@
 
 ## 3. 打者目前進度
 
+### 10-31 06:08 線 C falsifier（腳本 tempo 1.1）：DEAD；Human30b 已排
+
+- 列 9 設定 + `tempo_script 1.1`（整段參考動作 ×1.1，重新對時到接觸），diag1024 s0，列 9 → tempo 1.1：
+  - in-zone hit 0.526 → 0.524；exit 中位 18.0 → **18.8**（規則要 ≥ 19.0，**不合格**），q25 / q75 13.8 / 21.6 → 14.3 / 23.5；
+  - launch 17.7 → 14.2；|axis_off| 0.071 → 0.075；slope −0.40 → −0.42；D share 0.164 → 0.202；fair 0.635 → 0.658。
+- policy 自己的 tempo 中位 −0.071（× 0.3 = 慢 2%），實際播放速率約 1.077。
+- 判定：線 C 不訓練（exit 只 +0.8 m/s）。
+- Human30b（5d7e9e6）：Gaussian launch（20°、σ 15）× q 只在 fair 球給分、exit hinge 只在 fair 球給分、w_miss 5，其餘同 Human30。`run_human30b.sh` 已啟動：smoke → +300 → H30B_300_END（約 07:20）。
+
 ### 10-31 05:57 Human30 +300：FAIL（幾何改善、飛行距離崩掉）
 
 - model_12799（human_pitched30_1）+300 gate：in-zone hit 0.490、slope hits **−0.28**（row 9 約 −0.5 以下，首次 > −0.30）、|axis_off| 0.094（門檻 ≤ 0.08，**沒過**）。
