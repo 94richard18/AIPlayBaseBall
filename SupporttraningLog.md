@@ -60,6 +60,14 @@
 
 ## 3. 打者目前進度
 
+### 10-31 05:57 Human30 +300：FAIL（幾何改善、飛行距離崩掉）
+
+- model_12799（human_pitched30_1）+300 gate：in-zone hit 0.490、slope hits **−0.28**（row 9 約 −0.5 以下，首次 > −0.30）、|axis_off| 0.094（門檻 ≤ 0.08，**沒過**）。
+- carry（`scripts/carry_cols.py`，同一批 in-zone hits），row 9 → h30：launch 17.7 → **−14.4°**、exit q25 / med / q75 13.8 / 18.0 / 21.6 → 14.6 / 16.7 / 19.7、D share 0.164 → 0.212、fair share 0.635 → **0.278**。
+- 擊球方向：spray 中位數 4.4° → **−63.6°**（大幅拉打、往下）。訓練中 fair_rate 0.51 → 0.25、launch 0.9 → −15.9°、hit_q 0.19 → 0.29。
+- 判讀：w_miss 20 的未擊中懲罰遠大於 launch 項（20 × q 約 0.29 × 方向分數 0.5–0.8），所以 policy 用提早、拉打的接觸去避開 miss，不管方向和仰角。方向分數是平滑的 cos 分數（launch_sigma 0）：往中外野打的 −15° 滾地球仍得約 0.83，仰角的梯度很弱。exit hinge 對界外球也給分。
+- 依 14 的規則（幾何 floor + carry 都要上升）判定不合格 → GPU 轉給 exit-speed 線 C（由 14 決定）。
+
 ### 10-31 05:07 ArmAim2c +1000：FAIL（記憶體修正有效）
 
 - model_999（armaim2c_3）：in-zone hit 0.526（+300 時 0.506）、|dx| 0.065（門檻 ≤ 0.06）、exit 19.4（≥ 20）、D share 0.232（≥ 0.25）、launch 19.8°、slope hits −0.40（> −0.30），四項沒過。700 its 只帶來小幅進步，slope 完全沒動。
