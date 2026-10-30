@@ -15,6 +15,8 @@ the sweet spot onto the ball, on top of the FROZEN swing policy (delivery 12500 
 
 from __future__ import annotations
 
+import atexit
+import json
 from collections.abc import Sequence
 
 import torch
@@ -54,6 +56,15 @@ class ArmAimEnv(PitchedBattingEnv):
         self.res_win = torch.zeros(n, dtype=torch.bool, device=dev)
         self.res_closed = torch.zeros(n, dtype=torch.bool, device=dev)  # window over (contact / ball past the plane)
         self.swing_gap = torch.zeros_like(self.res_a)  # swing target - q on the aim joints
+        self._scripted = None
+        if cfg.aim_scripted:  # falsifier: offset = gain(side) x |dy|, dy = predicted crossing y - the nominal target y
+            g = json.load(open(cfg.aim_scripted))
+            assert g["joints"] == list(cfg.aim_joints)
+            self._scripted = (torch.tensor(g["gain_plus"], device=dev), torch.tensor(g["gain_minus"], device=dev))
+            self.res_sat_ep = torch.zeros(n, dtype=torch.bool, device=dev)  # this pitch's offset reached the bound
+            self.res_dy_ep = torch.zeros(n, device=dev)  # dy at the window's last step
+            self._sat_n = [0, 0, 0.0]  # episodes, saturated, sum |dy|
+            atexit.register(self._print_scripted)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         # the ArmAim policy's spaces (the swing env's 30 / 152 stay what the swing actor uses)
         self.cfg.action_space = len(cfg.aim_joints)
@@ -63,6 +74,11 @@ class ArmAimEnv(PitchedBattingEnv):
         self.actions = swing_actions  # the swing env's buffer (30): the swing actor's previous-action input
         print(f"[armaim] frozen swing actor {cfg.swing_checkpoint} (obs {n_sw}); aim joints {len(cfg.aim_joints)}, "
               f"bound {cfg.aim_bound} rad, window {cfg.aim_window_s} s; obs {self.cfg.observation_space}", flush=True)
+
+    def _print_scripted(self):
+        n, k, d = self._sat_n
+        print(f"[armaim scripted] sign {self.cfg.aim_scripted_sign:+.0f}: episodes {n}, offset at the +-{self.cfg.aim_bound} "
+              f"bound {k / max(n, 1):.3f}, mean |dy| {d / max(n, 1):.3f} m", flush=True)
 
     # ------------------------------------------------------------------ actions
     def _pre_physics_step(self, actions: torch.Tensor):
@@ -75,7 +91,16 @@ class ArmAimEnv(PitchedBattingEnv):
         # the window: from aim_window_s (reference clock) before the clip's contact until contact / the ball past the plane
         self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)
         self.res_win = (self.ref_t >= self.ref.contact_time[self.clip] - c.aim_window_s) & ~self.res_closed
-        self.res_a = torch.tanh(actions.clamp(-5.0, 5.0)) * self.res_win.unsqueeze(-1)
+        if self._scripted is not None:
+            dy = (self._ball_seen[:, 1] - self.nominal_target[:, 1]) * c.aim_scripted_sign
+            gp, gm = self._scripted
+            raw = torch.where((dy >= 0).unsqueeze(-1), gp, gm) * dy.abs().unsqueeze(-1) / c.aim_bound
+            w = self.res_win
+            self.res_sat_ep |= w & (raw.abs() > 1.0).any(-1)
+            self.res_dy_ep = torch.where(w, dy, self.res_dy_ep)
+            self.res_a = raw.clamp(-1.0, 1.0) * w.unsqueeze(-1)
+        else:
+            self.res_a = torch.tanh(actions.clamp(-5.0, 5.0)) * self.res_win.unsqueeze(-1)
         decay = torch.exp(torch.tensor(-self.step_dt / c.aim_decay_tau_s, device=self.device))
         self.res_off = torch.where(self.res_win.unsqueeze(-1), c.aim_bound * self.res_a,
                                    torch.where(self.res_closed.unsqueeze(-1), self.res_off * decay, torch.zeros_like(self.res_off)))
@@ -138,6 +163,16 @@ class ArmAimEnv(PitchedBattingEnv):
         super()._reset_idx(env_ids)
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
+        if self._scripted is not None and self.common_step_counter > 0:
+            done = self.res_closed[env_ids]  # pitches whose window ran
+            k0 = self._sat_n[0] // 256
+            self._sat_n[0] += int(done.sum())
+            self._sat_n[1] += int((self.res_sat_ep[env_ids] & done).sum())
+            self._sat_n[2] += float(self.res_dy_ep[env_ids][done].abs().sum())
+            self.res_sat_ep[env_ids] = False
+            self.res_dy_ep[env_ids] = 0.0
+            if self._sat_n[0] // 256 > k0:
+                self._print_scripted()
         self.res_a[env_ids] = 0.0
         self.res_off[env_ids] = 0.0
         self.res_win[env_ids] = False

@@ -439,6 +439,8 @@ class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     aim_bound: float = 0.4
     aim_window_s: float = 0.30  # reference-clock seconds before the clip's contact: the window opens (the swing start)
     aim_decay_tau_s: float = 0.05  # after the window: the offset decays with this time constant
+    aim_scripted: str | None = None  # scripts/armaim_scripted_gain.py JSON: the offset comes from it, the policy is ignored
+    aim_scripted_sign: float = 1.0  # -1: control row (offset sign flipped)
     w_res: float = 0.01
     w_aim: float = 6.0
     sigma_aim_ax: float = 0.20
@@ -467,6 +469,8 @@ class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
     aim_bound: float = 0.4
     aim_window_s: float = 0.30
     aim_decay_tau_s: float = 0.05
+    aim_scripted: str | None = None
+    aim_scripted_sign: float = 1.0
     w_res: float = 0.01
     w_aim: float = 6.0
     sigma_aim_ax: float = 0.20

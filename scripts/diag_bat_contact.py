@@ -49,6 +49,8 @@ parser.add_argument("--trace", type=str, default=None,
 parser.add_argument("--armaim", type=str, default=None,
                     help="Human28 ArmAim residual checkpoint: --checkpoint is the frozen swing policy run inside AIB-ArmAim-Play-v0")
 parser.add_argument("--aim_bound", type=float, default=None, help="--armaim: override cfg.aim_bound (0 = the swing alone)")
+parser.add_argument("--aim_scripted", type=str, default=None, help="--armaim: scripted-aim gain JSON (the residual policy is ignored)")
+parser.add_argument("--aim_scripted_sign", type=float, default=1.0, help="--aim_scripted: -1 = sign-flipped control")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -116,6 +118,9 @@ def main():
         cfg.swing_checkpoint = os.path.abspath(args.checkpoint)
         if args.aim_bound is not None:
             cfg.aim_bound = args.aim_bound
+        if args.aim_scripted:
+            cfg.aim_scripted = os.path.abspath(args.aim_scripted)
+            cfg.aim_scripted_sign = args.aim_scripted_sign
     else:
         cfg = PitchedBattingHumanPlayEnvCfg()
     train = PitchedBattingHuman3EnvCfg()
