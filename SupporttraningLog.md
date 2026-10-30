@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+### 10-31 05:07 ArmAim2c +1000：FAIL（記憶體修正有效）
+
+- model_999（armaim2c_3）：in-zone hit 0.526（+300 時 0.506）、|dx| 0.065（門檻 ≤ 0.06）、exit 19.4（≥ 20）、D share 0.232（≥ 0.25）、launch 19.8°、slope hits −0.40（> −0.30），四項沒過。700 its 只帶來小幅進步，slope 完全沒動。
+- 記憶體：bookkeeping 關閉後訓練 private 峰值 10 GB（之前 58.9 GB），守門沒觸發。
+- Human30 照計畫接著跑（smoke → +300 → +300 gate → H30_300_END）。
+
 ### 10-31 04:08 ArmAim2c 記憶體問題：停止、量測、修正、續訓
 
 - 03:30 依 14 緊急要求停掉 armaim2c_2 訓練（PID 87644，private 58.9 GB，系統剩約 2.8 GB）和兩條鏈；保留 **model_650**（03:24 存）。
