@@ -1,0 +1,17 @@
+D check (10-30): exit vs contact location, 12500 @ 1.5x, diag1024 seed 0 (logs/diag_bat_contact_band12500.json), all hits (*_any)
+hits n 277, exit median 17.6 m/s, |dx| median 0.111 m
+  |dx| 0.00-0.03 m: n  29  exit median  21.7
+  |dx| 0.03-0.06 m: n  45  exit median  22.3
+  |dx| 0.06-0.10 m: n  46  exit median  20.9
+  |dx| 0.10-0.15 m: n  69  exit median  19.0
+  |dx| 0.15-0.25 m: n  63  exit median  15.1
+  |dx| 0.25-1.00 m: n  25  exit median  11.1
+  D -1.000..-0.020 m: n  59  exit median  16.8
+  D -0.020..+0.000 m: n  55  exit median  22.6
+  D +0.000..+0.025 m: n  52  exit median  21.9
+  D +0.025..+0.050 m: n  83  exit median  15.3
+  D +0.050..+1.000 m: n  28  exit median  12.1
+  |dx| < 0.05 and D in [0, 0.025]: n 10  exit median 27.5 (indicative, small n)
+linear fit exit = 21.74 + -29.76 x |dx| (m/s per m): -0.298 m/s per cm; r -0.53
+  predicted exit at |dx| 0.05: 20.2 m/s; at the current median |dx| 0.111: 18.4
+within |dx| < 0.06 (n 74): exit = 28.43 + -235.04 x |D - 0.010|; predicted at |D - 0.010| 0.005: 27.3
