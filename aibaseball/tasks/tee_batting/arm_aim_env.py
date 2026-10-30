@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import os
 from collections.abc import Sequence
 
 import torch
@@ -24,6 +25,9 @@ import torch
 from isaaclab.utils.math import quat_rotate_inverse
 
 from .pitched_env import PitchedBattingEnv
+
+_MEMDBG = os.environ.get("AIB_MEMDBG") == "1"
+_NOBOOK = os.environ.get("AIB_ARMAIM_NOBOOK") == "1"  # skip the per-pitch / per-step diag lists (memory probe)
 
 
 def load_frozen_actor(path: str, dev):
@@ -137,9 +141,28 @@ class ArmAimEnv(PitchedBattingEnv):
               f"bound {k / max(n, 1):.3f}, mean |dy| {d / max(n, 1):.3f} m, mean |true plate y| {dt / max(n, 1):.3f}, "
               f"mean |dy - true| {de / max(n, 1):.3f} (dy from {'the true plate y' if self.cfg.aim_scripted_true else 'the percept'})", flush=True)
 
+    def _memdbg(self):  # AIB_MEMDBG=1: RSS + the Python-side accumulators + the most-grown object types
+        import gc
+        import psutil
+        ls = {k: len(v) for k, v in (("rows", getattr(self, "_rows", [])), ("tq", getattr(self, "_tq", [])),
+                                     ("cmd_ep", getattr(self, "_rl_cmd_ep", [])), ("frac_z", getattr(self, "_rl_frac_z", [])))}
+        ls["frac"] = sum(len(v) for v in getattr(self, "_rl_frac", {}).values())
+        ls["play_log"] = len(getattr(self, "play_log", []))
+        cnt = {}
+        for o in gc.get_objects():
+            t = type(o).__name__
+            cnt[t] = cnt.get(t, 0) + 1
+        prev = getattr(self, "_memdbg_prev", {})
+        grow = sorted(((v - prev.get(k, 0), k) for k, v in cnt.items()), reverse=True)[:6]
+        self._memdbg_prev = cnt
+        print(f"[memdbg] step {self.common_step_counter} rss {psutil.Process().memory_info().rss / 2**30:.2f} GB "
+              f"cuda alloc {torch.cuda.memory_allocated() / 2**30:.2f} GB | {ls} | grown {grow}", flush=True)
+
     # ------------------------------------------------------------------ actions
     def _pre_physics_step(self, actions: torch.Tensor):
         c = self.cfg
+        if _MEMDBG and self.common_step_counter % 240 == 0:
+            self._memdbg()
         if self._swing_obs is None:
             self._swing_obs = PitchedBattingEnv._get_observations(self)["policy"]
         with torch.no_grad():
@@ -164,7 +187,7 @@ class ArmAimEnv(PitchedBattingEnv):
             bk["perc_y_last"] = torch.where(self.res_win, self._ball_seen[:, 1] - nom[:, 1], bk["perc_y_last"])
             bk["perc_z_last"] = torch.where(self.res_win, self._ball_seen[:, 2] - nom[:, 2], bk["perc_z_last"])
             self._was_open |= self.res_win
-            if self.res_win.any():
+            if self.res_win.any() and not _NOBOOK:
                 d = self.robot.data
                 lim = d.joint_effort_limits[:, self._tq_ids].clamp_min(1e-6)
                 self._tq.append((d.applied_torque[:, self._tq_ids].abs() / lim)[self.res_win].half())
@@ -311,23 +334,27 @@ class ArmAimEnv(PitchedBattingEnv):
                 e = env_ids[ok] if torch.is_tensor(env_ids) else torch.as_tensor(env_ids, device=self.device)[ok]
                 cols = [e.float(), self._ep_idx[e].float()] + [self._rl_num[g][e] for g in self._grp] + [self._rl_den[g][e] for g in self._grp]
                 cols += [self._rl_num_z[e], self._rl_den_z[e], self.pitch_plate[e, 0], self.pitch_plate[e, 1]] + [b[e] for b in self._bk.values()]
-                self._rows.append(torch.stack(cols, -1).cpu())
+                if not _NOBOOK:
+                    self._rows.append(torch.stack(cols, -1).cpu())
             for g in self._grp:
                 den = self._rl_den[g][env_ids]
                 m = ok & (den > 1e-8)
-                self._rl_frac[g] += (self._rl_num[g][env_ids][m] / den[m]).tolist()
+                if not _NOBOOK:
+                    self._rl_frac[g] += (self._rl_num[g][env_ids][m] / den[m]).tolist()
                 self._rl_num[g][env_ids] = 0.0
                 self._rl_den[g][env_ids] = 0.0
             if self._scripted_z is not None:
                 m = ok & (self._rl_den_z[env_ids] > 1e-8)
-                self._rl_frac_z += (self._rl_num_z[env_ids][m] / self._rl_den_z[env_ids][m]).tolist()
+                if not _NOBOOK:
+                    self._rl_frac_z += (self._rl_num_z[env_ids][m] / self._rl_den_z[env_ids][m]).tolist()
                 self._rl_num_z[env_ids] = 0.0
                 self._rl_den_z[env_ids] = 0.0
             self._ep_idx[env_ids] += 1
             for b in self._bk.values():
                 b[env_ids] = 0.0
             self._was_open[env_ids] = False
-            self._rl_cmd_ep += (self._rl_cmd[env_ids][ok] / self._rl_steps[env_ids][ok]).tolist()
+            if not _NOBOOK:
+                self._rl_cmd_ep += (self._rl_cmd[env_ids][ok] / self._rl_steps[env_ids][ok]).tolist()
             self._rl_cmd[env_ids] = 0.0
             self._rl_steps[env_ids] = 0.0
             self._prev_win[env_ids] = False

@@ -48,10 +48,9 @@ diag() {  # $1 ckpt $2 tag
   [ -f logs/diag_bat_contact_$2.json ] || { MSG="diag $2: no json"; exit 1; }
 }
 until [ -f $O/GO ]; do sleep 60; done
-until [ logs/ARMAIM2_300_END.txt -nt $O/chain.stamp ] && [ logs/RECOV3_END.txt -nt $O/chain.stamp ]; do sleep 60; done
-case "$(cat logs/ARMAIM2_300_END.txt)" in
-  *" PASS"*) note "ArmAim2c passed +300: waiting for ARMAIM2_1000_END"; until [ logs/ARMAIM2_1000_END.txt -nt $O/chain.stamp ]; do sleep 60; done;;
-esac
+# 10-31 04:0x relaunch: ArmAim2c +300 PASS 01:44 and R3 PASS 02:18 are done; wait for the resumed +1000 (run_armaim2d.sh)
+until [ logs/ARMAIM2_1000_END.txt -nt $O/chain.stamp ]; do sleep 60; done
+grep -q "RAM watchdog|aborted|crash" logs/ARMAIM2_1000_END.txt && { MSG="held: ArmAim2c resume did not finish cleanly ($(cut -c1-120 logs/ARMAIM2_1000_END.txt))"; exit 1; }
 # smoke
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 256 --max_iterations 2 --run_name human_pitched30_smoke --resume True \
@@ -59,7 +58,7 @@ $P -u scripts/train.py --task $TASK --headless --num_envs 256 --max_iterations 2
 grep -q Traceback $O/train_smoke.txt && fail $O/train_smoke.txt smoke
 grep -q "saim_swing" $O/train_smoke.txt || { MSG="smoke: SaimSwingEnv not built"; exit 1; }
 # +300
-filmwait 05:15
+# (filmwait 05:15: dropped 10-31 04:0x, 20's film ran 03:35)
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 2048 --max_iterations 300 --run_name human_pitched30_1 --resume True \
   --load_run 2026-10-25_13-56-51_human_pitched9b --checkpoint model_12500.pt > $O/train_1.txt 2>&1
@@ -72,7 +71,7 @@ echo "H30_300_END $(date +%H:%M) $G | base row 9 (12500 + saim zero-shot): $($P 
 M3DONE=1; cat $M3
 case "$G" in PASS*) ;; *) MSG="stopped at +300: $G"; exit 0;; esac
 # +700
-filmwait 03:50
+# (filmwait 03:50: dropped 10-31 04:0x, 20's film ran 03:35)
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 2048 --max_iterations 700 --run_name human_pitched30_2 --resume True \
   --load_run $(basename $D) --checkpoint model_$I.pt > $O/train_2.txt 2>&1
