@@ -422,6 +422,21 @@ class PitchedBattingHuman27bEnvCfg(PitchedBattingHuman27EnvCfg):
     launch_spray_times_q: bool = True
 
 
+
+@configclass
+class PitchedBattingHuman29EnvCfg(PitchedBattingHuman27bEnvCfg):
+    """Human29 (planning 14, 10-30): Human27b on the FILTERED percept (percept_filter: ballistic least-squares crossing
+    prediction over all seen samples since release; delay 0.10 s / noise 1 cm / bias 2 cm unchanged). The raw one-step
+    velocity estimate wobbled the predicted crossing by ~12 cm mean (25 cm p90) at the last step, so 12500 - and the
+    reward-only lines Human23 / 26 / 27 on top of it - learned on an input that carried no aim signal. Aim sigmas >= 1.2 x
+    the start medians of the filter-on zero-shot diag (AIB_H29_SIGMA_AX / _GAP set by logs/run_human29.sh; defaults
+    0.20 / 0.10 as Human27b). From 12500 @ 1.5x."""
+
+    percept_filter: bool = True
+    sigma_aim_ax: float = float(os.environ.get("AIB_H29_SIGMA_AX", "0.20"))
+    sigma_aim_gap: float = float(os.environ.get("AIB_H29_SIGMA_GAP", "0.10"))
+
+
 _ARMAIM_JOINTS = [f"{s}_{j}" for s in ("l", "r") for j in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow")] + \
     [f"{s}_wrist_{j}" for s in ("l", "r") for j in ("roll", "pitch", "yaw")] + ["waist_yaw"]
 _SWING_12500 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "rsl_rl", "aib1_tee_batting_mimic",
