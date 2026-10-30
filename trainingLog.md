@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 06:47 例行檢查：Isaac 1 = Human30b 的 +300 diag（diag_bat_contact.py，PID 8928，WS 3.7 GB；訓練 2026-10-31_06-09-39_human_pitched30b_1 已存 model_12799，訓練尾段 fair_rate 0.58–0.61、hit_rate 0.38、launch 0.96 — 對照 Human30 的 0.25 / −15.9，方向對了），H30B_300_END 數分鐘內；GPU 28%、free RAM 44 GB；錄影 03:42 完成，下次最晚 15:42；無閒置。線 C 判定 DEAD（TEMPO_FALSIFIER_END 06:06，15 紀錄 05675e7）：tempo 1.1（有效 1.077）exit 中位 18.0 → 18.8（規則 ≥ 19.0）、launch 17.7 → 14.2、hit 0.524、|axis_off| 0.075、slope −0.42、D 0.202；就算補到有效 1.10 也只勉強過線且離 24 m/s 仍遠 → 不單獨訓練，節奏自由度留給 Human30 系列的揮棒本體學。**
+
 **10-31 06:00 H30_300_END（05:57）：Human30 +300 FAIL——幾何首次過 +1000 斜率（slope −0.28）但飛距崩掉（launch 17.7 → −14.4、fair share 0.635 → 0.278、拉打 spray 中位 −63.6°）。判定原因是獎勵實作沒照 10-31 規則（exit hinge 未限 fair 球、w_miss 20 壓過 launch 項、cos 方向分對仰角太寬），不是設計被證偽 → 下令 Human30b（修獎勵、自 12500 重跑 +300、H30B_300_END），GPU 空檔先跑 exit-speed 線 C 的腳本 falsifier（tempo 1.1 diag）。15 紀錄 e3d463b。**
 - model_12799（human_pitched30_1，diag1024 in-zone）：hit 0.490、slope hits −0.28（過 −0.50 下限、也過 +1000 的 −0.30）、|axis_off| 0.094（FAIL ≤ 0.08；列 9 起點 0.071）、D share 0.212（列 9 0.164）；carry：launch −14.4、exit q25/med/q75 14.6 / 16.7 / 19.7（列 9 13.8 / 18.0 / 21.6）、fair share 0.278（spray 定義）。訓練趨勢 fair_rate 0.51 → 0.25、launch 0.9 → −15.9、hit_q 0.19 → 0.29。
 - 判讀：政策用提早、拉打的揮棒買接觸——w_miss 20 遠大於 launch 20 × q（q ~0.29）× 方向分；cos 方向分（launch_sigma 0）對 −15° 滾地球仍給 ~0.83；exit hinge 付在界外球上。這三點都違反「只付 fair 球的 carry / launch / exit、miss 罰只當下限」的規則，所以 +300 沒有真正測到「揮棒本體配合偏移能否保住飛距」。我的 05:09 規則（carry 不動 → 轉線 C）前提是獎勵照規則實作，前提不成立，不機械套用。
