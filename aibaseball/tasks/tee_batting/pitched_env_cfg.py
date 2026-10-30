@@ -448,8 +448,8 @@ _SWING_12500 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     """Human30 (planning 14, 10-30, backup): Human29 with the row-9 scripted arm aim IN the loop (SaimSwingEnv: offset on
     the aim joints from the filtered percept, window 0.60 s, bound 0.4, tau 0.05; the swing policy observes q - offset and
-    the bat moved back by J x offset). Fine-tune 12799 so the swing adapts to the layer (h29s zero-shot: hit 0.908 ->
-    0.700, launch 19.6 -> 5.9 deg). Human29 rewards + ArmAim2c's launch term."""
+    the bat moved back by J x offset). Fine-tune 12500 @ 1.5x (re-based 10-31: 12799 lost launch / carry at the game level) so the swing adapts to the layer (h29s zero-shot: hit 0.908 ->
+    0.700, launch 19.6 -> 5.9 deg). Human29 rewards + ArmAim2c's launch term + exit hinge, w_hit_q 0."""
 
     aim_joints: list = _ARMAIM_JOINTS
     saim_gain: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "armaim_auth", "scripted_gain.json"))
@@ -464,6 +464,12 @@ class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     launch_dir_from_target: bool = True
     launch_sigma_deg: float = 0.0
     launch_spray_times_q: bool = True
+    # 14 (10-31 00:2x, re-based on 12500): pay batted-ball value on hits, not contact - the hits-only exit hinge as
+    # ArmAim2c, the hit-quality term off (w_miss stays as the miss floor); the launch / spray terms keep their x q
+    w_exit_hinge: float = 0.5
+    exit_hinge_ref: float = 18.0
+    exit_hinge_cap: float = 10.0
+    w_hit_q: float = 0.0
 
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
