@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+### 10-31 00:50 ArmAim2c +300 延遲 42 分的原因；Human30 GO
+
+- 原因：我在 CPU 跑 `scripts/one_outs_mechanism.py`（00:05–00:46，兩次），它用 isaaclab_env 的 python 跑 `scripts/` 路徑，被鏈的 `isaac()` 當成 Isaac 行程，`idle` 一直等。CPU 工作結束後 +300 在 00:47 自動開跑（armaim2c_1，2048 envs）。之後 CPU 長工作改從 scratchpad 跑，不經 `scripts/` 路徑。
+- 預估：ARMAIM2_300_END 約 02:05（訓練約 1 h + diag），R3 約 02:05–03:50（bank、+300、joint s6）。
+- Human30：14 確認 → `w_aim 0`（不付接觸幾何），`logs/h30/GO` 已建立，`run_human30.sh` 已啟動，等 ARMAIM2_300_END + RECOV3_END（ArmAim2c 若過 +300 則等 +1000）。有效獎勵：w_launch 20（20°，× q）、w_spray 10、w_exit_hinge 0.5、w_miss 20、w_fall 5 / 10 + 模仿項；w_hit_q 0、w_aim 0。
+
 ### 10-31 00:46 ONE OUTS 機制拆解（CPU，3 表 × 5 seeds × 1000 場，`scripts/one_outs_mechanism.py` → `logs/one_outs_mechanism.txt`）
 
 | 設定 | 接觸 / PA | 界外 / 公平（佔接觸） | 打者勝 | 三振 | 保送 | 觸身 | 場內出局 | 外野安打 | 球數 / PA | 公平球 launch ≥ 10° | 公平球 exit 中位 | P(外野 / 公平接觸) |

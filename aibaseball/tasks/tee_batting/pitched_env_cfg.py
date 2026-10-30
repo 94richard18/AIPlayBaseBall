@@ -470,6 +470,7 @@ class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     exit_hinge_ref: float = 18.0
     exit_hinge_cap: float = 10.0
     w_hit_q: float = 0.0
+    w_aim: float = 0.0  # 14 (10-31 00:4x): no pay for contact geometry (the exit hinge rewards the sweet spot through dx)
 
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
