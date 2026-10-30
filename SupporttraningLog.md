@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+### 10-31 07:27 Human30c 執行中、Human30d 已放行（排在後面）
+
+- Human30c（fair 球飛距獎勵 20 × clamp((carry − 10) / 30, 0, 1)，拿掉 launch Gaussian 和 exit hinge）：14 在 07:24 放行，smoke 已開始。H30C_300_END 約 08:35，內含 jitter 0 和 jitter 0.03 兩列 diag，起點對照 h30b diag（launch 12.3、exit 20.3、fair 0.710、D 0.226）。
+- 訓練的時間噪音：Human30x 的 `timing_noise_s` 0（從 Human6 繼承，依 10-21 使用者決定：遊戲用引擎的真實到達時間），showcase 表格是 ±0.03 s 均勻分布。所以 diag 的 launch 在表格掉了兩次（h29 19.6 → 2.6、h30b 12.3 → −1.4）。
+- Human30d = Human30c + 訓練時 ±0.03 s 噪音（新旗標 `timing_noise_ramp False`：resume 會把 48000 步的 ramp 歸零，300 its 只會到約 15%）。14 在 07:30 放行，排在 H30C_300_END 之後，約 09:45 出 H30D_300_END。
+- 14 的表格規則（3b6b630）：候選進表格時，0.03 那組旁邊加一組 jitter 0（3 表 × 5 seeds），另外跑一次 12500 的 jitter-0 參考（joint sim / 交付版沒有噪音）。
+
 ### 10-31 07:22 Human30b 採用：NO
 
 - ONE OUTS 3 表 × 5 seeds：**16.0%**（15.9 / 15.4 / 16.7），外野安打 **3.9%**（目前最高；門檻 19.1% / 3%）。delivery 12500 是 17.6%，12500 + saim 是 16.0%。
