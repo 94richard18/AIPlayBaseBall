@@ -64,7 +64,8 @@
 
 - 14 判讀：h29s 對 12799 掉 20 分 hit（0.908 → 0.700）、launch 少 14°（19.6 → 5.9°），先驗是 12799 單獨勝出，瞄準須與揮棒一起學。備案 = **Human30：12799 在訓練迴圈內帶 saim + comp 微調**，讓揮棒適應這層。
 - `aibaseball/tasks/tee_batting/saim_swing_env.py`（SaimSwingEnv）：PitchedBattingEnv 寫完目標後加 row-9 腳本瞄準 offset（濾波 percept、window 0.60、bound 0.4 = `AIB_SAIM_BOUND`、tau 0.05），揮棒策略觀測 q − offset 與 J × offset 補償後的球棒；TensorBoard `saim/*`。
-- `PitchedBattingHuman30EnvCfg`（Human29 + saim 欄位，獎勵同 Human29，無 launch 項），註冊 `AIB-PitchedBatting-Human30-v0`。
+- `PitchedBattingHuman30EnvCfg`（Human29 + saim 欄位），註冊 `AIB-PitchedBatting-Human30-v0`。
+- 23:2x 依 14 修改：Human30 加 ArmAim2c 同款 launch 項（w_launch 20、target 20°、`launch_dir_from_target` True、spray × q）；原先繼承的 w_launch 20 方向固定 30°。起點中位 = h29s diag launch 5.9°（12799 單獨 19.6°）。CPU 檢查仍 PASS。
 - CPU 檢查 `scripts/test_saim_swing_cpu.py`：同輸入 60 步 vs BatterSide `_saim_step`，offset / 目標差 0.00e+00（peak mean |offset| 0.071 rad）→ PASS。
 - 未啟動；需要時：`train.py --task AIB-PitchedBatting-Human30-v0 --resume True --load_run 2026-10-30_21-28-13_human_pitched29_1 --checkpoint model_12799.pt`（AIB_EFFORT_SCALE 1.5），先 2 its smoke。
 

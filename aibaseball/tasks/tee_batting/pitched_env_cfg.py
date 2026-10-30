@@ -449,7 +449,7 @@ class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     """Human30 (planning 14, 10-30, backup): Human29 with the row-9 scripted arm aim IN the loop (SaimSwingEnv: offset on
     the aim joints from the filtered percept, window 0.60 s, bound 0.4, tau 0.05; the swing policy observes q - offset and
     the bat moved back by J x offset). Fine-tune 12799 so the swing adapts to the layer (h29s zero-shot: hit 0.908 ->
-    0.700, launch 19.6 -> 5.9 deg). Same rewards as Human29 (no launch term)."""
+    0.700, launch 19.6 -> 5.9 deg). Human29 rewards + ArmAim2c's launch term."""
 
     aim_joints: list = _ARMAIM_JOINTS
     saim_gain: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "armaim_auth", "scripted_gain.json"))
@@ -457,6 +457,13 @@ class PitchedBattingHuman30EnvCfg(PitchedBattingHuman29EnvCfg):
     saim_window_s: float = 0.60
     saim_tau_s: float = 0.05
     saim_comp_full: bool = True
+    # 14 (10-30 23:2x): the launch term as ArmAim2c (w_launch 20, smooth direction score toward 20 deg, spray x q) - the
+    # launch collapse is the saim layer's demonstrated cost (12799 alone 19.6 deg -> h29s diag 5.9 deg = the start median)
+    w_launch: float = 20.0
+    launch_target_deg: float = 20.0
+    launch_dir_from_target: bool = True
+    launch_sigma_deg: float = 0.0
+    launch_spray_times_q: bool = True
 
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
