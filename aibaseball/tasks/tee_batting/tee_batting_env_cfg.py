@@ -90,6 +90,9 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     exit_hinge_cap: float = 10.0
     exit_hinge_fair_only: bool = False  # the exit hinge only on fair balls (Human30b, 10-31)
     launch_fair_only: bool = False  # the launch term only on fair balls (Human30b, 10-31)
+    w_carry: float = 0.0  # x clamp((carry - carry_ref) / carry_span, 0, 1) on fair balls only (Human30c, 10-31)
+    carry_ref: float = 10.0
+    carry_span: float = 30.0
     w_launch: float = 4.0  # x EV/52.5 x ((1 + cos(launch dir, 30 deg to center field)) / 2)^2
     w_backspin: float = 0.0  # x EV/52.5 x clamp(backspin_rpm / 2000, -1, 1)
     launch_target_deg: float = 28.0

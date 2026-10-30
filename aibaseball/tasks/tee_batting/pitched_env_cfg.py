@@ -486,6 +486,20 @@ class PitchedBattingHuman30bEnvCfg(PitchedBattingHuman30EnvCfg):
     exit_hinge_fair_only: bool = True
     w_miss: float = 5.0
 
+
+@configclass
+class PitchedBattingHuman30cEnvCfg(PitchedBattingHuman30bEnvCfg):
+    """Human30c (planning 14, 10-31 06:53): Human30b with ONE change in the carry rewards - the launch Gaussian and the exit
+    hinge (it still paid fair grounders, so h30b traded launch for contact) are replaced by the ONE OUTS objective itself:
+    20 x clamp((carry - 10) / 30, 0, 1) once per fair ball (outfield = 38.9 m; row 9 tables: fair carry median 8.6 m,
+    48% >= 10 m). Spray 10 x q, w_miss 5, w_aim 0, w_hit_q 0 and the rest unchanged."""
+
+    w_launch: float = 0.0
+    w_exit_hinge: float = 0.0
+    w_carry: float = 20.0
+    carry_ref: float = 10.0
+    carry_span: float = 30.0
+
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     """Human28 "ArmAim" (planning 14, user 10-30 "動打者架構"; arm_aim_env.ArmAimEnv): a separate residual policy on 15 joints
