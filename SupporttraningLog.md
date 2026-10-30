@@ -62,7 +62,7 @@
 
 ### 10-30 23:18 h29s 揮空漸退（變體 B）無效 → R3 排入；ArmAim2c 加 launch 項
 
-- **變體 B（揮空時 offset 從過本壘起 0.2 s smoothstep 歸零）joint s6：倒地 15/64**（12500 + saim 變體 A 為 12/64），24 hits。原因已從程式碼確認：`recover_rl` 在 hit | done 觸發，之後恢復策略覆寫全部身體目標，miss_blend 在交接後完全不作用；交接當下 aim offset 仍在 |off| 中位 0.34（倒地）/ 0.30（其他）rad，anchor 與手臂姿勢都帶著這個偏移。
+- **變體 B（揮空時 offset 從過本壘起 0.2 s smoothstep 歸零）joint s6：倒地 15/64**（12500 + saim 變體 A 為 12/64），16 hits。原因已從程式碼確認：`recover_rl` 在 hit | done 觸發，之後恢復策略覆寫全部身體目標，miss_blend 在交接後完全不作用；交接當下 aim offset 仍在 |off| 中位 0.34（倒地）/ 0.30（其他）rad，anchor 與手臂姿勢都帶著這個偏移。
 - 交接姿勢對 recover bank（s0, 12500 無 saim）最近鄰距離：手臂 倒地 1.168 vs 其他 0.966 rad；全身 1.523 vs 1.178 → 倒地案例的交接狀態離 bank 較遠，符合「bank 沒見過 saim 狀態」的解釋。
 - 因此 **Human25-R3** 必要（`logs/run_recov3.sh`，標記 RECOV3_END）：bank = 勝出揮棒在 AIB-ArmAim-Play-v0 + saim（filter、full comp、window 0.60、bound 0.4）2048 envs s0（含揮空）→ `logs/recover_bank_r3_s0.npz`；從 model_1297 續訓 +300（R2 同獎勵，`AIB_RECOVER_BANK` 指定 bank）；held-out joint s6 倒地 ≤ 2/64。勝出者 joint 已通過則自動跳過。排在 ARMAIM2_300_END 之後、+700 之前（不論 +300 結果），+700 的 03:50 截止在 R3 結束後才檢查。
 - 新程式：`scripts/recover_bank.py --armaim/--aim_scripted/--aim_bound/--aim_window/--aim_obs_comp(_full)/--percept_filter`；`scripts/trig_nn.py`（交接姿勢 vs bank 最近鄰）；BatterSide `miss_blend` 與交接記錄 trig_jp / trig_off；`joint_smoke --saim_miss_blend / --trig_dump`。CPU shim flags-off 輸出與舊版完全相同。
