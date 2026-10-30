@@ -205,6 +205,7 @@ def main():
     ap.add_argument("--release_csv", default="assets/game/p3c_identical_t18_release.csv")
     ap.add_argument("--after_done", default="policy", choices=("policy", "hold", "blend"))
     ap.add_argument("--own_timing", action="store_true", help="the two-pass oracle timing falsifier only")
+    ap.add_argument("--saim", default=None, help="scripted arm aim gain JSON (BatterSide saim, + cfg.percept_filter)")
     a = ap.parse_args()
     os.environ["AIB_EFFORT_SCALE"] = "1.5"
     cfg = PitchedBattingHumanPlayEnvCfg()
@@ -219,7 +220,13 @@ def main():
         return own_timing_check(cfg, art, a.batter)
     take = torch.zeros(N, dtype=torch.bool)
     take[-8:] = True  # the last 8 envs take (ONE OUTS PA swing mask): stance targets the whole pitch, still handed / judged
-    side = BatterSide(joint, cfg, a.batter, after_done=a.after_done, swing=~take)
+    saim = None
+    if a.saim:  # row 9: the percept filter + scripted aim + full obs comp (the fake Jacobian: random, world axes)
+        cfg.percept_filter = True
+        saim = dict(gain=a.saim, bound=0.4, window=0.60, comp_full=True)
+        jac = torch.randn(N, art.num_bodies, 6, art.num_joints + 6, generator=torch.Generator().manual_seed(1)) * 0.1  # own stream: G unchanged
+        art.root_physx_view = types.SimpleNamespace(get_jacobians=lambda: jac)
+    side = BatterSide(joint, cfg, a.batter, after_done=a.after_done, swing=~take, saim=saim)
     side.record_swing()
     art.inner_pivot = side.robot.pivot
     print(f"[cpu] init ok: {N} envs, clips {sorted(set(side.fixed_clip.tolist()))}, start_t pending", flush=True)
@@ -244,6 +251,8 @@ def main():
         ctrl = k % 4 == 0
         if ctrl:
             side.control()
+            if a.saim:
+                saim_max = max(locals().get("saim_max", 0.0), float(side.res_off.abs().max()))
             tq = side.joint_targets[:, side.body_joint_ids]
             take_err = max(take_err, float((tq[take] - stance[take]).abs().max()), float(side.joint_vel_targets[take].abs().max()))
             live = side.active & ~take & ~side.done
@@ -283,6 +292,9 @@ def main():
             side.post()
     print(f"[cpu] take ok: {int(take.sum())} take envs |target - stance| max {take_err:.2e} (swinging envs reach {swing_dev:.2f} rad)", flush=True)
     assert take_err < 1e-6 and swing_dev > 0.1, (take_err, swing_dev)
+    if a.saim:
+        print(f"[cpu] saim ok: |offset| max {saim_max:.3f} rad (bound 0.4), saturated pitches {int(side.saim_sat.sum())}/{N}", flush=True)
+        assert 0.0 < saim_max <= 0.4 + 1e-6, saim_max
     assert side.handed.all(), int(side.handed.sum())
     assert side.active.all(), int(side.active.sum())
     fin = torch.isfinite(side.pitch_pos).all() and torch.isfinite(side.tee_pos).all() and torch.isfinite(side.flight_time).all()

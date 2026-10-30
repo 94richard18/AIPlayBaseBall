@@ -43,6 +43,12 @@ parser.add_argument("--effort_probe", type=float, default=None,
                     help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
 parser.add_argument("--contact_dump", type=str, default=None,
                     help="npz: every bat-ball impact's resolve_impact inputs + outputs (env, time; read-only, contact_offset.py)")
+parser.add_argument("--saim", type=str, default=None,
+                    help="BatterSide scripted arm aim (ArmAim row 9): gain JSON; with --percept_filter")
+parser.add_argument("--saim_bound", type=float, default=0.4)
+parser.add_argument("--saim_window", type=float, default=0.60)
+parser.add_argument("--saim_comp", choices=("q", "full"), default="full", help="obs compensation: joints only / + the bat pose")
+parser.add_argument("--percept_filter", action="store_true", help="batter cfg.percept_filter (quadratic LSQ crossing prediction)")
 parser.add_argument("--swing_csv", type=str, default=None,
                     help="ONE OUTS PA: env,swing per env (scripts/joint_pa.py); swing 0 = the batter takes (stance held). Default all swing")
 AppLauncher.add_app_launcher_args(parser)
@@ -104,6 +110,7 @@ def main():
     bcfg.pitch_release_csv = args.release_csv
     bcfg.scene.num_envs = args.envs
     bcfg.zero_ff_after_ref_end = args.zero_ff
+    bcfg.percept_filter = args.percept_filter
     if args.trace:  # deterministic percept and placement, as the native trace (diag_bat_contact --trace)
         for k in ("ball_obs_noise_std", "ball_obs_bias_std", "tee_xy_noise", "tee_height_noise", "joint_pos_noise"):
             setattr(bcfg, k, 0.0)
@@ -119,7 +126,9 @@ def main():
         swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
-                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt)
+                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt,
+                      saim=None if args.saim is None else dict(gain=os.path.abspath(args.saim), bound=args.saim_bound,
+                                                               window=args.saim_window, comp_full=args.saim_comp == "full"))
     if args.diag_yaw is not None:  # before the first reset places the batter
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)

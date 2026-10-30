@@ -33,6 +33,14 @@ parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase
 parser.add_argument("--aim_offset_z", type=float, default=None, help="batter: cfg.aim_offset_z (m, < 0 = aim under the ball)")
 parser.add_argument("--aim_offset_y", type=float, default=None, help="batter: cfg.aim_offset_y (m, lateral aim offset, world y)")
 parser.add_argument("--fixed_cam", action="store_true", help="pitched task: one fixed catcher's-view camera")
+parser.add_argument("--armaim", type=str, default=None,
+                    help="--eval_envs: ArmAim residual ckpt; --checkpoint is the frozen swing (row 9: with --aim_scripted)")
+parser.add_argument("--aim_scripted", type=str, default=None, help="--armaim: scripted-aim gain JSON")
+parser.add_argument("--aim_bound", type=float, default=None, help="--armaim: cfg.aim_bound")
+parser.add_argument("--aim_window", type=float, default=None, help="--armaim: cfg.aim_window_s")
+parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the swing policy sees q - offset")
+parser.add_argument("--aim_obs_comp_full", action="store_true", help="--armaim: + the bat pose compensated")
+parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter (quadratic LSQ crossing prediction)")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
@@ -119,7 +127,12 @@ def newest_checkpoint() -> str:
 
 
 def load_policy(env, ckpt):
-    agent_cfg = AGENT_CFG()
+    if args.armaim:
+        from aibaseball.tasks.tee_batting.agents.rsl_rl_ppo_cfg import ArmAimPPORunnerCfg
+
+        agent_cfg = ArmAimPPORunnerCfg()
+    else:
+        agent_cfg = AGENT_CFG()
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     runner.load(ckpt)
     if args.post_clip_teacher:  # Human21: as train.py --post_clip_teacher
@@ -253,7 +266,22 @@ def run_video(ckpt: str):
 
 
 def run_eval(ckpt: str):
-    cfg = PLAY_CFG()
+    if args.armaim:  # ArmAim (row 9 = scripted aim + obs comp): the frozen swing is ckpt, the policy loaded is args.armaim
+        from aibaseball.tasks.tee_batting.pitched_env_cfg import ArmAimPlayEnvCfg
+
+        cfg = ArmAimPlayEnvCfg()
+        cfg.swing_checkpoint = os.path.abspath(ckpt)
+        if args.aim_scripted:
+            cfg.aim_scripted = os.path.abspath(args.aim_scripted)
+        if args.aim_bound is not None:
+            cfg.aim_bound = args.aim_bound
+        if args.aim_window is not None:
+            cfg.aim_window_s = args.aim_window
+        cfg.aim_obs_comp, cfg.aim_obs_comp_full = args.aim_obs_comp, args.aim_obs_comp_full
+    else:
+        cfg = PLAY_CFG()
+    if args.percept_filter:
+        cfg.percept_filter = True
     # same randomization as training
     train = TRAIN_CFG()
     cfg.tee_xy_noise, cfg.tee_height_noise, cfg.joint_pos_noise = train.tee_xy_noise, train.tee_height_noise, train.joint_pos_noise
@@ -293,9 +321,9 @@ def run_eval(ckpt: str):
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
-    env = gym.make(TASK_ID, cfg=cfg)
+    env = gym.make("AIB-ArmAim-Play-v0" if args.armaim else TASK_ID, cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
-    policy = load_policy(wrapped, ckpt)
+    policy = load_policy(wrapped, args.armaim or ckpt)
     base = env.unwrapped
     obs, _ = wrapped.reset()
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):

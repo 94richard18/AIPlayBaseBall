@@ -167,7 +167,7 @@ class _JointFramework(DirectRLEnv):
 
 class BatterSide(PitchedBattingEnv, _JointFramework):
     def __init__(self, joint, cfg, checkpoint: str, clip_of_env=None, after_done: str = "policy", own_timing=None,
-                 timing_bias=None, shift_hist=True, no_handoff=False, swing=None, recover_ckpt=None):
+                 timing_bias=None, shift_hist=True, no_handoff=False, swing=None, recover_ckpt=None, saim=None):
         """joint: the JointPitchEnv; cfg: the batter's play cfg (PitchedBattingHumanPlayEnvCfg with pitch_release_csv =
         the P3c release table, effort via AIB_EFFORT_SCALE); clip_of_env: clip index per env (into JOINT_CLIPS order),
         default round-robin. after_done: what the batter does once its training episode would have ended (pitch
@@ -200,7 +200,12 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         Take diag 10-28 (64 envs, 16 per mode): the stance does not stand under PD alone - mode 4 falls 16/16 at 1.4-2.4 s,
         mode 0 16/16, mode 2 12/16 (and moves the bat ~8 m/s); the default pose (3) stands 16/16 but jumps there at the start.
         None = every env swings. take_dev_t / take_dev_joint: per take env the first time a body joint is 0.3 rad off
-        its PD target, and which (fall diagnosis)."""
+        its PD target, and which (fall diagnosis).
+        saim: the scripted arm aim of ArmAim row 9 (planning 14, 10-30; arm_aim_env aim_scripted, not true dy, not dry),
+        dict(gain=<scripted_gain.json>, bound=0.4, window=0.60, comp_full=True): in the window (ref clock >= contact -
+        window until contact / the ball past the plane) the aim joints' PD targets get + clamp(gain(side) x |dy|, +-bound),
+        dy = the percept's crossing y - the nominal target y, decaying after it; the swing policy sees q - offset (and,
+        comp_full, the bat pose moved back by the Jacobian-mapped offset). Use with cfg.percept_filter. None = off."""
         assert after_done in ("policy", "hold", "blend", "recover", "recover_low", "recover_rl"), after_done
         assert (after_done == "recover_rl") == (recover_ckpt is not None), "recover_rl needs recover_ckpt (and only it)"
         self.after_done = after_done
@@ -233,6 +238,26 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.done = torch.zeros(n, dtype=torch.bool, device=self.device)  # its training episode would have ended
         self.done_t = torch.full((n,), float("nan"), device=self.device)  # joint episode time of that
         self._load_policy(checkpoint)
+        self._saim = None
+        if saim is not None:
+            import json
+
+            from aibaseball.tasks.tee_batting.pitched_env_cfg import ArmAimPlayEnvCfg
+            ac = ArmAimPlayEnvCfg()
+            g = json.load(open(saim["gain"]))
+            assert g["joints"] == list(ac.aim_joints)
+            names = list(self.body_joint_names)
+            self.aim_cols = torch.tensor([names.index(j) for j in ac.aim_joints], device=self.device)
+            self.aim_ids = self.body_joint_ids[self.aim_cols]
+            self._saim = dict(gp=torch.tensor(g["gain_plus"], device=self.device), gm=torch.tensor(g["gain_minus"], device=self.device),
+                              bound=float(saim.get("bound", ac.aim_bound)), window=float(saim.get("window", 0.60)),
+                              full=bool(saim.get("comp_full", True)), tau=ac.aim_decay_tau_s)
+            self.res_off = torch.zeros(n, len(ac.aim_joints), device=self.device)
+            self.res_closed = torch.zeros(n, dtype=torch.bool, device=self.device)
+            self.saim_sat = torch.zeros(n, dtype=torch.bool, device=self.device)  # this pitch's offset reached the bound
+            self._bat_comp = None
+            print(f"[batter_side] scripted aim: {saim['gain']}, bound {self._saim['bound']} rad, window {self._saim['window']} s, "
+                  f"comp {'q + bat' if self._saim['full'] else 'q'}, percept_filter {cfg.percept_filter}", flush=True)
         self.hold_q = torch.zeros(n, len(self.body_joint_ids), device=self.device)
         self.rec_t = torch.full((n,), float("nan"), device=self.device)  # recover: joint time of the trigger
         self.rec_q0 = torch.zeros_like(self.hold_q)  # recover: the policy's joint targets at the trigger
@@ -315,6 +340,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.done[ids] = False
         self.done_t[ids] = float("nan")
         self.start_t[ids] = self._joint.release_t_pred[ids] - self.release_t[ids]
+        self._saim_reset(ids)
         if self.own is not None:  # the native release of this env's own pitch: start = hand-off - release
             h, tp = self.own[ids, 0], self.own[ids, 1]
             rel = (self.ref.contact_time[self.clip[ids]] - self.t0[ids]) / self.speed - (tp - h) + self.cfg.timing_bias_s
@@ -341,6 +367,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             if self.own is not None:
                 self._own_clock(ids)
             self.active[ids] = True
+            self._saim_reset(ids)
             self._obs = None
         if self._obs is None:
             self._obs = self._get_observations()["policy"]
@@ -353,6 +380,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.trace.append(dict(active=self.active.clone(), k=self.episode_length_buf.clone(), obs=self._obs.clone(),
                                    act=act.clone(), q=self.robot.data.joint_pos[:, self.body_joint_ids].clone()))
         self._pre_physics_step(act)
+        if self._saim is not None:
+            self._saim_step()
         if self.rec is not None:  # mean tempo action (the clipped one the clock used): before the hand-off / from it to done (diag_bat_contact's window)
             r, tempo = self.rec, self.actions[:, -1].clamp(-1.0, 1.0)
             live = self.active & ~self.done
@@ -527,6 +556,55 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self._perc = super()._perceived_ball()
         return self._perc
 
+    # ------------------------------------------------------------------ scripted arm aim (saim, ArmAim row 9)
+    def _saim_reset(self, ids):
+        if self._saim is not None:
+            self.res_off[ids] = 0.0
+            self.res_closed[ids] = False
+            self.saim_sat[ids] = False
+
+    def _saim_step(self):
+        """As ArmAimEnv._pre_physics_step in scripted mode (sign +1, dy from the percept, aim_hold off): after the swing
+        policy's targets are written, add the offset on the aim joints."""
+        c = self._saim
+        self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)
+        win = (self.ref_t >= self.ref.contact_time[self.clip] - c["window"]) & ~self.res_closed
+        dy = self._perc[:, 1] - self.nominal_target[:, 1]
+        raw = torch.where((dy >= 0).unsqueeze(-1), c["gp"], c["gm"]) * dy.abs().unsqueeze(-1) / c["bound"]
+        self.saim_sat |= win & (raw.abs() > 1.0).any(-1)
+        res_a = raw.clamp(-1.0, 1.0) * win.unsqueeze(-1)
+        decay = torch.exp(torch.tensor(-self.step_dt / c["tau"], device=self.device))
+        self.res_off = torch.where(win.unsqueeze(-1), c["bound"] * res_a,
+                                   torch.where(self.res_closed.unsqueeze(-1), self.res_off * decay, torch.zeros_like(self.res_off)))
+        tgt = self.joint_targets[:, self.aim_ids] + self.res_off
+        self.joint_targets[:, self.aim_ids] = torch.clamp(tgt, self.q_lo[self.aim_cols], self.q_hi[self.aim_cols])
+
+    def _bat_state(self):
+        out = super()._bat_state()
+        bc = getattr(self, "_bat_comp", None)
+        if bc is None:
+            return out
+        knob, axis, cm, v_cm, w, quat = out
+        dp, dw = bc
+        return (knob - dp, axis - torch.cross(dw, axis, dim=-1), cm - dp - torch.cross(dw, cm - knob, dim=-1), v_cm, w, quat)
+
+    def _get_observations(self) -> dict:
+        if self._saim is None:
+            return super()._get_observations()
+        # as ArmAimEnv (aim_obs_comp [+ full]): the swing policy sees q - offset and the bat moved back by J x offset
+        jp = self.robot.data.joint_pos
+        jp[:, self.aim_ids] -= self.res_off
+        if self._saim["full"]:
+            J = self.robot.root_physx_view.get_jacobians()[:, self.bat_id]  # world axes (n, 6, dofs [+6 floating base])
+            cols = self.aim_ids + (J.shape[-1] - self.robot.num_joints)
+            dx = torch.einsum("nij,nj->ni", J[:, :, cols], self.res_off)
+            self._bat_comp = (self.robot.vec_to_b(dx[:, :3]), self.robot.vec_to_b(dx[:, 3:]))  # into frame B
+        try:
+            return super()._get_observations()
+        finally:
+            jp[:, self.aim_ids] += self.res_off
+            self._bat_comp = None
+
     # ------------------------------------------------------------------ swing timing / geometry (diag_bat_contact's)
     def record_swing(self):
         """Per env, the native contact diag's quantities at physics-step resolution (joint time): t_plane = the pitch
@@ -593,6 +671,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.handoff_jump[ids] = jump.norm(dim=-1)
         if self.shift_hist:
             self.ball_obs_hist[ids] += jump.unsqueeze(1)
+        if self.cfg.percept_filter:  # the fit restarts from the live release (samples before it were the predicted pitch)
+            self.pf_s[ids] = 0.0
+            self.pf_p[ids] = 0.0
         self.pitch_pos[ids], self.pitch_prev[ids] = pos, pos
         self.pitch_vel[ids], self.pitch_omega[ids] = vel, omg
         self.release_t[ids] = self.phys_t[ids]  # released now: _advance_pitch flies it from this step
