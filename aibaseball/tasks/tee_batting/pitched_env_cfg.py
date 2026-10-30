@@ -441,6 +441,9 @@ class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     aim_decay_tau_s: float = 0.05  # after the window: the offset decays with this time constant
     aim_scripted: str | None = None  # scripts/armaim_scripted_gain.py JSON: the offset comes from it, the policy is ignored
     aim_scripted_sign: float = 1.0  # -1: control row (offset sign flipped)
+    aim_scripted_true: bool = False  # falsifier only: dy from the true plate y (privileged) instead of the percept
+    aim_hold: bool = False  # ArmAim2: the policy's action is sampled once at the window's first step and held
+    aim_delta: float = 0.5  # aim_hold + aim_scripted: the held action adds aim_delta x tanh(a) (bound units) to the scripted aim
     w_res: float = 0.01
     w_aim: float = 6.0
     sigma_aim_ax: float = 0.20
@@ -460,6 +463,21 @@ class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     w_contact: float = 0.0
 
 
+
+@configclass
+class ArmAim2EnvCfg(ArmAimEnvCfg):
+    """ArmAim2 (planning 14, 10-30, after the +300 FAIL: per-step noise averaged out by PD, no gradient): the offset is the
+    scripted aim (logs/armaim_auth/scripted_gain.json, gain(side) x |dy|) plus a correction the policy picks ONCE at the
+    window's first step and holds (aim_delta x tanh(a), +-0.2 rad); actor head zeroed at the start (= the scripted aim),
+    std fixed 0.1, entropy 0 (AIB_FIX_STD=1, ArmAim2PPORunnerCfg). Rewards as ArmAim."""
+
+    aim_scripted: str | None = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs", "armaim_auth",
+                                                            "scripted_gain.json"))
+    aim_hold: bool = True
+    aim_delta: float = 0.5
+    w_res: float = 0.01
+
+
 @configclass
 class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
     """Eval / diag (diag_bat_contact --armaim): ArmAim on the play env (ball flight, 9 s episodes)."""
@@ -471,6 +489,9 @@ class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
     aim_decay_tau_s: float = 0.05
     aim_scripted: str | None = None
     aim_scripted_sign: float = 1.0
+    aim_scripted_true: bool = False
+    aim_hold: bool = False
+    aim_delta: float = 0.5
     w_res: float = 0.01
     w_aim: float = 6.0
     sigma_aim_ax: float = 0.20

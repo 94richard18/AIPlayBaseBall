@@ -461,3 +461,13 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:ArmAimPPORunnerCfg",
     },
 )
+
+gym.register(
+    id="AIB-ArmAim2-v0",
+    entry_point=f"{__name__}.arm_aim_env:ArmAimEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.pitched_env_cfg:ArmAim2EnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:ArmAim2PPORunnerCfg",
+    },
+)

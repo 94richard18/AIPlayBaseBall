@@ -51,6 +51,8 @@ parser.add_argument("--armaim", type=str, default=None,
 parser.add_argument("--aim_bound", type=float, default=None, help="--armaim: override cfg.aim_bound (0 = the swing alone)")
 parser.add_argument("--aim_scripted", type=str, default=None, help="--armaim: scripted-aim gain JSON (the residual policy is ignored)")
 parser.add_argument("--aim_scripted_sign", type=float, default=1.0, help="--aim_scripted: -1 = sign-flipped control")
+parser.add_argument("--aim_scripted_true", action="store_true", help="--aim_scripted: dy from the true plate y (privileged)")
+parser.add_argument("--aim_hold", action="store_true", help="--armaim: ArmAim2 (one held action per swing on the scripted aim)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -121,6 +123,8 @@ def main():
         if args.aim_scripted:
             cfg.aim_scripted = os.path.abspath(args.aim_scripted)
             cfg.aim_scripted_sign = args.aim_scripted_sign
+        cfg.aim_hold = args.aim_hold
+        cfg.aim_scripted_true = args.aim_scripted_true
     else:
         cfg = PitchedBattingHumanPlayEnvCfg()
     train = PitchedBattingHuman3EnvCfg()

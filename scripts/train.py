@@ -191,6 +191,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     # write git state to logs
     runner.add_git_repo_to_log(__file__)
+    if os.environ.get("AIB_FIX_STD") and not agent_cfg.resume:
+        # ArmAim2: the residual starts at zero (the scripted aim alone) with a fixed exploration std (entropy 0 in the cfg)
+        pol = runner.alg.actor_critic
+        head = [m for m in pol.actor if isinstance(m, torch.nn.Linear)][-1]
+        torch.nn.init.zeros_(head.weight)
+        torch.nn.init.zeros_(head.bias)
+        pol.std.requires_grad_(False)
+        print(f"[INFO]: AIB_FIX_STD: actor head zeroed, std fixed at {pol.std.mean().item():.3f}", flush=True)
     # load the checkpoint
     if agent_cfg.resume:
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")

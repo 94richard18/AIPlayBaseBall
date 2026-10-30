@@ -55,6 +55,9 @@ class ArmAimEnv(PitchedBattingEnv):
         self.res_off = torch.zeros_like(self.res_a)  # rad, applied offset
         self.res_win = torch.zeros(n, dtype=torch.bool, device=dev)
         self.res_closed = torch.zeros(n, dtype=torch.bool, device=dev)  # window over (contact / ball past the plane)
+        self.res_opened = torch.zeros(n, dtype=torch.bool, device=dev)  # aim_hold: the window has opened (action latched)
+        self.res_hold = torch.zeros_like(self.res_a)  # aim_hold: tanh(action) latched at the window's first step
+        self.res_pen = torch.zeros(n, device=dev)  # the w_res term: sum of the policy's own share squared
         self.swing_gap = torch.zeros_like(self.res_a)  # swing target - q on the aim joints
         self._scripted = None
         if cfg.aim_scripted:  # falsifier: offset = gain(side) x |dy|, dy = predicted crossing y - the nominal target y
@@ -63,7 +66,8 @@ class ArmAimEnv(PitchedBattingEnv):
             self._scripted = (torch.tensor(g["gain_plus"], device=dev), torch.tensor(g["gain_minus"], device=dev))
             self.res_sat_ep = torch.zeros(n, dtype=torch.bool, device=dev)  # this pitch's offset reached the bound
             self.res_dy_ep = torch.zeros(n, device=dev)  # dy at the window's last step
-            self._sat_n = [0, 0, 0.0]  # episodes, saturated, sum |dy|
+            self.res_dyt_ep = torch.zeros(n, device=dev)  # the true plate y (pitch_plate) at the same step
+            self._sat_n = [0, 0, 0.0, 0.0, 0.0]  # episodes, saturated, sum |dy|, sum |true dy|, sum |dy - true dy|
             atexit.register(self._print_scripted)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         # the ArmAim policy's spaces (the swing env's 30 / 152 stay what the swing actor uses)
@@ -76,9 +80,10 @@ class ArmAimEnv(PitchedBattingEnv):
               f"bound {cfg.aim_bound} rad, window {cfg.aim_window_s} s; obs {self.cfg.observation_space}", flush=True)
 
     def _print_scripted(self):
-        n, k, d = self._sat_n
+        n, k, d, dt, de = self._sat_n
         print(f"[armaim scripted] sign {self.cfg.aim_scripted_sign:+.0f}: episodes {n}, offset at the +-{self.cfg.aim_bound} "
-              f"bound {k / max(n, 1):.3f}, mean |dy| {d / max(n, 1):.3f} m", flush=True)
+              f"bound {k / max(n, 1):.3f}, mean |dy| {d / max(n, 1):.3f} m, mean |true plate y| {dt / max(n, 1):.3f}, "
+              f"mean |dy - true| {de / max(n, 1):.3f} (dy from {'the true plate y' if self.cfg.aim_scripted_true else 'the percept'})", flush=True)
 
     # ------------------------------------------------------------------ actions
     def _pre_physics_step(self, actions: torch.Tensor):
@@ -92,15 +97,28 @@ class ArmAimEnv(PitchedBattingEnv):
         self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)
         self.res_win = (self.ref_t >= self.ref.contact_time[self.clip] - c.aim_window_s) & ~self.res_closed
         if self._scripted is not None:
-            dy = (self._ball_seen[:, 1] - self.nominal_target[:, 1]) * c.aim_scripted_sign
+            dyt = self.pitch_plate[:, 0]  # the true plate y (world target y = nominal y + this)
+            dy = dyt if c.aim_scripted_true else self._ball_seen[:, 1] - self.nominal_target[:, 1]
+            self.res_dyt_ep = torch.where(self.res_win, dyt, self.res_dyt_ep)
+            dy = dy * c.aim_scripted_sign
             gp, gm = self._scripted
             raw = torch.where((dy >= 0).unsqueeze(-1), gp, gm) * dy.abs().unsqueeze(-1) / c.aim_bound
             w = self.res_win
             self.res_sat_ep |= w & (raw.abs() > 1.0).any(-1)
             self.res_dy_ep = torch.where(w, dy, self.res_dy_ep)
-            self.res_a = raw.clamp(-1.0, 1.0) * w.unsqueeze(-1)
+            base = raw.clamp(-1.0, 1.0)
         else:
-            self.res_a = torch.tanh(actions.clamp(-5.0, 5.0)) * self.res_win.unsqueeze(-1)
+            base = torch.zeros_like(self.res_a)
+        pol = torch.tanh(actions.clamp(-5.0, 5.0))
+        if c.aim_hold:  # one decision per swing, held through the window
+            opening = self.res_win & ~self.res_opened
+            self.res_hold = torch.where(opening.unsqueeze(-1), pol, self.res_hold)
+            self.res_opened |= self.res_win
+            share = c.aim_delta * self.res_hold if self._scripted is not None else self.res_hold
+        else:
+            share = pol if self._scripted is None else torch.zeros_like(pol)
+        self.res_a = (base + share).clamp(-1.0, 1.0) * self.res_win.unsqueeze(-1)
+        self.res_pen = (share ** 2).sum(-1) * self.res_win.float()
         decay = torch.exp(torch.tensor(-self.step_dt / c.aim_decay_tau_s, device=self.device))
         self.res_off = torch.where(self.res_win.unsqueeze(-1), c.aim_bound * self.res_a,
                                    torch.where(self.res_closed.unsqueeze(-1), self.res_off * decay, torch.zeros_like(self.res_off)))
@@ -154,7 +172,7 @@ class ArmAimEnv(PitchedBattingEnv):
         miss = (self.reset_time_outs & ~self.hit) | self.passed
         rew = (self.hit_reward + r_aim - c.w_miss * miss.float()
                - torch.where(self.hit, c.w_fall_after_hit, c.w_fall) * self.fallen.float()
-               - c.w_res * (self.res_a ** 2).sum(-1))
+               - c.w_res * self.res_pen)
         self.extras["log"].update({f"armaim/{k}": self.track_stats[k].clone() for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         return rew
 
@@ -169,6 +187,8 @@ class ArmAimEnv(PitchedBattingEnv):
             self._sat_n[0] += int(done.sum())
             self._sat_n[1] += int((self.res_sat_ep[env_ids] & done).sum())
             self._sat_n[2] += float(self.res_dy_ep[env_ids][done].abs().sum())
+            self._sat_n[3] += float(self.res_dyt_ep[env_ids][done].abs().sum())
+            self._sat_n[4] += float((self.res_dy_ep[env_ids] * self.cfg.aim_scripted_sign - self.res_dyt_ep[env_ids])[done].abs().sum())
             self.res_sat_ep[env_ids] = False
             self.res_dy_ep[env_ids] = 0.0
             if self._sat_n[0] // 256 > k0:
@@ -177,4 +197,7 @@ class ArmAimEnv(PitchedBattingEnv):
         self.res_off[env_ids] = 0.0
         self.res_win[env_ids] = False
         self.res_closed[env_ids] = False
+        self.res_opened[env_ids] = False
+        self.res_hold[env_ids] = 0.0
+        self.res_pen[env_ids] = 0.0
         self._swing_obs = None  # recomputed for the new episode before the next action
