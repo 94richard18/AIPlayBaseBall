@@ -504,6 +504,24 @@ class ArmAim2EnvCfg(ArmAimEnvCfg):
 
 
 @configclass
+class ArmAim2CompEnvCfg(ArmAim2EnvCfg):
+    """ArmAim2 + comp (planning 14, 10-30 21:3x, after row 9 PASSED +300 with no training): ArmAim2 on the row-9 base =
+    scripted aim on the quadratic-filtered percept, window 0.60, full obs comp (q + bat); aim_bound from AIB_SAIM_BOUND
+    (the row 9 / row 10 pick, default 0.4), the held residual +-0.2 rad (aim_delta = 0.2 / aim_bound). Reward = the aim
+    term + w_hit_q x q (dx 0.15 / D 0.032) + 0.5 x clamp(exit - 18, 0, 10) m/s on hits (the +1000 gap is quality)."""
+
+    aim_bound: float = float(os.environ.get("AIB_SAIM_BOUND", "0.4"))
+    aim_delta: float = 0.2 / float(os.environ.get("AIB_SAIM_BOUND", "0.4"))
+    aim_window_s: float = 0.60
+    aim_obs_comp: bool = True
+    aim_obs_comp_full: bool = True
+    percept_filter: bool = True
+    w_exit_hinge: float = 0.5
+    exit_hinge_ref: float = 18.0
+    exit_hinge_cap: float = 10.0
+
+
+@configclass
 class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
     """Eval / diag (diag_bat_contact --armaim): ArmAim on the play env (ball flight, 9 s episodes)."""
 

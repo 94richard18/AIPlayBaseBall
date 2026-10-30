@@ -85,6 +85,9 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_distance: float = 10.0  # x (carry / target)^2 (fair balls)
     w_success: float = 10.0  # carry >= target and fair
     w_exit_velo: float = 4.0  # x exit speed / 52.5 m/s
+    w_exit_hinge: float = 0.0  # x clamp(exit speed - exit_hinge_ref, 0, exit_hinge_cap) m/s (ArmAim2Comp, 10-30)
+    exit_hinge_ref: float = 18.0
+    exit_hinge_cap: float = 10.0
     w_launch: float = 4.0  # x EV/52.5 x ((1 + cos(launch dir, 30 deg to center field)) / 2)^2
     w_backspin: float = 0.0  # x EV/52.5 x clamp(backspin_rpm / 2000, -1, 1)
     launch_target_deg: float = 28.0

@@ -204,6 +204,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+        if os.environ.get("AIB_FIX_STD"):  # ArmAim2 resume: the exploration std stays fixed (it is not zeroed again)
+            runner.alg.actor_critic.std.requires_grad_(False)
         # the adaptive schedule starts from alg.learning_rate (the cfg's 1e-4), not the optimizer's restored rate:
         # the first mini-batches after every resume ran at up to 10x the rate the run had settled on (1e-5)
         runner.alg.learning_rate = runner.alg.optimizer.param_groups[0]["lr"]

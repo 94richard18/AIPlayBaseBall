@@ -420,6 +420,8 @@ class TeeBattingEnv(DirectRLEnv):
         g_D = torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2))
         r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
         r = r + cfg.w_hit_q * hq
+        if cfg.w_exit_hinge:
+            r = r + cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap)
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
         self.hit_reward[ids] = r
         self.carry[ids] = carry

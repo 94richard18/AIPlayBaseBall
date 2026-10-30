@@ -60,6 +60,23 @@
 
 ## 3. 打者目前進度
 
+### 10-30 22:0x 第 9 列定為採用候選（14 核准）→ 已接進遊戲端與聯合模擬端，採用流程與 ArmAim2+comp 都已排好
+- 程式（都用旗標控制，關閉時結果不變）：
+  - `BatterSide(saim=...)`：揮棒窗口內在瞄準關節的 PD 目標加上 clamp(gain × |dy|, ±bound)，dy 取自感知預測；揮棒策略看到的關節角度與球棒姿態都扣回修正量；percept_filter 的累加在 hand-off 時歸零。
+  - `joint_smoke.py`：新增 `--saim/--saim_bound/--saim_window/--saim_comp/--percept_filter`。
+  - `showcase.py`：新增 `--armaim/--aim_scripted/--aim_bound/--aim_window/--aim_obs_comp(_full)/--percept_filter`。
+  - `diag_bat_contact.py`：新增 `--aim_delta`。
+- CPU 檢查（`test_batter_side_cpu.py`）：旗標關閉時輸出與改動前逐字相同；加 `--saim` 時通過，修正量最大 0.400 rad，等於上限。
+- `logs/run_saim_adopt.sh`（等 H29_1000_END，結束標記 SAIM_ADOPT_END）：
+  0. 聯合模擬 seed 6，旗標全關，對 fd_s6.csv 檢查 64/64 一致；
+  1. 第 10 列（bound 0.6）：在 hit ≥ 0.45 且 |axis_off| ≤ 0.08 的列裡挑斜率較平的；
+  2. 3 張 showcase 表 × 5 seeds 的 ONE OUTS：門檻 = 原交付版 3 表平均 17.6% + 1.5 = 19.1%，且外野率 ≥ 3%；
+  3. 聯合模擬 seed 6 加 recover_rl 與 saim：投球欄位 64/64、倒地 ≤ 2/64。
+- `logs/run_armaim2c.sh`（等 SAIM_ADOPT_END）：AIB-ArmAim2Comp-v0。
+  - 設定：第 9 列為基底，殘差每次揮棒決定一次並保持，範圍 ±0.2 rad；actor head 歸零（起點就是第 9 列）；std 固定 0.1，resume 時也保持固定。
+  - 獎勵 = 瞄準項 + 20 × q + 0.5 × clamp(exit − 18, 0, 10)（新增 `w_exit_hinge`，預設 0）。
+  - 門檻用 ArmAim 的 +300 / +1000。避開 06:41 拍片：+300 最晚 05:15 開跑，+700 最晚 03:50 開跑，否則等 20 拍完。
+
 ### 10-30 21:20 ROWS89_END：第 8、9 列都通過 +300 幾何門檻，完全沒有訓練
 - 設定與 diag1024 seed 0 相同，scripted aim 窗口 0.60 s。基準 12500：hit 0.445、|axis_off| 0.103、斜率 −0.80。
 - **第 8 列（完整觀測補償：關節 + 球棒姿態，真實 dy）**：PASS。hit 0.490、|axis_off| 0.078、斜率 −0.36（reachable −0.42）、exit 18.9、D share 0.209。實際傳遞比例 l_arm 0.67、r_arm 0.80、wrists 0.86、waist 0.86（第 6 列只補關節時，wrists 只有 0.13）。

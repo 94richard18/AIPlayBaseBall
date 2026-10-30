@@ -61,6 +61,7 @@ parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_f
 parser.add_argument("--percept_clean", action="store_true", help="ball percept noise + bias 0 (delay kept)")
 parser.add_argument("--aim_window", type=float, default=None, help="--armaim: override cfg.aim_window_s")
 parser.add_argument("--aim_hold", action="store_true", help="--armaim: ArmAim2 (one held action per swing on the scripted aim)")
+parser.add_argument("--aim_delta", type=float, default=None, help="--aim_hold: override cfg.aim_delta (ArmAim2Comp: 0.2 / aim_bound)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
 parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21: frozen actor until the clip end, the checkpoint after")
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
@@ -132,6 +133,8 @@ def main():
             cfg.aim_scripted = os.path.abspath(args.aim_scripted)
             cfg.aim_scripted_sign = args.aim_scripted_sign
         cfg.aim_hold = args.aim_hold
+        if args.aim_delta is not None:
+            cfg.aim_delta = args.aim_delta
         cfg.aim_scripted_true = args.aim_scripted_true
         cfg.aim_scripted_z = args.aim_scripted_z
         cfg.aim_scripted_dry = args.aim_scripted_dry
