@@ -29,15 +29,22 @@ diag() {  # $1 ckpt $2 tag
   [ -f logs/diag_bat_contact_$2.json ] || { MSG="diag $2: no json"; exit 1; }
 }
 until [ -f logs/PFILTER_END.txt ]; do sleep 30; done
-[ -f logs/diag_bat_contact_pf.json ] && [ -f logs/armaim/pair_pf.npz ] || { MSG="HOLD: no filter-on zero-shot output"; exit 0; }
+# 10-30 21:2x: the straight-line filter was biased (+3.7 cm last step, HOLD); re-run the zero-shot with the quadratic filter (pf2)
+idle
+timeout 1500 $P -u scripts/diag_bat_contact.py --headless --checkpoint logs/rsl_rl/aib1_tee_batting_mimic/2026-10-25_13-56-51_human_pitched9b/model_12500.pt   --armaim $(ls -td logs/rsl_rl/aib1_armaim/*armaim_smoke | head -1)/model_1.pt --aim_scripted logs/armaim_auth/scripted_gain.json   --aim_scripted_true --aim_scripted_dry --aim_window 0.60 --percept_filter --aim_scripted_dump logs/armaim/pair_pf2.npz --envs 1024 --seed 0   --tag pf2 --timing_noise 0 --timing_bias 0.055 --aim_offset_z 0 --release_csv $R --contact_log > logs/armaim/diag_pf2.txt 2>&1
+grep -q Traceback logs/armaim/diag_pf2.txt && fail logs/armaim/diag_pf2.txt "diag pf2"
+[ -f logs/diag_bat_contact_pf2.json ] && [ -f logs/armaim/pair_pf2.npz ] || { MSG="HOLD: no filter-on zero-shot output"; exit 0; }
+echo "$(date +%H:%M) pf2 $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_pf2.json --stage 300 --label pf2 | tr '
+' ' ') | $($P scripts/armaim_pair.py --wet logs/armaim/pair_pf2.npz --label pf2 | tr '
+' ' ')" > $O/pf2.txt
 CHK=$($P -c "
 import json, numpy as np
-P = {k: np.array(v, dtype=float) for k, v in json.load(open('logs/diag_bat_contact_pf.json'))['per_pitch'].items()}
+P = {k: np.array(v, dtype=float) for k, v in json.load(open('logs/diag_bat_contact_pf2.json'))['per_pitch'].items()}
 z = (np.abs(P['plate_y']) <= 0.2525) & (P['plate_z'] >= 0.50) & (P['plate_z'] <= 1.10); h = P['hit'].astype(bool)
 hit = (h & z).sum() / z.sum()
 ax = np.where(h & np.isfinite(P['dx_any']), P['dx_any'], P['x_on_bat'] - 0.7112)
 mA = np.nanmedian(np.abs(ax[z])); mG = np.nanmedian(np.clip(P['gap'][z], 0, None))
-W = np.load('logs/armaim/pair_pf.npz'); c = {n: W['rows'][:, i] for i, n in enumerate(W['names'])}
+W = np.load('logs/armaim/pair_pf2.npz'); c = {n: W['rows'][:, i] for i, n in enumerate(W['names'])}
 err = np.mean(np.abs(c['perc_y_last'] - c['act_y']))
 sa, sg = max(0.20, 1.2 * mA), max(0.10, 1.2 * mG)
 ok = hit >= 0.40 and err <= 0.03
@@ -46,7 +53,7 @@ echo "$(date +%H:%M) $CHK" | tee $O/check.txt
 read V SA SG REST <<< "$CHK"
 [ "$V" = GO ] || { MSG="HOLD: $CHK"; exit 0; }
 export AIB_H29_SIGMA_AX=$SA AIB_H29_SIGMA_GAP=$SG
-BASE=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_pf.json --label "12500 filter zero-shot" | tr '\n' ' ')
+BASE=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_pf2.json --label "12500 filter zero-shot" | tr '\n' ' ')
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 2048 --max_iterations 300 --run_name human_pitched29_1 --resume True \
   --load_run 2026-10-25_13-56-51_human_pitched9b --checkpoint model_12500.pt > $TL 2>&1

@@ -65,9 +65,8 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("pitch_kmh", "timing_err_s", "tempo", "ref_err_plate_s")})
         self.plate_crossed = torch.zeros(n, dtype=torch.bool, device=dev)
         # percept_filter: running least-squares sums over the seen samples since release (time from release, per axis)
-        self.pf_s = torch.zeros(n, 3, device=dev)  # sum 1, sum t, sum t^2
-        self.pf_p = torch.zeros(n, 3, device=dev)  # sum p (z: + g t^2 / 2)
-        self.pf_tp = torch.zeros(n, 3, device=dev)  # sum t p
+        self.pf_s = torch.zeros(n, 5, device=dev, dtype=torch.float64)  # sum t^k, k = 0..4
+        self.pf_p = torch.zeros(n, 3, 3, device=dev, dtype=torch.float64)  # sum t^k p, k = 0..2 (z: + g t^2 / 2)
 
     # ------------------------------------------------------------------ curriculum
     def _progress(self) -> float:
@@ -156,25 +155,26 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         v = (hist[:, -2] - hist[:, -1]) / self.step_dt if hist.shape[1] > 1 else self.pitch_vel
         delay = self.obs_delay_steps * self.step_dt
         released = (self.phys_t - delay) >= self.release_t + self.step_dt  # the batter has seen it leave the hand
-        if self.cfg.percept_filter:  # ballistic least squares over every seen sample since release: p + g t^2/2 = p0 + v t
+        if self.cfg.percept_filter:  # quadratic least squares over every seen sample since release: p + g t^2/2 = p0 + v0 t + a t^2/2
+            # (10-30: the straight-line fit averaged the drag / Magnus-curved velocity -> +3.7 cm crossing bias; offline 4.2 -> 2.0 cm)
             gz = self.phys.gravity
-            tr = (self.phys_t - delay - self.release_t).clamp_min(0.0)  # the seen sample's time from release
-            q = seen.clone()
+            tr = (self.phys_t - delay - self.release_t).clamp_min(0.0).double()  # the seen sample's time from release
+            q = seen.double()
             q[:, 2] = q[:, 2] + 0.5 * gz * tr ** 2
-            r = released.float().unsqueeze(-1)
-            self.pf_s += r * torch.stack([torch.ones_like(tr), tr, tr ** 2], -1)
-            self.pf_p += r * q
-            self.pf_tp += r * tr.unsqueeze(-1) * q
-            s0, s1, s2 = (self.pf_s[:, i:i + 1] for i in range(3))
-            den = s0 * s2 - s1 ** 2
-            fit = (s0[:, 0] >= 3) & (den[:, 0] > 1e-9)
-            vf = (s0 * self.pf_tp - s1 * self.pf_p) / den.clamp_min(1e-9)
-            p0 = (self.pf_p - vf * s1) / s0.clamp_min(1.0)
-            pf = p0 + vf * tr.unsqueeze(-1)
+            r = released.double().unsqueeze(-1)
+            tk = torch.stack([tr ** k for k in range(5)], -1)
+            self.pf_s += r * tk
+            self.pf_p += r.unsqueeze(-1) * tk[:, :3].unsqueeze(-1) * q.unsqueeze(1)
+            A = torch.stack([self.pf_s[:, k:k + 3] for k in range(3)], 1)  # (n, 3, 3) normal matrix
+            fit = self.pf_s[:, 0] >= 6
+            A = torch.where(fit.view(-1, 1, 1), A, torch.eye(3, device=A.device, dtype=A.dtype).expand_as(A))
+            cf = torch.linalg.solve(A, self.pf_p)  # (n, 3 coeffs, 3 axes): c0 + c1 t + c2 t^2
+            pf = (cf[:, 0] + cf[:, 1] * tr.unsqueeze(-1) + cf[:, 2] * (tr ** 2).unsqueeze(-1))
+            vf = cf[:, 1] + 2 * cf[:, 2] * tr.unsqueeze(-1)
             pf[:, 2] -= 0.5 * gz * tr ** 2
             vf[:, 2] -= gz * tr
-            seen = torch.where(fit.unsqueeze(-1), pf, seen)
-            v = torch.where(fit.unsqueeze(-1), vf, v)
+            seen = torch.where(fit.unsqueeze(-1), pf.float(), seen)
+            v = torch.where(fit.unsqueeze(-1), vf.float(), v)
         vx = v[:, 0].clamp(max=-1.0)
         t = ((self.contact_x_ref - seen[:, 0]) / vx).clamp(0.0, 1.5)
         g = torch.tensor([0.0, 0.0, -self.phys.gravity], device=self.device)
@@ -233,7 +233,6 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             ids = slice(None)
         self.pf_s[ids] = 0.0
         self.pf_p[ids] = 0.0
-        self.pf_tp[ids] = 0.0
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
         n, dev, c = len(env_ids), self.device, self.cfg
