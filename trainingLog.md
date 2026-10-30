@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 20:38 根因候選找到：打者知覺的球速是「相鄰兩個含噪樣本的一步差分」，速度 std ≈ 1.4 m/s/軸，穿越點預測晃 10–40 cm → 12500 學到忽略球的位置資訊（甜蜜點固定點、reach 只跟 20%）。決定：建知覺濾波（旗標預設關、凍結設定位元不變）→ 12500 零樣本 re-diag → 若 hit 守住，Human29 = 濾波知覺 + 瞄準獎勵微調。**
+- 程式證據：`aibaseball/tasks/tee_batting/pitched_env.py` `_perceived_ball` 第 152 行 `v = (hist[:, -2] - hist[:, -1]) / self.step_dt`；step_dt = 1/400 × 4 = 0.01 s；`mimic_env_cfg.py` ball_obs_noise_std 0.01、bias_std 0.02、delay 0.10。√2 × 0.01 / 0.01 = 1.41 m/s；預測 = seen + v·t + ½g t²，t ≥ 0.10 s（延遲）→ 最後一步 y 誤差 ≈ 14 cm σ，與 rows2 量到的 |percept − 重力外推| 平均 0.117 / p90 0.25 吻合（15 在程式中確認一致）。另：重力外推 vs 真實穿越在視窗開啟（contact − 0.60）差 6.0 cm（阻力 + Magnus），最後一步 0；視窗開啟時多數球尚未「看到出手」（percept = 名義目標），所以任何 0.60 視窗的瞄準都必須每步依最新知覺重算（ArmAim2：腳本部分逐步追蹤、只 latch 政策 residual）。
+- 含義：Human26/26b/27/27b 與 ArmAim 都在「沒有可用訊號」的輸入上失敗，這些失敗不能再當作「reward-only 學不到瞄準」的證據；修知覺是工程修正（延遲 / 噪聲 / 偏差數值不變），不是 spec 變更。
+- 已下令（15）：(1) 旗標式濾波：自出手以來所有已見樣本的彈道最小平方擬合（z 先扣重力項，各軸 running sums），由擬合的 p0、v 在延遲時刻外推，t_arrive 用擬合 vx；預期速度 std ~0.02 m/s、穿越誤差 < 1 cm；預設 OFF，凍結設定與 M2 位元不變。(2) rows2 跑完 → 第 7 列（列 4 wet、noise 0 + bias 0、延遲保留，`--percept_clean`，marker ARMAIM_ROW7_END，~6 min，15 commit 06ca5c9）→ 12500 零樣本 diag1024 seed 0 開濾波（slope、|axis_off|、hit、exit、D share、知覺欄）。(3) 若零樣本 slope 已動或 hit 守住 → 提 Human29（12500 @ 1.5x 微調，濾波知覺 + Human27 式瞄準獎勵，sigma 依新起始中位數的 1.2× 規則，gates 同 ArmAim +300 / +1000）。
+- rows2（乾濕配對 / 第 5 列 y+z / 第 6 列觀測補償，20:35 重啟，commit c41b74f，每 diag ~6 min，ETA ~21:05）照跑，PD 傳輸數字仍要。記憶：batter-percept-velocity-noise.md。
+
 **10-30 20:2x 腳本化瞄準 v3 結果（15 訊息中的 21:00 / 22:20 時間標籤超前實際時鐘約 2 h）（ARMAIM_SCRIPT_END，15）：PD 路徑「通但只傳 3–9%」→ 揮棒視窗內的 PD 目標 offset 路線幾乎無效；ArmAim2（視窗 0.30）不啟動。決定：GO 乾濕配對列 + 第 5 列（y+z，視窗 0.60）+ 第 6 列（觀測補償），並在 CPU 上拆解 12 cm 的知覉誤差。**
 - 基準 12500：hit 0.445、|axis_off| 0.103、slope −0.80、reachable −0.81、exit 18.9、D share 0.181。
 - 列 1 真實 dy +1 視窗 0.30：slope −0.78 / reachable −0.80、hit 0.499、|axis_off| 0.095、exit 18.2、D share 0.201、offset 頂到邊界 57%。列 2 反號對照：slope −0.86 / −0.92、hit 0.460、exit 16.7（反向移動 → 路徑有傳）。列 3 percept dy +1：slope −0.79、hit 0.458、100% 頂到邊界。列 4 真實 dy +1 視窗 0.60：slope −0.73 / −0.75、hit 0.481、exit 18.1、D share 0.257。
