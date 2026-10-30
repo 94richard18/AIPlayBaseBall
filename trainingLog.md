@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-30 20:1x 使用者：「授權延到11/2，這段時間盡可能找方法讓打者把球打遠打扎實」→ 規劃 session 自主授權延至 2026-11-02 整天；期間目標 = 打者打遠（exit / carry）+ 打扎實（甜蜜點接觸）。**
+- 影響：ArmAim #2 重訓、mimic key-target 變形 fallback、以及出棒速度線（政策提早出棒、腰在接觸時反轉 −4.1 m/s）都由我依結果決定與啟動，不再逐項等核准；每個結果與決定照舊回報 + 記錄。spec 值（力量倍率、關節極限、摩擦）仍屬使用者，只提案不自改；AIB_EFFORT_SCALE 1.5 維持。
+- 目前：腳本化瞄準診斷 20:00 啟動（15 commit 8a8f5a7，logs/run_armaim_script.sh：正號列 → 反號對照列，ARMAIM_SCRIPT_END，ETA 20:40）。增益（rad/m）：+ 側 l_wrist_yaw +1.65、l_shoulder_roll −0.79、l_elbow +0.70、waist_yaw +0.63；− 側 l_elbow −2.79、l_shoulder_roll +2.18、waist_yaw −1.56；±0.4 飽和在 |dy| ≈ 24 cm（+）/ 14 cm（−）。
+- 分支（診斷結果一到即執行）：斜率變平 → 直接啟動 #2（視窗開啟取樣一次並保持、entropy 0、std 0.1、以腳本增益初始化、同 +300/+1000 gates）；斜率不動 → 放棄 ArmAim，啟動 mimic 變形 fallback。接觸線之外，開 CPU 工作：整理出棒速度線的可做選項（時序/腰部反轉、分離式 residual 的時序版本）供 11-02 前排程。
+
 **10-30 19:5x ArmAim +300 FAIL（15 回報 19:50，commit 693af13）→ 決定：GO 腳本化瞄準診斷（#1，約 20 min GPU、不訓練）；#2 重訓與 fallback 等 #1 結果後交使用者決定（自主授權今晚到期）。**
 - model_299 diag1024 seed 0（in-zone，*_any 鍵）：hit 0.460（base 0.445）；|axis_off| 0.1026（base 0.1033，gate ≤ 0.08）；exit 18.1（18.9）；D share 0.195（0.181）；launch 19.7°（21.7°）。
 - 斜率 hits −0.80（r −0.85）、misses −0.82 = base −0.80 / −0.80，完全沒動；reachable 子集（plate_y ≥ −0.185，448/557）hit 0.473、slope −0.83（base −0.81）、|axis_off| 0.086（0.095）。結論：是「沒學到」不是「碰不到」。
