@@ -30,6 +30,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     pitch_speed_range_start: tuple = (75.0, 85.0)
     pitch_speed_range_final: tuple = (100.0, 150.0)
     timing_noise_s: float = 0.08  # +- arrival-time offset the batter must absorb (final)
+    timing_noise_ramp: bool = True  # False: the full noise from step 0 (a resume restarts the ramp counter)
     timing_bias_s: float = 0.0  # + = the pitch arrives later than the reference contact (the batter is early)
     pitch_ramp_steps: int = 32 * 1500  # control steps to reach the final speed range / timing noise
     min_lead_s: float = 0.15  # the pitch is released at least this long after the episode start
@@ -499,6 +500,17 @@ class PitchedBattingHuman30cEnvCfg(PitchedBattingHuman30bEnvCfg):
     w_carry: float = 20.0
     carry_ref: float = 10.0
     carry_span: float = 30.0
+
+
+@configclass
+class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
+    """Human30d (planning 14, 10-31 07:25; armed behind H30C_300_END + logs/h30d/GO): Human30c + swing-start timing noise
+    +-0.03 s uniform in training, the showcase tables' distribution (training was noise-free since Human6: the diag launch
+    collapsed under the tables' noise twice, h29 19.6 -> 2.6, h30b 12.3 -> -1.4). Not ramped (a resume restarts the
+    48000-step ramp counter: a 300-it run would reach only 15% of it)."""
+
+    timing_noise_s: float = 0.03
+    timing_noise_ramp: bool = False
 
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):

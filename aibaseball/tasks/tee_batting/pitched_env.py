@@ -282,7 +282,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         # Episodes start in the stance (t0 = 0); if the pitch needs longer than the swing, the batter first
         # waits in the stance (the reference clock starts negative and holds frame 0).
         clip = self.clip[env_ids]
-        jitter = (torch.rand(n, device=dev) * 2 - 1) * c.timing_noise_s * prog
+        jitter = (torch.rand(n, device=dev) * 2 - 1) * c.timing_noise_s * (prog if c.timing_noise_ramp else 1.0)
         release = (self.ref.contact_time[clip] - self.t0[env_ids]) / (self.speed * c.tempo_script) - L["flight_time"] + jitter + c.timing_bias_s
         wait = (c.min_lead_s - release).clamp_min(0.0)
         self.release_t[env_ids] = release + wait
