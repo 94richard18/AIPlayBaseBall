@@ -91,6 +91,14 @@ class ArmAimEnv(PitchedBattingEnv):
             self._rl_steps = torch.zeros(n, device=dev)
             self._rl_frac = {k: [] for k in grp}
             self._rl_cmd_ep = []
+            self._ep_idx = torch.zeros(n, dtype=torch.long, device=dev)
+            self._rows = []  # per pitch: env, episode, num / den per group (paired wet - dry analysis)
+            # the ball (all y / z relative to the nominal target): act = true state extrapolated to the plane at the last step
+            # before contact / the plane (the actual crossing); grav = true state, gravity-only, at the window's first / last
+            # step; perc = the batter's percept prediction at the same steps
+            self._bk = {k: torch.zeros(n, device=dev) for k in ("act_y", "act_z", "grav_y_open", "grav_y_last", "perc_y_open",
+                                                                "perc_y_last", "perc_z_last")}
+            self._was_open = torch.zeros(n, dtype=torch.bool, device=dev)
             atexit.register(self._print_scripted)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         # the ArmAim policy's spaces (the swing env's 30 / 152 stay what the swing actor uses)
@@ -103,6 +111,10 @@ class ArmAimEnv(PitchedBattingEnv):
               f"bound {cfg.aim_bound} rad, window {cfg.aim_window_s} s; obs {self.cfg.observation_space}", flush=True)
 
     def _print_scripted(self):
+        if self.cfg.aim_scripted_dump and self._rows:
+            import numpy as np
+            names = ["env", "ep"] + [f"num_{g}" for g in self._grp] + [f"den_{g}" for g in self._grp] + ["num_z", "den_z", "plate_y", "plate_z"] + list(self._bk)
+            np.savez(self.cfg.aim_scripted_dump, rows=torch.cat(self._rows).numpy(), names=np.array(names))
         n, k, d, dt, de = self._sat_n
         import numpy as np
         fr = " ".join(f"{g} {np.median(v):.2f}" if v else f"{g} nan" for g, v in self._rl_frac.items())
@@ -127,6 +139,21 @@ class ArmAimEnv(PitchedBattingEnv):
         self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)
         self.res_win = (self.ref_t >= self.ref.contact_time[self.clip] - c.aim_window_s) & ~self.res_closed
         if self._scripted is not None:
+            x, v = self.pitch_pos, self.pitch_vel
+            tt = ((self.contact_x_ref - x[:, 0]) / v[:, 0].clamp(max=-1.0)).clamp_min(0.0)
+            grav = x + v * tt.unsqueeze(-1)
+            grav[:, 2] -= 0.5 * self.phys.gravity * tt ** 2
+            nom = self.nominal_target
+            live = ~self.res_closed
+            bk, w0 = self._bk, self.res_win & ~self._was_open
+            bk["act_y"] = torch.where(live, grav[:, 1] - nom[:, 1], bk["act_y"])
+            bk["act_z"] = torch.where(live, grav[:, 2] - nom[:, 2], bk["act_z"])
+            bk["grav_y_open"] = torch.where(w0, grav[:, 1] - nom[:, 1], bk["grav_y_open"])
+            bk["perc_y_open"] = torch.where(w0, self._ball_seen[:, 1] - nom[:, 1], bk["perc_y_open"])
+            bk["grav_y_last"] = torch.where(self.res_win, grav[:, 1] - nom[:, 1], bk["grav_y_last"])
+            bk["perc_y_last"] = torch.where(self.res_win, self._ball_seen[:, 1] - nom[:, 1], bk["perc_y_last"])
+            bk["perc_z_last"] = torch.where(self.res_win, self._ball_seen[:, 2] - nom[:, 2], bk["perc_z_last"])
+            self._was_open |= self.res_win
             dyt = self.pitch_plate[:, 0]  # the true plate y (world target y = nominal y + this)
             dy = dyt if c.aim_scripted_true else self._ball_seen[:, 1] - self.nominal_target[:, 1]
             self.res_dyt_ep = torch.where(self.res_win, dyt, self.res_dyt_ep)
@@ -175,7 +202,7 @@ class ArmAimEnv(PitchedBattingEnv):
             self._prev_off = self.res_off.clone()
             self._prev_off_z = c.aim_bound * self._raw_z * self.res_win.unsqueeze(-1)  # the z part (before the bound clamp)
             self._prev_win = self.res_win.clone()
-        tgt = self.joint_targets[:, self.aim_ids] + self.res_off
+        tgt = self.joint_targets[:, self.aim_ids] + (0.0 if c.aim_scripted_dry else self.res_off)  # dry: logged, not applied
         self.joint_targets[:, self.aim_ids] = torch.clamp(tgt, self.q_lo[self.aim_cols], self.q_hi[self.aim_cols])
         a = 0.01
         self.track_stats["aim_win_frac"] = (1 - a) * self.track_stats["aim_win_frac"] + a * self.res_win.float().mean()
@@ -190,7 +217,14 @@ class ArmAimEnv(PitchedBattingEnv):
         return self._ball_seen
 
     def _get_observations(self) -> dict:
+        c_ = self.cfg
+        comp = c_.aim_obs_comp and not c_.aim_scripted_dry
+        if comp:  # the swing policy sees q - offset on the offset joints: the shift is not a disturbance it corrects
+            jp = self.robot.data.joint_pos
+            jp[:, self.aim_ids] -= self.res_off
         self._swing_obs = super()._get_observations()["policy"]  # once per step: advances the percept history
+        if comp:
+            jp[:, self.aim_ids] += self.res_off
         c = self.cfg
         d = self.robot.data
         rq, rp = d.root_link_quat_w, d.root_link_pos_w
@@ -254,6 +288,15 @@ class ArmAimEnv(PitchedBattingEnv):
                 self._rl_frac_z += (self._rl_num_z[env_ids][m] / self._rl_den_z[env_ids][m]).tolist()
                 self._rl_num_z[env_ids] = 0.0
                 self._rl_den_z[env_ids] = 0.0
+            if ok.any():
+                e = env_ids[ok] if torch.is_tensor(env_ids) else torch.as_tensor(env_ids, device=self.device)[ok]
+                cols = [e.float(), self._ep_idx[e].float()] + [self._rl_num[g][e] for g in self._grp] + [self._rl_den[g][e] for g in self._grp]
+                cols += [self._rl_num_z[e], self._rl_den_z[e], self.pitch_plate[e, 0], self.pitch_plate[e, 1]] + [b[e] for b in self._bk.values()]
+                self._rows.append(torch.stack(cols, -1).cpu())
+            self._ep_idx[env_ids] += 1
+            for b in self._bk.values():
+                b[env_ids] = 0.0
+            self._was_open[env_ids] = False
             self._rl_cmd_ep += (self._rl_cmd[env_ids][ok] / self._rl_steps[env_ids][ok]).tolist()
             self._rl_cmd[env_ids] = 0.0
             self._rl_steps[env_ids] = 0.0

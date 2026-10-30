@@ -53,6 +53,9 @@ parser.add_argument("--aim_scripted", type=str, default=None, help="--armaim: sc
 parser.add_argument("--aim_scripted_sign", type=float, default=1.0, help="--aim_scripted: -1 = sign-flipped control")
 parser.add_argument("--aim_scripted_true", action="store_true", help="--aim_scripted: dy from the true plate y (privileged)")
 parser.add_argument("--aim_scripted_z", action="store_true", help="--aim_scripted: + the height offset toward D = 1 cm")
+parser.add_argument("--aim_scripted_dry", action="store_true", help="--aim_scripted: compute + log the offset, do not apply it")
+parser.add_argument("--aim_scripted_dump", type=str, default=None, help="--aim_scripted: npz of per-pitch realised sums")
+parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the swing policy sees q - offset (row 6)")
 parser.add_argument("--aim_window", type=float, default=None, help="--armaim: override cfg.aim_window_s")
 parser.add_argument("--aim_hold", action="store_true", help="--armaim: ArmAim2 (one held action per swing on the scripted aim)")
 parser.add_argument("--seed", type=int, default=None, help="env seed (repeat measurements with different pitches)")
@@ -128,6 +131,9 @@ def main():
         cfg.aim_hold = args.aim_hold
         cfg.aim_scripted_true = args.aim_scripted_true
         cfg.aim_scripted_z = args.aim_scripted_z
+        cfg.aim_scripted_dry = args.aim_scripted_dry
+        cfg.aim_scripted_dump = args.aim_scripted_dump
+        cfg.aim_obs_comp = args.aim_obs_comp
         if args.aim_window is not None:
             cfg.aim_window_s = args.aim_window
     else:

@@ -445,6 +445,9 @@ class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     aim_scripted_z: bool = False  # falsifier row 5: + the height offset (gain_zplus / zminus of the gain JSON)
     aim_scripted_D_fit: tuple = (-0.1437, -0.048, 0.195)  # 12500 hits: D = a0 + ay * plate_y + az * plate_z (r2 0.36)
     aim_scripted_D_target: float = 0.010
+    aim_scripted_dry: bool = False  # offset computed + logged, NOT applied (paired control for the realised share)
+    aim_scripted_dump: str | None = None  # npz: per-pitch realised sums (env, episode, num / den per group)
+    aim_obs_comp: bool = False  # the frozen swing policy sees q - offset on the offset joints (row 6)
     aim_hold: bool = False  # ArmAim2: the policy's action is sampled once at the window's first step and held
     aim_delta: float = 0.5  # aim_hold + aim_scripted: the held action adds aim_delta x tanh(a) (bound units) to the scripted aim
     w_res: float = 0.01
@@ -496,6 +499,9 @@ class ArmAimPlayEnvCfg(PitchedBattingHumanPlayEnvCfg):
     aim_scripted_z: bool = False
     aim_scripted_D_fit: tuple = (-0.1437, -0.048, 0.195)
     aim_scripted_D_target: float = 0.010
+    aim_scripted_dry: bool = False  # offset computed + logged, NOT applied (paired control for the realised share)
+    aim_scripted_dump: str | None = None  # npz: per-pitch realised sums (env, episode, num / den per group)
+    aim_obs_comp: bool = False  # the frozen swing policy sees q - offset on the offset joints (row 6)
     aim_hold: bool = False
     aim_delta: float = 0.5
     w_res: float = 0.01
