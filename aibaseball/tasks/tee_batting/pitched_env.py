@@ -64,6 +64,10 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.released_seen = torch.zeros(n, dtype=torch.bool, device=dev)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("pitch_kmh", "timing_err_s", "tempo", "ref_err_plate_s")})
         self.plate_crossed = torch.zeros(n, dtype=torch.bool, device=dev)
+        # percept_filter: running least-squares sums over the seen samples since release (time from release, per axis)
+        self.pf_s = torch.zeros(n, 3, device=dev)  # sum 1, sum t, sum t^2
+        self.pf_p = torch.zeros(n, 3, device=dev)  # sum p (z: + g t^2 / 2)
+        self.pf_tp = torch.zeros(n, 3, device=dev)  # sum t p
 
     # ------------------------------------------------------------------ curriculum
     def _progress(self) -> float:
@@ -152,6 +156,25 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         v = (hist[:, -2] - hist[:, -1]) / self.step_dt if hist.shape[1] > 1 else self.pitch_vel
         delay = self.obs_delay_steps * self.step_dt
         released = (self.phys_t - delay) >= self.release_t + self.step_dt  # the batter has seen it leave the hand
+        if self.cfg.percept_filter:  # ballistic least squares over every seen sample since release: p + g t^2/2 = p0 + v t
+            gz = self.phys.gravity
+            tr = (self.phys_t - delay - self.release_t).clamp_min(0.0)  # the seen sample's time from release
+            q = seen.clone()
+            q[:, 2] = q[:, 2] + 0.5 * gz * tr ** 2
+            r = released.float().unsqueeze(-1)
+            self.pf_s += r * torch.stack([torch.ones_like(tr), tr, tr ** 2], -1)
+            self.pf_p += r * q
+            self.pf_tp += r * tr.unsqueeze(-1) * q
+            s0, s1, s2 = (self.pf_s[:, i:i + 1] for i in range(3))
+            den = s0 * s2 - s1 ** 2
+            fit = (s0[:, 0] >= 3) & (den[:, 0] > 1e-9)
+            vf = (s0 * self.pf_tp - s1 * self.pf_p) / den.clamp_min(1e-9)
+            p0 = (self.pf_p - vf * s1) / s0.clamp_min(1.0)
+            pf = p0 + vf * tr.unsqueeze(-1)
+            pf[:, 2] -= 0.5 * gz * tr ** 2
+            vf[:, 2] -= gz * tr
+            seen = torch.where(fit.unsqueeze(-1), pf, seen)
+            v = torch.where(fit.unsqueeze(-1), vf, v)
         vx = v[:, 0].clamp(max=-1.0)
         t = ((self.contact_x_ref - seen[:, 0]) / vx).clamp(0.0, 1.5)
         g = torch.tensor([0.0, 0.0, -self.phys.gravity], device=self.device)
@@ -204,6 +227,13 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         super()._reset_idx(env_ids)
         if self.lib is None:
             return
+        if env_ids is not None and len(env_ids) < self.num_envs:
+            ids = env_ids
+        else:
+            ids = slice(None)
+        self.pf_s[ids] = 0.0
+        self.pf_p[ids] = 0.0
+        self.pf_tp[ids] = 0.0
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
         n, dev, c = len(env_ids), self.device, self.cfg

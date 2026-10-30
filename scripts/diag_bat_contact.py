@@ -56,6 +56,7 @@ parser.add_argument("--aim_scripted_z", action="store_true", help="--aim_scripte
 parser.add_argument("--aim_scripted_dry", action="store_true", help="--aim_scripted: compute + log the offset, do not apply it")
 parser.add_argument("--aim_scripted_dump", type=str, default=None, help="--aim_scripted: npz of per-pitch realised sums")
 parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the swing policy sees q - offset (row 6)")
+parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter: ballistic LSQ crossing prediction")
 parser.add_argument("--percept_clean", action="store_true", help="ball percept noise + bias 0 (delay kept)")
 parser.add_argument("--aim_window", type=float, default=None, help="--armaim: override cfg.aim_window_s")
 parser.add_argument("--aim_hold", action="store_true", help="--armaim: ArmAim2 (one held action per swing on the scripted aim)")
@@ -145,6 +146,8 @@ def main():
               "w_miss", "w_tempo"):
         setattr(cfg, k, getattr(train, k))
     cfg.pitch_ramp_steps = 0  # full speed range and timing noise
+    if args.percept_filter:
+        cfg.percept_filter = True
     if args.percept_clean:  # the percept split: noise / bias off, the delay kept
         cfg.ball_obs_noise_std = 0.0
         cfg.ball_obs_bias_std = 0.0

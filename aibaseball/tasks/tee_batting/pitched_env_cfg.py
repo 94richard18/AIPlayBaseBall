@@ -44,6 +44,9 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # table rows, speed drawn in pitch_mix_speed_kmh, near-zone only); the rest from the analytic library
     pitch_mix_release_csv: str | None = None
     tempo_zero_after_release: bool = False  # eval: tempo action held at 0 once the pitch is released
+    # 10-30 (planning 14): the crossing prediction from a ballistic least-squares fit over all seen samples since release
+    # instead of a one-step finite difference (1.4 m/s velocity noise per axis at 1 cm / 10 ms); delay / noise / bias unchanged
+    percept_filter: bool = False
     # after the reference clip ends (~0.4 s after contact): blend the joint targets over this many seconds to a balanced
     # pose ("contact": the clip's contact frame - feet already in the stride; "start": frame 0), residual and
     # feed-forward faded out. 0 = off (hold the last frame, as before)
