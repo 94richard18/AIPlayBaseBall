@@ -50,7 +50,7 @@ diag() {  # $1 ckpt $2 tag
 until [ -f $O/GO ]; do sleep 60; done
 # 10-31 04:0x relaunch: ArmAim2c +300 PASS 01:44 and R3 PASS 02:18 are done; wait for the resumed +1000 (run_armaim2d.sh)
 until [ logs/ARMAIM2_1000_END.txt -nt $O/chain.stamp ]; do sleep 60; done
-grep -q "RAM watchdog|aborted|crash" logs/ARMAIM2_1000_END.txt && { MSG="held: ArmAim2c resume did not finish cleanly ($(cut -c1-120 logs/ARMAIM2_1000_END.txt))"; exit 1; }
+grep -qE "RAM watchdog|aborted|crash" logs/ARMAIM2_1000_END.txt && { MSG="held: ArmAim2c resume did not finish cleanly ($(cut -c1-120 logs/ARMAIM2_1000_END.txt))"; exit 1; }
 # smoke
 idle
 $P -u scripts/train.py --task $TASK --headless --num_envs 256 --max_iterations 2 --run_name human_pitched30_smoke --resume True \
