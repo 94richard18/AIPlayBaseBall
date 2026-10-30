@@ -60,7 +60,7 @@
 
 ## 3. 打者目前進度
 
-### 10-30 22:0x 第 9 列定為採用候選（14 核准）→ 已接進遊戲端與聯合模擬端，採用流程與 ArmAim2+comp 都已排好
+### 10-30 21:33 第 9 列定為採用候選（14 核准）→ 已接進遊戲端與聯合模擬端，採用流程與 ArmAim2+comp 都已排好
 - 程式（都用旗標控制，關閉時結果不變）：
   - `BatterSide(saim=...)`：揮棒窗口內在瞄準關節的 PD 目標加上 clamp(gain × |dy|, ±bound)，dy 取自感知預測；揮棒策略看到的關節角度與球棒姿態都扣回修正量；percept_filter 的累加在 hand-off 時歸零。
   - `joint_smoke.py`：新增 `--saim/--saim_bound/--saim_window/--saim_comp/--percept_filter`。
