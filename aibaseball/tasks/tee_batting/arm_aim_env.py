@@ -68,6 +68,21 @@ class ArmAimEnv(PitchedBattingEnv):
             self.res_dy_ep = torch.zeros(n, device=dev)  # dy at the window's last step
             self.res_dyt_ep = torch.zeros(n, device=dev)  # the true plate y (pitch_plate) at the same step
             self._sat_n = [0, 0, 0.0, 0.0, 0.0]  # episodes, saturated, sum |dy|, sum |true dy|, sum |dy - true dy|
+            # realised share of the commanded offset: (q - swing target) projected on the previous step's offset, per group
+            js = list(cfg.aim_joints)
+            grp = {"l_arm": [i for i, j in enumerate(js) if j.startswith("l_") and "wrist" not in j],
+                   "r_arm": [i for i, j in enumerate(js) if j.startswith("r_") and "wrist" not in j],
+                   "wrists": [i for i, j in enumerate(js) if "wrist" in j], "waist": [js.index("waist_yaw")]}
+            self._grp = {k: torch.tensor(v, device=dev) for k, v in grp.items()}
+            self._prev_st = torch.zeros_like(self.res_a)
+            self._prev_off = torch.zeros_like(self.res_a)
+            self._prev_win = torch.zeros(n, dtype=torch.bool, device=dev)
+            self._rl_num = {k: torch.zeros(n, device=dev) for k in grp}
+            self._rl_den = {k: torch.zeros(n, device=dev) for k in grp}
+            self._rl_cmd = torch.zeros(n, device=dev)  # sum over window steps of mean |offset| (rad)
+            self._rl_steps = torch.zeros(n, device=dev)
+            self._rl_frac = {k: [] for k in grp}
+            self._rl_cmd_ep = []
             atexit.register(self._print_scripted)
         self.track_stats.update({k: torch.zeros((), device=dev) for k in ("aim_win_frac", "aim_abs_off", "aim_sat")})
         # the ArmAim policy's spaces (the swing env's 30 / 152 stay what the swing actor uses)
@@ -81,6 +96,11 @@ class ArmAimEnv(PitchedBattingEnv):
 
     def _print_scripted(self):
         n, k, d, dt, de = self._sat_n
+        import numpy as np
+        fr = " ".join(f"{g} {np.median(v):.2f}" if v else f"{g} nan" for g, v in self._rl_frac.items())
+        cm = np.median(self._rl_cmd_ep) if self._rl_cmd_ep else float('nan')
+        print(f"[armaim scripted] realised fraction of the commanded offset (median over pitches): {fr}; "
+              f"commanded mean |offset| {cm:.3f} rad, window {self.cfg.aim_window_s} s", flush=True)
         print(f"[armaim scripted] sign {self.cfg.aim_scripted_sign:+.0f}: episodes {n}, offset at the +-{self.cfg.aim_bound} "
               f"bound {k / max(n, 1):.3f}, mean |dy| {d / max(n, 1):.3f} m, mean |true plate y| {dt / max(n, 1):.3f}, "
               f"mean |dy - true| {de / max(n, 1):.3f} (dy from {'the true plate y' if self.cfg.aim_scripted_true else 'the percept'})", flush=True)
@@ -122,6 +142,18 @@ class ArmAimEnv(PitchedBattingEnv):
         decay = torch.exp(torch.tensor(-self.step_dt / c.aim_decay_tau_s, device=self.device))
         self.res_off = torch.where(self.res_win.unsqueeze(-1), c.aim_bound * self.res_a,
                                    torch.where(self.res_closed.unsqueeze(-1), self.res_off * decay, torch.zeros_like(self.res_off)))
+        if self._scripted is not None:
+            q = self.robot.data.joint_pos[:, self.aim_ids]
+            pw = self._prev_win
+            for g, ix in self._grp.items():
+                o = self._prev_off[:, ix]
+                self._rl_num[g] += ((q[:, ix] - self._prev_st[:, ix]) * o).sum(-1) * pw
+                self._rl_den[g] += (o ** 2).sum(-1) * pw
+            self._rl_cmd += self._prev_off.abs().mean(-1) * pw
+            self._rl_steps += pw.float()
+            self._prev_st = self.joint_targets[:, self.aim_ids].clone()
+            self._prev_off = self.res_off.clone()
+            self._prev_win = self.res_win.clone()
         tgt = self.joint_targets[:, self.aim_ids] + self.res_off
         self.joint_targets[:, self.aim_ids] = torch.clamp(tgt, self.q_lo[self.aim_cols], self.q_hi[self.aim_cols])
         a = 0.01
@@ -189,6 +221,18 @@ class ArmAimEnv(PitchedBattingEnv):
             self._sat_n[2] += float(self.res_dy_ep[env_ids][done].abs().sum())
             self._sat_n[3] += float(self.res_dyt_ep[env_ids][done].abs().sum())
             self._sat_n[4] += float((self.res_dy_ep[env_ids] * self.cfg.aim_scripted_sign - self.res_dyt_ep[env_ids])[done].abs().sum())
+            ok = done & (self._rl_steps[env_ids] > 0)
+            for g in self._grp:
+                den = self._rl_den[g][env_ids]
+                m = ok & (den > 1e-8)
+                self._rl_frac[g] += (self._rl_num[g][env_ids][m] / den[m]).tolist()
+                self._rl_num[g][env_ids] = 0.0
+                self._rl_den[g][env_ids] = 0.0
+            self._rl_cmd_ep += (self._rl_cmd[env_ids][ok] / self._rl_steps[env_ids][ok]).tolist()
+            self._rl_cmd[env_ids] = 0.0
+            self._rl_steps[env_ids] = 0.0
+            self._prev_win[env_ids] = False
+            self._prev_off[env_ids] = 0.0
             self.res_sat_ep[env_ids] = False
             self.res_dy_ep[env_ids] = 0.0
             if self._sat_n[0] // 256 > k0:
