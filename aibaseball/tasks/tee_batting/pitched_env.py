@@ -46,7 +46,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
                                                       speed_kmh=cfg.pitch_mix_speed_kmh, zone_y=cfg.pitch_mix_zone_y,
                                                       zone_z=cfg.pitch_mix_zone_z).to(dev)
         self.ref_t = torch.zeros(n, device=dev)
-        self.rate = torch.full((n,), self.speed, device=dev)
+        self.rate = torch.full((n,), self.speed * cfg.tempo_script, device=dev)
         self.phys_t = torch.zeros(n, device=dev)  # physical time since episode start
         self.release_t = torch.zeros(n, device=dev)
         self.pitch_pos = torch.zeros(n, 3, device=dev)
@@ -87,7 +87,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         tempo = a[:, -1].clamp(-1.0, 1.0)
         if c.tempo_zero_after_release:  # eval: the reference plays at nominal speed once the ball is in the air
             tempo = torch.where(self.phys_t >= self.release_t, torch.zeros_like(tempo), tempo)
-        self.rate = self.speed * (1.0 + c.tempo_scale * tempo)
+        self.rate = self.speed * c.tempo_script * (1.0 + c.tempo_scale * tempo)
         self.ref_t = self.ref_t + self.rate * self.step_dt
         if c.take_hold:  # the clock never leaves the stance (negative = frame 0, as while waiting for the pitch)
             self.ref_t = torch.minimum(self.ref_t, torch.zeros_like(self.ref_t))
@@ -192,7 +192,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         if self.lib is None:
             return {"policy": obs}
         extra = torch.stack([self.t_arrive * 2.0, self.v_seen.norm(dim=-1) / 40.0, self.released_seen.float(),
-                             self.rate / self.speed - 1.0, (self.pitch_kmh - 120.0) / 30.0 * 0.0], -1)
+                             self.rate / (self.speed * self.cfg.tempo_script) - 1.0, (self.pitch_kmh - 120.0) / 30.0 * 0.0], -1)
         return {"policy": torch.nan_to_num(torch.cat([obs, extra], -1))}
 
     # ------------------------------------------------------------------ dones / rewards
@@ -283,12 +283,12 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         # waits in the stance (the reference clock starts negative and holds frame 0).
         clip = self.clip[env_ids]
         jitter = (torch.rand(n, device=dev) * 2 - 1) * c.timing_noise_s * prog
-        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / self.speed - L["flight_time"] + jitter + c.timing_bias_s
+        release = (self.ref.contact_time[clip] - self.t0[env_ids]) / (self.speed * c.tempo_script) - L["flight_time"] + jitter + c.timing_bias_s
         wait = (c.min_lead_s - release).clamp_min(0.0)
         self.release_t[env_ids] = release + wait
         self.phys_t[env_ids] = 0.0
-        self.ref_t[env_ids] = self.t0[env_ids] - wait * self.speed
-        self.rate[env_ids] = self.speed
+        self.ref_t[env_ids] = self.t0[env_ids] - wait * self.speed * c.tempo_script
+        self.rate[env_ids] = self.speed * c.tempo_script
         self.passed[env_ids] = False
         self.plate_crossed[env_ids] = False
         # hide the tee (the ball is pitched)

@@ -27,6 +27,7 @@ parser.add_argument("--checkpoint", type=str, required=True)
 parser.add_argument("--envs", type=int, default=256)
 parser.add_argument("--tag", type=str, default="human3")
 parser.add_argument("--timing_bias", type=float, default=None, help="override cfg.timing_bias_s (s, + = pitch later)")
+parser.add_argument("--tempo_script", type=float, default=None, help="cfg.tempo_script: the reference plays x this (re-timed to contact)")
 parser.add_argument("--tempo_zero_after_release", action="store_true", help="cfg.tempo_zero_after_release: no tempo correction once the ball is in the air")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
@@ -161,6 +162,8 @@ def main():
             setattr(cfg, k, 0.0)
     if args.timing_bias is not None:
         cfg.timing_bias_s = args.timing_bias
+    if args.tempo_script is not None:
+        cfg.tempo_script = args.tempo_script
     if args.aim_offset_z is not None:
         cfg.aim_offset_z = args.aim_offset_z
     if args.aim_offset_y is not None:

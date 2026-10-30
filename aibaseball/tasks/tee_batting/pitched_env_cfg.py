@@ -35,6 +35,7 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     min_lead_s: float = 0.15  # the pitch is released at least this long after the episode start
     ball_obs_clip: float = 1.5  # keep the ball-relative inputs in the range the tee-trained policy knows
     tempo_scale: float = 0.3  # tempo action -> reference playback rate x (1 +- 0.3)
+    tempo_script: float = 1.0  # line C falsifier (14, 10-31): the whole reference plays x this, timed so it still reaches contact on the pitch
     w_tempo: float = 0.01
     w_miss: float = 2.0
     # eval / game: pitches from the RL pitcher's eval_stage --pitch_csv table instead of the analytic library
