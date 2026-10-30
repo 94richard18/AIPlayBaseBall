@@ -46,6 +46,8 @@ parser.add_argument("--contact_dump", type=str, default=None,
 parser.add_argument("--saim", type=str, default=None,
                     help="BatterSide scripted arm aim (ArmAim row 9): gain JSON; with --percept_filter")
 parser.add_argument("--saim_bound", type=float, default=0.4)
+parser.add_argument("--saim_miss_blend", type=float, default=0.0, help="saim: on a miss, smoothstep the offset to 0 over this many s from the plate crossing (0 = tau decay)")
+parser.add_argument("--trig_dump", type=str, default=None, help="npz: per env the joint pose + |aim offset| at the recover / hand-off trigger")
 parser.add_argument("--saim_window", type=float, default=0.60)
 parser.add_argument("--saim_comp", choices=("q", "full"), default="full", help="obs compensation: joints only / + the bat pose")
 parser.add_argument("--percept_filter", action="store_true", help="batter cfg.percept_filter (quadratic LSQ crossing prediction)")
@@ -128,7 +130,8 @@ def main():
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
                       no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt,
                       saim=None if args.saim is None else dict(gain=os.path.abspath(args.saim), bound=args.saim_bound,
-                                                               window=args.saim_window, comp_full=args.saim_comp == "full"))
+                                                               window=args.saim_window, comp_full=args.saim_comp == "full",
+                                                               miss_blend=args.saim_miss_blend))
     if args.diag_yaw is not None:  # before the first reset places the batter
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)
@@ -344,6 +347,12 @@ def main():
             wr = csv.DictWriter(f, fieldnames=list(out[0]))
             wr.writeheader()
             wr.writerows(out)
+    if args.trig_dump:
+        import numpy as np
+        nanj = torch.full_like(side.robot.data.joint_pos, float("nan"))
+        np.savez(args.trig_dump, jp=getattr(side, "trig_jp", nanj).cpu().numpy(),
+                 off=getattr(side, "trig_off", nanj[:, 0]).cpu().numpy(), t=side.pt_t.cpu().numpy(),
+                 joint_names=np.array(list(side.robot.joint_names)))
     if args.diag:
         clip_end = side.start_t + (side.ref.duration[side.clip] - side.t0) / side.speed  # joint time of the ref's end
         rows, ph = [], {"hold": 0, "start_to_handoff": 0, "after_handoff": 0, "after_clip_end": 0, "never": 0}

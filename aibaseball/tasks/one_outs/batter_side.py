@@ -251,7 +251,10 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.aim_ids = self.body_joint_ids[self.aim_cols]
             self._saim = dict(gp=torch.tensor(g["gain_plus"], device=self.device), gm=torch.tensor(g["gain_minus"], device=self.device),
                               bound=float(saim.get("bound", ac.aim_bound)), window=float(saim.get("window", 0.60)),
-                              full=bool(saim.get("comp_full", True)), tau=ac.aim_decay_tau_s)
+                              full=bool(saim.get("comp_full", True)), tau=ac.aim_decay_tau_s,
+                              miss_blend=float(saim.get("miss_blend", 0.0)))
+            self.saim_off_close = torch.zeros(n, len(ac.aim_joints), device=self.device)  # miss_blend: offset at the close
+            self.saim_t_close = torch.full((n,), float("nan"), device=self.device)
             self.res_off = torch.zeros(n, len(ac.aim_joints), device=self.device)
             self.res_closed = torch.zeros(n, dtype=torch.bool, device=self.device)
             self.saim_sat = torch.zeros(n, dtype=torch.bool, device=self.device)  # this pitch's offset reached the bound
@@ -374,6 +377,13 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         q_prev, a_prev = self.joint_targets[:, self.body_joint_ids].clone(), self.actions[:, :-1].clone()
         trig = self.active & (self.hit | self.done) & torch.isnan(self.pt_t)
         self.pt_t = torch.where(trig, self._joint_time(), self.pt_t)
+        if trig.any():  # hand-off log (14, 10-30): the joint pose and the aim offset still in force at the trigger
+            if not hasattr(self, "trig_jp"):
+                self.trig_jp = torch.full_like(self.robot.data.joint_pos, float("nan"))
+                self.trig_off = torch.full((self.num_envs,), float("nan"), device=self.device)
+            self.trig_jp[trig] = self.robot.data.joint_pos[trig]
+            off = self.res_off.abs().max(-1).values if self._saim is not None else torch.zeros(self.num_envs, device=self.device)
+            self.trig_off = torch.where(trig, off, self.trig_off)
         with torch.inference_mode():
             act = self._actor.act_inference(self._norm(self._obs))
         if self.trace is not None:
@@ -562,20 +572,31 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.res_off[ids] = 0.0
             self.res_closed[ids] = False
             self.saim_sat[ids] = False
+            self.saim_t_close[ids] = float("nan")
 
     def _saim_step(self):
         """As ArmAimEnv._pre_physics_step in scripted mode (sign +1, dy from the percept, aim_hold off): after the swing
         policy's targets are written, add the offset on the aim joints."""
         c = self._saim
+        was = self.res_closed.clone()
         self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)
+        new = self.res_closed & ~was
+        if new.any():  # the offset in force at the close (the window's last applied one)
+            self.saim_t_close = torch.where(new, self._joint_time(), self.saim_t_close)
+            self.saim_off_close[new] = self.res_off[new]
         win = (self.ref_t >= self.ref.contact_time[self.clip] - c["window"]) & ~self.res_closed
         dy = self._perc[:, 1] - self.nominal_target[:, 1]
         raw = torch.where((dy >= 0).unsqueeze(-1), c["gp"], c["gm"]) * dy.abs().unsqueeze(-1) / c["bound"]
         self.saim_sat |= win & (raw.abs() > 1.0).any(-1)
         res_a = raw.clamp(-1.0, 1.0) * win.unsqueeze(-1)
         decay = torch.exp(torch.tensor(-self.step_dt / c["tau"], device=self.device))
+        after = self.res_off * decay
+        if c["miss_blend"] > 0:  # a miss (closed by the plate crossing, no hit): smoothstep from the close offset to 0
+            s = ((self._joint_time() - self.saim_t_close) / c["miss_blend"]).clamp(0.0, 1.0).nan_to_num(1.0)
+            s = (s * s * (3.0 - 2.0 * s)).unsqueeze(-1)
+            after = torch.where((~self.hit).unsqueeze(-1), self.saim_off_close * (1.0 - s), after)
         self.res_off = torch.where(win.unsqueeze(-1), c["bound"] * res_a,
-                                   torch.where(self.res_closed.unsqueeze(-1), self.res_off * decay, torch.zeros_like(self.res_off)))
+                                   torch.where(self.res_closed.unsqueeze(-1), after, torch.zeros_like(self.res_off)))
         tgt = self.joint_targets[:, self.aim_ids] + self.res_off
         self.joint_targets[:, self.aim_ids] = torch.clamp(tgt, self.q_lo[self.aim_cols], self.q_hi[self.aim_cols])
 

@@ -91,6 +91,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_launch: float = 4.0  # x EV/52.5 x ((1 + cos(launch dir, 30 deg to center field)) / 2)^2
     w_backspin: float = 0.0  # x EV/52.5 x clamp(backspin_rpm / 2000, -1, 1)
     launch_target_deg: float = 28.0
+    launch_dir_from_target: bool = False  # the smooth direction score's ideal direction at launch_target_deg (else 30 deg)
     launch_sigma_deg: float = 0.0  # > 0: Gaussian launch-angle score instead of the smooth direction score
     foul_factor: float = 0.2
     w_spray: float = 0.0  # x exit speed x exp(-(spray / sigma)^2): toward centre field

@@ -5,6 +5,8 @@
 # 0, 10) on hits. Waits for SAIM_ADOPT_END + H29_ADOPT_END; the frozen swing = logs/h29adopt/winner.txt (AIB_SAIM_SWING). Gates = ArmAim's +300 / +1000 -> ARMAIM2_300_END / ARMAIM2_1000_END.
 # Film slot 10-31 06:41 (20): the +700 resume (~2.4 h) launches only if it can end before 06:30 (launch <= 03:50), else it
 # waits for 20's film marker (logs/M3ROUTINE4_END.txt newer than this chain's start, written by logs/routine1031.sh; or 08:00).
+# Human25-R3 (14, 10-30 23:xx): logs/run_recov3.sh runs right after ARMAIM2_300_END (whatever the +300 verdict) and before
+# the +700; the +700's 03:50 launch cutoff is checked after R3 ends. R3 skips itself when the winner's joint s6 passes.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=50
@@ -63,7 +65,9 @@ D=$(ls -td $B/*armaim2c_1 2>/dev/null | head -1); I=$([ -n "$D" ] && last $D)
 diag $D/model_$I.pt armaim2c_$I
 G=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_armaim2c_$I.json --stage 300 --label "model_$I ($D)" | tr '\n' ' ')
 echo "ARMAIM2_300_END $(date +%H:%M) $G | $ZC | base: $BASE" > $M3; M3DONE=1; cat $M3
-case "$G" in PASS*) ;; *) MSG="stopped at +300: $G"; exit 0;; esac
+bash logs/run_recov3.sh > $O/recov3_chain.txt 2>&1
+R3="R3: $(cut -c1-400 logs/RECOV3_END.txt 2>/dev/null)"
+case "$G" in PASS*) ;; *) MSG="stopped at +300: $G | $R3"; exit 0;; esac
 # 4. resume +700 (~2.4 h): only if it ends before 06:30
 filmwait 03:50
 idle
@@ -74,4 +78,4 @@ D2=$(ls -td $B/*armaim2c_2 2>/dev/null | head -1); I2=$([ -n "$D2" ] && last $D2
 [ -n "$I2" ] || { MSG="train_2: no checkpoint"; exit 1; }
 diag $D2/model_$I2.pt armaim2c_$I2
 G2=$($P scripts/armaim_gate.py --diag logs/diag_bat_contact_armaim2c_$I2.json --stage 1000 --label "model_$I2 ($D2)" | tr '\n' ' ')
-MSG="$G2 | +300: $G"
+MSG="$G2 | +300: $G | $R3"

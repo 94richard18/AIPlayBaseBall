@@ -106,7 +106,8 @@ class TeeBattingEnv(DirectRLEnv):
         self.field_dir = torch.tensor([1.0, 0.0, 0.4], device=dev)
         self.field_dir = self.field_dir / self.field_dir.norm()
         # ideal launch direction: center field, 30 deg up (smooth shaping signal for any launch angle)
-        self.ideal_dir = torch.tensor([math.cos(math.radians(30)), 0.0, math.sin(math.radians(30))], device=dev)
+        la0 = self.cfg.launch_target_deg if getattr(self.cfg, "launch_dir_from_target", False) else 30
+        self.ideal_dir = torch.tensor([math.cos(math.radians(la0)), 0.0, math.sin(math.radians(la0))], device=dev)
 
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in

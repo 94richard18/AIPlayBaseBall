@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from isaaclab.assets import ArticulationCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
@@ -27,7 +29,7 @@ class RecoverEnvCfg(TeeBattingEnvCfg):
     residual_scale: float = 0.5
     anchor_blend_s: float = 0.8
 
-    bank_path: str = "logs/recover_bank_s0.npz"
+    bank_path: str = os.environ.get("AIB_RECOVER_BANK", "logs/recover_bank_s0.npz")  # Human25-R3: the winner swing + saim bank
     bank_vel_noise: float = 0.05  # joint velocities x (1 +- this)
     bank_root_vel_noise: float = 0.1  # root linear velocity +- m/s per axis
 

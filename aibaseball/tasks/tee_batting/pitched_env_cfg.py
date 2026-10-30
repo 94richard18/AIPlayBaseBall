@@ -520,6 +520,14 @@ class ArmAim2CompEnvCfg(ArmAim2EnvCfg):
     w_exit_hinge: float = 0.5
     exit_hinge_ref: float = 18.0
     exit_hinge_cap: float = 10.0
+    # 14 (10-30 23:1x, after 12500 + saim fell to a ~4 deg showcase launch median = grounders): Human15's launch term
+    # (w_launch 20, the smooth direction score) toward 20 deg, x q; start medians: diag row 9 launch 17.7 (q25 -24.8 /
+    # q75 49.2), showcase tables 1.6-6.0 deg
+    w_launch: float = 20.0
+    launch_target_deg: float = 20.0
+    launch_dir_from_target: bool = True
+    launch_sigma_deg: float = 0.0
+    launch_spray_times_q: bool = True
 
 
 @configclass
