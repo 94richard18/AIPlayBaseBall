@@ -60,6 +60,11 @@
 
 ## 3. 打者目前進度
 
+### 10-31 09:14 14 判定訓練加雜訊這條線「死」，除非中段 checkpoint 翻盤；Human30e 改以 30c 為底重建
+- 中段診斷：human_pitched30d_1 model_12650 兩列（jitter 0 / 0.03）在跑，標記 H30D_12650_END；接著 human_pitched30c_1 model_12650 兩列，標記 H30C_12650_END。用來檢驗「中段高峰 + 挑 checkpoint」是不是通用做法。
+- Human30e：改為 30c（訓練無時機雜訊）+ carry 門檻 0 m（20 × clamp(carry / 40, 0, 1) × fair），每 25 次迭代存一次模型，結果附每個 checkpoint 的訓練趨勢。舊的待命 chain 在啟動任何程式前已砍掉；新 chain 等 logs/h30e/GO（14 撤回後會重建）。
+- 微調設定（回答 14）：從 12500 接續時沿用 Adam optimizer 狀態，學習率從存檔恢復為 2.25e-5（不是 cfg 的 3e-4），adaptive schedule desired_kl 0.01，rsl_rl 的硬下限 1e-5；entropy_coef 0.005；action noise std 2.78 → 2.84 緩慢上升。要降到 1/3 需 LR_RESUME + LR_FLOOR = 7.5e-6。
+
 ### 10-31 09:10 Human30d +300（30c + 訓練 timing noise ±0.03 s）：jitter 0 FAIL（slope −0.57），訓練 carry 中段上升後崩落
 - jitter 0（model_12799）：in-zone hit 0.555、|axis_off| 0.074、slope −0.57（門檻 > −0.50）→ FAIL；launch −9.5、exit 中位 18.4（14.9 / 18.4 / 23.0）、D 0.168、fair 0.592。
 - jitter 0.03：hit 0.526、|axis_off| 0.064、slope −0.50 → 勉強 PASS；launch −11.5、exit 19.2、fair 0.604。
