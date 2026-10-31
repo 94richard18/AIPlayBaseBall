@@ -512,6 +512,16 @@ class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
     timing_noise_s: float = 0.03
     timing_noise_ramp: bool = False
 
+
+@configclass
+class PitchedBattingHuman30eEnvCfg(PitchedBattingHuman30dEnvCfg):
+    """Human30e (planning 14, 10-31 08:17; armed behind H30D_300_END + logs/h30e/GO): Human30d with the carry knee at 0 m,
+    20 x clamp(carry / 40, 0, 1) x fair - the training fair-ball carry mean is ~10 m, so the 10 m knee left about half the
+    fair balls with zero gradient (the sigma rule in hinge form)."""
+
+    carry_ref: float = 0.0
+    carry_span: float = 40.0
+
 @configclass
 class ArmAimEnvCfg(PitchedBattingHuman15EnvCfg):
     """Human28 "ArmAim" (planning 14, user 10-30 "動打者架構"; arm_aim_env.ArmAimEnv): a separate residual policy on 15 joints

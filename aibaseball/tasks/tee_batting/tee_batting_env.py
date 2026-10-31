@@ -112,7 +112,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -435,6 +435,9 @@ class TeeBattingEnv(DirectRLEnv):
                        ("fair_rate", fair.float().mean()), ("contact_abs_dx", dx.abs().mean()), ("contact_D", D.mean()),
                        ("contact_D_in", ((D >= 0.0) & (D <= 0.025)).float().mean())):
             self.stats[k] = (1 - a) * self.stats[k] + a * val
+        if fair.any():  # fair balls only (Human30e, 10-31): carry mean and the share under 10 m
+            self.stats["fair_carry"] = (1 - a) * self.stats["fair_carry"] + a * carry[fair].mean()
+            self.stats["fair_carry_lt10"] = (1 - a) * self.stats["fair_carry_lt10"] + a * (carry[fair] < 10.0).float().mean()
         self.stats["carry_max"] = torch.maximum(self.stats["carry_max"] * 0.999, (carry * fair).max())
         self.best_carry = max(self.best_carry, float((carry * fair).max()))
 
