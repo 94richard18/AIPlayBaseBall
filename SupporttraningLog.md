@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+### 10-31 09:10 Human30d +300（30c + 訓練 timing noise ±0.03 s）：jitter 0 FAIL（slope −0.57），訓練 carry 中段上升後崩落
+- jitter 0（model_12799）：in-zone hit 0.555、|axis_off| 0.074、slope −0.57（門檻 > −0.50）→ FAIL；launch −9.5、exit 中位 18.4（14.9 / 18.4 / 23.0）、D 0.168、fair 0.592。
+- jitter 0.03：hit 0.526、|axis_off| 0.064、slope −0.50 → 勉強 PASS；launch −11.5、exit 19.2、fair 0.604。
+- 起點 h30c（jitter 0）：launch 14.2、exit 19.7、D 0.204、fair 0.749 → 30d 各項都比 30c 差。
+- 訓練趨勢（env EMA）：fair_carry 12520 12.3 → 12575 15.5 → 12650 14.1 → 12700 12.8 → 12775 9.2 → 12799 8.5 m；fair_carry_lt10 0.60 → 0.49 → 0.78；fair_rate 0.59 → 0.60 → 0.42；launch_angle 4.4 → 5.4 → −15.6。前段（12575–12650）上升，12700 後崩落；trainer RAM 峰值 11 GB。
+- 判讀：訓練加 noise 沒讓 carry 穩定變長，後段打成滾地（launch 轉負）。建議的便宜 falsifier：diag model_12650（兩列），看中段峰值是不是真的；Human30e（30d + carry 門檻 0 m）繼承 30d 的 noise，仍等 14 建立 logs/h30e/GO。
+
 ### 10-31 08:12 Human30c +300：gate PASS，launch 上升、exit 小降
 
 - model_12799（human_pitched30c_1）jitter 0：in-zone hit 0.643、slope −0.39、|axis_off| 0.073。
