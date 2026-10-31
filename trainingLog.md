@@ -68,6 +68,19 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 18:51 例行檢查 + ph26 期中結果（規劃 14）
+- Isaac 1（ph26 joint s7，18:44 起）、GPU 38%、free RAM 41.8 GB；無 trainer；上次影片 13:33（下次最晚 11-01 01:33；PH26 後以 PH=2.6 錄 adopt 片即算）。
+- ph26 表（全部 `--phase_horizon 2.6`，T3 = 3 表 × 5 seeds 均值 / OF；[ ] 內為舊 phase 數字）：
+  - 13298 jitter 0.03：**16.9%**（17.0/17.3/16.3）OF **7.4%** [17.3 / 7.3]
+  - 13298 jitter 0：**19.0%**（18.6/19.0/19.3）OF **10.6%** [20.4 / 10.9]
+  - plain 12500 jitter 0：17.8%（17.5/18.8/17.2）OF 4.0% [0.03 舊表 17.6]
+  - row 9 jitter 0：16.5%（15.5/17.6/16.4）OF 4.0% [16.2 / 3.8]
+  - diag in-zone hit（ph2.6 vs 舊）：13298 j0 0.916 vs 0.885，fair 0.834 vs 0.806，fair carry 均值 30.6 vs 30.5 m，launch 25.5 vs 30.8；13298 j0.03 0.873 / fair 0.730 / carry 25.4；plain 12500 0.443（fair 0.663，carry 19.5）；row 9 0.519。
+  - joint s6（ph2.6）：ground 3/64、batter_fell 4、tilt≤30° 61/64、hits 23/64（exit 中位 14.4、carry 中位 2.2 m、launch 中位 −17.6° → 真對戰仍全是滾地球）。
+- 判讀：phase 修正對 13298 的表是持平略降（差在 ±1 的表噪音內），不是 17:00 預期的往上；排序不變 13298 > plain 12500 > row 9。phase bug 確實存在（13797 diag 0.749→0.896），但不是 13298 遊戲層數字的主因 → 修正前一條推論：舊表絕對值大致可信（13298 jitter-0 的 20.4 高估約 1.4 pt）。
+- 採用規則（phase 2.6）：0.03 均值 16.9 ≥ 16.6 ✓（僅 +0.3）、OF 7.4 ≥ 6 ✓、s6 ground 3/64 > 2 ✗ → 需 s6+s7 ≤ 4，s7 進行中；s7 ground ≥ 2 則 R4 自動起跑（run_ref_recov4.sh）。同 protocol（j0, ph2.6）13298 比 plain 12500 勝率 +1.2 pt、OF 10.6 vs 4.0（×2.6）——「打遠」在表上成立；但 joint 真對戰 23 支安打 carry 中位 2.2 m，showcase（release_csv）vs joint（P3c 現投 + recover）的落差要在 PH26 後查。
+- 下一步：等 PH26_END（~19:15）→ s7 / R4 → 寫 `logs/ADOPT_FILM_GO.txt`（PH=2.6, ROWS=logs/ph26/joint_s6.csv）→ 放 30f（GO.hold14→GO）。
+
 **10-31 16:59 TRAINLIB_DIAG_END（15 16:58 標）：**phase 輸入證實為評估側的系統性錯誤**——13797 同一組球，phase t/9 → t/2.6：A 訓練庫 hit 0.660 / carry 29.6 / launch 34.9 → B 0.836 / 26.5 / 23.9（hit 與訓練 EMA 0.82 吻合）；C eval 投球 + 2.6：hit 0.896、fair 0.762、exit 中位 21.5、D 0.283、launch 中位 29.8、slope −0.19、|dx| 0.060（舊 eval j0 phase 9：0.749 / 35.1 / 45.8）。投球庫不是原因（A 比舊 eval 更低）。結論：所有 diag / 表格 / 聯合數字都在分布外 phase 下算出（diag / joint t/9、showcase t/30）；phase 2.6 下 hit +0.15–0.18、launch −11–19°、fair 上升。剩餘 carry / launch 與訓練 EMA 的差（+7 m / +11°）候選為隨機策略與 EMA 定義，不影響決策。→ **放行 ph26（logs/ph26/GO 16:59）**：13298 + saim 的 j0 / j0.03 diag + 0.03 與 j0 各 3 表 × 5 seeds、純 12500 j0 diag + 3 表、列 9 j0 diag + 3 表、13298 joint s6 + s7（R3），全部 --phase_horizon 2.6 → PH26_END（~17 個 Isaac 工作、~3 h，約 21:00）。30f 續扣到 ph26 之後（GPU 序列化；仰角帶 10–35 在 2.6 的 launch 26–30° 下仍合理，暫不改）。R4 若仍需要，在 phase 2.6 的揮棒下重建。錄影：PH26_END 後以 PH=2.6、ROWS=logs/ph26/joint_s6.csv 放行 20（自動選最遠 fair 安打 + env 12）。s7（phase 9）：落地 2/64（0.33 / 0.34 邊緣）、flag 2/64、hits 24/64、tilt 中位 1.6°；s6 + s7 = 5 > 4 → 依規則 R4。**
 
 **10-31 16:40 (d)(e) 事實（15，AST diff）：揮棒起點時序與瞄準路徑兩環境完全相同（同 _reset_idx 公式、bias 0.055、noise 0、同 gain JSON / bound 0.4 / window 0.60 / comp full / effort 1.5）。剩兩個差異：(1) 投球庫（訓練 P3c 形狀 55–75 km/h 均勻、zone |y| ≤ 0.2525、z 0.50–1.10；diag 用 eval csv ~64 km/h）；(2) **phase 輸入 = t / max_episode_length_s：訓練 2.6 s、diag / showcase / joint 9.0 s，接觸時（~1.3 s）訓練看到 ~0.5、遊戲 ~0.14** —— 所有 diag / 表格 / 聯合數字都在這個分布外輸入下算出（舊的 fall diag 對舊策略曾否定此假說，但 13298 / 13797 以 2.6 尺度續訓 800–1300 its 未測）。(f) 鏈（6f7217e，S7 之後）：13797 三列 j0 —— A 訓練庫（phase /9.0）、B = A + --phase_horizon 2.6、C = eval 投球 + 2.6 → TRAINLIB_DIAG_END。決定：B / C 若補上差距 → 修在遊戲 / diag 側（--phase_horizon 2.6 全面套用），錄影前重做 13298（0.03 + jitter 0）、純 12500 jitter 0 參考、列 9 參考與 joint s6 / s7 的表格，20 的錄影加 PH 參數；都沒補上 → 差在投球庫，30f 仰角帶不改、放行。GO 改名 GO.hold14 保持扣住。**
