@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+### 10-31 16:27 model_13298 完整採用（14 修訂規則）：FAIL，只差 joint s6 倒地 3/64（門檻 ≤ 2）；無雜訊勝率 20.4%、外野 10.9%
+- 0.03 表：T3 17.3%（16.3 / 18.1 / 17.6）、OF 7.3% → 過 16.6 / 6% 兩項。
+- jitter 0 表（比賽本身無時機雜訊，使用者 10-21）：T3 20.4%（20.1 / 22.0 / 19.0）、OF 10.9%；同協定 12500 row 9 參考 16.2% / 3.8% → +4.1 點、外野約 3 倍。
+- joint s6（R3 recover + saim）：投球欄位 64/64、倒地 3/64（30c 12799 為 1/64）、hits 24/64（30c 15/64）→ 倒地超過 2/64，判 FAIL。
+- 機制 jitter 0：勝 0.204、K 0.124、BB 0.054、HBP 0.040、in-play out 0.673、OF hit 0.109；P(OF | fair) 0.140；showcase launch 19.5、exit 19.2、fair carry 20.2 m。
+- 第三段未跑（+1000 exit 18.3 < 21.6）。接著自動跑 13797 隨機策略診斷與 Human30f。
+
 ### 10-31 15:41 訓練 carry 與比賽不一致的原因查核（CPU，無 Isaac）：飛行模型相同、投球分布涵蓋 eval → 不做 Human30f
 - (b) 飛行模型：env 訓練 carry（ball_flight.simulate_flight，drag + Magnus）與 ONE OUTS first_bounce（ball_path + 草地）在同一 exit / launch / spin 網格上逐點相同（差 ≤ 0.1 m，scripts/carry_check.py）。
   - 最佳仰角：exit 21.6、旋轉 −1011 rpm（13298 表中位，偏上旋）→ 45°（38.2 m）；旋轉 2500 → 40°（42.4 m）；exit 25 / 2500 → 35°（54.1 m）。

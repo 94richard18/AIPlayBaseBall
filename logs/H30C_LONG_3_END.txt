@@ -1,0 +1,1 @@
+H30C_LONG_3_END 16:27 skipped: +1000 exit 18.30 < 21.6 (14's stop rule)
