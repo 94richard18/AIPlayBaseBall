@@ -382,7 +382,7 @@ def main():
         lk_names = [base.body_joint_names[i] for i in lk_ids]
         lk_j = [base.body_joint_ids[i] for i in lk_ids]
         nl = len(lk_ids)
-        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n", "tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_n")}
+        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n", "tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_lim", "tm_n")}
         lk.update({k: torch.full((n, nl), float("nan"), device=dev) for k in ("t_pk", "t_pk_ref")})
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
@@ -494,6 +494,10 @@ def main():
                     lk["tm_sum"] += tr * win_a.float()
                     lk["tm_sat"] += ((tr >= 0.98) & win_a).float()
                     lk["tm_est"] += (sat_l & win_a).float()  # the estimate over the same window
+                    lim = d.joint_pos_limits[:, lk_j]  # projected force includes joint-limit force: flag steps at a limit
+                    q_l = d.joint_pos[:, lk_j]
+                    at_lim = ((q_l - lim[..., 0]).abs() < 0.02) | ((q_l - lim[..., 1]).abs() < 0.02)
+                    lk["tm_lim"] += (at_lim & win_a).float()
                     lk["tm_n"] += win_a.float().expand(-1, nl)
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
@@ -853,12 +857,13 @@ def main():
                                sat_last100ms_pct=round(float(100 * A["sat_all"][:, i].sum() / max(A["sat_all_n"][:, i].sum(), 1)), 1))
                       for i, nm in enumerate(lk_names)}
             if args.tau_log:
-                T = {k: lk[k].cpu().numpy()[zm] for k in ("tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_n")}
+                T = {k: lk[k].cpu().numpy()[zm] for k in ("tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_lim", "tm_n")}
                 tn = np.maximum(T["tm_n"], 1)
                 for i, nm in enumerate(lk_names):
                     rows_a[nm].update(meas_pk=md(T["tm_pk"][:, i]), meas_mean=md(T["tm_sum"][:, i] / tn[:, i]),
                                       meas_sat_pct=round(float(100 * T["tm_sat"][:, i].sum() / tn[:, i].sum()), 1),
-                                      est_sat_pct=round(float(100 * T["tm_est"][:, i].sum() / tn[:, i].sum()), 1))
+                                      est_sat_pct=round(float(100 * T["tm_est"][:, i].sum() / tn[:, i].sum()), 1),
+                                      at_limit_pct=round(float(100 * T["tm_lim"][:, i].sum() / tn[:, i].sum()), 1))
             out["link_log"]["all_in_zone"] = dict(n=int(zm.sum()), rows=rows_a)
             print(f"[bat] link_all (in-zone swings {int(zm.sum())}): " + json.dumps(rows_a), flush=True)
         print(f"[bat] link_log (hits {int(hm.sum())}; peaks before contact, times in s vs contact; sat over the last 0.1 s of reference time)")
