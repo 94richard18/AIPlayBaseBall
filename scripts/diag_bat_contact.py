@@ -102,6 +102,12 @@ parser.add_argument("--ground_friction_scale", type=float, default=None,
                     help="measurement only: ground-plane and default material static / dynamic friction x S (spec 1.0 / 0.9)")
 parser.add_argument("--robot_contact_offset", type=float, nargs=2, default=None, metavar=("CONTACT", "REST"),
                     help="measurement only: the batter's collision shapes' PhysX contact / rest offsets (m)")
+parser.add_argument("--hip_yaw_limit", type=float, default=None,
+                    help="measurement only: l_hip_yaw / r_hip_yaw position limits set to +-L rad in PhysX (and the PD-target clamp follows)")
+parser.add_argument("--step_trace", action="store_true",
+                    help="per physics step: q / qd / PD target of l_hip_yaw and r_hip_yaw plus the step of first contact -> logs/steptrace_<tag>.npz")
+parser.add_argument("--target_clip_margin", type=float, default=None,
+                    help="measurement only: the body-joint PD targets are clipped to [lo + M, hi - M] (soft limits) instead of [lo, hi]")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -358,6 +364,20 @@ def main():
                                     env.unwrapped.device, runner.obs_normalizer)
     policy = runner.get_inference_policy(device=env.unwrapped.device)
     base = env.unwrapped
+    if args.hip_yaw_limit is not None:  # HL (11-01): is the lead hip-yaw limit stop the dt-dependent element?
+        hy = [base.robot.joint_names.index(nm) for nm in ("l_hip_yaw", "r_hip_yaw")]
+        L = args.hip_yaw_limit
+        lim = torch.tensor([-L, L], device=base.device).repeat(base.num_envs, len(hy), 1)
+        base.robot.write_joint_position_limit_to_sim(lim, joint_ids=hy)
+        sl = base.robot.data.soft_joint_pos_limits[0, base.body_joint_ids]
+        base.q_lo, base.q_hi = sl[:, 0].clone(), sl[:, 1].clone()
+        print(f"[diag] hip yaw limits {base.robot.data.joint_pos_limits[0, hy].tolist()} (PhysX), "
+              f"soft {base.robot.data.soft_joint_pos_limits[0, hy].tolist()}", flush=True)
+    if args.target_clip_margin is not None:  # TC (11-01): keeps targets off the joint limits (limit-chatter test)
+        mg = args.target_clip_margin
+        base.q_lo, base.q_hi = base.q_lo + mg, base.q_hi - mg
+        assert (base.q_lo < base.q_hi).all(), "margin larger than half a joint range"
+        print(f"[diag] PD targets clipped {mg} rad inside the soft limits", flush=True)
     if args.dof_dump:
         from dof_readout import dump
         dump(base.robot, base.sim, args.dof_dump, "native")
@@ -479,6 +499,15 @@ def main():
             for k_ in ("root_lin", "root_ang", "pel_v", "pel_yaw", "pel_z", "foot_v_l", "foot_v_r", "f_z", "f_xy"):
                 qtr[k_] = torch.full((n, TR_NB), float("nan"), device=dev)
             qj_prev = {}
+    if args.step_trace:
+        st_names = ["l_hip_yaw", "r_hip_yaw"]
+        st_j = [base.robot.joint_names.index(nm) for nm in st_names]
+        ST_K = int(round(4.0 / base.physics_dt))
+        st = {k_: torch.full((n, ST_K, len(st_j)), float("nan"), device=dev) for k_ in ("q", "qd", "q_tgt")}
+        st_k = torch.zeros(n, dtype=torch.long, device=dev)
+        st_hit = torch.full((n,), -1, dtype=torch.long, device=dev)
+        st_lim = base.robot.data.joint_pos_limits[0, st_j].cpu().numpy()
+        print(f"[diag] step_trace {st_names} limits {st_lim.tolist()}, physics dt {base.physics_dt}", flush=True)
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -524,6 +553,15 @@ def main():
         _, v_ss = base._sweet_spot(knob, axis, cm, v_cm, w)
         sp = v_ss.norm(dim=-1)
         rec["ss_speed_max"] = torch.where(live, torch.maximum(rec["ss_speed_max"], sp), rec["ss_speed_max"])
+        if args.step_trace:
+            ok_s = ~finished & (st_k < ST_K)
+            e_s = torch.nonzero(ok_s, as_tuple=True)[0]
+            k_s = st_k[e_s]
+            st["q"][e_s, k_s] = base.robot.data.joint_pos[e_s][:, st_j]
+            st["qd"][e_s, k_s] = base.robot.data.joint_vel[e_s][:, st_j]
+            st["q_tgt"][e_s, k_s] = base.robot.data.joint_pos_target[e_s][:, st_j]
+            st_hit[:] = torch.where((st_hit < 0) & base.hit & ~finished, st_k, st_hit)
+            st_k.add_(ok_s.long())  # in place: st_k is a closure variable
         if args.qd_trace:  # last write per bin wins (a bin spans 2-4 physics steps)
             tau = base.ref_t - base.ref.contact_time[base.clip]
             b_i = ((tau - TR_T0) / TR_DT).floor().long()
@@ -1040,6 +1078,12 @@ def main():
                             **({"qdj_names": np.array(qj_names), "body_mass": float(qj_M[0])} if args.qdj else {}),
                             **{k_: qtr[k_].cpu().numpy()[zt] for k_ in qtr if k_ not in ("qd", "q", "q_tgt", "v", "t")})
         print(f"[bat] trace -> {tp} ({int(zt.sum())} in-zone swings, joints {tr_names})", flush=True)
+    if args.step_trace:
+        zs = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10) & (st_hit.cpu().numpy() >= 0)
+        sp_ = os.path.join(ROOT, "logs", f"steptrace_{args.tag}.npz")
+        np.savez_compressed(sp_, names=np.array(st_names), limits=st_lim, dt=base.physics_dt, hit_k=st_hit.cpu().numpy()[zs],
+                            **{k_: v_.cpu().numpy()[zs] for k_, v_ in st.items()})
+        print(f"[bat] step trace -> {sp_} ({int(zs.sum())} in-zone hits)", flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
