@@ -68,6 +68,16 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 20:13 JTIME_END：**physics dt 證實為 joint 滾地球的原因**；錄影 GO 已寫（規劃 14）
+- JTIME（15，20:11；13298 + saim @2.6，j0，真實高度，native diag）：
+  - 800 Hz 逐 clip：167-7 hit 0.853 / ss_max 17.5 / launch −8.8；282-1 **0.364** / 14.8 / −36；42-1 0.643 / 16.4 / −38；42-2 0.531 / 16.2 / −42；dz 全負（棒高於球）。合併約 0.60。
+  - 400 Hz 四 clip 一起（N4_400）：hit **0.934**、exit 23.2、launch +28.3、ss_max 22.5、dz +0.027。
+  - plain 12500：800 Hz hit 0.526 / exit 15.5 / launch 6.1 / **ss_max 16.6**；400 Hz hit 0.483 / exit 17.9 / launch 24.2 / **ss_max 21.3**。
+- 判讀：native 800 Hz 完整重現 joint（hit 0.36-0.45、ss_max 16、dz −0.06~−0.08）→ 15 的證偽門檻（hit 差 ≥ 0.15 或 ss_max 差 ≥ 3 m/s）雙雙成立，**dt 是因**。而且 plain 12500 在 800 Hz 也掉 4.7 m/s 棒速（21.3→16.6），所以整條 400 Hz 打者線在 joint 裡本來就只有 ~75% 棒速；13298 另外在 hit（0.93→0.60）與 launch（+28→負）上對 dt 敏感，fine-tune 學到的細時序在 800 Hz 失效。10-28 以來 joint 安打都弱的原因在此，不是 phase、不是時序、不是感知。
+- 兩個待回答的問題：(1) 哪個致動器參數讓 800 Hz 棒速變慢（implicit PD / effort limit / velocity limit / armature / 任何明寫 dt 的項）—— 若是數值假象，修參數可能零訓練就把 800 Hz 拉回 22 m/s；(2) 若 800 Hz 才是「真」物理，則 400 Hz 的 22 m/s 是積分假象，打遠要靠 800 Hz 重訓或規格（effort）。先做 (1) 的 CPU code read（15），不佔 GPU。
+- 行動：`logs/ADOPT_FILM_GO.txt` 已寫（PH=2.6、BC=13298、RC=R4 model_1895、ROWS=logs/recov4/joint_s6.csv；20 的門控自行等 Isaac 0）；ADOPT_FILM_END 後自動寫 `logs/h30c800/GO`（除非我放 `logs/h30c800/HOLD14`）→ 13298 以 30c 獎勵在 800 Hz fine-tune +300（+200 自動延長）→ 800 Hz diag + joint s6 → H30C800_END（約 01:00）。
+- 記憶：新檔 batter-physics-dt-800hz.md。
+
 ### 10-31 19:41 RECOV4 PASS → 13298 + R4 + saim 通過修正版採用規則（規劃 14）
 - RECOV4_END（15，19:40）：R4 = recover h25r4 **model_1895**（`logs/rsl_rl/aib1_recover/2026-10-31_18-56-40_h25r4/model_1895.pt`，亦在 `logs/recov4/recover_ckpt.txt`）。bank 2048 states（hits 0.733，觸發時已倒 1）。joint @2.6：s6 ground **2/64**、tilt≤30° 61/64、flag 3、hits 23；s7 ground 2/64、tilt 62/64、flag 2、hits 29 → 欄位 64/64、ground 合計 4 ≤ 4、tilt ≥ 56/64 兩 seed 皆過。
 - 採用判定（phase 2.6）：0.03 表 16.9 ≥ 16.6 ✓、OF 7.4 ≥ 6 ✓、s6 ground 2 ≤ 2 ✓、flag 3 ≤ 4 ✓ → **13298 @1.5x + saim（row 9 旗標）+ R4 model_1895 = 最終影片候選打者**，取代 plain 12500 + R3。附註：16.6 的門檻只多 0.3，仍在 ±2 表噪音內；19.1 勝率目標未達。
