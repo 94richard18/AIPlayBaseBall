@@ -82,6 +82,9 @@ parser.add_argument("--link_log", action="store_true",
 parser.add_argument("--link_all", action="store_true",
                     help="(implies --link_log) also summarise the link peaks over every in-zone swing, the window cut at the reference "
                          "contact + 0.02 s (one-handed controls hit almost nothing); the hits-only rows are unchanged")
+parser.add_argument("--tau_log", action="store_true",
+                    help="(implies --link_all) PhysX's measured joint torque (projected joint forces) / effort limit over the "
+                         "--link_all window: peak, mean and the share of steps >= 0.98, vs the Isaac Lab estimate")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -108,6 +111,7 @@ parser.add_argument("--real_height", action="store_true", help="cfg.real_height:
 parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+args.link_all = args.link_all or args.tau_log
 args.link_log = args.link_log or args.link_all
 args.phase_log = args.phase_log or args.chain_log
 if args.stochastic:  # read by ArmAimEnv when it builds the frozen swing actor
@@ -378,7 +382,7 @@ def main():
         lk_names = [base.body_joint_names[i] for i in lk_ids]
         lk_j = [base.body_joint_ids[i] for i in lk_ids]
         nl = len(lk_ids)
-        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n")}
+        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n", "tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_n")}
         lk.update({k: torch.full((n, nl), float("nan"), device=dev) for k in ("t_pk", "t_pk_ref")})
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
@@ -483,6 +487,14 @@ def main():
                 last_a = (~finished & ~base.hit & (base.ref_t > ct - 0.1) & (base.ref_t <= ct)).unsqueeze(-1)
                 lk["sat_all"] += (sat_l & last_a).float()
                 lk["sat_all_n"] += last_a.float().expand(-1, nl)
+                if args.tau_log:  # what PhysX applied on the last physics step, not the explicit-PD estimate
+                    tm = base.robot.root_physx_view.get_dof_projected_joint_forces()[:, lk_j].abs()
+                    tr = tm / d.joint_effort_limits[:, lk_j].clamp_min(1e-6)
+                    lk["tm_pk"] = torch.where(win_a & (tr > lk["tm_pk"]), tr, lk["tm_pk"])
+                    lk["tm_sum"] += tr * win_a.float()
+                    lk["tm_sat"] += ((tr >= 0.98) & win_a).float()
+                    lk["tm_est"] += (sat_l & win_a).float()  # the estimate over the same window
+                    lk["tm_n"] += win_a.float().expand(-1, nl)
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -840,6 +852,13 @@ def main():
             rows_a = {nm: dict(sim_pk=md(A["pk_all"][:, i]),
                                sat_last100ms_pct=round(float(100 * A["sat_all"][:, i].sum() / max(A["sat_all_n"][:, i].sum(), 1)), 1))
                       for i, nm in enumerate(lk_names)}
+            if args.tau_log:
+                T = {k: lk[k].cpu().numpy()[zm] for k in ("tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_n")}
+                tn = np.maximum(T["tm_n"], 1)
+                for i, nm in enumerate(lk_names):
+                    rows_a[nm].update(meas_pk=md(T["tm_pk"][:, i]), meas_mean=md(T["tm_sum"][:, i] / tn[:, i]),
+                                      meas_sat_pct=round(float(100 * T["tm_sat"][:, i].sum() / tn[:, i].sum()), 1),
+                                      est_sat_pct=round(float(100 * T["tm_est"][:, i].sum() / tn[:, i].sum()), 1))
             out["link_log"]["all_in_zone"] = dict(n=int(zm.sum()), rows=rows_a)
             print(f"[bat] link_all (in-zone swings {int(zm.sum())}): " + json.dumps(rows_a), flush=True)
         print(f"[bat] link_log (hits {int(hm.sum())}; peaks before contact, times in s vs contact; sat over the last 0.1 s of reference time)")
