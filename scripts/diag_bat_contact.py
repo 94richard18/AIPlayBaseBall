@@ -79,6 +79,9 @@ parser.add_argument("--body_window", type=float, default=0.3)
 parser.add_argument("--link_log", action="store_true",
                     help="upper-body joints (waist / shoulders / elbows / wrists), hits: |joint speed| peak before contact and its time "
                          "vs contact, robot vs reference, and torque saturation over the last 0.1 s of reference time before contact")
+parser.add_argument("--link_all", action="store_true",
+                    help="(implies --link_log) also summarise the link peaks over every in-zone swing, the window cut at the reference "
+                         "contact + 0.02 s (one-handed controls hit almost nothing); the hits-only rows are unchanged")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -105,6 +108,7 @@ parser.add_argument("--real_height", action="store_true", help="cfg.real_height:
 parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_tail_s: the reference decelerates to a stop after the clip")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
+args.link_log = args.link_log or args.link_all
 args.phase_log = args.phase_log or args.chain_log
 if args.stochastic:  # read by ArmAimEnv when it builds the frozen swing actor
     os.environ["AIB_SWING_STOCHASTIC"] = "1"
@@ -374,7 +378,7 @@ def main():
         lk_names = [base.body_joint_names[i] for i in lk_ids]
         lk_j = [base.body_joint_ids[i] for i in lk_ids]
         nl = len(lk_ids)
-        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n")}
+        lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n")}
         lk.update({k: torch.full((n, nl), float("nan"), device=dev) for k in ("t_pk", "t_pk_ref")})
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
@@ -473,6 +477,12 @@ def main():
             sat_l = d.computed_torque[:, lk_j].abs() > d.applied_torque[:, lk_j].abs() + 1e-3
             lk["sat"] += (sat_l & last).float()
             lk["sat_n"] += last.float().expand(-1, nl)
+            if args.link_all:  # every swing, hit or not, up to the reference contact + 0.02 s
+                win_a = (~finished & ~base.hit & (base.ref_t > ct - 0.3) & (base.ref_t <= ct + 0.02)).unsqueeze(-1)
+                lk["pk_all"] = torch.where(win_a & (qd_l > lk["pk_all"]), qd_l, lk["pk_all"])
+                last_a = (~finished & ~base.hit & (base.ref_t > ct - 0.1) & (base.ref_t <= ct)).unsqueeze(-1)
+                lk["sat_all"] += (sat_l & last_a).float()
+                lk["sat_all_n"] += last_a.float().expand(-1, nl)
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -824,6 +834,14 @@ def main():
                             t_pk_sim=md(L["t_pk"][:, i] - th), t_pk_ref=md(L["t_pk_ref"][:, i]),
                             sat_last100ms_pct=round(float(100 * L["sat"][:, i].sum() / max(L["sat_n"][:, i].sum(), 1)), 1))
         out["link_log"] = dict(n=int(hm.sum()), rows=rows)
+        if args.link_all:
+            zm = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)
+            A = {k: lk[k].cpu().numpy()[zm] for k in ("pk_all", "sat_all", "sat_all_n")}
+            rows_a = {nm: dict(sim_pk=md(A["pk_all"][:, i]),
+                               sat_last100ms_pct=round(float(100 * A["sat_all"][:, i].sum() / max(A["sat_all_n"][:, i].sum(), 1)), 1))
+                      for i, nm in enumerate(lk_names)}
+            out["link_log"]["all_in_zone"] = dict(n=int(zm.sum()), rows=rows_a)
+            print(f"[bat] link_all (in-zone swings {int(zm.sum())}): " + json.dumps(rows_a), flush=True)
         print(f"[bat] link_log (hits {int(hm.sum())}; peaks before contact, times in s vs contact; sat over the last 0.1 s of reference time)")
         print(f"[bat] link | sim peak | ref peak | ratio | t peak sim / ref | sat %")
         for nm, v in rows.items():
