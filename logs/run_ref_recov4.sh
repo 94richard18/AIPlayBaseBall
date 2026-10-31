@@ -5,7 +5,8 @@
 #     (tables kept in logs/ref12500_j0/ for reuse);
 # (b) if S7_13298_END says s6 + s7 ground > 4 (more than 2/64 per seed on average): R4 = recover bank from the model_13298
 #     swing + saim (as R3), resume R3 model_1596 +300 on AIB-Recover-R2-v0, then joint s6 + s7 with it -> RECOV4_END
-#     (PASS = s6 pitch columns 64/64 and s6 + s7 ground <= 4); else RECOV4_END "skipped". One Isaac at a time.
+#     (PASS = s6 pitch columns 64/64 and s6 + s7 ground <= 4 and torso tilt +1.5 s <= 30 deg on >= 56/64 in each seed);
+#     else RECOV4_END "skipped". One Isaac at a time.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export AIB_EFFORT_SCALE=1.5
@@ -80,9 +81,10 @@ a = list(csv.DictReader(open('logs/falldiag2/fd_s6.csv'))); b6 = list(csv.DictRe
 cols = ['clip', 'kmh', 'handoff_t', 'handed', 'pred_y', 'pred_z', 'flight_pred', 'handoff_jump_m', 'pitcher_fell']
 same = sum(all(x[c] == y[c] for c in cols) for x, y in zip(a, b6))
 g = lambda b: sum(f(x['min_pelvis_z_2s']) < 0.35 for x in b); h = lambda b: sum(x['hit'] == 'True' for x in b)
-ok = same == 64 and g(b6) + g(b7) <= 4
+t30 = lambda b: sum(f(x['torso_tilt_1p5_deg']) <= 30 for x in b); fl = lambda b: sum(x['batter_fell'] == 'True' for x in b)
+ok = same == 64 and g(b6) + g(b7) <= 4 and t30(b6) >= 56 and t30(b7) >= 56  # 14 (17:06): tilt +1.5 s <= 30 deg on >= 56/64
 print(("PASS" if ok else "FAIL") + f" R4 (model_13298 + saim + recover h25r4 model_$CL): s6 pitch columns {same}/64, ground s6 {g(b6)}/64 s7 {g(b7)}/64, "
-      f"hits s6 {h(b6)} s7 {h(b7)}")
+      f"tilt +1.5 s <= 30 deg s6 {t30(b6)}/64 s7 {t30(b7)}/64 (bar 56), batter_fell flag s6 {fl(b6)} s7 {fl(b7)}, hits s6 {h(b6)} s7 {h(b7)}")
 PY
 ) | $BL | ckpt $RUN/model_$CL.pt"
 case "$MSG" in PASS*) echo "$RUN/model_$CL.pt" > $Q/recover_ckpt.txt;; esac
