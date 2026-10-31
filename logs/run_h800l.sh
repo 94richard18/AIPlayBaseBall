@@ -6,7 +6,10 @@
 # there is no low-lr override to undo), SAVE_EVERY 100, RAM watchdog 30 GB, AIB_ARMAIM_NOBOOK=1.
 # NSEG segments of 500 its (default 6 = +3000); after each, one native 800 Hz eval row (saim, 4 joint clips, phase 2.6, j0,
 # real heights) with the N4_400-style line (pool_stats hit / exit / launch / ss_max / dz + armaim_gate 300) appended to
-# logs/h800l/progress.txt. Waits for logs/h800l/GO (14's) + idle; logs/h800l/STOP ends it before the next segment.
+# logs/h800l/progress.txt, with the joint-relevant line (ss_max / exit / launch / hit / dz) next to N4_400 and B800.
+# Launch (14, 03:3x): this chain writes logs/h800l/GO itself once logs/WR_END.txt exists AND Isaac 0 AND logs/h800l/VETO
+# does not exist (a GO written by 14 also starts it). Between segments: logs/h800l/STOP ends it, logs/h800l/HOLD pauses it
+# until HOLD is removed (film windows).
 # Estimate: 800 Hz 12.2 s/it (H30C800, 2048 envs; 400 Hz long run 9.8 s/it) -> 500 its ~1.7 h + ~10 min row; +3000 ~11 h.
 # -> H800L_<its>_END per segment, H800L_END.
 cd /d/MyProject/AIPlayBaseBall
@@ -32,10 +35,17 @@ idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(
 fail() { grep -A14 Traceback $1 | tail -10; MSG="crash $2"; exit 1; }
 last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; echo ${L%.pt}; }
 priv() { powershell.exe -NoProfile -Command "\$x = Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match '$1' } | Select-Object -First 1; if (\$x) { [int]((Get-Process -Id \$x.ProcessId).PrivateMemorySize64/1GB) } else { -1 }" | tr -d '\r'; }
-MSG="waiting for logs/h800l/GO"
-until [ -f $O/GO ]; do sleep 60; done
+MSG="waiting for logs/h800l/GO (auto after WR_END + Isaac 0, unless VETO)"
+until [ -f $O/GO ]; do
+  [ -f logs/WR_END.txt ] && [ ! -f $O/VETO ] && [ "$(isaac)" -eq 0 ] && { echo "auto GO $(date +%H:%M) after WR_END" > $O/GO; break; }
+  sleep 60
+done
+jl() { $P -c "import sys; h, e, l, s, d = sys.argv[1:6]; print(f'ss {s} exit {e} launch {l} hit {h} dz {d}')" $1 $2 $3 $4 $5; }
+J4=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_N4_400.json)); B8=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_h30c800_base.json))
 LR=2026-10-25_13-56-51_human_pitched9b; LC=model_12500.pt; PK=0
 for k in $(seq 1 $NSEG); do
+  [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
+  while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   idle
   RN=human_pitched_h800l_$k
@@ -60,7 +70,7 @@ for k in $(seq 1 $NSEG); do
     --timing_noise 0 --timing_bias 0.055 --aim_offset_z 0 --release_csv $R --phase_horizon 2.6 --real_height --clips $C4 \
     --physics_dt 0.00125 --contact_log > $O/diag_$T.txt 2>&1
   if ! grep -q Traceback $O/diag_$T.txt && [ -f logs/diag_bat_contact_$T.json ]; then
-    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): hit / exit / launch / ss_max / dz $($P $SC/pool_stats.py logs/diag_bat_contact_$T.json) ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
+    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $($P $SC/pool_stats.py logs/diag_bat_contact_$T.json)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
   else ROW="+$((k * 500)) model_$I: diag crash or no json"; fi
   ROW="$ROW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
