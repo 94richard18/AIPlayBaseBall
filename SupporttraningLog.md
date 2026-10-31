@@ -60,7 +60,7 @@
 
 ## 3. 打者目前進度
 
-### 10-31 16:0x 訓練 carry 與比賽不一致的原因查核（CPU，無 Isaac）：飛行模型相同、投球分布涵蓋 eval → 不做 Human30f
+### 10-31 15:41 訓練 carry 與比賽不一致的原因查核（CPU，無 Isaac）：飛行模型相同、投球分布涵蓋 eval → 不做 Human30f
 - (b) 飛行模型：env 訓練 carry（ball_flight.simulate_flight，drag + Magnus）與 ONE OUTS first_bounce（ball_path + 草地）在同一 exit / launch / spin 網格上逐點相同（差 ≤ 0.1 m，scripts/carry_check.py）。
   - 最佳仰角：exit 21.6、旋轉 −1011 rpm（13298 表中位，偏上旋）→ 45°（38.2 m）；旋轉 2500 → 40°（42.4 m）；exit 25 / 2500 → 35°（54.1 m）。
   - 35° vs 49°（exit 21.6、−1011）：36.0 m vs 約 37.9 m → 兩個模型都讓 49° 飛得更遠，高仰角是獎勵本身的最佳解，不是模型差異。
