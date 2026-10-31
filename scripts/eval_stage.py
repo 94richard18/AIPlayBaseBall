@@ -48,6 +48,8 @@ parser.add_argument("--state_dump", type=str, default=None,
                     help="save env 0's full state (every per-env tensor of the env, robot / ball data, actuators, the obs) "
                          "after the eval's reset and each --rerun_csv reset, and 1 / 40 steps later (.pt)")
 parser.add_argument("--set", nargs="*", default=[], help="what-if env cfg overrides, key=value")
+parser.add_argument("--physics_hz", type=float, default=None,
+                    help="what-if: physics rate (Hz) at the same policy rate (decimation scaled); SEA dt follows the physics dt")
 parser.add_argument("--rsi", type=float, default=None, help="what-if: every episode starts at this reference time")
 parser.add_argument("--assist", action="store_true", help="keep the training assist force (full strength)")
 parser.add_argument("--zero", action="store_true", help="what-if: zero actions (PD on the set position only)")
@@ -104,6 +106,17 @@ def main():
         else:
             v = type(old)(v)
         setattr(cfg, k, v)
+    if args.physics_hz is not None:  # PDT (planning 14, 11-01): same 400 Hz policy, physics dt 1 / hz
+        policy_dt = cfg.sim.dt * cfg.decimation
+        dec = int(round(policy_dt * args.physics_hz))
+        assert dec >= 1 and abs(dec / args.physics_hz - policy_dt) < 1e-9, (args.physics_hz, policy_dt)
+        cfg.sim.dt, cfg.decimation, cfg.sim.render_interval = 1.0 / args.physics_hz, dec, dec
+        n_sea = 0
+        for a in cfg.robot.actuators.values():  # the SEA motor integrates once per physics step (compute() per sim step)
+            if hasattr(a, "dt"):
+                a.dt, n_sea = 1.0 / args.physics_hz, n_sea + 1
+        print(f"[pdt] physics {args.physics_hz:.0f} Hz (dt {cfg.sim.dt * 1000:.3f} ms), decimation {dec}, policy "
+              f"{1 / policy_dt:.0f} Hz, SEA dt = physics dt on {n_sea} actuator groups", flush=True)
     if args.rsi is not None:
         cfg.rsi_prob, cfg.rsi_min_s, cfg.rsi_margin_before_release = 1.0, args.rsi, 10.0  # what-if: start at this time
     elif hasattr(cfg, "rsi_prob"):
