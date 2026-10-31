@@ -34,6 +34,8 @@ parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_re
 parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
 parser.add_argument("--mix_frac", type=float, default=None, help="cfg.pitch_mix_frac")
 parser.add_argument("--mix_speed", type=float, nargs=2, default=None, help="cfg.pitch_mix_speed_kmh")
+parser.add_argument("--mix_zone_y", type=float, default=None, help="cfg.pitch_mix_zone_y (m)")
+parser.add_argument("--mix_zone_z", type=float, nargs=2, default=None, help="cfg.pitch_mix_zone_z (m)")
 parser.add_argument("--mix_release_csv", type=str, default=None, help="training mix: cfg.pitch_mix_release_csv (half the pitches shaped like these releases)")
 parser.add_argument("--release_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --release_csv (own release state each)")
 parser.add_argument("--pitch_csv", type=str, default=None, help="pitches from the RL pitcher's eval_stage --pitch_csv table (speed_mps, plate_y, plate_z, crossed)")
@@ -186,6 +188,10 @@ def main():
         cfg.pitch_mix_frac = args.mix_frac
     if args.mix_speed is not None:
         cfg.pitch_mix_speed_kmh = tuple(args.mix_speed)
+    if args.mix_zone_y is not None:
+        cfg.pitch_mix_zone_y = args.mix_zone_y
+    if args.mix_zone_z is not None:
+        cfg.pitch_mix_zone_z = tuple(args.mix_zone_z)
     cfg.tempo_zero_after_release = args.tempo_zero_after_release
     if args.post_ref_blend is not None:
         cfg.post_ref_blend_s = args.post_ref_blend
