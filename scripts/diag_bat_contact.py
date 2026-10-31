@@ -106,8 +106,9 @@ parser.add_argument("--torsion", type=float, default=None,
                     help="measurement only: torsional_patch_radius = min_torsional_patch_radius = R (m) on every batter collider")
 parser.add_argument("--hip_yaw_limit", type=float, default=None,
                     help="measurement only: l_hip_yaw / r_hip_yaw position limits set to +-L rad in PhysX (and the PD-target clamp follows)")
-parser.add_argument("--step_trace", action="store_true",
-                    help="per physics step: q / qd / PD target of l_hip_yaw and r_hip_yaw plus the step of first contact -> logs/steptrace_<tag>.npz")
+parser.add_argument("--step_trace", nargs="*", default=None, metavar="JOINT",
+                    help="per physics step: q / qd / PD target / projected force over effort limit / contribution to the sweet-spot "
+                         "speed of the named joints (default l_hip_yaw r_hip_yaw) plus the step of first contact -> logs/steptrace_<tag>.npz")
 parser.add_argument("--target_clip_margin", type=float, default=None,
                     help="measurement only: the body-joint PD targets are clipped to [lo + M, hi - M] (soft limits) instead of [lo, hi]")
 parser.add_argument("--stochastic", action="store_true",
@@ -525,11 +526,12 @@ def main():
 
             # FH: foot collider box (aib1.urdf l/r_foot: center (0.04, 0, -0.055), size 0.26 x 0.11 x 0.05) corners, link frame
             fh_c = torch.tensor([[0.04 + sx * 0.13, sy * 0.055, -0.055 - 0.025] for sx in (-1, 1) for sy in (-1, 1)], device=dev)
-    if args.step_trace:
-        st_names = ["l_hip_yaw", "r_hip_yaw"]
+    if args.step_trace is not None:
+        st_names = args.step_trace or ["l_hip_yaw", "r_hip_yaw"]
         st_j = [base.robot.joint_names.index(nm) for nm in st_names]
         ST_K = int(round(4.0 / base.physics_dt))
-        st = {k_: torch.full((n, ST_K, len(st_j)), float("nan"), device=dev) for k_ in ("q", "qd", "q_tgt")}
+        st = {k_: torch.full((n, ST_K, len(st_j)), float("nan"), device=dev) for k_ in ("q", "qd", "q_tgt", "tau_r", "cc")}
+        st_fixed = base.robot.is_fixed_base
         st_k = torch.zeros(n, dtype=torch.long, device=dev)
         st_hit = torch.full((n,), -1, dtype=torch.long, device=dev)
         st_lim = base.robot.data.joint_pos_limits[0, st_j].cpu().numpy()
@@ -579,13 +581,23 @@ def main():
         _, v_ss = base._sweet_spot(knob, axis, cm, v_cm, w)
         sp = v_ss.norm(dim=-1)
         rec["ss_speed_max"] = torch.where(live, torch.maximum(rec["ss_speed_max"], sp), rec["ss_speed_max"])
-        if args.step_trace:
+        if args.step_trace is not None:
             ok_s = ~finished & (st_k < ST_K)
             e_s = torch.nonzero(ok_s, as_tuple=True)[0]
             k_s = st_k[e_s]
             st["q"][e_s, k_s] = base.robot.data.joint_pos[e_s][:, st_j]
             st["qd"][e_s, k_s] = base.robot.data.joint_vel[e_s][:, st_j]
             st["q_tgt"][e_s, k_s] = base.robot.data.joint_pos_target[e_s][:, st_j]
+            st["tau_r"][e_s, k_s] = (base.robot.root_physx_view.get_dof_projected_joint_forces()[:, st_j]
+                                     / base.robot.data.joint_effort_limits[:, st_j].clamp_min(1e-6))[e_s]
+            # signed contribution of each joint to |v_ss| (sweet-spot point velocity from the bat Jacobian column x qd, on v_ss hat)
+            Js = base.robot.root_physx_view.get_jacobians()[:, base.bat_id - (1 if st_fixed else 0)]
+            cs = [j_ + (0 if st_fixed else 6) for j_ in st_j]
+            p_s = knob + axis * geom.sweet_spot_x
+            r_s = (p_s - base.robot.data.body_com_pos_w[:, base.bat_id]).unsqueeze(-1).expand(-1, 3, len(cs))
+            cc_s = Js[:, :3][:, :, cs] + torch.cross(Js[:, 3:][:, :, cs], r_s, dim=1)
+            vh_s = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
+            st["cc"][e_s, k_s] = ((cc_s * base.robot.data.joint_vel[:, st_j].unsqueeze(1)) * vh_s.unsqueeze(-1)).sum(1)[e_s]
             st_hit[:] = torch.where((st_hit < 0) & base.hit & ~finished, st_k, st_hit)
             st_k.add_(ok_s.long())  # in place: st_k is a closure variable
         if args.qd_trace:  # last write per bin wins (a bin spans 2-4 physics steps)
@@ -1126,7 +1138,7 @@ def main():
                             **({"qdj_names": np.array(qj_names), "body_mass": float(qj_M[0])} if args.qdj else {}),
                             **{k_: qtr[k_].cpu().numpy()[zt] for k_ in qtr if k_ not in ("qd", "q", "q_tgt", "v", "t")})
         print(f"[bat] trace -> {tp} ({int(zt.sum())} in-zone swings, joints {tr_names})", flush=True)
-    if args.step_trace:
+    if args.step_trace is not None:
         zs = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10) & (st_hit.cpu().numpy() >= 0)
         sp_ = os.path.join(ROOT, "logs", f"steptrace_{args.tag}.npz")
         np.savez_compressed(sp_, names=np.array(st_names), limits=st_lim, dt=base.physics_dt, hit_k=st_hit.cpu().numpy()[zs],
