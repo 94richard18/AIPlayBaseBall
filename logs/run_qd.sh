@@ -30,6 +30,6 @@ row() {  # $1 tag, rest: extra flags
 MSG="plain 12500, hard grip, 4 joint clips, phase 2.6, j0"
 row QD_W4 --qd_trace && row QD_W8 --qd_trace --physics_dt 0.00125 && \
   OUT="$OUT | overlay $O/qd_overlay.png: $($P $SC/trace_plot.py logs/trace_QD_W4.npz logs/trace_QD_W8.npz $O/qd_overlay.png 2>&1 | tail -1)"
-row QD_W8v2 --physics_dt 0.00125 --vel_limit_scale 2 && \
-  OUT="$OUT | QD_W8v2 (800 Hz, vel x2): $($P $SC/nth_row.py logs/diag_bat_contact_QD_W8v2.json)"
+[ -n "$SKIPV2" ] || row QD_W8v2 --physics_dt 0.00125 --vel_limit_scale 2 && \
+  [ -z "$SKIPV2" ] && OUT="$OUT | QD_W8v2 (800 Hz, vel x2): $($P $SC/nth_row.py logs/diag_bat_contact_QD_W8v2.json)"
 MSG="done; $MSG"
