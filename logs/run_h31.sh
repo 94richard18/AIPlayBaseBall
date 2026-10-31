@@ -8,6 +8,9 @@
 # Segments of 500 its (NSEG, default 6): STOP checked before each, HOLD between segments. +50 check of segment 1:
 # bat/ss_ca_lt_lo > 0.25 -> lo 10 from segment 2 (14, 05:5x) -> logs/H31_50_CHECK.txt. Per segment: the same eval row as the
 # 800 Hz long run (next to N4_400 / B800) + the training curve every 100 its -> logs/H31_<its>_END.txt, final logs/H31_END.txt.
+# Film4 hook (14, 11-01 05:4x): HOLD is honoured only from 18:30 (11-01) on, or anytime when logs/h31/HOLD contains "now".
+# At the first evening HOLD boundary: joint s6 (64 envs, saim + R4 recover, phase 2.6) of logs/h31/FILM_CKPT (else the newest
+# segment checkpoint with eval hit >= 0.40, logs/h31/passed.txt) -> logs/h31/joint_s6_<its>.csv + logs/H31_JOINT_END.txt.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=100 AIB_EFFORT_SCALE=1.5 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
@@ -44,12 +47,37 @@ if [ ! -f logs/H31_SMOKE_END.txt ]; then
 fi
 MSG="smoke done, waiting for logs/h31/GO"
 until [ -f $O/GO ]; do [ -f $O/STOP ] && { MSG="stopped before segment 1"; exit 0; }; sleep 60; done
+PC=logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt
+RC=$(cat logs/recov4/recover_ckpt.txt)
+JX="--saim $GY --saim_bound 0.4 --saim_window 0.60 --saim_comp full --percept_filter"
+joint() {  # film4 rows of the filmed checkpoint
+  local JC JI
+  JC=$([ -f $O/FILM_CKPT ] && tr -d '
+' < $O/FILM_CKPT); [ -n "$JC" ] || JC=$(tail -1 $O/passed.txt 2>/dev/null)
+  if [ -z "$JC" ] || [ ! -f "$JC" ]; then
+    echo "H31_JOINT_END $(date +%H:%M) SKIPPED: no FILM_CKPT and no segment checkpoint with hit >= 0.40 (ckpt '$JC')" > logs/H31_JOINT_END.txt; return
+  fi
+  JI=$(basename $JC .pt); JI=${JI#model_}
+  idle
+  timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $JC --envs 64 --seed 6 --after_done recover_rl     --recover_ckpt $RC --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX --phase_horizon 2.6 --csv $O/joint_s6_$JI.csv     > $O/joint_s6_$JI.txt 2>&1
+  if grep -q Traceback $O/joint_s6_$JI.txt || [ ! -f $O/joint_s6_$JI.csv ]; then
+    echo "H31_JOINT_END $(date +%H:%M) CRASH $JC: $(grep -A14 Traceback $O/joint_s6_$JI.txt | tail -1)" > logs/H31_JOINT_END.txt
+  else
+    echo "H31_JOINT_END $(date +%H:%M) BC=$JC ROWS=$O/joint_s6_$JI.csv (recover $(basename $(dirname $RC))): $($P $SC/h31_joint_row.py $O/joint_s6_$JI.csv)" > logs/H31_JOINT_END.txt
+  fi
+}
 jl() { $P -c "import sys; h, e, l, s, d = sys.argv[1:6]; print(f'ss {s} exit {e} launch {l} hit {h} dz {d}')" $1 $2 $3 $4 $5; }
 J4=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_N4_400.json)); B8=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_h30c800_base.json))
 LR=2026-10-25_13-56-51_human_pitched9b; LC=model_12500.pt; PK=0
 for k in $(seq 1 $NSEG); do
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
-  [ $k -gt 1 ] && while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done  # between segments only
+  if [ $k -gt 1 ] && [ -f $O/HOLD ]; then  # between segments only; evening (film4) or "now"
+    EV=$([ "$(date +%Y%m%d%H%M)" -ge 202611011830 ] && echo 1)
+    if [ -n "$EV" ] || grep -q now $O/HOLD; then
+      [ -n "$EV" ] && [ ! -f logs/H31_JOINT_END.txt ] && { MSG="joint s6 for film4 before segment $k"; joint; }
+      while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done
+    fi
+  fi
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   idle
   RN=human_pitched_h31_$k
@@ -80,7 +108,9 @@ for k in $(seq 1 $NSEG); do
     --timing_noise 0 --timing_bias 0.055 --aim_offset_z 0 --release_csv $R --phase_horizon 2.6 --real_height --clips $C4 \
     --physics_dt 0.00125 --contact_log > $O/diag_$T.txt 2>&1
   if ! grep -q Traceback $O/diag_$T.txt && [ -f logs/diag_bat_contact_$T.json ]; then
-    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $($P $SC/pool_stats.py logs/diag_bat_contact_$T.json)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
+    PS=$($P $SC/pool_stats.py logs/diag_bat_contact_$T.json)
+    awk -v x="${PS%% *}" 'BEGIN{exit !(x >= 0.40)}' && echo "$D/model_$I.pt" >> $O/passed.txt
+    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
   else ROW="+$((k * 500)) model_$I: diag crash or no json"; fi
   ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; lo ${AIB_SS_CA_LO:-12.0}"
   ROW="$ROW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
