@@ -2802,3 +2802,11 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - `videos/adopt_1031_s6_k30.mp4`（R4 rows 中最遠界內）：exit 20.3 m/s、launch 20.6°、carry 27.9 m；沒跌倒，pelvis 0.865 m、tilt 1.8°。淡白 0/343。
 - 15 的 JTIME 確認滾地球主因是聯合場景 800 Hz（13298：400 Hz hit 0.93 / exit 23 / launch +28；800 Hz hit 0.60 / exit 16 / launch −31）。投手 SEA 綁 1/800，聯合場景不能降頻，修正在打者端（800 Hz 微調）。
 - 標記 `logs/ADOPT_FILM_END.txt` 20:34。
+
+## 11-01 01:55 12 小時例行拍片 FILM2（800 Hz 微調打者 13796）
+
+- 14 標註：「800 Hz contact fine-tune 13796；env 32 = 外野飛行 44.1 m（64 列中 1 列），飛行中位數仍在內野（4.7 m）」。
+- 設定：打者 human_pitched30c800_2 model_13796 @ 1.5x + scripted aim + percept_filter + phase 2.6，恢復 R4 1895，投手 P3c 7600；指令同 15 的 run_h30c800.sh joint s6 + --video。腳本 `logs/film2.sh`，14 01:3x 寫 `logs/FILM2_GO.txt`，01:35 開拍。
+- `videos/film2_1101_s6_k12.mp4`（例行那顆球）：exit 20.2 m/s、launch −21°、carry 2.1 m；沒跌倒，pelvis 0.877 m、tilt 1.8°。對 `logs/h30c800/joint_s6.csv` 52 欄 64/64，blank 0，High。淡白 66 格都在 frame 151 = 2.64 s 剪接點後，誤報；縮圖正常。
+- env 32：rows 正確（exit 23.2 m/s、launch 35.7°、carry 44.1 m、沒跌倒；52 欄 64/64），但畫面淡白 148/343（剪接前就有、含 frame 0，bitrate 4.4 vs 6.9 Mb/s），縮圖確認是已知的渲染問題 → 改名 `videos/film2_1101_s6_k32_washed.mp4`，依規則重拍一次；`logs/film2r.sh` 等 14 的 `logs/FILM2R_GO.txt`（08:20 前），標記 `logs/FILM2R_END.txt`。
+- 標記 `logs/FILM2_END.txt` 01:55。
