@@ -60,6 +60,19 @@
 
 ## 3. 打者目前進度
 
+- **10-31 20:15 揮速隨 dt 變化的候選原因（CPU 讀程式碼，沒有啟動任何東西）**：
+  - 排除：
+    - Implicit PD：數值阻尼約 k·dt，方向會讓 400 Hz 比較慢，和觀察相反；
+    - effort clamp 每個子步都一樣；
+    - 打者程式碼裡的 dt 都以控制步為準；
+    - 接觸是解析計算；ss_max 擊中 / 未擊中相同，代表速度在接觸前就少了。
+  - 候選：
+    1. 雙手握棒閉鏈：top_hand_grip 是 spherical joint，ExcludeFromArticulation（`convert_robot_usd.py:66-74`），每個子步用 8 / 2 次迭代求解。800 Hz 時閉鏈更硬，雙手互相拉扯更多。
+    2. 關節速度上限：腰 25、髖 20、腕 40 rad/s，可能卡住，而且 400 Hz 時限制漏得較多。
+    3. 腳和地面的穿透（max_depenetration_velocity 1.0），是較弱的候選。
+  - diag 新增 `--solver_iters`、`--vel_limit_scale`（預設不變，commit 224ace2）。
+  - 提議：12500 在 800 Hz 各跑一列，V1 用 4 / 1 次迭代，V2 用速度上限 ×2。V2 會動到規格值，要由使用者決定。
+
 - **10-31 20:11 JTIME_END：確認原因是物理步長**。原生 800 Hz 重現了聯合測試的打者，原生 400 Hz 沒有（13298 + saim、phase 2.6、j0、real heights、好球帶內）：
   - 800 Hz 四個 clip 合併：擊中 0.598、exit 中位數 16.1、仰角 −30.7°、ss_max 16.3、dz −0.046。
     - 282-1 最差：擊中 0.364、仰角 −36°、dz −0.089，和聯合測試的 clip 模式一樣。
