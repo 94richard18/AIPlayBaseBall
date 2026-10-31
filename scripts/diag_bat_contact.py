@@ -85,6 +85,12 @@ parser.add_argument("--link_all", action="store_true",
 parser.add_argument("--tau_log", action="store_true",
                     help="(implies --link_all) PhysX's measured joint torque (projected joint forces) / effort limit over the "
                          "--link_all window: peak, mean and the share of steps >= 0.98, vs the Isaac Lab estimate")
+parser.add_argument("--grip_log", action="store_true",
+                    help="top-hand loop over every in-zone swing (reference contact - 0.3 to + 0.02 s): r_hand grip point vs bat "
+                         "grip point gap (mm, peak / mean), their relative speed and each point's peak speed (the bat is welded to l_hand)")
+parser.add_argument("--grip_soft", type=float, nargs=2, default=None, metavar=("K", "C"),
+                    help="engineering test (default off): a USD copy with the spherical top_hand_grip disabled and a D6 loop "
+                         "joint in its place, rotation free, translation on drives of stiffness K N/m and damping C N s/m")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -251,6 +257,32 @@ def main():
         stage.GetRootLayer().Export(dst)
         cfg.robot.spawn.usd_path = dst
         print(f"[bat] top hand released: {dst}", flush=True)
+    if args.grip_soft is not None:
+        from pxr import Usd, UsdPhysics  # noqa: E402
+
+        k_g, c_g = args.grip_soft
+        src = cfg.robot.spawn.usd_path
+        stage = Usd.Stage.Open(src)
+        jp = [p for p in stage.Traverse() if p.GetName() == "top_hand_grip"]
+        assert len(jp) == 1, "top_hand_grip not found"
+        hard = UsdPhysics.SphericalJoint(jp[0])
+        hard.GetJointEnabledAttr().Set(False)
+        soft = UsdPhysics.Joint.Define(stage, jp[0].GetPath().GetParentPath().AppendChild("top_hand_grip_soft"))
+        soft.CreateBody0Rel().SetTargets(hard.GetBody0Rel().GetTargets())
+        soft.CreateBody1Rel().SetTargets(hard.GetBody1Rel().GetTargets())
+        for a_ in ("LocalPos0", "LocalPos1", "LocalRot0", "LocalRot1"):
+            getattr(soft, f"Create{a_}Attr")().Set(getattr(hard, f"Get{a_}Attr")().Get())
+        soft.CreateExcludeFromArticulationAttr().Set(True)
+        for ax in ("transX", "transY", "transZ"):  # no LimitAPI: every axis free; translation held by the springs
+            dr = UsdPhysics.DriveAPI.Apply(soft.GetPrim(), ax)
+            dr.CreateTypeAttr().Set("force")
+            dr.CreateStiffnessAttr().Set(float(k_g))
+            dr.CreateDampingAttr().Set(float(c_g))
+            dr.CreateTargetPositionAttr().Set(0.0)
+        dst = os.path.join(os.path.dirname(src), f"aib1_diag_grip_soft_k{int(k_g)}_c{int(c_g)}.usd")  # same folder: references resolve
+        stage.GetRootLayer().Export(dst)
+        cfg.robot.spawn.usd_path = dst
+        print(f"[bat] compliant top-hand grip K {k_g} N/m, C {c_g} N s/m: {dst}", flush=True)
     if args.diag_no_replicate:
         cfg.scene.replicate_physics = False
     if args.diag_add_pitcher:  # bisect the joint-vs-native batter dynamics (10-28): the pitcher's presence alone
@@ -384,6 +416,14 @@ def main():
         nl = len(lk_ids)
         lk = {k: torch.zeros(n, nl, device=dev) for k in ("pk", "pk_ref", "sat", "sat_n", "pk_all", "sat_all", "sat_all_n", "tm_pk", "tm_sum", "tm_sat", "tm_est", "tm_lim", "tm_n")}
         lk.update({k: torch.full((n, nl), float("nan"), device=dev) for k in ("t_pk", "t_pk_ref")})
+    if args.grip_log:
+        from isaaclab.utils.math import quat_apply as qa_g
+        from aibaseball.robot.stance import Stance
+
+        stn = Stance.load(os.path.join(ROOT, "assets", "aib1_human", "batting_stance.json"))
+        g_b = [base.robot.find_bodies(nm)[0][0] for nm in ("r_hand", "bat")]
+        g_loc = torch.tensor([stn.top_hand_local, stn.bat_top_local], dtype=torch.float32, device=dev)
+        gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -499,6 +539,23 @@ def main():
                     at_lim = ((q_l - lim[..., 0]).abs() < 0.02) | ((q_l - lim[..., 1]).abs() < 0.02)
                     lk["tm_lim"] += (at_lim & win_a).float()
                     lk["tm_n"] += win_a.float().expand(-1, nl)
+        if args.grip_log:
+            d = base.robot.data
+            ct_g = base.ref.contact_time[base.clip]
+            win_g = ~finished & ~base.hit & (base.ref_t > ct_g - 0.3) & (base.ref_t <= ct_g + 0.02)
+            rq = d.body_link_quat_w[:, g_b]
+            off = qa_g(rq.reshape(-1, 4), g_loc.expand(n, 2, 3).reshape(-1, 3)).reshape(n, 2, 3)
+            gpt = d.body_link_pos_w[:, g_b] + off
+            gv = d.body_link_lin_vel_w[:, g_b] + torch.cross(d.body_link_ang_vel_w[:, g_b], off, dim=-1)
+            gap = (gpt[:, 0] - gpt[:, 1]).norm(dim=-1) * 1000.0
+            rel = (gv[:, 0] - gv[:, 1]).norm(dim=-1)
+            wf = win_g.float()
+            gr["gap_pk"] = torch.where(win_g, torch.maximum(gr["gap_pk"], gap), gr["gap_pk"])
+            gr["gap_sum"] += gap * wf
+            gr["rel_pk"] = torch.where(win_g, torch.maximum(gr["rel_pk"], rel), gr["rel_pk"])
+            gr["hand_pk"] = torch.where(win_g, torch.maximum(gr["hand_pk"], gv[:, 0].norm(dim=-1)), gr["hand_pk"])
+            gr["bat_pk"] = torch.where(win_g, torch.maximum(gr["bat_pk"], gv[:, 1].norm(dim=-1)), gr["bat_pk"])
+            gr["n"] += wf
         if args.contact_log or args.phase_log:
             was_hit, v_in, ref_t_pre = base.hit.clone(), base.pitch_vel.clone(), base.ref_t.clone()
         if args.chain_log:
@@ -870,6 +927,13 @@ def main():
         print(f"[bat] link | sim peak | ref peak | ratio | t peak sim / ref | sat %")
         for nm, v in rows.items():
             print(f"[bat] {nm:18s} | {v['sim_pk']} | {v['ref_pk']} | {v['ratio']} | {v['t_pk_sim']} / {v['t_pk_ref']} | {v['sat_last100ms_pct']}")
+    if args.grip_log:
+        zg = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)
+        G = {k: v.cpu().numpy()[zg] for k, v in gr.items()}
+        mg = lambda v: round(float(np.nanmedian(v)), 2) if np.isfinite(v).any() else None  # noqa: E731
+        out["grip_log"] = dict(n=int(zg.sum()), gap_pk_mm=mg(G["gap_pk"]), gap_mean_mm=mg(G["gap_sum"] / np.maximum(G["n"], 1)),
+                               rel_speed_pk=mg(G["rel_pk"]), hand_pt_speed_pk=mg(G["hand_pk"]), bat_pt_speed_pk=mg(G["bat_pk"]))
+        print("[bat] grip_log " + json.dumps(out["grip_log"]), flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
