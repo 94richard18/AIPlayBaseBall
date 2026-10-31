@@ -2811,3 +2811,12 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - env 32：rows 正確（exit 23.2 m/s、launch 35.7°、carry 44.1 m、沒跌倒；52 欄 64/64），但畫面淡白 148/343（剪接前就有、含 frame 0，bitrate 4.4 vs 6.9 Mb/s），縮圖確認是已知的渲染問題 → 改名 `videos/film2_1101_s6_k32_washed.mp4`，依規則重拍一次；`logs/film2r.sh` 等 14 的 `logs/FILM2R_GO.txt`（08:20 前），標記 `logs/FILM2R_END.txt`。
 - 標記 `logs/FILM2_END.txt` 01:55。
 - 11-01 02:36 重拍 env 32（14 的背景程序在 TC_END 後寫 `logs/FILM2R_GO.txt`，02:25 開拍，`logs/film2r.sh`）：`videos/film2_1101_s6_k32.mp4` 乾淨 —— 52 欄 64/64、blank 0、High、淡白 0/343，縮圖正常（exit 23.2 m/s、launch 35.7°、carry 44.1 m、沒跌倒）。標記 `logs/FILM2R_END.txt` 02:36。
+
+## 11-01 05:40 投手物理頻率掃描 PDT（eval_stage --physics_hz，同 400 Hz 策略頻率，SEA dt 跟著物理 dt）
+
+- 14 05:26 寫 `logs/PDT_GO.txt`（H800L 第一段結束後），腳本 `logs/pdt.sh`，P3c 7600、64 envs、與 `assets/game/p3c_identical_t18_release.csv` 同設定（start noise 0、shift 0.0025、plate_yaw 18、aero）。程式 71cfa3e。
+- 800 Hz（訓練頻率）：站穩 51/64、站穩且 T4 26/64（T4 不論站穩 32）、出手速度中位數 17.81 m/s、release_t 0.9988、到本壘 16.9 m/s。對投球表：出手速度 64 列最大差 0.000，release_t 中位數相同；53 列只在第 3 位小數有 ±0.001 差（x / y / vy / wx 等，GPU 浮點），at_rest 7 列、tier 4 列翻轉（邊界球）。表：站穩 52、T4 34 → 同一個投手，差在浮點雜訊。
+- 400 Hz：跌倒 61/64、站穩 3/64、T4 0、出手 16.77 m/s、到本壘 13.3 m/s（y −2.17、z 5.72 m，大暴投）。
+- 1600 Hz：跌倒 64/64、T4 0、出手 18.07 m/s、到本壘 16.0 m/s（y −1.09、z 3.06 m）。
+- 判讀：投手策略綁在訓練時的 800 Hz，換頻率就失去平衡、控球全失；與打者相同的「策略綁 dt」現象，但投手本來就在 800 Hz 訓練，聯合場景 800 Hz 對投手沒有影響。
+- 備註：pdt.sh 的彙總步驟寫成 `$P - <<'PY' < /dev/null`，stdin 被 /dev/null 蓋掉沒跑；上面的比對是事後手動跑同一段邏輯。標記 `logs/PDT_END.txt` 05:40。
