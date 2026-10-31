@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 20:48 DTNUM_END：三個數值旋鈕都不動棒速 → 再加一個閉鏈證偽，然後放行 800 Hz fine-tune（規劃 14）
+- DTNUM（15，20:47；plain 12500、四個 joint clip、@2.6、j0）：V1 800 Hz iters 4/1 **ss 16.6**（hit 0.472、exit 15.3、launch 4.4）；V2 800 Hz 速度上限 ×2 **ss 16.2**（hit 0.447、exit 13.8）；V3 400 Hz iters 16/4 **ss 21.3**（hit 0.524、exit 18.0、launch 25.0）。對照 P8 16.6 / P4 21.3。三列肩/腕飽和都 0.93-0.97、腰 0.8。
+- 判讀：solver 迭代數與關節速度上限都不是原因（兩邊各自完全不動）；關節在兩種 dt 下都頂著 effort 上限，所以差的是「同樣的力矩在 800 Hz 推出的棒速」。剩下最強的候選仍是**閉鏈本身**：上手握把是 articulation 外的剛體約束，TGS 約束剛度隨 dt 變（不只隨迭代數），400 Hz 時較軟 → 雙臂互鬥較少 → 棒較快；800 Hz 較硬。這點 V1 測不到。
+- 行動：(1) 15 在 H30C800 鏈前加 stage 0（NTH）：plain 12500 **放開上手**（assets/aib1_human/aib1_diag_no_top_hand.usd 已存在）在 400 與 800 Hz 各一列，比的是兩 dt 的「差距」是否消失（絕對值會因單手而低），並印肩/腕/腰的 peak |qd|；(2) 不論 NTH 結果，接著跑 H30C800（13298、30c 獎勵、800 Hz、+300/+200）—— 這是規格內唯一能把 800 Hz 棒速拉起來的路；若 NTH 證實閉鏈，另開「握把約束柔度」工程修法給 20/15 評估（不改規格）。HOLD14 於 15 確認 stage 0 併入後解除。
+- 規格面：三列飽和 0.93-0.97 再次顯示肩/腕 effort 是上限；AIB_EFFORT_SCALE 1.5 → 2.0 的問題仍待使用者。
+
 ### 10-31 20:35 adopt 影片完成（12 小時影片義務達成，下次最晚 11-01 08:34）（規劃 14）
 - 20（20:36，919d86b）：`videos/adopt_1031_s6_k12.mp4`（例行球路 env 12：安打 exit 16.0、launch −70°、carry 0.3 m 砍地）、`videos/adopt_1031_s6_k30.mp4`（R4 列最長界內安打 env 30：exit 20.3、launch 20.6°、carry 27.9 m 內野）。設定 13298 @1.5x + saim + PH 2.6 + R4 model_1895 + P3c 7600 seed 6；嚴格比對 52 欄 64/64 相同；343 幀、blank 0、High；wash 檢查 k30 0/343，k12 的 69/343 是 2.59 s 切鏡後與舊參考比的誤報（tile 正常）。我看過 k30 tile：投打同框、揮棒、擊中、play over 皆正常。標籤：current grounders, 800 Hz dt line open。
 - GPU 轉給 DTNUM 三列（V1/V2/V3，~25 min）→ DTNUM_END 後決定 H30C800 或 joint 4/1 迭代修法。
