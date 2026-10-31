@@ -94,6 +94,10 @@ parser.add_argument("--grip_soft", type=float, nargs=2, default=None, metavar=("
 parser.add_argument("--qd_trace", action="store_true",
                     help="time series for the desync overlay: |qd| of waist_yaw / l_elbow / l_wrist_* and |v_sweet_spot| in 5 ms "
                          "bins of reference time to contact (-0.3 .. +0.05 s), plus each bin's physics time -> logs/trace_<tag>.npz")
+parser.add_argument("--qdj", action="store_true",
+                    help="(implies --qd_trace) per bin: every body joint's J*qd and the root linear / angular terms projected on "
+                         "v_ss; pelvis horizontal speed / yaw rate / height, feet horizontal speed (slip), whole-body ground force "
+                         "from the momentum rate (no contact sensors on the batter)")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -121,6 +125,7 @@ parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.link_all = args.link_all or args.tau_log
+args.qd_trace = args.qd_trace or args.qdj
 args.link_log = args.link_log or args.link_all
 args.phase_log = args.phase_log or args.chain_log
 if args.stochastic:  # read by ArmAimEnv when it builds the frozen swing actor
@@ -435,6 +440,17 @@ def main():
                   q=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   q_tgt=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   v=torch.full((n, TR_NB), float("nan"), device=dev), t=torch.full((n, TR_NB), float("nan"), device=dev))
+        if args.qdj:
+            qj_j = base.body_joint_ids
+            qj_names = list(base.body_joint_names)
+            qj_fixed = base.robot.is_fixed_base
+            qj_feet = [base.robot.find_bodies(f"{sd}_foot")[0][0] for sd in "lr"]
+            qj_m = base.robot.root_physx_view.get_masses().to(dev)  # (n, bodies)
+            qj_M = qj_m.sum(-1)
+            qtr["cc"] = torch.full((n, TR_NB, len(qj_j)), float("nan"), device=dev)
+            for k_ in ("root_lin", "root_ang", "pel_v", "pel_yaw", "pel_z", "foot_v_l", "foot_v_r", "f_z", "f_xy"):
+                qtr[k_] = torch.full((n, TR_NB), float("nan"), device=dev)
+            qj_prev = {}
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -490,6 +506,37 @@ def main():
             qtr["q_tgt"][e_i, b_ok] = base.robot.data.joint_pos_target[e_i][:, tr_j]  # the PD target the policy issued
             qtr["v"][e_i, b_ok] = sp[e_i]
             qtr["t"][e_i, b_ok] = t[e_i]
+            if args.qdj:
+                dq = base.robot.data
+                Jq = base.robot.root_physx_view.get_jacobians()[:, base.bat_id - (1 if qj_fixed else 0)]
+                cols = qj_j + (0 if qj_fixed else 6)
+                p_q = knob + axis * geom.sweet_spot_x
+                cm_q = dq.body_com_pos_w[:, base.bat_id]
+                Jl_q, Ja_q = Jq[:, :3][:, :, cols], Jq[:, 3:][:, :, cols]
+                cc_q = Jl_q + torch.cross(Ja_q, (p_q - cm_q).unsqueeze(-1).expand_as(Ja_q), dim=1)
+                vh_q = v_ss / sp.unsqueeze(-1).clamp_min(1e-6)
+                qtr["cc"][e_i, b_ok] = ((cc_q * dq.joint_vel[:, qj_j].unsqueeze(1)) * vh_q.unsqueeze(-1)).sum(1)[e_i]
+                if not qj_fixed:  # root twist split into its linear and angular columns (COM convention, as chain_log res_com)
+                    Jb_q = Jq[:, :, :6]
+                    vl = dq.root_link_lin_vel_w.unsqueeze(-1)
+                    va = dq.root_link_ang_vel_w.unsqueeze(-1)
+                    r_l = (Jb_q[:, :3, :3] @ vl).squeeze(-1) + torch.cross((Jb_q[:, 3:, :3] @ vl).squeeze(-1), p_q - cm_q, dim=-1)
+                    r_a = (Jb_q[:, :3, 3:] @ va).squeeze(-1) + torch.cross((Jb_q[:, 3:, 3:] @ va).squeeze(-1), p_q - cm_q, dim=-1)
+                    qtr["root_lin"][e_i, b_ok] = (r_l * vh_q).sum(-1)[e_i]
+                    qtr["root_ang"][e_i, b_ok] = (r_a * vh_q).sum(-1)[e_i]
+                qtr["pel_v"][e_i, b_ok] = dq.root_link_lin_vel_w[e_i, :2].norm(dim=-1)
+                qtr["pel_yaw"][e_i, b_ok] = dq.root_link_ang_vel_w[e_i, 2]
+                qtr["pel_z"][e_i, b_ok] = (dq.root_link_pos_w[:, 2] - base.scene.env_origins[:, 2])[e_i]
+                fv = dq.body_link_lin_vel_w[:, qj_feet, :2].norm(dim=-1)
+                qtr["foot_v_l"][e_i, b_ok] = fv[e_i, 0]
+                qtr["foot_v_r"][e_i, b_ok] = fv[e_i, 1]
+                mom = (qj_m.unsqueeze(-1) * dq.body_com_lin_vel_w).sum(1)  # (n, 3) whole-body momentum
+                if "mom" in qj_prev:
+                    f_g = (mom - qj_prev["mom"]) / base.physics_dt  # = ground force + gravity (other contacts: bat-ball, rare)
+                    f_g[:, 2] += qj_M * 9.81
+                    qtr["f_z"][e_i, b_ok] = f_g[e_i, 2]
+                    qtr["f_xy"][e_i, b_ok] = f_g[e_i, :2].norm(dim=-1)
+                qj_prev["mom"] = mom
         sq = live & (sp > FAST_SS) & (axis[:, 0].abs() < rec["sq_ax"])
         rec["sq_ax"] = torch.where(sq, axis[:, 0].abs(), rec["sq_ax"])
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
@@ -961,7 +1008,9 @@ def main():
         np.savez_compressed(tp, tau=TR_T0 + TR_DT * (np.arange(TR_NB) + 0.5), names=np.array(tr_names),
                             qd=qtr["qd"].cpu().numpy()[zt], v_ss=qtr["v"].cpu().numpy()[zt], t=qtr["t"].cpu().numpy()[zt],
                             q=qtr["q"].cpu().numpy()[zt], q_tgt=qtr["q_tgt"].cpu().numpy()[zt],
-                            t_hit=r["t_hit"][zt], hit=r["hit"][zt], ref_phase_hit=r["ref_phase_hit"][zt])
+                            t_hit=r["t_hit"][zt], hit=r["hit"][zt], ref_phase_hit=r["ref_phase_hit"][zt],
+                            **({"qdj_names": np.array(qj_names), "body_mass": float(qj_M[0])} if args.qdj else {}),
+                            **{k_: qtr[k_].cpu().numpy()[zt] for k_ in qtr if k_ not in ("qd", "q", "q_tgt", "v", "t")})
         print(f"[bat] trace -> {tp} ({int(zt.sum())} in-zone swings, joints {tr_names})", flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
