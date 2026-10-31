@@ -18,9 +18,9 @@ GY=logs/armaim_auth/scripted_gain.json
 RES=$(ls -td logs/rsl_rl/aib1_armaim/*armaim_smoke | head -1)/model_1.pt
 SAIM="--armaim $RES --aim_scripted $GY --aim_bound 0.4 --aim_window 0.60 --aim_obs_comp --aim_obs_comp_full --percept_filter"
 O=logs/h30c_long; mkdir -p $O
-M=logs/H30C_LONG_END.txt; rm -f $M; MSG="aborted"
+M=logs/H30C_LONG_END.txt; rm -f $M logs/H30C_LONG_500_END.txt; MSG="aborted"
 touch $O/chain.stamp
-trap 'echo "H30C_LONG_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
+trap '[ -f logs/H30C_LONG_500_END.txt ] || echo "H30C_LONG_500_END $(date +%H:%M) chain ended before +500: $MSG" > logs/H30C_LONG_500_END.txt; echo "H30C_LONG_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
 isaac() { powershell.exe -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'isaaclab_env' -and \$_.CommandLine -match 'scripts/' }).Count" | tr -d '\r'; }
 freegb() { powershell.exe -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB)" | tr -d '\r'; }
 idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(freegb)" -ge 20 ]; do sleep 30; done; }
@@ -59,5 +59,10 @@ for k in 1 2 3; do
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
   ROWS="$ROWS $ROW ||"
   LR=$(basename $D); LC=model_$I.pt
+  # 14 (10:40): the 12-hour film (aiplaybaseball-20) goes between segments 1 and 2, no Isaac beside it
+  if [ $k = 1 ]; then
+    echo "H30C_LONG_500_END $(date +%H:%M) $ROW" > logs/H30C_LONG_500_END.txt
+    until [ -f logs/FILM_1031B_END.txt ] && [ logs/FILM_1031B_END.txt -nt $O/chain.stamp ]; do sleep 60; done
+  fi
 done
 MSG="done +1500 |$ROWS trainer private peak ${PK} GB"
