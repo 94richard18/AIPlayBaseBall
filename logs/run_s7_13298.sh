@@ -31,7 +31,9 @@ b = list(csv.DictReader(open('$O/joint_s7.csv')))
 falls = [(i, x['hit'], x['clip'], x['kmh'], round(f(x['min_pelvis_z_2s']), 2)) for i, x in enumerate(b) if f(x['min_pelvis_z_2s']) < 0.35]
 tt = sorted(f(x['torso_tilt_1p5_deg']) for x in b if f(x['torso_tilt_1p5_deg']) == f(x['torso_tilt_1p5_deg']))
 s6 = list(csv.DictReader(open('$O/joint_s6.csv'))); g6 = sum(f(x['min_pelvis_z_2s']) < 0.35 for x in s6)
-print(f"joint s7 model_13298 (recover {'$RC'.split('/')[-2]}): on the ground {len(falls)}/{len(b)}, hits {sum(x['hit'] == 'True' for x in b)}/{len(b)}, "
+bf = [i for i, x in enumerate(b) if x['batter_fell'] == 'True']; bf6 = sum(x['batter_fell'] == 'True' for x in s6)
+print(f"joint s7 model_13298 (recover {'$RC'.split('/')[-2]}): on the ground (min pelvis z 2 s < 0.35) {len(falls)}/{len(b)}, "
+      f"batter_fell flag {len(bf)}/{len(b)} (envs {bf}; s6 {bf6}/64), hits {sum(x['hit'] == 'True' for x in b)}/{len(b)}, "
       f"torso tilt +1.5 s med {tt[len(tt) // 2] if tt else float('nan'):.1f} deg | falls (env, hit, clip, km/h, min pelvis z): {falls} | "
       f"s6 + s7 ground {g6} + {len(falls)} = {g6 + len(falls)} (R4 needed if > 4)")
 PY
