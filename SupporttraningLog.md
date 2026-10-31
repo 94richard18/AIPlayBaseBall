@@ -60,6 +60,15 @@
 
 ## 3. 打者目前進度
 
+### 10-31 20:19 DTNUM 已上膛（零訓練數值診斷，排在拍片 ADOPT_FILM_END 之後）
+
+- 鏈 logs/run_dtnum.sh，標記 DTNUM_END。plain 12500、4 個聯合片段、真實身高、phase 2.6、j0。
+  - V1：800 Hz，solver 4/1。
+  - V2：800 Hz，速度上限 ×2。
+  - V3：400 Hz，solver 16/4（反向檢驗）。
+- 對照組：P8（800 Hz，ss 16.6）、P4（400 Hz，ss 21.3）。
+- 已預備（未啟動）：joint_smoke.py 新增 `--batter_solver_iters P V`，只改打者 articulation 的求解次數，投手不受影響。V1 ss_max ≥ 20 時用它跑一次 joint s6（phase 2.6）。
+
 - **10-31 20:15 揮速隨 dt 變化的候選原因（CPU 讀程式碼，沒有啟動任何東西）**：
   - 排除：
     - Implicit PD：數值阻尼約 k·dt，方向會讓 400 Hz 比較慢，和觀察相反；

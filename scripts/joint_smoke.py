@@ -18,6 +18,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pitcher", type=str, required=True)
 parser.add_argument("--batter", type=str, required=True)
 parser.add_argument("--envs", type=int, default=64)
+parser.add_argument("--batter_solver_iters", type=int, nargs=2, default=None,
+                    help="the batter articulation's solver position / velocity iterations (default 8 2; the pitcher keeps its own)")
 parser.add_argument("--phase_horizon", type=float, default=None,
                     help="batter cfg.phase_horizon_s (s): phase input scale, the training episode 2.6 (default: the play cfg episode, 9 s)")
 parser.add_argument("--seconds", type=float, default=6.0, help="joint episode length (release ~1 s + flight + batted ball)")
@@ -88,6 +90,10 @@ def main():
         from aibaseball.robot.aib1_cfg import make_aib1_cfg
         cfg.batter = make_aib1_cfg(human_strength=True, effort_scale=args.effort_probe).replace(prim_path="/World/envs/env_.*/Batter")
         print(f"[joint] EFFORT PROBE: batter effort scale {args.effort_probe} (delivery 1.5)", flush=True)
+    if args.batter_solver_iters is not None:  # DTNUM (10-31): per-articulation, the pitcher's counts are untouched
+        ap = cfg.batter.spawn.articulation_props
+        ap.solver_position_iteration_count, ap.solver_velocity_iteration_count = args.batter_solver_iters
+        print(f"[joint] batter solver iterations {args.batter_solver_iters}", flush=True)
     cfg.scene.num_envs = args.envs
     cfg.seed = args.seed
     cfg.episode_length_s = args.seconds
