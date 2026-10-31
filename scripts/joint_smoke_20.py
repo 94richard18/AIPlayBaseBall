@@ -19,6 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pitcher", type=str, required=True)
 parser.add_argument("--batter", type=str, required=True)
 parser.add_argument("--envs", type=int, default=64)
+parser.add_argument("--phase_horizon", type=float, default=None,
+                    help="batter cfg.phase_horizon_s (s): phase input scale, the training episode 2.6 (default: the play cfg episode, 9 s)")
 parser.add_argument("--seconds", type=float, default=6.0, help="joint episode length (release ~1 s + flight + batted ball)")
 parser.add_argument("--release_csv", type=str, default="assets/game/p3c_identical_t18_release.csv",
                     help="the batter's predicted pitch before the hand-off (the P3c gate table)")
@@ -125,6 +127,8 @@ def main():
     bcfg.scene.num_envs = args.envs
     bcfg.zero_ff_after_ref_end = args.zero_ff
     bcfg.percept_filter = args.percept_filter
+    if args.phase_horizon is not None:
+        bcfg.phase_horizon_s = args.phase_horizon
     if args.trace:  # deterministic percept and placement, as the native trace (diag_bat_contact --trace)
         for k in ("ball_obs_noise_std", "ball_obs_bias_std", "tee_xy_noise", "tee_height_noise", "joint_pos_noise"):
             setattr(bcfg, k, 0.0)
