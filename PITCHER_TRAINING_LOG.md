@@ -2810,3 +2810,4 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `videos/film2_1101_s6_k12.mp4`（例行那顆球）：exit 20.2 m/s、launch −21°、carry 2.1 m；沒跌倒，pelvis 0.877 m、tilt 1.8°。對 `logs/h30c800/joint_s6.csv` 52 欄 64/64，blank 0，High。淡白 66 格都在 frame 151 = 2.64 s 剪接點後，誤報；縮圖正常。
 - env 32：rows 正確（exit 23.2 m/s、launch 35.7°、carry 44.1 m、沒跌倒；52 欄 64/64），但畫面淡白 148/343（剪接前就有、含 frame 0，bitrate 4.4 vs 6.9 Mb/s），縮圖確認是已知的渲染問題 → 改名 `videos/film2_1101_s6_k32_washed.mp4`，依規則重拍一次；`logs/film2r.sh` 等 14 的 `logs/FILM2R_GO.txt`（08:20 前），標記 `logs/FILM2R_END.txt`。
 - 標記 `logs/FILM2_END.txt` 01:55。
+- 11-01 02:36 重拍 env 32（14 的背景程序在 TC_END 後寫 `logs/FILM2R_GO.txt`，02:25 開拍，`logs/film2r.sh`）：`videos/film2_1101_s6_k32.mp4` 乾淨 —— 52 欄 64/64、blank 0、High、淡白 0/343，縮圖正常（exit 23.2 m/s、launch 35.7°、carry 44.1 m、沒跌倒）。標記 `logs/FILM2R_END.txt` 02:36。
