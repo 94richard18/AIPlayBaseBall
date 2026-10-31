@@ -148,6 +148,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    if os.environ.get("AIB_PHYSICS_DT"):  # 10-31: train at the joint scene's physics dt (1/800), same 100 Hz control
+        ctrl = env_cfg.sim.dt * env_cfg.decimation
+        env_cfg.sim.dt = float(os.environ["AIB_PHYSICS_DT"])
+        env_cfg.decimation = int(round(ctrl / env_cfg.sim.dt))
+        env_cfg.sim.render_interval = env_cfg.decimation
+        print(f"[INFO]: AIB_PHYSICS_DT: physics dt {env_cfg.sim.dt:.6f} s, decimation {env_cfg.decimation}", flush=True)
 
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
