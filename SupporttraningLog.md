@@ -60,6 +60,15 @@
 
 ## 3. 打者目前進度
 
+### 10-31 16:0x 訓練 carry 與比賽不一致的原因查核（CPU，無 Isaac）：飛行模型相同、投球分布涵蓋 eval → 不做 Human30f
+- (b) 飛行模型：env 訓練 carry（ball_flight.simulate_flight，drag + Magnus）與 ONE OUTS first_bounce（ball_path + 草地）在同一 exit / launch / spin 網格上逐點相同（差 ≤ 0.1 m，scripts/carry_check.py）。
+  - 最佳仰角：exit 21.6、旋轉 −1011 rpm（13298 表中位，偏上旋）→ 45°（38.2 m）；旋轉 2500 → 40°（42.4 m）；exit 25 / 2500 → 35°（54.1 m）。
+  - 35° vs 49°（exit 21.6、−1011）：36.0 m vs 約 37.9 m → 兩個模型都讓 49° 飛得更遠，高仰角是獎勵本身的最佳解，不是模型差異。
+  - 中外野要第一落地點超過約 47.4 m 才算外野安打：exit 21.6 在任何仰角都到不了，exit 25 / 回旋 2500 在 25–50° 可以。
+- (a) 投球分布：訓練（Human15 起全部 P3c 形 55–75 km/h、瞄準好球帶）速度 q10 / q50 / q90 = 57 / 65 / 73 km/h、飛行 0.91 / 1.03 / 1.21 s；eval（P3c release csv 62 球）64 km/h、1.03–1.07 s → eval 落在訓練分布中段；訓練 plate_y 截在 ±0.2525，約三成堆在邊界。沒有明顯的分布不匹配。
+- 結論：(a)(b) 都排除。最可能的是 (c)：訓練統計來自隨機策略（action noise std 3.17），診斷 / 比賽用確定性的平均動作；std 從 2.78 漲到 3.17，兩者行為分開。
+- 不做 Human30f（carry 已是 aero）。
+
 ### 10-31 15:36 長時間微調 +1000（model_13797）退步：exit 18.3、launch 49.1（高飛）→ 停止規則觸發，選 13298 做完整採用
 - jitter 0：hit 0.749、|axis_off| 0.052、slope −0.20、exit 18.3（14.2 / 18.3 / 23.6）、D 0.233、launch 49.1、fair 0.585。
 - jitter 0.03：hit 0.662、exit 18.0、D 0.247、launch 42.4、fair 0.553。
