@@ -502,7 +502,7 @@ def main():
         gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
     if args.qd_trace:
         TR_T0, TR_DT, TR_NB = -0.3, 0.005, 70
-        tr_names = [nm for nm in base.robot.joint_names if nm.startswith("waist") or nm == "l_elbow" or nm.startswith("l_wrist") or "_hip_" in nm or "_knee" in nm]
+        tr_names = [nm for nm in base.robot.joint_names if nm.startswith("waist") or nm == "l_elbow" or nm.startswith("l_wrist") or "_hip_" in nm or "_knee" in nm or "_ankle" in nm]
         tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
         qtr = dict(qd=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   q=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
@@ -517,9 +517,14 @@ def main():
             qj_M = qj_m.sum(-1)
             qtr["cc"] = torch.full((n, TR_NB, len(qj_j)), float("nan"), device=dev)
             for k_ in ("root_lin", "root_ang", "pel_v", "pel_yaw", "pel_z", "foot_v_l", "foot_v_r", "f_z", "f_xy",
-                       "fy_l", "fy_r", "leg_l", "leg_r", "res_l", "res_r"):
+                       "fy_l", "fy_r", "leg_l", "leg_r", "res_l", "res_r", "fh_l", "fh_r", "heel_l", "heel_r", "toe_l", "toe_r",
+                       "fvz_l", "fvz_r", "fp_l", "fp_r", "frl_l", "frl_r"):
                 qtr[k_] = torch.full((n, TR_NB), float("nan"), device=dev)
             qj_prev = {}
+            from isaaclab.utils.math import quat_apply as qa_fh
+
+            # FH: foot collider box (aib1.urdf l/r_foot: center (0.04, 0, -0.055), size 0.26 x 0.11 x 0.05) corners, link frame
+            fh_c = torch.tensor([[0.04 + sx * 0.13, sy * 0.055, -0.055 - 0.025] for sx in (-1, 1) for sy in (-1, 1)], device=dev)
     if args.step_trace:
         st_names = ["l_hip_yaw", "r_hip_yaw"]
         st_j = [base.robot.joint_names.index(nm) for nm in st_names]
@@ -626,6 +631,19 @@ def main():
                     qtr[f"fy_{k_}"][e_i, b_ok] = fy[e_i]
                     qtr[f"leg_{k_}"][e_i, b_ok] = lg[e_i]
                     qtr[f"res_{k_}"][e_i, b_ok] = (fy - dq.root_link_ang_vel_w[:, 2] - lg)[e_i]
+                    # FH: sole corner heights above the env ground (heel = the two rear corners, toe = the two front), foot link
+                    # vertical velocity, pitch = asin(foot x axis z) (+ = toe above heel; heel lift = -) and roll = asin(foot y axis z)
+                    fq = dq.body_link_quat_w[:, fb]
+                    cz = (qa_fh(fq.unsqueeze(1).expand(-1, 4, -1).reshape(-1, 4), fh_c.repeat(n, 1)).reshape(n, 4, 3)[..., 2]
+                          + dq.body_link_pos_w[:, fb, 2:3] - base.scene.env_origins[:, 2:3])
+                    qtr[f"fh_{k_}"][e_i, b_ok] = cz.min(-1).values[e_i]
+                    qtr[f"heel_{k_}"][e_i, b_ok] = cz[:, :2].min(-1).values[e_i]
+                    qtr[f"toe_{k_}"][e_i, b_ok] = cz[:, 2:].min(-1).values[e_i]
+                    qtr[f"fvz_{k_}"][e_i, b_ok] = dq.body_link_lin_vel_w[e_i, fb, 2]
+                    ex = qa_fh(fq, torch.tensor([1.0, 0.0, 0.0], device=dev).expand(n, 3))
+                    ey = qa_fh(fq, torch.tensor([0.0, 1.0, 0.0], device=dev).expand(n, 3))
+                    qtr[f"fp_{k_}"][e_i, b_ok] = torch.asin(ex[:, 2].clamp(-1, 1))[e_i]
+                    qtr[f"frl_{k_}"][e_i, b_ok] = torch.asin(ey[:, 2].clamp(-1, 1))[e_i]
                 mom = (qj_m.unsqueeze(-1) * dq.body_com_lin_vel_w).sum(1)  # (n, 3) whole-body momentum
                 if "mom" in qj_prev:
                     f_g = (mom - qj_prev["mom"]) / base.physics_dt  # = ground force + gravity (other contacts: bat-ball, rare)
