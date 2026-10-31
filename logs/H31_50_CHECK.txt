@@ -1,0 +1,1 @@
+H31_50_CHECK 06:21 it 12550 ss_ca 15.238 lt_lo 0.105 hit 0.191 track 0.573 fall 0.001 -> lo 12 kept

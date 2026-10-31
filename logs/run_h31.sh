@@ -15,7 +15,8 @@ cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=100 AIB_EFFORT_SCALE=1.5 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
 export AIB_H29_SIGMA_AX=0.20 AIB_H29_SIGMA_GAP=0.10 AIB_SAIM_BOUND=0.4
-unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_SS_CA_LO
+unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT
+export AIB_SS_CA_LO=${AIB_SS_CA_LO:-12.0} AIB_SS_CA_WIN=${AIB_SS_CA_WIN:-0.05}
 NSEG=${NSEG:-6}
 TASK=AIB-PitchedBatting-Human31-v0
 B=logs/rsl_rl/aib1_tee_batting_mimic
@@ -68,8 +69,8 @@ joint() {  # film4 rows of the filmed checkpoint
 }
 jl() { $P -c "import sys; h, e, l, s, d = sys.argv[1:6]; print(f'ss {s} exit {e} launch {l} hit {h} dz {d}')" $1 $2 $3 $4 $5; }
 J4=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_N4_400.json)); B8=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_h30c800_base.json))
-LR=2026-10-25_13-56-51_human_pitched9b; LC=model_12500.pt; PK=0
-for k in $(seq 1 $NSEG); do
+LR=${LR0:-2026-10-25_13-56-51_human_pitched9b}; LC=${LC0:-model_12500.pt}; PK=0  # LR0 / LC0 / K0: resume a later segment
+for k in $(seq ${K0:-1} $NSEG); do
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   if [ $k -gt 1 ] && [ -f $O/HOLD ]; then  # between segments only; evening (film4) or "now"
     EV=$([ "$(date +%Y%m%d%H%M)" -ge 202611011830 ] && echo 1)
@@ -110,9 +111,9 @@ for k in $(seq 1 $NSEG); do
   if ! grep -q Traceback $O/diag_$T.txt && [ -f logs/diag_bat_contact_$T.json ]; then
     PS=$($P $SC/pool_stats.py logs/diag_bat_contact_$T.json)
     awk -v x="${PS%% *}" 'BEGIN{exit !(x >= 0.40)}' && echo "$D/model_$I.pt" >> $O/passed.txt
-    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
+    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) ($($P $SC/ssc.py logs/diag_bat_contact_$T.json)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
   else ROW="+$((k * 500)) model_$I: diag crash or no json"; fi
-  ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; lo ${AIB_SS_CA_LO:-12.0}"
+  ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; lo $AIB_SS_CA_LO win $AIB_SS_CA_WIN"
   ROW="$ROW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
   echo "H31_$((k * 500))_END $(date +%H:%M) $ROW" > logs/H31_$((k * 500))_END.txt

@@ -530,6 +530,10 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
     w_ss_ca: float = 40.0
     ss_ca_lo: float = float(os.environ.get("AIB_SS_CA_LO", "12.0"))
     ss_ca_span: float = 10.0
+    # 11-01 H31 +500: with the 50 ms window the swing max went 16.6 -> 25.2 but the speed at contact only 13.4 -> 15.7 (exit
+    # 16.5 unchanged) - the peak came early inside the window; AIB_SS_CA_WIN=0.01 pays the closest-approach / impact step
+    # and the step before it only
+    ss_ca_window_s: float = float(os.environ.get("AIB_SS_CA_WIN", "0.05"))
     w_track: float = 0.5
 
 

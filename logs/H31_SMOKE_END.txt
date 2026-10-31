@@ -1,0 +1,1 @@
+H31_SMOKE_END 06:08 ok: curve: 12500: ss_ca 0.12 lt_lo 0.05 hit 0.00 track 0.11 fall 0.00 | 12510: ss_ca 11.62 lt_lo 0.21 hit 0.12 track 0.56 fall 0.00 | 12519: ss_ca 13.75 lt_lo 0.12 hit 0.19 track 0.57 fall 0.00 ; Iteration time: 5.93s
