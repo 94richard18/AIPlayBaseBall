@@ -90,6 +90,11 @@ class TeeBattingEnv(DirectRLEnv):
         self.aim_gap = torch.full((n,), float("inf"), device=dev)
         self.aim_ax = torch.zeros(n, device=dev)
         self.aim_paid = torch.zeros(n, dtype=torch.bool, device=dev)
+        # Human31: |v_ss| over the last ss_ca_window_s, its max at the closest approach of the ball to the sweet spot
+        self.ss_ring = torch.zeros(n, int(round(self.cfg.ss_ca_window_s / self.step_dt)) + 1, device=dev)
+        self.ca_dist = torch.full((n,), float("inf"), device=dev)
+        self.ss_ca = torch.zeros(n, device=dev)
+        self.ss_ca_paid = torch.zeros(n, dtype=torch.bool, device=dev)
         self.carry = torch.zeros(n, device=dev)
         self.landed = torch.zeros(n, dtype=torch.bool, device=dev)
         self.dist_valid = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -112,7 +117,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -477,6 +482,18 @@ class TeeBattingEnv(DirectRLEnv):
                              ("aim_reward", r_aim[pay].mean())):
                     self.stats[k] = 0.98 * self.stats[k] + 0.02 * v
         rew = rew - cfg.w_miss * timeout_miss.float()
+        if cfg.w_ss_ca > 0:  # once per swing, hit or not: sweet-spot speed where the ball is
+            self.ss_ring = torch.cat([self.ss_ring[:, 1:], ss_v.norm(dim=-1, keepdim=True)], 1)
+            closer = (~self.hit & (dist < self.ca_dist)) | self.new_hit
+            self.ca_dist = torch.where(closer, dist, self.ca_dist)
+            self.ss_ca = torch.where(closer, self.ss_ring.max(1).values, self.ss_ca)
+            pay = (self.new_hit | ((self.reset_terminated | self.reset_time_outs) & ~self.hit)) & ~self.ss_ca_paid
+            if pay.any():
+                r_ss = cfg.w_ss_ca * ((self.ss_ca - cfg.ss_ca_lo) / cfg.ss_ca_span).clamp(0.0, 1.0)
+                rew = rew + torch.where(pay, r_ss, torch.zeros_like(r_ss))
+                self.ss_ca_paid |= pay
+                for k, v in (("ss_ca", self.ss_ca[pay].median()), ("ss_ca_lt_lo", (self.ss_ca[pay] < cfg.ss_ca_lo).float().mean())):
+                    self.stats[k] = 0.98 * self.stats[k] + 0.02 * v
 
         # logging
         a = 0.02
@@ -548,6 +565,10 @@ class TeeBattingEnv(DirectRLEnv):
         self.aim_gap[env_ids] = float("inf")
         self.aim_ax[env_ids] = 0.0
         self.aim_paid[env_ids] = False
+        self.ss_ring[env_ids] = 0.0
+        self.ca_dist[env_ids] = float("inf")
+        self.ss_ca[env_ids] = 0.0
+        self.ss_ca_paid[env_ids] = False
         self.landed[env_ids] = False
         self.prev_valid[env_ids] = False
         self.carry[env_ids] = 0.0

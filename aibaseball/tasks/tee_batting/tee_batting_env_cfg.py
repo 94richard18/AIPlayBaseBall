@@ -121,6 +121,13 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_aim: float = 0.0
     sigma_aim_ax: float = 0.08
     sigma_aim_gap: float = 0.05
+    # Human31 (planning 14, 11-01): bat speed AT the ball on every swing, hit or not - once per swing (at the hit, or at episode
+    # end without one) w_ss_ca x clamp((ss_ca - ss_ca_lo) / ss_ca_span, 0, 1), ss_ca = max |sweet-spot velocity| over the
+    # ss_ca_window_s before the closest approach of the ball to the sweet spot (on a hit: before the impact step)
+    w_ss_ca: float = 0.0
+    ss_ca_lo: float = 12.0
+    ss_ca_span: float = 10.0
+    ss_ca_window_s: float = 0.05
     # hit quality: w_hit_q x exp(-(dx / sigma_hit_q_dx)^2) x exp(-((D - hit_q_D_target) / sigma_hit_q_D)^2) at the impact
     w_hit_q: float = 0.0
     sigma_hit_q_dx: float = 0.08

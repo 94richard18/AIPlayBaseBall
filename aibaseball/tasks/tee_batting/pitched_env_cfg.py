@@ -518,6 +518,22 @@ class PitchedBattingHuman30fEnvCfg(PitchedBattingHuman30cEnvCfg):
 
 
 @configclass
+class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
+    """Human31 (planning 14, 11-01): train at the deliverable 800 Hz (AIB_PHYSICS_DT=0.00125) with a bat-speed term that has a
+    gradient at the 800 Hz start - H800L (30c rewards at 800 Hz) bought tracking with the bat (track 0.56 -> 0.66, hit 0.23 ->
+    0.05, speed 13.3 -> 11.0) because the fair-only carry term goes flat once hits fall. Once per swing, hit or not (the swing
+    start is scripted, no take choice), 40 x clamp((ss_ca - 12) / 10, 0, 1), ss_ca = max |v_ss| in the 50 ms before the
+    ball's closest approach to the sweet spot / the impact (800 Hz start: diag swing max p10 / 50 / 90 = 15.0 / 16.6 / 18.2
+    deterministic, ~13 stochastic); tracking x0.5. Carry 20 fair-only, w_miss 5, spray 10 x q, w_aim 0, w_hit_q 0
+    unchanged. From 12500."""
+
+    w_ss_ca: float = 40.0
+    ss_ca_lo: float = float(os.environ.get("AIB_SS_CA_LO", "12.0"))
+    ss_ca_span: float = 10.0
+    w_track: float = 0.5
+
+
+@configclass
 class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
     """Human30d (planning 14, 10-31 07:25; armed behind H30C_300_END + logs/h30d/GO): Human30c + swing-start timing noise
     +-0.03 s uniform in training, the showcase tables' distribution (training was noise-free since Human6: the diag launch
