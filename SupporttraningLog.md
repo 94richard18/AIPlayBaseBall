@@ -60,6 +60,17 @@
 
 ## 3. 打者目前進度
 
+### 10-31 08:12 Human30c +300：gate PASS，launch 上升、exit 小降
+
+- model_12799（human_pitched30c_1）jitter 0：in-zone hit 0.643、slope −0.39、|axis_off| 0.073。
+- carry，h30b → h30c：
+  - launch 12.3 → **14.2**（上升）；
+  - exit q25 / med / q75 15.6 / 20.3 / 24.5 → 14.8 / **19.7** / 23.2（−0.6）；
+  - D 0.226 → 0.204；fair 0.710 → 0.749。
+- jitter 0.03（同一批 1024 球）：hit 0.564、launch **5.0**、exit 19.1、fair 0.691、D 0.182、slope −0.40；噪音下 launch 還是掉 9°。
+- 訓練趨勢（12520 → 12799）：carry 10.4 → 10.7、fair_rate 0.45 → 0.71、hit 0.24 → 0.36、launch −1.8 → −3.4。訓練 private 峰值 11 GB。
+- 14 的規則（launch 要升、exit 不得降）：launch 符合，exit −0.6 不符合，由 14 決定。Human30d（訓練加 ±0.03 s）接著自動跑，約 09:20 出結果。
+
 ### 10-31 07:27 Human30c 執行中、Human30d 已放行（排在後面）
 
 - Human30c（fair 球飛距獎勵 20 × clamp((carry − 10) / 30, 0, 1)，拿掉 launch Gaussian 和 exit hinge）：14 在 07:24 放行，smoke 已開始。H30C_300_END 約 08:35，內含 jitter 0 和 jitter 0.03 兩列 diag，起點對照 h30b diag（launch 12.3、exit 20.3、fair 0.710、D 0.226）。
