@@ -2792,3 +2792,13 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 13:23 開拍（RAM 45.3 GB），`videos/routine_1031b_p5.mp4`：343 格，blank 0，High，淡白畫面 0/343（對照 m3zone_p5_s6_k12）。
 - 比對：對 M2 64/64（31 欄）；對 v2 成片 rows 64/64（52 欄全比）。縮圖正常。
 - 標記 `logs/FILM_1031B_END.txt` 13:33 寫出（15 的下一段訓練等它）。
+
+## 10-31 20:34 候選打者拍片（W1 重拍候選，12 小時例行；目前是滾地球狀態，800 Hz 物理問題未解）
+
+- 14 16:35 交辦、20:16 寫 `logs/ADOPT_FILM_GO.txt`：打者 human_pitched30c_long1 model_13298 @ 1.5x + scripted aim（bound 0.4、window 0.60、full comp、percept_filter）+ `--phase_horizon 2.6`，恢復 R4 model_1895（RECOV4 PASS），投手 P3c 7600，zone frame + QA overlay。指令與 15 的 R4 joint s6 完全相同（timing.csv、bias 0.055、seed 6）。
+- 程式：`joint_smoke_20.py` 從 15 的 joint_smoke.py 重新產生，加入 --saim / --percept_filter（35affa1）與 --phase_horizon（6cf3a29）；旗標不開時路徑不變。腳本 `logs/adoptfilm.sh`（PH 下自動挑 env 12 + ROWS 中最遠的界內球）。
+- 20:15 開拍（RAM 44.5 GB），兩支皆對 `logs/recov4/joint_s6.csv` 52 欄 64/64 完全相同、blank 0、High：
+  - `videos/adopt_1031_s6_k12.mp4`（例行那顆球）：擊中但 launch −70°、carry 0.3 m（滾地）；沒跌倒，pelvis 0.844 m、tilt 0.9°。淡白檢查 69/343 從 frame 148 = 2.59 s 的剪接點起，對照片（舊打者、3.80 s 才剪）還在剪接前，是誤報；縮圖正常。
+  - `videos/adopt_1031_s6_k30.mp4`（R4 rows 中最遠界內）：exit 20.3 m/s、launch 20.6°、carry 27.9 m；沒跌倒，pelvis 0.865 m、tilt 1.8°。淡白 0/343。
+- 15 的 JTIME 確認滾地球主因是聯合場景 800 Hz（13298：400 Hz hit 0.93 / exit 23 / launch +28；800 Hz hit 0.60 / exit 16 / launch −31）。投手 SEA 綁 1/800，聯合場景不能降頻，修正在打者端（800 Hz 微調）。
+- 標記 `logs/ADOPT_FILM_END.txt` 20:34。
