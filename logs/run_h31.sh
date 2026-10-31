@@ -81,7 +81,7 @@ for k in $(seq ${K0:-1} $NSEG); do
   fi
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   idle
-  RN=human_pitched_h31_$k
+  RN=human_pitched_h31_$k; LI=${LC#model_}; LI=${LI%.pt}
   AIB_PHYSICS_DT=0.00125 $P -u scripts/train.py --task $TASK --headless --num_envs 2048 --max_iterations 500 --run_name $RN \
     --resume True --load_run $LR --checkpoint $LC > $O/train_$k.txt 2>&1 &
   TP=$!; C50=""
@@ -114,6 +114,8 @@ for k in $(seq ${K0:-1} $NSEG); do
     ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) ($($P $SC/ssc.py logs/diag_bat_contact_$T.json)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
   else ROW="+$((k * 500)) model_$I: diag crash or no json"; fi
   ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; lo $AIB_SS_CA_LO win $AIB_SS_CA_WIN"
+  SCA=$($P $SC/h31_curve.py $O/train_$k.txt 50 $((LI + 500)) | sed -n 's/.* ss_ca \([0-9.]*\).*//p')  # 14: ss_ca < 14 -> lo 10
+  awk -v x="$SCA" 'BEGIN{exit !(x != "" && x < 14)}' && [ "$AIB_SS_CA_LO" != "10.0" ] && { export AIB_SS_CA_LO=10.0; ROW="$ROW ; ss_ca $SCA < 14 -> lo 10 from segment $((k + 1))"; }
   ROW="$ROW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
   echo "H31_$((k * 500))_END $(date +%H:%M) $ROW" > logs/H31_$((k * 500))_END.txt
