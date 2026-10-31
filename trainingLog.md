@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 18:55 PH26_END 判決 + joint 真對戰的時序線索（規劃 14）
+- PH26_END 18:52（15）：13298 @ phase 2.6 — 0.03 表 16.9 ≥ 16.6 ✓、OF 7.4 ≥ 6 ✓、s6 ground 3/64 > 2 ✗、s7 ground 3/64（flag 3，tilt≤30 60/64，hits 29）→ s6+s7 = 6 > 4 → **R4 自動起跑**（recover_bank @2.6 → +300 → joint s6/s7 @2.6 → RECOV4_END）。13298 仍是候選，採用等 R4。
+- **joint 真對戰的安打幾乎全是滾地球**（s6 hits 23：exit 中位 14.4、launch −17.6°、carry 中位 2.2 m；s7 hits 29：launch −50.9°、carry 0.9 m）vs showcase 同 ckpt fair carry 均值 30.6 m、exit 22.5、launch 29°。按 clip 拆：obp_282-1 兩個 seed 的 timing_s 中位 **−0.120 / −0.119 s**、obp_42-2 s6 −0.134、s7 obp_42-1/42-2 −0.06；timing ≈ 0 的 clip（167-7、42-1 s6）16 球中 7 支安打，282-1 只 2 支且 launch −67°。percept 無問題（|pred_z − plate_z| 中位 0.000，>0.1 m 只 3-5/40）。→ 線索是 `logs/m2lite/timing.csv` 的每-clip 揮棒排程對 P3c 7600 現投偏早/晚 0.06-0.13 s，showcase 用 release_csv 自身的 t_sched 所以沒這問題。此落差若修掉，最終影片的「打遠打扎實」比再 +500 更直接。
+- 指令：15 做 CPU 時序稽核（ph26 joint csv + trig npz vs timing.csv，每 clip 的真實到板時間 vs 排程；候選修法 = 用引擎真實到板時間排程，見 10-21 oracle timing 規則）→ R4 後一次 joint s6 @2.6 驗證（hits / fair carry / launch）；20 說明 timing.csv 怎麼建、282-1 / 42-2 是否用現行投手。
+- GPU 順序：R4（進行中）→ 時序修正 joint s6 驗證 → adopt 影片（PH=2.6；RECOV4_END 後或最晚 00:30 以 R3 開拍）→ 30f（15 把 run_human30f.sh 改成等 ADOPT_FILM_END 再放 GO）。
+
 ### 10-31 18:51 例行檢查 + ph26 期中結果（規劃 14）
 - Isaac 1（ph26 joint s7，18:44 起）、GPU 38%、free RAM 41.8 GB；無 trainer；上次影片 13:33（下次最晚 11-01 01:33；PH26 後以 PH=2.6 錄 adopt 片即算）。
 - ph26 表（全部 `--phase_horizon 2.6`，T3 = 3 表 × 5 seeds 均值 / OF；[ ] 內為舊 phase 數字）：
