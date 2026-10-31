@@ -102,6 +102,8 @@ parser.add_argument("--ground_friction_scale", type=float, default=None,
                     help="measurement only: ground-plane and default material static / dynamic friction x S (spec 1.0 / 0.9)")
 parser.add_argument("--robot_contact_offset", type=float, nargs=2, default=None, metavar=("CONTACT", "REST"),
                     help="measurement only: the batter's collision shapes' PhysX contact / rest offsets (m)")
+parser.add_argument("--torsion", type=float, default=None,
+                    help="measurement only: torsional_patch_radius = min_torsional_patch_radius = R (m) on every batter collider")
 parser.add_argument("--hip_yaw_limit", type=float, default=None,
                     help="measurement only: l_hip_yaw / r_hip_yaw position limits set to +-L rad in PhysX (and the PD-target clamp follows)")
 parser.add_argument("--step_trace", action="store_true",
@@ -347,6 +349,12 @@ def main():
         co, ro = args.robot_contact_offset
         cfg.robot.spawn.collision_props = sim_utils_c.CollisionPropertiesCfg(contact_offset=co, rest_offset=ro)
         print(f"[diag] batter contact offset {co} m, rest offset {ro} m", flush=True)
+    if args.torsion is not None:  # FS (11-01): does the stance foot spin on the ground at 800 Hz?
+        import isaaclab.sim as sim_utils_t
+
+        cp = cfg.robot.spawn.collision_props or sim_utils_t.CollisionPropertiesCfg()
+        cfg.robot.spawn.collision_props = cp.replace(torsional_patch_radius=args.torsion, min_torsional_patch_radius=args.torsion)
+        print(f"[diag] batter torsional patch radius {args.torsion} m (min {args.torsion} m)", flush=True)
     env = gym.make("AIB-ArmAim-Play-v0" if args.armaim else "AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     if args.armaim:
@@ -364,6 +372,18 @@ def main():
                                     env.unwrapped.device, runner.obs_normalizer)
     policy = runner.get_inference_policy(device=env.unwrapped.device)
     base = env.unwrapped
+    if args.torsion is not None or args.robot_contact_offset is not None:  # what reached the stage (env_0 feet colliders)
+        import omni.usd
+        from pxr import Usd
+
+        rb = []
+        rp = omni.usd.get_context().get_stage().GetPrimAtPath(base.robot.cfg.prim_path.replace(".*", "0"))
+        print(f"[diag] readback root {rp.GetPath() if rp.IsValid() else 'INVALID ' + base.robot.cfg.prim_path}", flush=True)
+        for pr in (Usd.PrimRange(rp, Usd.TraverseInstanceProxies()) if rp.IsValid() else []):
+            if "foot" in str(pr.GetPath()) and pr.HasAttribute("physxCollision:torsionalPatchRadius"):
+                rb.append(f"{pr.GetPath()}: " + ", ".join(f"{a} {pr.GetAttribute('physxCollision:' + a).Get()}" for a in (
+                    "torsionalPatchRadius", "minTorsionalPatchRadius", "contactOffset", "restOffset")))
+        print(f"[diag] stage readback ({len(rb)} foot colliders): " + " | ".join(rb[:4]), flush=True)
     if args.hip_yaw_limit is not None:  # HL (11-01): is the lead hip-yaw limit stop the dt-dependent element?
         hy = [base.robot.joint_names.index(nm) for nm in ("l_hip_yaw", "r_hip_yaw")]
         L = args.hip_yaw_limit
@@ -482,7 +502,7 @@ def main():
         gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
     if args.qd_trace:
         TR_T0, TR_DT, TR_NB = -0.3, 0.005, 70
-        tr_names = [nm for nm in base.robot.joint_names if nm.startswith("waist") or nm == "l_elbow" or nm.startswith("l_wrist") or "_hip_" in nm]
+        tr_names = [nm for nm in base.robot.joint_names if nm.startswith("waist") or nm == "l_elbow" or nm.startswith("l_wrist") or "_hip_" in nm or "_knee" in nm]
         tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
         qtr = dict(qd=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   q=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
@@ -496,7 +516,8 @@ def main():
             qj_m = base.robot.root_physx_view.get_masses().to(dev)  # (n, bodies)
             qj_M = qj_m.sum(-1)
             qtr["cc"] = torch.full((n, TR_NB, len(qj_j)), float("nan"), device=dev)
-            for k_ in ("root_lin", "root_ang", "pel_v", "pel_yaw", "pel_z", "foot_v_l", "foot_v_r", "f_z", "f_xy"):
+            for k_ in ("root_lin", "root_ang", "pel_v", "pel_yaw", "pel_z", "foot_v_l", "foot_v_r", "f_z", "f_xy",
+                       "fy_l", "fy_r", "leg_l", "leg_r", "res_l", "res_r"):
                 qtr[k_] = torch.full((n, TR_NB), float("nan"), device=dev)
             qj_prev = {}
     if args.step_trace:
@@ -596,6 +617,15 @@ def main():
                 fv = dq.body_link_lin_vel_w[:, qj_feet, :2].norm(dim=-1)
                 qtr["foot_v_l"][e_i, b_ok] = fv[e_i, 0]
                 qtr["foot_v_r"][e_i, b_ok] = fv[e_i, 1]
+                # FS: foot yaw rate = pelvis yaw rate + leg-joint term (foot angular-z Jacobian row x joint velocities) + residual
+                Jall = base.robot.root_physx_view.get_jacobians()
+                for k_, fb in zip("lr", qj_feet):
+                    fy = dq.body_link_ang_vel_w[:, fb, 2]
+                    Jf = Jall[:, fb - (1 if qj_fixed else 0), 5, (0 if qj_fixed else 6):]
+                    lg = (Jf * dq.joint_vel).sum(-1)
+                    qtr[f"fy_{k_}"][e_i, b_ok] = fy[e_i]
+                    qtr[f"leg_{k_}"][e_i, b_ok] = lg[e_i]
+                    qtr[f"res_{k_}"][e_i, b_ok] = (fy - dq.root_link_ang_vel_w[:, 2] - lg)[e_i]
                 mom = (qj_m.unsqueeze(-1) * dq.body_com_lin_vel_w).sum(1)  # (n, 3) whole-body momentum
                 if "mom" in qj_prev:
                     f_g = (mom - qj_prev["mom"]) / base.physics_dt  # = ground force + gravity (other contacts: bat-ball, rare)
