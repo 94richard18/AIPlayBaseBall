@@ -42,6 +42,16 @@ parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 parser.add_argument("--effort_probe", type=float, default=None,
                     help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
+parser.add_argument("--contact_dump", type=str, default=None,
+                    help="npz: every bat-ball impact's resolve_impact inputs + outputs (env, time; read-only, contact_offset.py)")
+parser.add_argument("--saim", type=str, default=None,
+                    help="BatterSide scripted arm aim (ArmAim row 9): gain JSON; with --percept_filter")
+parser.add_argument("--saim_bound", type=float, default=0.4)
+parser.add_argument("--saim_miss_blend", type=float, default=0.0, help="saim: on a miss, smoothstep the offset to 0 over this many s from the plate crossing (0 = tau decay)")
+parser.add_argument("--trig_dump", type=str, default=None, help="npz: per env the joint pose + |aim offset| at the recover / hand-off trigger")
+parser.add_argument("--saim_window", type=float, default=0.60)
+parser.add_argument("--saim_comp", choices=("q", "full"), default="full", help="obs compensation: joints only / + the bat pose")
+parser.add_argument("--percept_filter", action="store_true", help="batter cfg.percept_filter (quadratic LSQ crossing prediction)")
 parser.add_argument("--swing_csv", type=str, default=None,
                     help="ONE OUTS PA: env,swing per env (scripts/joint_pa.py); swing 0 = the batter takes (stance held). Default all swing")
 parser.add_argument("--count_csv", type=str, default=None, help="env,balls,strikes per env (count_* columns; default 0 / 0)")
@@ -114,6 +124,7 @@ def main():
     bcfg.pitch_release_csv = args.release_csv
     bcfg.scene.num_envs = args.envs
     bcfg.zero_ff_after_ref_end = args.zero_ff
+    bcfg.percept_filter = args.percept_filter
     if args.trace:  # deterministic percept and placement, as the native trace (diag_bat_contact --trace)
         for k in ("ball_obs_noise_std", "ball_obs_bias_std", "tee_xy_noise", "tee_height_noise", "joint_pos_noise"):
             setattr(bcfg, k, 0.0)
@@ -129,7 +140,10 @@ def main():
         swing = [1 if r["swing"] in ("1", "True") else 0 if r["swing"] in ("0", "False") else int(r["swing"]) for r in sr]
     side = BatterSide(base, bcfg, args.batter, after_done=args.after_done, own_timing=own,
                       timing_bias=args.timing_bias, shift_hist=not args.no_shift_hist,
-                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt)
+                      no_handoff=args.no_handoff, swing=swing, recover_ckpt=args.recover_ckpt,
+                      saim=None if args.saim is None else dict(gain=os.path.abspath(args.saim), bound=args.saim_bound,
+                                                               window=args.saim_window, comp_full=args.saim_comp == "full",
+                                                               miss_blend=args.saim_miss_blend))
     if args.diag_yaw is not None:  # before the first reset places the batter
         from isaaclab.utils.math import quat_from_euler_xyz
         z = torch.zeros(base.num_envs, device=base.device)
@@ -141,6 +155,24 @@ def main():
             env.close()
             return
     side.record_swing()  # timing / geometry columns (diag_bat_contact's definitions)
+    cdump = []
+    if args.contact_dump:  # read-only taps on the batter's impact model (TeeBattingEnv._check_impact's module names)
+        import aibaseball.tasks.tee_batting.tee_batting_env as tbe
+        _dc, _ri, last = tbe.detect_contact, tbe.resolve_impact, {}
+
+        def dc_tap(*a, **k):
+            last["c"] = _dc(*a, **k)
+            return last["c"]
+
+        def ri_tap(geom, spec, contact, ball_c, bv, bw, cm, axis, vcm, w):
+            r = _ri(geom, spec, contact, ball_c, bv, bw, cm, axis, vcm, w)
+            h = last["c"].hit.nonzero(as_tuple=False).squeeze(-1)  # _check_impact's h (hit &= active applied in place)
+            cdump.append({"env": h, "t": base.episode_length_buf[h].float() * base.step_dt, "x_on_bat": contact.x_on_bat,
+                          "normal": contact.normal, "point": contact.point, "ball_c": ball_c, "ball_vel_in": bv,
+                          "ball_omega_in": bw, "bat_cm": cm, "bat_axis": axis, "bat_vel_cm": vcm, "bat_omega": w,
+                          "ball_vel": r.ball_vel, "ball_omega": r.ball_omega, "cor": r.cor, "normal_speed": r.normal_speed})
+            return r
+        tbe.detect_contact, tbe.resolve_impact = dc_tap, ri_tap
     if args.trace:
         side.trace = []
     print(f"[joint] batter after_done {args.after_done}, zero_ff_after_ref_end {args.zero_ff}, "
@@ -252,6 +284,11 @@ def main():
                  "all__clip": np.array([names_t[int(c)] for c in side.clip])}
         np.savez(args.trace, **all_t, **{f"{c}__{f}": v for c, d in out_t.items() for f, v in d.items()})
         print(f"[joint] trace -> {args.trace}: {sorted(out_t)} x {[len(d['k']) for d in out_t.values()]} steps", flush=True)
+    if args.contact_dump:
+        import numpy as np
+        np.savez(args.contact_dump, **{k: torch.cat([d[k] for d in cdump]).cpu().numpy() if cdump else np.zeros(0)
+                                       for k in (cdump[0] if cdump else {"env": 0})})
+        print(f"[joint] contact dump -> {args.contact_dump}: {sum(len(d['env']) for d in cdump)} impacts", flush=True)
     rows = {}
     for rec in side.play_log:  # first batted ball per env
         rows.setdefault(int(rec["env"]), rec)
@@ -338,6 +375,12 @@ def main():
             wr = csv.DictWriter(f, fieldnames=list(out[0]))
             wr.writeheader()
             wr.writerows(out)
+    if args.trig_dump:
+        import numpy as np
+        nanj = torch.full_like(side.robot.data.joint_pos, float("nan"))
+        np.savez(args.trig_dump, jp=getattr(side, "trig_jp", nanj).cpu().numpy(),
+                 off=getattr(side, "trig_off", nanj[:, 0]).cpu().numpy(), t=side.pt_t.cpu().numpy(),
+                 joint_names=np.array(list(side.robot.joint_names)))
     if args.diag:
         clip_end = side.start_t + (side.ref.duration[side.clip] - side.t0) / side.speed  # joint time of the ref's end
         rows, ph = [], {"hold": 0, "start_to_handoff": 0, "after_handoff": 0, "after_clip_end": 0, "never": 0}
