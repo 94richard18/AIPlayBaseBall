@@ -98,6 +98,10 @@ parser.add_argument("--qdj", action="store_true",
                     help="(implies --qd_trace) per bin: every body joint's J*qd and the root linear / angular terms projected on "
                          "v_ss; pelvis horizontal speed / yaw rate / height, feet horizontal speed (slip), whole-body ground force "
                          "from the momentum rate (no contact sensors on the batter)")
+parser.add_argument("--ground_friction_scale", type=float, default=None,
+                    help="measurement only: ground-plane and default material static / dynamic friction x S (spec 1.0 / 0.9)")
+parser.add_argument("--robot_contact_offset", type=float, nargs=2, default=None, metavar=("CONTACT", "REST"),
+                    help="measurement only: the batter's collision shapes' PhysX contact / rest offsets (m)")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -313,6 +317,30 @@ def main():
 
         TeeBattingEnv._setup_scene = _setup_with_pitcher
         print(f"[diag] + pitcher ({type(pcfg.actuators).__name__}, {len(pcfg.actuators)} groups) and dynamic ball at x -18", flush=True)
+    if args.ground_friction_scale is not None:  # QDF (11-01): the ground plane is built in TeeBattingEnv._setup_scene
+        import isaaclab.sim as sim_utils_f
+        import aibaseball.tasks.tee_batting.tee_batting_env as tbe
+
+        fs = args.ground_friction_scale
+        gp_orig = tbe.GroundPlaneCfg
+
+        def gp_scaled(*a_, **kw):
+            g_ = gp_orig(*a_, **kw)
+            pm = g_.physics_material
+            g_.physics_material = sim_utils_f.RigidBodyMaterialCfg(static_friction=pm.static_friction * fs,
+                                                                   dynamic_friction=pm.dynamic_friction * fs, restitution=pm.restitution)
+            return g_
+
+        tbe.GroundPlaneCfg = gp_scaled
+        pm0 = cfg.sim.physics_material
+        cfg.sim.physics_material = pm0.replace(static_friction=pm0.static_friction * fs, dynamic_friction=pm0.dynamic_friction * fs)
+        print(f"[diag] ground + default friction x {fs}: static {pm0.static_friction * fs:.3f}, dynamic {pm0.dynamic_friction * fs:.3f}", flush=True)
+    if args.robot_contact_offset is not None:
+        import isaaclab.sim as sim_utils_c
+
+        co, ro = args.robot_contact_offset
+        cfg.robot.spawn.collision_props = sim_utils_c.CollisionPropertiesCfg(contact_offset=co, rest_offset=ro)
+        print(f"[diag] batter contact offset {co} m, rest offset {ro} m", flush=True)
     env = gym.make("AIB-ArmAim-Play-v0" if args.armaim else "AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     wrapped = RslRlVecEnvWrapper(env)
     if args.armaim:
@@ -434,7 +462,7 @@ def main():
         gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
     if args.qd_trace:
         TR_T0, TR_DT, TR_NB = -0.3, 0.005, 70
-        tr_names = [nm for nm in base.robot.joint_names if nm == "waist_yaw" or nm == "l_elbow" or nm.startswith("l_wrist")]
+        tr_names = [nm for nm in base.robot.joint_names if nm.startswith("waist") or nm == "l_elbow" or nm.startswith("l_wrist") or "_hip_" in nm]
         tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
         qtr = dict(qd=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   q=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
