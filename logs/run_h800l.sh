@@ -45,7 +45,7 @@ J4=$(jl $($P $SC/pool_stats.py logs/diag_bat_contact_N4_400.json)); B8=$(jl $($P
 LR=2026-10-25_13-56-51_human_pitched9b; LC=model_12500.pt; PK=0
 for k in $(seq 1 $NSEG); do
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
-  while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done
+  [ $k -gt 1 ] && while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done  # between segments only
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   idle
   RN=human_pitched_h800l_$k
