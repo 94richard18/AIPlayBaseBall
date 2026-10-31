@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+### 10-31 09:21 Human30d 中段 model_12650：比 30d 終點好很多，但沒超過 30c 終點
+- jitter 0：PASS；hit 0.558、|axis_off| 0.063、slope −0.46、launch 9.1、exit 18.5（14.6 / 18.5 / 22.4）、D 0.203、fair 0.730。
+- jitter 0.03：FAIL（slope −0.54）；hit 0.533、launch 5.2、exit 18.3、D 0.212、fair 0.680。
+- 對比 30d 終點 12799（jitter 0）：launch −9.5 → 中段 9.1、fair 0.592 → 0.730、D 0.168 → 0.203 → 中段高峰是真的，後段崩落也是真的。
+- 對比 30c 終點 12799（jitter 0）：launch 14.2、exit 19.7、D 0.204、fair 0.749 → 30d 中段仍略差，訓練加雜訊沒有帶來好處。下一步 30c model_12650（H30C_12650_END）已自動接著跑。
+
 ### 10-31 09:14 14 判定訓練加雜訊這條線「死」，除非中段 checkpoint 翻盤；Human30e 改以 30c 為底重建
 - 中段診斷：human_pitched30d_1 model_12650 兩列（jitter 0 / 0.03）在跑，標記 H30D_12650_END；接著 human_pitched30c_1 model_12650 兩列，標記 H30C_12650_END。用來檢驗「中段高峰 + 挑 checkpoint」是不是通用做法。
 - Human30e：改為 30c（訓練無時機雜訊）+ carry 門檻 0 m（20 × clamp(carry / 40, 0, 1) × fair），每 25 次迭代存一次模型，結果附每個 checkpoint 的訓練趨勢。舊的待命 chain 在啟動任何程式前已砍掉；新 chain 等 logs/h30e/GO（14 撤回後會重建）。
