@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10-31 09:12 H30D_300_END（09:11）：Human30d（訓練含抖動 0.03）FAIL——jitter 0：hit 0.555、slope −0.57（FAIL）、launch −9.5、exit 18.4、fair 0.592；jitter 0.03：slope −0.50 勉強過、launch −11.5。相對 30c 起點每欄都退步 → 訓練抖動線判 DEAD（除非 12650 中段 checkpoint 翻案）。訓練曲線：fair_carry 12.3 → 15.5（12575）→ 14.1（12650）→ 8.5（12799）、fair_rate 0.60 → 0.42、launch 5.4 → −15.6 — 中段上升後崩成滾地球。決定：(1) 立刻 diag 30d model_12650 與 30c model_12650（兩列各）→ H30D_MID_END（~30 min），看「中段峰值 + 提前停 / 挑 checkpoint」是不是通用槓桿；(2) Human30e 改以 30c 為底（抖動關）、carry 門檻 0 m、checkpoint 每 25 its 存一份，已放行（logs/h30e/GO 09:12），排在 H30D_MID_END 之後；(3) 問 15 續訓的 learning rate / optimizer 是否沿用完整訓練值（中段峰值後崩掉像 PPO fine-tune 的政策崩塌，若 lr 是全量訓練值則下一變體降到 1/3）。15 紀錄 acca262。**
+
 **10-31 08:14 H30C_300_END（08:12）：Human30c 幾何 PASS（hit 0.643、slope −0.39、|axis_off| 0.073）、launch 12.3 → 14.2 回升、fair 0.710 → 0.749，但 exit 中位 20.3 → 19.7、D 0.226 → 0.204；訓練中 carry 均值 10.4 → 10.7 幾乎不動、fair_rate 0.45 → 0.71 → carry 項買到的是 fair 比例不是飛距。jitter 0.03 列：hit 0.564、launch 5.0（抖動下掉 9°）、exit 19.1。判定：不排表格（型態同 h30b，預期 ~16%）；等 Human30d（訓練含抖動，H30D_300_END ~09:20）；備妥 Human30e = 30d + carry 門檻 10 m → 0 m（20 × clamp(carry / 40, 0, 1)），理由：訓練中 fair 球 carry 均值 ~10 m，一半以上的 fair 球落在 10 m 門檻下拿 0 獎勵、沒梯度（與 sigma 規則同一回事），先改尺度再談權重。**
 
 **10-31 07:27 時序噪聲事實（15，CPU cfg 印出）：訓練 timing_noise_s 0、timing_bias_s 0.055（承自 Human6，10-21 使用者決定遊戲揮棒起點用引擎真實到達時間）；showcase 表格把 play env 設 timing_noise_s 0.03（uniform ±0.03 s）作為穩健性協定；聯合模擬 / 遊戲本身（m2lite timing csv）沒有抖動。→ 兩次「diag 仰角在表格塌掉」是政策對訓練沒見過的起點抖動不穩健，不是遊戲會發生的時序。決定：Human30d（30c + 訓練 timing_noise_s 0.03、timing_noise_ramp False 以免 resume 重算 48000 步 ramp 只到 15%；15 commit 1a7ba9f）現在就放行（logs/h30d/GO 07:27），自動排在 H30C_300_END 之後；表格協定不改（所有歷史數字可比），但候選到表格階段時加跑一組 jitter 0 的 3 表（並補 12500 的 jitter 0 參考一次），因為交付的聯合模擬是無抖動的。**
