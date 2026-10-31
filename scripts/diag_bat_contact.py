@@ -91,6 +91,9 @@ parser.add_argument("--grip_log", action="store_true",
 parser.add_argument("--grip_soft", type=float, nargs=2, default=None, metavar=("K", "C"),
                     help="engineering test (default off): a USD copy with the spherical top_hand_grip disabled and a D6 loop "
                          "joint in its place, rotation free, translation on drives of stiffness K N/m and damping C N s/m")
+parser.add_argument("--trace", action="store_true",
+                    help="time series for the desync overlay: |qd| of waist_yaw / l_elbow / l_wrist_* and |v_sweet_spot| in 5 ms "
+                         "bins of reference time to contact (-0.3 .. +0.05 s), plus each bin's physics time -> logs/trace_<tag>.npz")
 parser.add_argument("--stochastic", action="store_true",
                     help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
@@ -424,6 +427,12 @@ def main():
         g_b = [base.robot.find_bodies(nm)[0][0] for nm in ("r_hand", "bat")]
         g_loc = torch.tensor([stn.top_hand_local, stn.bat_top_local], dtype=torch.float32, device=dev)
         gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
+    if args.trace:
+        TR_T0, TR_DT, TR_NB = -0.3, 0.005, 70
+        tr_names = [nm for nm in base.robot.joint_names if nm == "waist_yaw" or nm == "l_elbow" or nm.startswith("l_wrist")]
+        tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
+        tr = dict(qd=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
+                  v=torch.full((n, TR_NB), float("nan"), device=dev), t=torch.full((n, TR_NB), float("nan"), device=dev))
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
     rec["fall_past_end"] = torch.full((n,), float("nan"), device=dev)
@@ -469,6 +478,14 @@ def main():
         _, v_ss = base._sweet_spot(knob, axis, cm, v_cm, w)
         sp = v_ss.norm(dim=-1)
         rec["ss_speed_max"] = torch.where(live, torch.maximum(rec["ss_speed_max"], sp), rec["ss_speed_max"])
+        if args.trace:  # last write per bin wins (a bin spans 2-4 physics steps)
+            tau = base.ref_t - base.ref.contact_time[base.clip]
+            b_i = ((tau - TR_T0) / TR_DT).floor().long()
+            ok = (b_i >= 0) & (b_i < TR_NB) & ~finished
+            e_i, b_ok = torch.nonzero(ok, as_tuple=True)[0], b_i[ok]
+            tr["qd"][e_i, b_ok] = base.robot.data.joint_vel[e_i][:, tr_j].abs()
+            tr["v"][e_i, b_ok] = sp[e_i]
+            tr["t"][e_i, b_ok] = t[e_i]
         sq = live & (sp > FAST_SS) & (axis[:, 0].abs() < rec["sq_ax"])
         rec["sq_ax"] = torch.where(sq, axis[:, 0].abs(), rec["sq_ax"])
         rec["t_square"] = torch.where(sq, t, rec["t_square"])
@@ -934,6 +951,13 @@ def main():
         out["grip_log"] = dict(n=int(zg.sum()), gap_pk_mm=mg(G["gap_pk"]), gap_mean_mm=mg(G["gap_sum"] / np.maximum(G["n"], 1)),
                                rel_speed_pk=mg(G["rel_pk"]), hand_pt_speed_pk=mg(G["hand_pk"]), bat_pt_speed_pk=mg(G["bat_pk"]))
         print("[bat] grip_log " + json.dumps(out["grip_log"]), flush=True)
+    if args.trace:
+        zt = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)
+        tp = os.path.join(ROOT, "logs", f"trace_{args.tag}.npz")
+        np.savez_compressed(tp, tau=TR_T0 + TR_DT * (np.arange(TR_NB) + 0.5), names=np.array(tr_names),
+                            qd=tr["qd"].cpu().numpy()[zt], v_ss=tr["v"].cpu().numpy()[zt], t=tr["t"].cpu().numpy()[zt],
+                            t_hit=r["t_hit"][zt], hit=r["hit"][zt])
+        print(f"[bat] trace -> {tp} ({int(zt.sum())} in-zone swings, joints {tr_names})", flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(summary=out, per_pitch={k: v.tolist() for k, v in r.items()}), f)
