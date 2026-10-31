@@ -68,6 +68,12 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 19:41 RECOV4 PASS → 13298 + R4 + saim 通過修正版採用規則（規劃 14）
+- RECOV4_END（15，19:40）：R4 = recover h25r4 **model_1895**（`logs/rsl_rl/aib1_recover/2026-10-31_18-56-40_h25r4/model_1895.pt`，亦在 `logs/recov4/recover_ckpt.txt`）。bank 2048 states（hits 0.733，觸發時已倒 1）。joint @2.6：s6 ground **2/64**、tilt≤30° 61/64、flag 3、hits 23；s7 ground 2/64、tilt 62/64、flag 2、hits 29 → 欄位 64/64、ground 合計 4 ≤ 4、tilt ≥ 56/64 兩 seed 皆過。
+- 採用判定（phase 2.6）：0.03 表 16.9 ≥ 16.6 ✓、OF 7.4 ≥ 6 ✓、s6 ground 2 ≤ 2 ✓、flag 3 ≤ 4 ✓ → **13298 @1.5x + saim（row 9 旗標）+ R4 model_1895 = 最終影片候選打者**，取代 plain 12500 + R3。附註：16.6 的門檻只多 0.3，仍在 ±2 表噪音內；19.1 勝率目標未達。
+- 未解：joint 真對戰的安打仍是滾地球（s6 23 支，與 ph26 相同），候選成立但「打遠打扎實」在 joint 裡還沒看到 —— 交給 JTIME（19:40 起跑）/ H30C800。
+- 影片：JTIME_END 後寫 `logs/ADOPT_FILM_GO.txt`：PH=2.6、BC=13298、RC=R4 model_1895、ROWS=logs/recov4/joint_s6.csv（R4 的列，20 已確認可嚴格比對）；影片結束再寫 `logs/h30c800/GO`。
+
 ### 10-31 19:00 時序假說否定 → 真兇候選 = joint 的 physics dt 800 Hz（規劃 14）
 - 20（19:10）與 15（18:59）各自 CPU 驗證：timing.csv 與現投到板時間每 clip 差 +0.000 s（0/74 env 超過 30 ms）；timing_s = t_square − t_plane 是幾何讀數，native diag 本來就 −0.150 中位 → 282-1 的 −0.12 是正常值，不是排程偏差。**我 18:55 的時序線索撤回。**
 - 我方 CPU 複核（同 ckpt、同 phase 2.6、同 P3c clip，只比 in-zone）：native diag in-zone hit 0.919、dz（球 − 棒點 z）+0.024、hits launch 中位 +29.6、exit 22.6；joint s6/s7 in-zone hit 0.48 / 0.70、dz −0.013 / −0.039（misses −0.11）、launch −24 / −53、exit 16.1 / 14.4。pitch 高度分布相近（plate_z 中位 0.82 vs 0.84-0.87）。→ 同一個 policy 在 joint 裡棒子高 8-10 cm 從球上方掃過、棒速低。
