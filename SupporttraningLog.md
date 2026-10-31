@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+- **10-31 16:42 S7_13298_END**：聯合測試 s7，model_13298（R3 recover + saim，phase 照舊是 t / 9 s）：
+  - 倒地（min pelvis z 2 s < 0.35）2/64，剛好達到 ≤ 2 的門檻。batter_fell flag 2/64（env 18、27）；s6 的 flag 是 5/64。
+  - 擊中 24/64，+1.5 s 軀幹傾角中位數 1.6°。
+  - 兩次倒地都是 obp_42、約 64 km/h，min pelvis z 0.33 / 0.34，都在邊界上。
+  - s6 + s7 倒地合計 3 + 2 = 5，超過 4，依規則需要 R4。R4 已排在 run_ref_recov4.sh，等 H30F_500_END。
+  - 接下來開始跑 (f) 的 TRAINLIB 三列。
+
 - **10-31 16:41 phase 重測鏈（14 17:20 核准 (f) 的 A/B/C 三列）**：
   - 如果 B 或 C 能補上落差，就表示到目前為止所有診斷、showcase、聯合測試的 phase 輸入都偏離了訓練分布。補充：showcase 的回合長度是 30 s，所以用的是 t / 30。
   - 已上膛 `logs/run_ph26.sh`，要等 TRAINLIB_DIAG_END 和 14 放行（logs/ph26/GO）才會開始。全部加上 `--phase_horizon 2.6` 重測：
