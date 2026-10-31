@@ -32,6 +32,7 @@ parser.add_argument("--aim_bound", type=float, default=0.4)
 parser.add_argument("--aim_window", type=float, default=0.60)
 parser.add_argument("--aim_obs_comp", action="store_true")
 parser.add_argument("--aim_obs_comp_full", action="store_true")
+parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): the swing's phase input scale, training 2.6")
 parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter: ballistic LSQ crossing prediction")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -63,6 +64,8 @@ def main():
     else:
         cfg = PitchedBattingHumanPlayEnvCfg()
     cfg.percept_filter = args.percept_filter
+    if args.phase_horizon is not None:
+        cfg.phase_horizon_s = args.phase_horizon
     cfg.pitch_release_csv = args.release_csv
     cfg.motion_files = [f for f in cfg.motion_files if os.path.splitext(os.path.basename(f))[0] in JOINT_CLIPS]
     assert len(cfg.motion_files) == len(JOINT_CLIPS), cfg.motion_files
