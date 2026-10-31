@@ -60,6 +60,12 @@
 
 ## 3. 打者目前進度
 
+### 11-01 05:24 H800L 第 1 段（800 Hz 從 12500 續訓 500 its → model_12999）：退步
+
+- 800 Hz 評估（4 clips，phase 2.6，j0）：ss 14.6、exit 15.2、launch -21.7、hit 0.205、dz -0.128；對照 B800（原 12500 於 800 Hz）：16.2 / 16.5 / -34.9 / 0.603 / -0.045。armaim gate FAIL。10.6 s/it，RAM 峰值 11 GB。
+- 訓練曲線（每 50 its）：mimic/track_reward 0.56 → 0.66 單調上升；bat/hit_rate 0.23 → 0.05；bat_speed 13.3 → 11.0；exit 15.3 → 13.8。
+- 判讀：800 Hz 下策略用打擊項換取動作追蹤分數，同一套 reward 在 800 Hz 的最佳解不是更快的揮棒，續訓預期繼續下滑。已向 14 建議 STOP；chain 停在 HOLD，由 14 決定第 2 段是否執行。
+
 ### 11-01 03:45 WR_END：左手腕 roll 的動作在兩種 dt 下相同，煞車是投影幾何造成；wrist yaw 在 800 Hz 離目標更遠
 
 條件：plain 12500、4 clips、phase 2.6、j0、硬握把、--step_trace l_wrist_roll / yaw / pitch（逐物理步，−60..+5 ms），圖在 logs/wr/wr_step.png。cc = 該關節對 |v_ss| 的帶號貢獻；tau_r = PhysX 投影關節力 / effort limit。
