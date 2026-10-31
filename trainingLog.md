@@ -68,6 +68,14 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 19:00 時序假說否定 → 真兇候選 = joint 的 physics dt 800 Hz（規劃 14）
+- 20（19:10）與 15（18:59）各自 CPU 驗證：timing.csv 與現投到板時間每 clip 差 +0.000 s（0/74 env 超過 30 ms）；timing_s = t_square − t_plane 是幾何讀數，native diag 本來就 −0.150 中位 → 282-1 的 −0.12 是正常值，不是排程偏差。**我 18:55 的時序線索撤回。**
+- 我方 CPU 複核（同 ckpt、同 phase 2.6、同 P3c clip，只比 in-zone）：native diag in-zone hit 0.919、dz（球 − 棒點 z）+0.024、hits launch 中位 +29.6、exit 22.6；joint s6/s7 in-zone hit 0.48 / 0.70、dz −0.013 / −0.039（misses −0.11）、launch −24 / −53、exit 16.1 / 14.4。pitch 高度分布相近（plate_z 中位 0.82 vs 0.84-0.87）。→ 同一個 policy 在 joint 裡棒子高 8-10 cm 從球上方掃過、棒速低。
+- 15 補的關鍵：sweet-spot 最大速度 joint 16.1 / 15.9 m/s vs native 21.9；**每一次** joint 跑都是 ~16（h30cadopt2、saim s6、recov3、falldiag2）；joint 跑 800 Hz 物理，native 與訓練都是 400 Hz；10-28 log 已記 ss 讀數隨 dt 變（400 Hz ~21、800 Hz ~16.5）。13298 是 400 Hz 訓出的 bang-bang policy，fine-tune 可能更 dt 敏感。
+- 核准 15 的 JTIME 改版（run_jtime.sh，d0ce998，等 RECOV4_END）：native diag 13298 + saim @2.6，每個 joint clip 單獨 800 Hz（N8_<clip>，256 envs）+ 四個 clip 一起 400 Hz（N4_400），印 in-zone hit / exit / launch / fair / ss_max / dz / t_square − t_plane / ref_err → JTIME_END。判讀：native 800 ≈ joint（低 hit、launch < 0）→ dt 是因，修法 = 800 Hz 重訓/fine-tune 或 joint 讓打者跑 400 Hz；native 800 ≈ native 400 → 看 joint 場景 / handoff。「時序修正的 joint s6」取消。
+- 30f：15 已改成等 ADOPT_FILM_END + GO（run_h30f2.sh），但我把 GO 改回 GO.hold14 —— 若 dt 確認，30f 要先改成 800 Hz 版本再放（同獎勵、decimation 配合保持 100 Hz 控制），由我在 JTIME_END 後決定。
+- 這條線對「打遠打扎實」比獎勵設計更關鍵：native 已經 exit 22.6 / launch 30°，交付影片卻只拍得到 16 m/s 的滾地球。
+
 ### 10-31 18:55 PH26_END 判決 + joint 真對戰的時序線索（規劃 14）
 - PH26_END 18:52（15）：13298 @ phase 2.6 — 0.03 表 16.9 ≥ 16.6 ✓、OF 7.4 ≥ 6 ✓、s6 ground 3/64 > 2 ✗、s7 ground 3/64（flag 3，tilt≤30 60/64，hits 29）→ s6+s7 = 6 > 4 → **R4 自動起跑**（recover_bank @2.6 → +300 → joint s6/s7 @2.6 → RECOV4_END）。13298 仍是候選，採用等 R4。
 - **joint 真對戰的安打幾乎全是滾地球**（s6 hits 23：exit 中位 14.4、launch −17.6°、carry 中位 2.2 m；s7 hits 29：launch −50.9°、carry 0.9 m）vs showcase 同 ckpt fair carry 均值 30.6 m、exit 22.5、launch 29°。按 clip 拆：obp_282-1 兩個 seed 的 timing_s 中位 **−0.120 / −0.119 s**、obp_42-2 s6 −0.134、s7 obp_42-1/42-2 −0.06；timing ≈ 0 的 clip（167-7、42-1 s6）16 球中 7 支安打，282-1 只 2 支且 launch −67°。percept 無問題（|pred_z − plate_z| 中位 0.000，>0.1 m 只 3-5/40）。→ 線索是 `logs/m2lite/timing.csv` 的每-clip 揮棒排程對 P3c 7600 現投偏早/晚 0.06-0.13 s，showcase 用 release_csv 自身的 t_sched 所以沒這問題。此落差若修掉，最終影片的「打遠打扎實」比再 +500 更直接。
