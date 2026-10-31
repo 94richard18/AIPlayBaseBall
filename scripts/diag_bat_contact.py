@@ -77,6 +77,8 @@ parser.add_argument("--body_window", type=float, default=0.3)
 parser.add_argument("--link_log", action="store_true",
                     help="upper-body joints (waist / shoulders / elbows / wrists), hits: |joint speed| peak before contact and its time "
                          "vs contact, robot vs reference, and torque saturation over the last 0.1 s of reference time before contact")
+parser.add_argument("--stochastic", action="store_true",
+                    help="sample the swing policy (mean + std noise, as in training) instead of its mean (armaim / saim path)")
 parser.add_argument("--sat_log", action="store_true",
                     help="per body joint: fraction of swing steps (ball in flight, before contact) with the torque at its limit")
 parser.add_argument("--phase_log", action="store_true",
@@ -98,6 +100,8 @@ parser.add_argument("--settle_tail", type=float, default=None, help="cfg.settle_
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.phase_log = args.phase_log or args.chain_log
+if args.stochastic:  # read by ArmAimEnv when it builds the frozen swing actor
+    os.environ["AIB_SWING_STOCHASTIC"] = "1"
 args.headless = True  # diagnostics only: a GUI window also keeps the app alive after the run
 app = AppLauncher(args).app
 

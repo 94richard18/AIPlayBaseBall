@@ -21,7 +21,10 @@ ev = ev[np.isfinite(ev)]
 q = np.percentile(ev, [25, 50, 75]) if len(ev) else [float("nan")] * 3
 D = P["D_any"][hz]
 D = D[np.isfinite(D)]
+bs = P["backspin_contact"][hz] if "backspin_contact" in P else np.array([np.nan])
+bs = bs[np.isfinite(bs)]
 sp = P["spray_contact"][hz]
 sp = sp[np.isfinite(sp)]
 print(f"carry {args.label}: launch {np.nanmedian(P['launch_any'][hz]):.1f}; exit q25 / med / q75 {q[0]:.1f} / {q[1]:.1f} / {q[2]:.1f}; "
-      f"D share {((D >= 0) & (D <= 0.025)).mean():.3f}; fair share {(np.abs(sp) <= 45).mean():.3f} (n {len(sp)} of {hz.sum()} in-zone hits)")
+      f"D share {((D >= 0) & (D <= 0.025)).mean():.3f}; fair share {(np.abs(sp) <= 45).mean():.3f} (n {len(sp)} of {hz.sum()} in-zone hits); "
+      f"backspin med {np.median(bs) if len(bs) else float('nan'):.0f} rpm (topspin < 0) backspin share {(bs > 0).mean() if len(bs) else float('nan'):.2f}")

@@ -54,6 +54,7 @@ class ArmAimEnv(PitchedBattingEnv):
         self.aim_cols = torch.tensor([names.index(j) for j in cfg.aim_joints], device=dev)
         self.aim_ids = self.body_joint_ids[self.aim_cols]
         self._swing_actor, self._swing_norm, n_sw = load_frozen_actor(cfg.swing_checkpoint, dev)
+        self._swing_stoch = os.environ.get("AIB_SWING_STOCHASTIC") == "1"  # diag --stochastic: sample, as in training
         self._swing_obs = None
         self.res_a = torch.zeros(n, len(cfg.aim_joints), device=dev)  # tanh(action) of this step
         self.res_off = torch.zeros_like(self.res_a)  # rad, applied offset
@@ -166,7 +167,8 @@ class ArmAimEnv(PitchedBattingEnv):
         if self._swing_obs is None:
             self._swing_obs = PitchedBattingEnv._get_observations(self)["policy"]
         with torch.no_grad():
-            sw = self._swing_actor.act_inference(self._swing_norm(self._swing_obs))
+            o = self._swing_norm(self._swing_obs)
+            sw = self._swing_actor.act(o) if self._swing_stoch else self._swing_actor.act_inference(o)
         super()._pre_physics_step(sw.clone())
         # the window: from aim_window_s (reference clock) before the clip's contact until contact / the ball past the plane
         self.res_closed |= self.hit | (self.pitch_pos[:, 0] < self.contact_x_ref)

@@ -423,6 +423,10 @@ class TeeBattingEnv(DirectRLEnv):
         r = r + cfg.w_hit_q * hq
         if cfg.w_carry:  # fair-only carry hinge from the same flight that decides fair
             r = r + cfg.w_carry * ((carry - cfg.carry_ref) / cfg.carry_span).clamp(0.0, 1.0) * fair.float()
+        if cfg.w_exit_band:  # exit paid directly inside a launch band (no grounders, no pop-ups), fair balls only
+            a0, a1, a2, a3 = cfg.exit_band_launch
+            band = ((la - a0) / (a1 - a0)).clamp(0.0, 1.0) * ((a3 - la) / (a3 - a2)).clamp(0.0, 1.0)
+            r = r + cfg.w_exit_band * ((ev - cfg.exit_band_ref) / cfg.exit_band_span).clamp(0.0, 1.0) * fair.float() * band
         if cfg.w_exit_hinge:
             r = r + cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap) * (fair.float() if cfg.exit_hinge_fair_only else 1.0)
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()

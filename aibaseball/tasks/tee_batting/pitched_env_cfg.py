@@ -503,6 +503,21 @@ class PitchedBattingHuman30cEnvCfg(PitchedBattingHuman30bEnvCfg):
 
 
 @configclass
+class PitchedBattingHuman30fEnvCfg(PitchedBattingHuman30cEnvCfg):
+    """Human30f (planning 14, 10-31 15:50): the carry term climbed launch instead of exit - at exit 21.6 with topspin the aero
+    optimum is 45 deg and no launch angle reaches the outfield (scripts/carry_check.py), so +1000 drifted to pop-ups (launch
+    49, exit 18.3). Exit is paid directly inside a launch band that excludes both failure modes (grounders 30b-30e, pop-ups):
+    w_carry 0, 20 x clamp((exit - 15) / 15, 0, 1) x fair x trapezoid(launch: 0 at <= 5, 1 on 10-35, 0 at >= 40 deg).
+    w_miss 5, spray 10 x q, w_aim 0, w_hit_q 0 unchanged. Resumed from the long run's model_13298."""
+
+    w_carry: float = 0.0
+    w_exit_band: float = 20.0
+    exit_band_ref: float = 15.0
+    exit_band_span: float = 15.0
+    exit_band_launch: tuple = (5.0, 10.0, 35.0, 40.0)
+
+
+@configclass
 class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
     """Human30d (planning 14, 10-31 07:25; armed behind H30C_300_END + logs/h30d/GO): Human30c + swing-start timing noise
     +-0.03 s uniform in training, the showcase tables' distribution (training was noise-free since Human6: the diag launch

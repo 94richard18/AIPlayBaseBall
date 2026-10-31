@@ -204,8 +204,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
         # load previously trained model
         runner.load(resume_path)
+        if os.environ.get("AIB_STD_FROM"):  # Human30f (10-31): the action std copied from another checkpoint (12500's 2.78)
+            sd_std = torch.load(os.environ["AIB_STD_FROM"], map_location="cpu", weights_only=False)["model_state_dict"]["std"]
+            with torch.no_grad():
+                runner.alg.actor_critic.std.copy_(sd_std.to(runner.alg.actor_critic.std.device))
+            print(f"[INFO]: AIB_STD_FROM: action std set to mean {runner.alg.actor_critic.std.mean().item():.3f}", flush=True)
         if os.environ.get("AIB_FIX_STD"):  # ArmAim2 resume: the exploration std stays fixed (it is not zeroed again)
             runner.alg.actor_critic.std.requires_grad_(False)
+            print(f"[INFO]: AIB_FIX_STD: std fixed at mean {runner.alg.actor_critic.std.mean().item():.3f}", flush=True)
         # the adaptive schedule starts from alg.learning_rate (the cfg's 1e-4), not the optimizer's restored rate:
         # the first mini-batches after every resume ran at up to 10x the rate the run had settled on (1e-5)
         runner.alg.learning_rate = runner.alg.optimizer.param_groups[0]["lr"]
