@@ -60,6 +60,20 @@
 
 ## 3. 打者目前進度
 
+### 10-31 21:05 NTH 已上膛（排在 H30C800_END 之後）＋ 800 Hz 致動器的 CPU 檢查
+
+- **NTH 鏈**（logs/run_nth.sh，結束標記 NTH_END）：plain 12500，4 個聯合片段，phase 2.6，j0，共 4 組。
+  - 雙手 400 / 800 Hz（W4 / W8），右手放開 400 / 800 Hz（R4 / R8）。
+  - 問題：放開右手、拿掉閉鏈後，400 與 800 Hz 的 ss_max 差距會不會消失。
+  - 診斷腳本新增 `--link_all`（b97a0ec）：在每次 in-zone 揮棒都記各關節峰值 |qd| 與飽和率。單手幾乎打不到球，只看擊中的話樣本會不夠。
+  - P4 / P8 的 json 沒有關節速度，由 W4 / W8 補上。
+- **資產**：assets/aib1_human/aib1_diag_no_top_hand.usd 是 diag_bat_contact 的 `--release_top_hand` 自動產生的副本（打者 session，ada7b32，10-27），就是「等待時飽和 0.65 → 0.56」那組用的檔案；每次執行都會重新產生，不進 git。
+- **CPU 檢查**（P4 / P8 / DTV1 / DTV3 的 in-zone 中位數）：
+  - 800 Hz 追 reference 的誤差差不多或略小：ref_err 0.032，400 Hz 為 0.035–0.036。
+  - 800 Hz 的 t_gap 晚約 11 ms（1.239 vs 1.228），tempo 稍慢（−0.08 vs −0.07）。
+  - 判讀：800 Hz 下姿勢一樣追得上，只是揮得慢、慢一點到，看起來是 policy 能學著補償的動力差異，沒有發現會讓 800 Hz 微調白做的東西。
+- **注意**：飽和率是 Isaac Lab 用顯式 PD 估出來的（actuator_pd.py:137–139，computed 與 clip 後的比較），不是 PhysX 實際施加的驅動力，所以「飽和率一樣」不代表實際力矩一樣。
+
 ### 10-31 20:47 DTNUM_END：求解次數與速度上限都不是原因
 
 設定：plain 12500，4 個聯合片段，phase 2.6，j0。
