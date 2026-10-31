@@ -60,6 +60,13 @@
 
 ## 3. 打者目前進度
 
+- **10-31 17:00 ph26 開跑（14 17:58 放行）**：14 的決定：
+  - 從現在起所有比賽層級的數字都用 phase 2.6 測（診斷、showcase、聯合測試）。舊表格保留，標記為「phase t/9、t/30」的歷史紀錄。
+  - 30f 繼續暫停到 PH26_END。
+  - R4 改成在 phase 2.6 下判斷：run_ref_recov4.sh 已重新上膛，等 PH26_END，讀 ph26 的 s6 + s7 倒地數，大於 4 才做 R4（bank 和聯合測試都用 2.6）。原本的純 12500 步驟 (a) 已刪除。
+  - `recover_bank.py` 新增 `--phase_horizon`。
+  - PH26_END 之後，14 會寫 20 的 film GO（PH=2.6，ROWS=logs/ph26/joint_s6.csv）。
+
 - **10-31 16:58 TRAINLIB_DIAG_END，(f) 結果：落差主要來自 phase 輸入，不是投球庫**：
   - 13797 j0 三列（好球帶內擊中率 / fair carry 平均 / 仰角平均），訓練 EMA 是 0.82 / 19.6 / 12.5：
     - A 訓練投球庫、phase t/9：0.660 / 29.6 / 34.9。
