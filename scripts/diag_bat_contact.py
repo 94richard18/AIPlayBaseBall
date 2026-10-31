@@ -91,7 +91,7 @@ parser.add_argument("--grip_log", action="store_true",
 parser.add_argument("--grip_soft", type=float, nargs=2, default=None, metavar=("K", "C"),
                     help="engineering test (default off): a USD copy with the spherical top_hand_grip disabled and a D6 loop "
                          "joint in its place, rotation free, translation on drives of stiffness K N/m and damping C N s/m")
-parser.add_argument("--trace", action="store_true",
+parser.add_argument("--qd_trace", action="store_true",
                     help="time series for the desync overlay: |qd| of waist_yaw / l_elbow / l_wrist_* and |v_sweet_spot| in 5 ms "
                          "bins of reference time to contact (-0.3 .. +0.05 s), plus each bin's physics time -> logs/trace_<tag>.npz")
 parser.add_argument("--stochastic", action="store_true",
@@ -427,7 +427,7 @@ def main():
         g_b = [base.robot.find_bodies(nm)[0][0] for nm in ("r_hand", "bat")]
         g_loc = torch.tensor([stn.top_hand_local, stn.bat_top_local], dtype=torch.float32, device=dev)
         gr = {k: torch.zeros(n, device=dev) for k in ("gap_pk", "gap_sum", "rel_pk", "hand_pk", "bat_pk", "n")}
-    if args.trace:
+    if args.qd_trace:
         TR_T0, TR_DT, TR_NB = -0.3, 0.005, 70
         tr_names = [nm for nm in base.robot.joint_names if nm == "waist_yaw" or nm == "l_elbow" or nm.startswith("l_wrist")]
         tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
@@ -478,7 +478,7 @@ def main():
         _, v_ss = base._sweet_spot(knob, axis, cm, v_cm, w)
         sp = v_ss.norm(dim=-1)
         rec["ss_speed_max"] = torch.where(live, torch.maximum(rec["ss_speed_max"], sp), rec["ss_speed_max"])
-        if args.trace:  # last write per bin wins (a bin spans 2-4 physics steps)
+        if args.qd_trace:  # last write per bin wins (a bin spans 2-4 physics steps)
             tau = base.ref_t - base.ref.contact_time[base.clip]
             b_i = ((tau - TR_T0) / TR_DT).floor().long()
             ok = (b_i >= 0) & (b_i < TR_NB) & ~finished
@@ -951,7 +951,7 @@ def main():
         out["grip_log"] = dict(n=int(zg.sum()), gap_pk_mm=mg(G["gap_pk"]), gap_mean_mm=mg(G["gap_sum"] / np.maximum(G["n"], 1)),
                                rel_speed_pk=mg(G["rel_pk"]), hand_pt_speed_pk=mg(G["hand_pk"]), bat_pt_speed_pk=mg(G["bat_pk"]))
         print("[bat] grip_log " + json.dumps(out["grip_log"]), flush=True)
-    if args.trace:
+    if args.qd_trace:
         zt = (np.abs(r["plate_y"]) <= 0.2525) & (r["plate_z"] >= 0.50) & (r["plate_z"] <= 1.10)
         tp = os.path.join(ROOT, "logs", f"trace_{args.tag}.npz")
         np.savez_compressed(tp, tau=TR_T0 + TR_DT * (np.arange(TR_NB) + 0.5), names=np.array(tr_names),
