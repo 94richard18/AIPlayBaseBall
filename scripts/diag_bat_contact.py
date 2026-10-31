@@ -89,6 +89,10 @@ parser.add_argument("--phase_log", action="store_true",
 parser.add_argument("--chain_log", action="store_true",
                     help="(implies --phase_log) per hit at contact: each body joint's share of the sweet-spot velocity "
                          "(bat Jacobian x joint velocity), robot vs reference joint velocity; downswing joint power sign")
+parser.add_argument("--solver_iters", type=int, nargs=2, default=None,
+                    help="batter articulation solver position / velocity iterations (default 8 2): 800 Hz with 4 1 = the 400 Hz solver work per second")
+parser.add_argument("--vel_limit_scale", type=float, default=None,
+                    help="x the batter actuators' velocity_limit_sim (dt check: is a joint speed limit binding differently per dt)")
 parser.add_argument("--release_top_hand", action="store_true",
                     help="control run: a copy of the robot USD with the top-hand loop joint (top_hand_grip) disabled")
 parser.add_argument("--action_clip", type=float, default=None, help="override cfg.action_clip (zero-shot: limit the policy's residual)")
@@ -219,6 +223,14 @@ def main():
         cfg.motion_files = [f for f in cfg.motion_files if _os.path.splitext(_os.path.basename(f))[0] in args.clips]
         assert len(cfg.motion_files) == len(args.clips), f"clips not found: {args.clips}"
     cfg.real_height = args.real_height
+    if args.solver_iters is not None:
+        ap = cfg.robot.spawn.articulation_props
+        ap.solver_position_iteration_count, ap.solver_velocity_iteration_count = args.solver_iters
+        print(f"[diag] batter solver iterations {args.solver_iters}", flush=True)
+    if args.vel_limit_scale is not None:
+        for a_ in cfg.robot.actuators.values():
+            a_.velocity_limit_sim = a_.velocity_limit_sim * args.vel_limit_scale
+        print(f"[diag] batter velocity limits x {args.vel_limit_scale}", flush=True)
     if args.release_top_hand:
         from pxr import Usd, UsdPhysics  # noqa: E402
 
