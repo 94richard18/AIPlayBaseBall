@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 20:35 adopt 影片完成（12 小時影片義務達成，下次最晚 11-01 08:34）（規劃 14）
+- 20（20:36，919d86b）：`videos/adopt_1031_s6_k12.mp4`（例行球路 env 12：安打 exit 16.0、launch −70°、carry 0.3 m 砍地）、`videos/adopt_1031_s6_k30.mp4`（R4 列最長界內安打 env 30：exit 20.3、launch 20.6°、carry 27.9 m 內野）。設定 13298 @1.5x + saim + PH 2.6 + R4 model_1895 + P3c 7600 seed 6；嚴格比對 52 欄 64/64 相同；343 幀、blank 0、High；wash 檢查 k30 0/343，k12 的 69/343 是 2.59 s 切鏡後與舊參考比的誤報（tile 正常）。我看過 k30 tile：投打同框、揮棒、擊中、play over 皆正常。標籤：current grounders, 800 Hz dt line open。
+- GPU 轉給 DTNUM 三列（V1/V2/V3，~25 min）→ DTNUM_END 後決定 H30C800 或 joint 4/1 迭代修法。
+
 ### 10-31 20:16 dt 數值假象候選 → 影片後先跑 3 個零訓練診斷列，H30C800 暫扣（規劃 14）
 - 15 code read（224ace2，未啟動）：程式碼無明寫 dt 的假象（implicit PD 的數值阻尼方向相反、effort clamp 兩 dt 相同、反作用衝量只在接觸後）。兩個可測的 PhysX 數值候選：(1) **雙手閉鏈**：top_hand_grip 是 ExcludeFromArticulation 的球關節，每 substep 以打者的 8/2 solver iterations 解，800 Hz 等於每 400 Hz 步 16 次迭代 → 更硬的閉鏈、雙臂互鬥更強（已知等待時飽和 0.65，放開上手 0.56）；(2) **關節速度上限**（肩 120 / 肘 50 / 腕 40 / 腰 25 / 髖 20 rad/s）每 substep 以 2 次 velocity iterations 強制，400 Hz 可能漏得多 → 22 m/s 是漏出來的。
 - 決定：`logs/h30c800/HOLD14` 已放，fine-tune 不自動起跑。影片後 15 跑三列（plain 12500、四個 joint clip、@2.6、j0、真實高度，各 ~7 min）：V1 800 Hz `--solver_iters 4 1`；V2 800 Hz `--vel_limit_scale 2`；V3 **400 Hz `--solver_iters 16 4`**（反向驗證：若 400 Hz 加倍迭代就掉到 16 m/s，閉鏈/迭代說成立）。對照 P8 16.6 / P4 21.3。
