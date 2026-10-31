@@ -56,7 +56,9 @@ r = {}
 for l in open("$O/t0.txt"):
     v = l.split()
     if len(v) == 11: r.setdefault(v[0].rsplit("_", 1)[0], []).append(list(map(float, v[1:])))
-print(" | ".join(f"jitter 0 {k}: T3 {st.mean(st.mean(x[0::2]) for x in r[k]):.1f}% OF {st.mean(st.mean(x[1::2]) for x in r[k]):.1f}%" for k in r))
+t = lambda k: [st.mean(x[0::2]) for x in r.get(k, [])]
+print(" | ".join(f"jitter 0 {k}: T3 {st.mean(t(k)):.1f}% (tables {', '.join(f'{x:.1f}' for x in t(k))}) OF {st.mean(st.mean(x[1::2]) for x in r[k]):.1f}%" for k in r)
+      + (f" | 30c - 12500 per table: {', '.join(f'{a - b:+.1f}' for a, b in zip(t('h30c'), t('r9')))}" if t('h30c') and t('r9') else ""))
 PY
 )
 idle
@@ -90,4 +92,12 @@ sys.argv = ["mech", "--name", "h30c", "--hit_rate", "$HR", "--tables", "$O/table
 runpy.run_path(r"$MECH", run_name="__main__")
 PY
 )
-MSG="$ST | hit rate $HR | $T0 | mechanism: $MC"
+MC0=$(cd C:/Users/User/AppData/Local/Temp/claude/D--MyProject-AIPlayBaseBall/05cd3340-2202-4b0c-80bc-c708b2ddb810/scratchpad && \
+  $P - <<PY 2>&1 | tail -1
+import os, runpy, sys
+os.chdir(r"D:/MyProject/AIPlayBaseBall"); sys.path.insert(0, r"D:/MyProject/AIPlayBaseBall")
+sys.argv = ["mech", "--name", "h30c_j0", "--hit_rate", "$HR", "--tables", "$O/t0_h30c_1.json", "$O/t0_h30c_2.json", "$O/t0_h30c_3.json"]
+runpy.run_path(r"$MECH", run_name="__main__")
+PY
+)
+MSG="$ST | hit rate $HR | $T0 | mechanism 0.03: $MC | mechanism jitter 0: $MC0"
