@@ -68,6 +68,11 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+### 10-31 20:16 dt 數值假象候選 → 影片後先跑 3 個零訓練診斷列，H30C800 暫扣（規劃 14）
+- 15 code read（224ace2，未啟動）：程式碼無明寫 dt 的假象（implicit PD 的數值阻尼方向相反、effort clamp 兩 dt 相同、反作用衝量只在接觸後）。兩個可測的 PhysX 數值候選：(1) **雙手閉鏈**：top_hand_grip 是 ExcludeFromArticulation 的球關節，每 substep 以打者的 8/2 solver iterations 解，800 Hz 等於每 400 Hz 步 16 次迭代 → 更硬的閉鏈、雙臂互鬥更強（已知等待時飽和 0.65，放開上手 0.56）；(2) **關節速度上限**（肩 120 / 肘 50 / 腕 40 / 腰 25 / 髖 20 rad/s）每 substep 以 2 次 velocity iterations 強制，400 Hz 可能漏得多 → 22 m/s 是漏出來的。
+- 決定：`logs/h30c800/HOLD14` 已放，fine-tune 不自動起跑。影片後 15 跑三列（plain 12500、四個 joint clip、@2.6、j0、真實高度，各 ~7 min）：V1 800 Hz `--solver_iters 4 1`；V2 800 Hz `--vel_limit_scale 2`；V3 **400 Hz `--solver_iters 16 4`**（反向驗證：若 400 Hz 加倍迭代就掉到 16 m/s，閉鏈/迭代說成立）。對照 P8 16.6 / P4 21.3。
+- 判讀規則：V1 ss_max ≥ 20 → 修法在 joint 端給打者 articulation 4/1 iterations（合法、不動投手、零訓練），驗證 = joint s6 @2.6 加該設定，H30C800 可能不需要；V2 動而 V1 不動 → 速度上限是規格值，問使用者；都不動 → 800 Hz 是真物理，H30C800 照跑。
+
 ### 10-31 20:13 JTIME_END：**physics dt 證實為 joint 滾地球的原因**；錄影 GO 已寫（規劃 14）
 - JTIME（15，20:11；13298 + saim @2.6，j0，真實高度，native diag）：
   - 800 Hz 逐 clip：167-7 hit 0.853 / ss_max 17.5 / launch −8.8；282-1 **0.364** / 14.8 / −36；42-1 0.643 / 16.4 / −38；42-2 0.531 / 16.2 / −42；dz 全負（棒高於球）。合併約 0.60。
