@@ -60,6 +60,17 @@
 
 ## 3. 打者目前進度
 
+- **10-31 16:41 phase 重測鏈（14 17:20 核准 (f) 的 A/B/C 三列）**：
+  - 如果 B 或 C 能補上落差，就表示到目前為止所有診斷、showcase、聯合測試的 phase 輸入都偏離了訓練分布。補充：showcase 的回合長度是 30 s，所以用的是 t / 30。
+  - 已上膛 `logs/run_ph26.sh`，要等 TRAINLIB_DIAG_END 和 14 放行（logs/ph26/GO）才會開始。全部加上 `--phase_horizon 2.6` 重測：
+    - 13298：0.03 與 j0 各 3 表；
+    - 純 12500 j0（取代 REF12500_J0）；
+    - row 9 j0；
+    - 聯合測試 s6 / s7。
+    - 結果寫入 PH26_END。
+  - `joint_smoke.py` 新增 `--phase_horizon`（預設不變）；已請 20 在 film 路徑加上同一個參數。
+  - 如果 B、C 都補不上，(f) 的結論就是投球庫差異，30f 的 band 不變，由 14 放行 GO.hold14。
+
 - **10-31 16:38 訓練環境 vs 診斷環境比對（14 的 (d)(e)，CPU 靜態比對）**：
   - (d) 揮棒起始時序兩邊相同（同一個 release 公式、bias 0.055、jitter 0、speed 1.0、同一個 ref 時鐘與 LS 濾波感知）。
   - (e) 瞄準路徑兩邊相同（同一個 gain JSON、bound 0.4、window 0.60、tau 0.05、obs comp full、effort 1.5）。
