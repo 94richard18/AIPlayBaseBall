@@ -432,6 +432,8 @@ def main():
         tr_names = [nm for nm in base.robot.joint_names if nm == "waist_yaw" or nm == "l_elbow" or nm.startswith("l_wrist")]
         tr_j = [base.robot.joint_names.index(nm) for nm in tr_names]
         tr = dict(qd=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
+                  q=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
+                  q_tgt=torch.full((n, TR_NB, len(tr_j)), float("nan"), device=dev),
                   v=torch.full((n, TR_NB), float("nan"), device=dev), t=torch.full((n, TR_NB), float("nan"), device=dev))
     prev = {}
     past_end = torch.full((n,), float("nan"), device=dev)  # reference clock minus the clip's end, at the last physics step
@@ -484,6 +486,8 @@ def main():
             ok = (b_i >= 0) & (b_i < TR_NB) & ~finished
             e_i, b_ok = torch.nonzero(ok, as_tuple=True)[0], b_i[ok]
             tr["qd"][e_i, b_ok] = base.robot.data.joint_vel[e_i][:, tr_j].abs()
+            tr["q"][e_i, b_ok] = base.robot.data.joint_pos[e_i][:, tr_j]
+            tr["q_tgt"][e_i, b_ok] = base.robot.data.joint_pos_target[e_i][:, tr_j]  # the PD target the policy issued
             tr["v"][e_i, b_ok] = sp[e_i]
             tr["t"][e_i, b_ok] = t[e_i]
         sq = live & (sp > FAST_SS) & (axis[:, 0].abs() < rec["sq_ax"])
@@ -956,7 +960,8 @@ def main():
         tp = os.path.join(ROOT, "logs", f"trace_{args.tag}.npz")
         np.savez_compressed(tp, tau=TR_T0 + TR_DT * (np.arange(TR_NB) + 0.5), names=np.array(tr_names),
                             qd=tr["qd"].cpu().numpy()[zt], v_ss=tr["v"].cpu().numpy()[zt], t=tr["t"].cpu().numpy()[zt],
-                            t_hit=r["t_hit"][zt], hit=r["hit"][zt])
+                            q=tr["q"].cpu().numpy()[zt], q_tgt=tr["q_tgt"].cpu().numpy()[zt],
+                            t_hit=r["t_hit"][zt], hit=r["hit"][zt], ref_phase_hit=r["ref_phase_hit"][zt])
         print(f"[bat] trace -> {tp} ({int(zt.sum())} in-zone swings, joints {tr_names})", flush=True)
     path = os.path.join(ROOT, "logs", f"diag_bat_contact_{args.tag}.json")
     with open(path, "w", encoding="utf-8") as f:
