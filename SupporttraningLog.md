@@ -60,6 +60,20 @@
 
 ## 3. 打者目前進度
 
+- **10-31 16:38 訓練環境 vs 診斷環境比對（14 的 (d)(e)，CPU 靜態比對）**：
+  - (d) 揮棒起始時序兩邊相同（同一個 release 公式、bias 0.055、jitter 0、speed 1.0、同一個 ref 時鐘與 LS 濾波感知）。
+  - (e) 瞄準路徑兩邊相同（同一個 gain JSON、bound 0.4、window 0.60、tau 0.05、obs comp full、effort 1.5）。
+  - 找到兩個差異：
+    - 投球庫：訓練是 P3c 形狀、55–75 km/h、好球帶內；診斷用的是 eval release 表。
+    - **phase 輸入**：觀測裡的 t / 回合長度，訓練是 2.6 s，診斷、showcase、比賽都是 9 s，到擊球時約 0.5 對 0.14。舊紀錄說這個假說不成立，但那是用舊策略測的，13298 / 13797 還沒測過。
+  - diag 新增 `--mix_zone_y` / `--mix_zone_z` 參數。
+  - (f) 鏈 `logs/run_trainlib.sh` 排在 S7_13298_END 之後，13797 跑 j0 三列：
+    - A：訓練投球庫；
+    - B：A 再加 phase_horizon 2.6；
+    - C：eval 投球 + phase_horizon 2.6。
+    - 結果寫入 TRAINLIB_DIAG_END。
+  - logs/h30f/GO 保持暫停（已改名為 GO.hold14），等 14 放行。
+
 ### 10-31 16:38 隨機策略假設 (c) 不成立；倒地兩種計法釐清；13298 joint s7 → Human30f → 12500 參考 / R4 已排好
 - 13797 隨機策略診斷（jitter 0）：in-zone hit 0.702、fair carry 31.7 m、fair_rate 0.611、launch 平均 35.5；確定性 0.749 / 35.1 m / 0.586 / 45.8；訓練 EMA 0.82 / 19.6 / 12.5 → 隨機與確定性接近，兩者都和訓練差很遠 → 差異在訓練 env 與診斷 env 本身（候選：swing 起始時機、aim 路徑 SaimSwingEnv vs ArmAimEnv、投球速度 55–75 vs 64 km/h），不是 policy 雜訊。Human30f 因此不固定 std。
 - 倒地計法：採用規則用 min_pelvis_z_2s < 0.35（13298 s6 3/64，R3 PASS 也用這個）；20 讀的是 batter_fell 旗標（done 後軀幹傾倒事件，13298 s6 5/64，R3 自己也是 5/64）。14 決定規則不變，旗標並列回報，PA 影片候選另加旗標 ≤ 4/64。
