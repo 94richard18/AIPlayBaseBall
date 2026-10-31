@@ -8,8 +8,8 @@
 # Segments of 500 its (NSEG, default 6): STOP checked before each, HOLD between segments. +50 check of segment 1:
 # bat/ss_ca_lt_lo > 0.25 -> lo 10 from segment 2 (14, 05:5x) -> logs/H31_50_CHECK.txt. Per segment: the same eval row as the
 # 800 Hz long run (next to N4_400 / B800) + the training curve every 100 its -> logs/H31_<its>_END.txt, final logs/H31_END.txt.
-# Film4 hook (14, 11-01 05:4x): HOLD is honoured only from 18:30 (11-01) on, or anytime when logs/h31/HOLD contains "now".
-# At the first evening HOLD boundary: joint s6 (64 envs, saim + R4 recover, phase 2.6) of logs/h31/FILM_CKPT (else the newest
+# Film4 hook (14, 11-01 05:4x / 06:0x): HOLD is honoured from 18:30 (11-01) on, or anytime when logs/h31/HOLD contains "now".
+# At the first honoured HOLD boundary: joint s6 (64 envs, saim + R4 recover, phase 2.6) of logs/h31/FILM_CKPT (else the newest
 # segment checkpoint with eval hit >= 0.40, logs/h31/passed.txt) -> logs/h31/joint_s6_<its>.csv + logs/H31_JOINT_END.txt.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
@@ -74,7 +74,7 @@ for k in $(seq 1 $NSEG); do
   if [ $k -gt 1 ] && [ -f $O/HOLD ]; then  # between segments only; evening (film4) or "now"
     EV=$([ "$(date +%Y%m%d%H%M)" -ge 202611011830 ] && echo 1)
     if [ -n "$EV" ] || grep -q now $O/HOLD; then
-      [ -n "$EV" ] && [ ! -f logs/H31_JOINT_END.txt ] && { MSG="joint s6 for film4 before segment $k"; joint; }
+      [ ! -f logs/H31_JOINT_END.txt ] && { MSG="joint s6 for film4 before segment $k"; joint; }
       while [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done
     fi
   fi
