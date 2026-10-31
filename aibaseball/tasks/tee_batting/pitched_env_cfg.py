@@ -514,10 +514,10 @@ class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
 
 
 @configclass
-class PitchedBattingHuman30eEnvCfg(PitchedBattingHuman30dEnvCfg):
-    """Human30e (planning 14, 10-31 08:17; armed behind H30D_300_END + logs/h30e/GO): Human30d with the carry knee at 0 m,
-    20 x clamp(carry / 40, 0, 1) x fair - the training fair-ball carry mean is ~10 m, so the 10 m knee left about half the
-    fair balls with zero gradient (the sigma rule in hinge form)."""
+class PitchedBattingHuman30eEnvCfg(PitchedBattingHuman30cEnvCfg):
+    """Human30e (planning 14, 10-31 09:15, rebuilt on 30c after Human30d's training noise failed): Human30c (training timing
+    noise off) with the carry knee at 0 m, 20 x clamp(carry / 40, 0, 1) x fair - the training fair-ball carry mean is ~10 m,
+    so the 10 m knee left about half the fair balls with zero gradient (the sigma rule in hinge form)."""
 
     carry_ref: float = 0.0
     carry_span: float = 40.0
