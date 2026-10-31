@@ -60,6 +60,14 @@
 
 ## 3. 打者目前進度
 
+### 10-31 10:29 Human30e +300（30c + carry 門檻 0 m）：兩列 gate PASS，甜蜜點比例最高，但仰角與界內比例不如 30c；30c 中段 12650 比終點差
+- 30e model_12799 jitter 0：hit 0.576、|axis_off| 0.073、slope −0.48、launch 5.0、exit 19.1（14.9 / 19.1 / 23.3）、D 0.234、fair 0.654。
+- 30e jitter 0.03：hit 0.576、|axis_off| 0.063、slope −0.48、launch −4.6、exit 18.5、D 0.193、fair 0.651（hit 數與 slope 和 jitter 0 完全相同，n 321，待查是否巧合）。
+- 對比 30c 12799（jitter 0）：hit 0.643、launch 14.2、exit 19.7、D 0.204、fair 0.749 → 30e 只有 D 較高（0.234），其餘較差。
+- 30e 訓練趨勢（每 25 its）：fair_carry 8.9 → 15.0（12550）→ 13.0 前後 → 7.6（12775）→ 11.1（12799），沒有持續上升；launch_angle 在 −7.5 到 4.1 間跳動；hit_rate 0.24 → 0.33 穩定上升。carry 門檻改 0 m 沒有讓 carry 變長，主要買到的是擊中率。
+- 30c model_12650（中段）：jitter 0 FAIL（hit 0.408、launch 1.6、D 0.233、fair 0.727），比 30c 終點 12799 差很多 → 「中段高峰挑 checkpoint」不是通用規律，30d 的中段高峰是特例。
+- 目前最好的仍是 30c 12799；交 14 決定下一步。
+
 ### 10-31 09:21 Human30d 中段 model_12650：比 30d 終點好很多，但沒超過 30c 終點
 - jitter 0：PASS；hit 0.558、|axis_off| 0.063、slope −0.46、launch 9.1、exit 18.5（14.6 / 18.5 / 22.4）、D 0.203、fair 0.730。
 - jitter 0.03：FAIL（slope −0.54）；hit 0.533、launch 5.2、exit 18.3、D 0.212、fair 0.680。
