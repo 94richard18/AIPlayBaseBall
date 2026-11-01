@@ -41,7 +41,8 @@ MSG="waiting for logs/recov5c/GO + H31_ADOPT_END"
 BK=logs/recover_bank_r5c${TAG}_s0.npz; until [ -f $Q/GO ] && [ -f logs/H31_ADOPT_END.txt ]; do sleep 60; done
 MSG="bank"
 beside
-timeout 1800 $P -u scripts/recover_bank.py --headless --checkpoint $H --armaim --aim_scripted $GY --aim_bound 0.4 --aim_window 0.60 \n  --aim_obs_comp --aim_obs_comp_full --percept_filter $PH --physics_dt 0.00125 --envs 2048 --seed 0 --out $BK > $Q/bank.txt 2>&1
+timeout 1800 $P -u scripts/recover_bank.py --headless --checkpoint $H --armaim --aim_scripted $GY --aim_bound 0.4 --aim_window 0.60 \
+  --aim_obs_comp --aim_obs_comp_full --percept_filter $PH --physics_dt 0.00125 --envs 2048 --seed 0 --out $BK > $Q/bank.txt 2>&1
 grep -q Traceback $Q/bank.txt && fail $Q/bank.txt bank
 [ -f $BK ] || { MSG="bank: no npz"; exit 1; }
 grep -q "physics dt 0.001250" $Q/bank.txt || { MSG="bank: no 800 Hz line"; exit 1; }
