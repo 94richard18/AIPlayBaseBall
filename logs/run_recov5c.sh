@@ -39,6 +39,8 @@ joint() {  # $1 seed, $2 recover ckpt, $3 out prefix
 }
 MSG="waiting for logs/recov5c/GO + H31_ADOPT_END"
 BK=logs/recover_bank_r5c${TAG}_s0.npz; until [ -f $Q/GO ] && [ -f logs/H31_ADOPT_END.txt ]; do sleep 60; done
+# 14 (18:5x): a relaunch keeps a finished bank (npz + its 800 Hz bank.txt)
+if [ -f $BK ] && grep -q "physics dt 0.001250" $Q/bank.txt 2>/dev/null && grep -q '^\[bank\] seed' $Q/bank.txt; then :; else
 MSG="bank"
 beside
 timeout 1800 $P -u scripts/recover_bank.py --headless --checkpoint $H --armaim --aim_scripted $GY --aim_bound 0.4 --aim_window 0.60 \
@@ -46,12 +48,14 @@ timeout 1800 $P -u scripts/recover_bank.py --headless --checkpoint $H --armaim -
 grep -q Traceback $Q/bank.txt && fail $Q/bank.txt bank
 [ -f $BK ] || { MSG="bank: no npz"; exit 1; }
 grep -q "physics dt 0.001250" $Q/bank.txt || { MSG="bank: no 800 Hz line"; exit 1; }
+fi
 BL=$(grep '^\[bank\] seed' $Q/bank.txt)
 MSG="train ($BL)"
+# R5C_LOAD_RUN / R5C_CKPT / R5C_ITS: resume a killed R5c run (18:5x: killed at model_2300 for FILMCAM2 -> +194 to 2494)
 # 14 (15:4x): R5b beside seg 4 thrashed VRAM (2307 / 1516 s/it) -> killed at 2196; restart after H31_ADOPT_END only
 until [ -f logs/H31_ADOPT_END.txt ] && [ "$(isaac)" -le 1 ] && [ "$(freegb)" -ge 20 ] && nofilm && noadopt; do sleep 60; done
 AIB_PHYSICS_DT=0.00125 AIB_RECOVER_BANK=$BK timeout 7200 $P -u scripts/train.py --task AIB-Recover-R2-v0 --headless --num_envs 4096 \
-  --max_iterations 300 --run_name h25r5c$TAG --resume True --load_run $(basename $R4) --checkpoint model_2194.pt > $Q/train.txt 2>&1 &
+  --max_iterations ${R5C_ITS:-300} --run_name h25r5c$TAG --resume True --load_run ${R5C_LOAD_RUN:-$(basename $R4)} --checkpoint ${R5C_CKPT:-model_2194.pt} > $Q/train.txt 2>&1 &
 # watchdog: an iteration slower than 120 s means the pair thrashes VRAM again -> kill R5b, the batter trainer keeps the GPU
 TP=$!; while kill -0 $TP 2>/dev/null; do sleep 60
   tail -c 20000 $Q/train.txt | grep -o 'Iteration time: [0-9.]*' | tail -1 | awk '{exit !($3 > 120)}' && {
