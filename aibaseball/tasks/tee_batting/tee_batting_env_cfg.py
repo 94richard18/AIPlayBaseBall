@@ -96,6 +96,9 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_launch_hi: float = 0.0  # - x clamp((launch - launch_hi_ref) / launch_hi_span, 0, 1) on fair balls (pop-up ceiling, 11-01)
     launch_hi_ref: float = 40.0
     launch_hi_span: float = 15.0
+    w_launch_lo: float = 0.0  # - x clamp((launch_lo_ref - launch) / launch_lo_span, 0, 1) on fair balls (grounder floor, 11-02)
+    launch_lo_ref: float = 0.0
+    launch_lo_span: float = 15.0
     w_outfield: float = 0.0  # x 1[fair & landing outside the ONE OUTS infield] at the hit step, from the flight prediction (11-02)
     w_exit_band: float = 0.0  # x clamp((exit - exit_band_ref) / exit_band_span, 0, 1) x fair x launch trapezoid (Human30f, 10-31)
     exit_band_ref: float = 15.0  # m/s

@@ -117,7 +117,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi", "outfield")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi", "launch_lo", "outfield")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -440,6 +440,10 @@ class TeeBattingEnv(DirectRLEnv):
             hi = ((la - cfg.launch_hi_ref) / cfg.launch_hi_span).clamp(0.0, 1.0) * fair.float()
             r = r - cfg.w_launch_hi * hi
             self.stats["launch_hi"] = 0.95 * self.stats["launch_hi"] + 0.05 * (hi > 0).float().mean()
+        if cfg.w_launch_lo:  # fair-only grounder floor: launch below launch_lo_ref is an infield out in ONE OUTS
+            lo = ((cfg.launch_lo_ref - la) / cfg.launch_lo_span).clamp(0.0, 1.0) * fair.float()
+            r = r - cfg.w_launch_lo * lo
+            self.stats["launch_lo"] = 0.95 * self.stats["launch_lo"] + 0.05 * (lo > 0).float().mean()
         if cfg.w_outfield:  # ONE OUTS geometry with the launch point as the plate: past the infield arc and the mound distance
             from aibaseball.game.field import MOUND_DIST
             from aibaseball.game.one_outs import INFIELD_RADIUS_M

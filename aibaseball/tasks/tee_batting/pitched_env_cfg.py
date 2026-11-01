@@ -573,6 +573,11 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
     # seg 3 (14, 11-02 01:0x): 14995 lost ONE OUTS on infield outs (69.7%) -> step bonus for a fair ball landing past the
     # ONE OUTS infield (28.96 m about the rubber), paid at the hit step from the training flight prediction
     w_outfield: float = float(os.environ.get("AIB_OUTFIELD_W", "0.0"))
+    # seg 3 (14, 11-02 02:4x): 15494's table fair balls launch at -8.8 deg median (64 % grounders = infield outs) -> fair-only
+    # grounder floor, the mirror of the launch ceiling
+    w_launch_lo: float = float(os.environ.get("AIB_LAUNCH_LO_W", "0.0"))
+    launch_lo_ref: float = float(os.environ.get("AIB_LAUNCH_LO_REF", "0.0"))
+    launch_lo_span: float = float(os.environ.get("AIB_LAUNCH_LO_SPAN", "15.0"))
 
 
 @configclass
