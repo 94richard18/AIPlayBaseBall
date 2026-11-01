@@ -1,0 +1,1 @@
+E10_TABLES_END 21:49 1.0x, saim off, 800 Hz, PH 2.6, jitter 0.03: plain 12500 5x3 mean 15.23% outfield 0.00% (tables 14.9,15.6,15.2), hit rate 0.395 -> NEW BAR 16.73% | 14496 + percept_filter 16.57% outfield 2.91% (tables 16.6,16.3,16.9), hit rate 0.659, delta vs bar -0.16 | 53 min
