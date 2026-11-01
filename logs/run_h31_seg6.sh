@@ -6,13 +6,15 @@
 # checkpoint -> falls before done; >= 10 -> AIB_FOLLOW_THROUGH_S=2.0 AIB_EPISODE_S=4.0 AIB_SETTLE_TAIL_S=1.5 (cfg: ref_hold_end
 # + lost-after-hit-is-fall, phase 2.6) after a 64-env 20-it smoke of that variant (crash -> the carry line instead); relaunch
 # run_h31c.sh (= run_h31b.sh, joints at 6.5 s) at K0=6 with the segment-5 bounds; boundary joint at --seconds 6.5 (14, 18:1x) -> logs/H31_SEG6_RELAUNCH.txt, logs/h31_chain6.txt.
+# 14 (11-01 19:5x): R5c PASS -> follow-through candidate dropped; seg-6 decision = pop-up rule -> launch ceiling, else the carry
+# line. Training-series boundary row stays on R4 (comparability) + one extra R5c row (logs/recov5c/recover_ckpt.txt) of the
+# segment-5 checkpoint (s6, 6.5 s) -> joint_s6_<I>_r5c.csv, reported in the marker.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export AIB_EFFORT_SCALE=1.5 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
 export AIB_H29_SIGMA_AX=0.20 AIB_H29_SIGMA_GAP=0.10 AIB_SAIM_BOUND=0.4
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_FOLLOW_THROUGH_S
 SEG5="AIB_SS_CA_WIN=0.01 AIB_SS_CA_LO=18.0 AIB_SS_CA_HI=32.0 AIB_EXIT_HINGE_W=3.0 AIB_EXIT_HINGE_REF=16.0 AIB_EXIT_HINGE_CAP=20.0 AIB_CARRY_REF=0.0 AIB_CARRY_SPAN=30.0"
-FT="AIB_FOLLOW_THROUGH_S=2.0 AIB_EPISODE_S=4.0 AIB_SETTLE_TAIL_S=1.5"
 LHI="AIB_LAUNCH_HI_W=10.0 AIB_LAUNCH_HI_REF=40.0 AIB_LAUNCH_HI_SPAN=15.0"
 B=logs/rsl_rl/aib1_tee_batting_mimic
 O=logs/h31; M=logs/H31_SEG6_RELAUNCH.txt; rm -f $M; MSG="aborted"
@@ -46,8 +48,13 @@ timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $D/$
 touch $O/joint_s6_$I.s65
 JR=$($P logs/film_pick.py $O/joint_s6_$I.csv $O/film_pick_scratch.txt | head -1)
 BD=$($P -c "import csv; print(sum(r['batter_fell_before_done'] == 'True' for r in csv.DictReader(open('$O/joint_s6_$I.csv'))))")
+MSG="joint s6 R5c of $(basename $D)/$L"; R5=$(cat logs/recov5c/recover_ckpt.txt | tr -d '\r'); idle
+timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $D/$L --envs 64 --seed 6 --after_done recover_rl   --recover_ckpt $R5 --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX --phase_horizon 2.6 --seconds 6.5 --csv $O/joint_s6_${I}_r5c.csv   > $O/joint_s6_${I}_r5c.txt 2>&1
+if [ -f $O/joint_s6_${I}_r5c.csv ] && ! grep -q Traceback $O/joint_s6_${I}_r5c.txt; then
+  JR5=$($P logs/film_pick.py $O/joint_s6_${I}_r5c.csv $O/film_pick_scratch_r5c.txt | head -1)
+else JR5="crashed ($(grep -A14 Traceback $O/joint_s6_${I}_r5c.txt | tail -1))"; fi
 # 14 (18:5x): pop-up rule first - diag fair-hit share >= 45 deg above 14496's 0.193 or fair launch q75 > 50 -> the launch ceiling
-# (AIB_LAUNCH_HI_W 10, ref 40, span 15) instead; otherwise the follow-through / carry rule on the joint falls before done
+# (AIB_LAUNCH_HI_W 10, ref 40, span 15) instead; otherwise the carry line (follow-through dropped 19:5x, R5c PASS)
 read PS PQ PN <<< "$($P logs/popup_share.py logs/diag_bat_contact_h31_$I.json 2>/dev/null)"
 POP=$(awk -v s="$PS" -v q="$PQ" 'BEGIN{print (s ~ /^[0-9.]+$/ && (s + 0 > 0.193 || q + 0 > 50)) ? 1 : 0}')
 PNOTE="diag fair pop-ups >= 45 deg $PS (14496 0.193), fair launch q75 $PQ (n $PN)"
@@ -60,11 +67,8 @@ V=""
 if [ "$POP" = 1 ]; then
   if smoke "$LHI" lhi; then V="$LHI"; NOTE="$PNOTE -> launch ceiling ($LHI; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/lhi_smoke.txt | tail -1))"
   else NOTE="$PNOTE -> launch ceiling, but its smoke failed ($(grep -A14 Traceback $O/lhi_smoke.txt | tail -1)) -> carry line"; fi
-elif [ "$BD" -ge 10 ]; then
-  if smoke "$FT" ft; then V="$FT"; NOTE="$PNOTE; falls before done $BD >= 10 -> follow-through ($FT; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/ft_smoke.txt | tail -1))"
-  else NOTE="$PNOTE; falls before done $BD >= 10 but the follow-through smoke failed ($(grep -A14 Traceback $O/ft_smoke.txt | tail -1)) -> carry line"; fi
-else NOTE="$PNOTE; falls before done $BD < 10 -> carry line"; fi
+else NOTE="$PNOTE -> carry line (R4 falls before done $BD)"; fi
 rm -f $O/STOP
-MSG="relaunched segment 6 from $(basename $D)/$L (exit $EX hit $HT); joint s6: $JR; $NOTE -> run_h31c.sh, logs/h31_chain6.txt"
+MSG="relaunched segment 6 from $(basename $D)/$L (exit $EX hit $HT); joint s6 (R4): $JR; joint s6 (R5c): $JR5; $NOTE -> run_h31c.sh, logs/h31_chain6.txt"
 trap - EXIT; echo "H31_SEG6_RELAUNCH $(date +%H:%M) $MSG" > $M
 exec env K0=6 LR0=$(basename $D) LC0=$L $SEG5 $V bash logs/run_h31c.sh > logs/h31_chain6.txt 2>&1
