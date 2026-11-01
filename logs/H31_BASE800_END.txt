@@ -1,0 +1,1 @@
+H31_BASE800_END 12:25 delivery 12500 @ 1.5x (no saim, no percept_filter), 800 Hz, phase 2.6, jitter 0.03: 5x3 mean 13.89% outfield 0.18% (tables 14.4,14.0,13.3), hit rate 0.51, 28 min (beside the trainer) [re-parsed 13:0x from the same tables: one_outs omits outfield_hit when 0]
