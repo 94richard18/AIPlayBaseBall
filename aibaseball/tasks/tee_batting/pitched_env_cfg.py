@@ -578,6 +578,11 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
     w_launch_lo: float = float(os.environ.get("AIB_LAUNCH_LO_W", "0.0"))
     launch_lo_ref: float = float(os.environ.get("AIB_LAUNCH_LO_REF", "0.0"))
     launch_lo_span: float = float(os.environ.get("AIB_LAUNCH_LO_SPAN", "15.0"))
+    # seg 4 (14, 11-02 06:5x): 15993 failed wait_torso_hp 3.80 > 1.05 x REF and fell by end 0.68 > 0.60 -> L1 on the torso angular
+    # velocity high-passed at 5 Hz before the release (the diag's wait-phase term), and a smaller fall-after-hit penalty that
+    # bites once AIB_FOLLOW_THROUGH_S lets the episode outlive the follow-through (small: the 10-27 standing designs weakened the swing)
+    w_wait_torso: float = float(os.environ.get("AIB_WAIT_TORSO_W", "0.0"))
+    w_fall_after_hit: float = float(os.environ.get("AIB_FALL_AFTER_HIT_W", "10.0"))
 
 
 @configclass

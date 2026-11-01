@@ -1,5 +1,5 @@
 #!/bin/bash
-# H32 game-scene tables for the segment-3 ckpt (planning 14, 11-02 06:1x, standing rule): if the seg-3 ckpt passes the H32_1500_END
+# H32 game-scene tables for the segment-3 ckpt (planning 14, 11-02 06:1x, standing rule; 06:5x: 15993 as information only): if the seg-3 ckpt passes the H32_1500_END
 # gates (the chain then goes on to segment 4 after the film7 HOLD), run its game-scene tables in BOTH columns (same protocol as
 # run_h32_tablesg.sh: 3 tables @0.03 + 3 @0) beside segment 4 (starts once logs/h32/train_4.txt exists; never beside film7 -
 # nofilm()). Bars from tables_game.txt: 16.93 (0.03) / 16.76 (0). The film / delivery pair changes from 15494 only if the
@@ -52,19 +52,17 @@ tables() {  # $1 ckpt, $2 prefix, $3 hit rate, $4 out list, $5 flags, $6 jitter
 }
 hr() { $P -c "import json; print(json.load(open('logs/diag_bat_contact_$1.json'))['summary']['by_speed']['slow in zone']['hit_rate'])"; }
 G=logs/h32/tables_game.txt
-MSG="FAILED: waiting for logs/H32_1500_END.txt"
-until [ -f logs/H32_1500_END.txt ]; do sleep 60; done
-I=$(grep -o '+1500 model_[0-9]*' logs/H32_1500_END.txt | grep -o '[0-9]*$')
-[ -n "$I" ] || { MSG="FAILED: no model id in H32_1500_END"; exit 1; }
-MSG="waiting: segment-3 gates (train_4 = pass, H32_END = stopped)"
+# 14 (11-02 06:5x): 15993 failed 2 seg-3 gates -> its tables run as INFORMATION only (pair unchanged), beside segment 4
+I=15993
+MSG="waiting for logs/h32/train_4.txt (segment 4)"
 until [ -f logs/h32/train_4.txt ]; do
-  [ -f logs/H32_END.txt ] && [ logs/H32_END.txt -nt logs/H32_1500_END.txt ] && { MSG="skipped: model_$I did not pass the segment-3 gates ($(cut -c1-300 logs/H32_END.txt))"; exit 0; }
+  [ -f logs/H32S4_END.txt ] && { MSG="skipped: segment 4 ended before training ($(cut -c1-300 logs/H32S4_END.txt))"; exit 0; }
   sleep 60
 done
 D=$(ls -td $B/*human_pitched_h32_3 | head -1); C=$D/model_$I.pt
 [ -f $C ] || { MSG="FAILED: $C missing"; exit 1; }
 S0=$(date +%s); H=$(hr h32_$I)
-echo "$(date +%H:%M) seg-3 ckpt model_$I (hit rate $H, jitter-0 diag), bars 16.93 (0.03) / 16.76 (0); pair change needs >= 17.76 @0 and >= 14.47 @0.03, OF >= 3 both" >> $G
+echo "$(date +%H:%M) seg-3 ckpt model_$I (hit rate $H, jitter-0 diag), bars 16.93 (0.03) / 16.76 (0); INFORMATION only (it failed 2 seg-3 gates), pair unchanged" >> $G
 one() {  # $1 jitter -> W O_ PT
   tables $C $O/t3_${I}_j$1 $H $O/t3_${I}_j$1.txt "--percept_filter" $1
   read W O_ PT <<< "$(t3 $O/t3_${I}_j$1.txt)"
@@ -72,5 +70,5 @@ one() {  # $1 jitter -> W O_ PT
 }
 one 0.03; Wa=$W; Oa=$O_
 one 0; Wb=$W; Ob=$O_
-V=$($P -c "print('PAIR CHANGE (beats 15494)' if $Wb >= 17.76 and $Wa >= 14.47 and $Oa >= 3 and $Ob >= 3 else 'no change (15494 stays)')")
+V="information only, pair unchanged"
 MSG="GAME SCENE model_$I | jitter 0.03: $Wa% / OF $Oa% (bar 16.93, 15494 14.47) | jitter 0: $Wb% / OF $Ob% (bar 16.76, need 17.76) -> $V | $((($(date +%s) - S0) / 60)) min"

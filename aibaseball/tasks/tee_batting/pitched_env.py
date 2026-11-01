@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import math
 import torch
 
 from aibaseball.physics.ball_flight import _deriv
@@ -67,6 +68,10 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         # percept_filter: running least-squares sums over the seen samples since release (time from release, per axis)
         self.pf_s = torch.zeros(n, 5, device=dev, dtype=torch.float64)  # sum t^k, k = 0..4
         self.pf_p = torch.zeros(n, 3, 3, device=dev, dtype=torch.float64)  # sum t^k p, k = 0..2 (z: + g t^2 / 2)
+        # wait-phase torso term (Human32 seg 4): 5 Hz low-pass state of the torso angular velocity, as in diag_bat_contact
+        self.wt_body = self.robot.find_bodies("torso")[0][0]
+        self.wt_lp = torch.zeros(n, 3, device=dev)
+        self.track_stats["wait_torso_hp"] = torch.zeros((), device=dev)
 
     # ------------------------------------------------------------------ curriculum
     def _progress(self) -> float:
@@ -210,6 +215,12 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             return rew
         c = self.cfg
         rew = rew - c.w_miss * self.passed.float() - c.w_tempo * self.actions[:, -1] ** 2
+        if getattr(c, "w_wait_torso", 0.0):  # L1 on the 5 Hz high-passed torso angular velocity before the release
+            w_t = self.robot.data.body_ang_vel_w[:, self.wt_body]
+            self.wt_lp += self.step_dt / (1.0 / (2 * math.pi * 5.0) + self.step_dt) * (w_t - self.wt_lp)
+            hp = (w_t - self.wt_lp).norm(dim=-1) * (self.phys_t < self.release_t).float()
+            rew = rew - c.w_wait_torso * hp
+            self.track_stats["wait_torso_hp"] = 0.98 * self.track_stats["wait_torso_hp"] + 0.02 * hp.mean()
         if self.new_hit.any():
             # timing error: physical time of contact vs. when the ball reached the reference contact point
             self.track_stats["pitch_kmh"] = 0.95 * self.track_stats["pitch_kmh"] + 0.05 * self.pitch_kmh[self.new_hit].mean()
@@ -219,7 +230,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             err = (self.ref_t - self.ref.contact_time[self.clip])[cross].mean()
             self.track_stats["ref_err_plate_s"] = 0.98 * self.track_stats["ref_err_plate_s"] + 0.02 * err
         self.plate_crossed |= cross
-        self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("pitch_kmh", "tempo", "ref_err_plate_s")})
+        self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("pitch_kmh", "tempo", "ref_err_plate_s", "wait_torso_hp")})
         return rew
 
     # ------------------------------------------------------------------ reset: new pitch
@@ -232,6 +243,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         else:
             ids = slice(None)
         self.pf_s[ids] = 0.0
+        self.wt_lp[ids] = 0.0
         self.pf_p[ids] = 0.0
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
