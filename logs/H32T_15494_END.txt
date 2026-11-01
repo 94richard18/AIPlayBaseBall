@@ -1,0 +1,1 @@
+H32T_15494_END 02:33 1.0x, saim off, 800 Hz, PH 2.6, jitter 0.03: H32 15494 + percept_filter 13.92% outfield 6.56% (tables 13.0,16.2,12.5), hit rate 0.944, delta vs bar 16.73: -2.81 (14496 was 16.57% / 2.91%) | 15 min
