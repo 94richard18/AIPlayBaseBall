@@ -562,6 +562,14 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
 
 
 @configclass
+class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
+    """Human32 (planning 14, 11-01 20:xx; user: batter strength back to human level, no axis-alignment signal - it made the
+    body shake through the swing): Human31's rewards (ss_ca ramp, fair-only exit hinge, carry knee, launch ceiling via the same
+    env vars) on the PLAIN PitchedBattingEnv - no scripted aim in the loop, the policy aims from its own percept; percept_filter
+    stays on (Human29 lineage). Run with AIB_EFFORT_SCALE 1.0 and AIB_PHYSICS_DT=0.00125. From H31 model_14496."""
+
+
+@configclass
 class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
     """Human30d (planning 14, 10-31 07:25; armed behind H30C_300_END + logs/h30d/GO): Human30c + swing-start timing noise
     +-0.03 s uniform in training, the showcase tables' distribution (training was noise-free since Human6: the diag launch
