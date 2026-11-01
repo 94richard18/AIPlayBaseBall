@@ -68,6 +68,17 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**06:08 11-02 遊戲場景勝率表結果（H32TG_END 06:06；real height、4 joint clips、P3c、800 Hz、PH 2.6、saim off、每格 3 tables × 5 seeds；logs/h32/tables_game.txt）：**
+
+| ckpt | jitter 0.03 勝率 / 外野安打 | jitter 0（= 遊戲）勝率 / 外野安打 |
+|---|---|---|
+| plain 12500 @1.0x（基準） | 15.43% / 0.00%（15.5 / 15.4 / 15.4） | 15.26% / 0.00%（15.3 / 15.3 / 15.2） |
+| **門檻（基準 + 1.5，外野 >= 3%）** | **16.93** | **16.76** |
+| H32 14995 | 14.11% / 4.68%（-2.82，FAIL） | 15.29% / 6.55%（-1.47，FAIL） |
+| H32 15494 | 14.47% / 6.81%（-2.46，FAIL） | **16.77% / 9.80%（+0.01，三表 18.3 / 14.9 / 17.1，= 門檻，雜訊等級）** |
+
+判定：(1) 15494 在遊戲欄達到門檻（+0.01）且有真實外野安打 9.8%（12500 為 0），但 robustness 欄差 2.46 → 依 11-02 協定「只過 jitter 0 不得默默採用」：15494 仍是目前最佳候選（影片 / 交付配對 15494 + R6b），不算「已過門檻」；兩欄都報給使用者。(2) 14995 兩欄皆未過。(3) 場景修正後 12500 基準幾乎不動（15.23 → 15.43 / 15.26），15494 從 13.92 升到 14.47 / 16.77：差距主要在 jitter 0.03 把它的平飛打成滾地（grounder floor 問題），遊戲本身無 jitter。(4) 第 3 段（距離穿過外野 + 滾地下限 + da 0.2）的候選以同一套表（兩欄）判；過 jitter 0 門檻 + 1.0 且 0.03 欄不低於 15494 才改配對。第 3 段 it 15877/15994 06:06，ETA ~06:45（H32_1500_END）。
+
 - **11-02 03:59（14）FILM6 通過 03:56（15494 + R6b，cdd1794 路徑面板修正首次實拍）；HOLD 自動解除 → seg 3 啟動。** videos/film6_1102_s6_k57.mp4（58.2 m、exit 26.9 = 97 km/h、launch 30.6）與 videos/film6_1102_s6_k60.mp4（47.6 m、exit 26.3、launch 24.8）；20 的檢查：rows 64/64 與 logs/recov6b/joint_s6_15494.csv 相同、h264 High 7.6-7.7 Mb/s、blank 0、wash 0、兩人未倒、PA 同框；路徑面板：邊線與內野弧全程實線且相接（遠側虛線消失）、落地標柱與 landing 標籤清楚且不壓路徑、飛行中最後 1 s 的 1 px 稍淡但可跟；**打者顫抖 NO**（k60 同樣只有一次慢速壓棒）。14 自查：k57 片尾幀如上、wash 0/372 兩支、372 幀 12.4 s。film7 已請 20 武裝（logs/FILM7_GO.txt、16:30 SKIPPED），候選 = seg-3 ckpt（過關）否則 15494、RC = R6b；14 會在 seg 4 前再放 HOLD 拍片，期限 15:56。
 - **11-02 03:47（14）3 小時檢查：** Isaac 1 = film6 拍攝中（k57 03:46 完成 11.8 MB，k60 進行中；旁邊無其他 Isaac）；logs/h32/HOLD 仍在，FILM6_END 後由背景工作自動移除 → s3 smoke → seg 3（15494 起、da 0.2、carry 15/35、OF 10、ceiling 5/40/15、floor 5/0/15、RC0 = R6b）+ 六張賽局場景表（tablesg）在旁；預計 H32_1500_END ~06:00、H32TG_END 陸續。recover_ckpt.txt 已指 R6b model_3091（15 ac3f59a）。影片：film5 23:24 → 期限 11:24，film6 ~03:56 完成，下一支期限 ~15:56。GPU 無閒置。記錄最新。授權依 10-30 指示到 11-02（今天最後一天；之後新設計 / 規格 / 排程先問使用者）。
 - **11-02 03:34（14）R6B_END 03:32 PASS → h25r6b model_3091 採用為現行 recover；FILM6_GO 已寫。** R6b（model_2792 +300、bank 15494 hit 0.762、6.4 s/it）在 15494 上 s6 / s7：done 後 ground 2 + 1 = 3（≤ 4）、tilt ok 59 / 61（≥ 52）、done 前倒 1 / 0、batter_fell 5 / 4、hits 52 / 54（R6 同 s6：ground 1、tilt 58、fell 7）。logs/recov6/recover_ckpt.txt 改指 logs/rsl_rl/aib1_recover/2026-11-02_02-41-30_h25r6b/model_3091.pt（15 執行）；seg-3 鏈已以 RC0 = R6b 重啟、仍等 HOLD。film6：BC = 15494、ROWS = logs/recov6b/joint_s6_15494.csv（與 RC 一致）、RC = R6b、ENVS "57 60"（57：58.2 m、launch 30.6、中外野；60：47.6 m、launch 24.8、右中），cdd1794 的路徑面板修正第一次實拍；20 的鏈在 Isaac 0 後開拍（R6b 已下 GPU）。FILM6_END → 14 移除 logs/h32/HOLD → s3 smoke → seg 3（從 15494、da 0.2、carry 15/35、OF 10、ceiling 5/40/15、floor 5/0/15、EX2 28.1）；六張賽局場景表在 seg 3 旁（logs/run_h32_tablesg.sh → H32TG_END）。
