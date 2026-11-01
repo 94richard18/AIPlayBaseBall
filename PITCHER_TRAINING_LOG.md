@@ -2843,3 +2843,11 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `videos/film4b_1101_s6_k7.mp4`：平飛球 exit 33.3 m/s、launch 14.2°、carry 45.6 m（外野）；沒跌倒，pelvis 0.909 m、tilt 6.1°。cut at 4.15 s（done_t 3.65 + 0.5），之後是擊球視角。對 `logs/h31/joint_s6_14496.csv` 52 欄 64/64、blank 0、High、淡白 0/343，縮圖正常。標記 `logs/FILM4B_END.txt`。
 - 切鏡規則（e5b7e77）：擊中時 cut = min(done_t, hit_t + 2.0) + 0.5 s，長飛球（H31 done_t 5.8–6.0 s，超過 6 s 片長）也能切到擊球視角；只改影片，rows 不變。env 7 新舊規則同為 4.15 s。
 - 下一步 `logs/cuttest.sh`（等 `logs/CUTTEST_GO.txt`）：env 35、--seconds 6.5、新切鏡；52 欄 64/64 相同 → 之後拍片用 6.5 s（看得到落地），否則維持 6.0 s。
+
+## 11-01 18:2x CUTTEST（6.5 s）與 FILMCAM（擊球跟拍鏡頭）
+
+- CUTTEST 18:00（`logs/cuttest.sh`，env 35，--seconds 6.5，切鏡 e5b7e77）：cut at 4.50 s（如預期）。env 35 那列相同，但 64 列只有 49 列全欄相同；差的 15 列全是回合結束時的記帳 —— env 0/1/5/22/41 在 6.0 s 還在飛（done_t NaN → 6.0–6.45、carry 補上，例 env 0 70.9 m），7 列只差 tempo_fly，3 列 min_pelvis_z_end。6.0 s 之前沒有任何變化。
+  - 影片 `videos/cuttest_1101_s6_k35.mp4` 淡白 145/343（從 frame 0，3.8 Mb/s，已知渲染問題）：只是測試品，依 14 不重拍。
+  - 14 決定：之後聯合 rows 與影片一律 6.5 s（落地要入片）；15 先用 6.5 s 重跑 14496 + R4 joint s6 當新對照，之後拍片預設改 6.5 s（SEC 可覆寫）。
+- 擊球跟拍鏡頭（2f61fa0，14 核可）：hit_t + 0.3 s 起右畫面跟球 —— 沿水平速度後 6 m、側 4 m、上 2.5 m，zoom 1.5，落地後凍結看落點；0.5 s 白色軌跡，球小於 10 px 加圈；只改影片。投影離線對 k7 好球帶框四角驗證（差 ≤ 1 px）；正後方追拍時軌跡變成垂直短線，所以加側偏 4 m。
+- FILMCAM 18:13（`logs/filmcam.sh`，env 35，6.0 s 依 CUTTEST 判定）：`videos/filmcam_1101_s6_k35.mp4` 52 欄 64/64、blank 0、High、6.6 Mb/s；淡白 2/343（frame 131–132 = 切到跟拍鏡頭那兩格，整片草地，誤報）。球全程看得到（白點 + 斜向軌跡），最後一格已看到落點紅圈。抽格 `videos/fixcheck_tiles/filmcam_1101_k35_ballcam.png`。缺點：草地沒有參考物，看不出高度與距離。
