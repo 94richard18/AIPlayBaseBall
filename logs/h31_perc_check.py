@@ -1,4 +1,4 @@
-"""13997 joint s6 (64 rows): perceived crossing z (filter) at t_plane - 0.10 s and at the commit minus the true crossing (pred_z),
+"""13997 joint rows (s6 by default; args: joint csvs, pooled): perceived crossing z (filter) at t_plane - 0.10 s and at the commit minus the true crossing (pred_z),
 and dz at contact / closest approach for hits and misses; the diag's dz on the same 4 clips (it records no percept z). CPU."""
 import csv
 import json
@@ -6,7 +6,8 @@ import json
 import numpy as np
 
 f = lambda x: float(x) if x not in ("", "nan", "None") else np.nan  # noqa: E731
-b = list(csv.DictReader(open("logs/h31/joint_s6_13997.csv")))
+import sys
+b = [x for c in (sys.argv[1:] or ["logs/h31/joint_s6_13997.csv"]) for x in csv.DictReader(open(c))]  # 13997 joint csvs (pooled)
 J = {k: np.array([f(x[k]) for x in b]) for k in ("pred_z", "perc_z_pre", "perc_z_commit", "dz_m", "t_commit", "t_gap", "kmh", "flight_pred")}
 hit = np.array([x["hit"] == "True" for x in b]); sw = np.array([x["swing"] == "True" for x in b])
 s = lambda a: f"bias {np.nanmedian(a) * 100:+.1f} cm, mean {np.nanmean(a) * 100:+.1f}, sd {np.nanstd(a) * 100:.1f}, q25/75 {np.nanpercentile(a, 25) * 100:+.1f}/{np.nanpercentile(a, 75) * 100:+.1f} (n {np.isfinite(a).sum()})"  # noqa: E731
