@@ -1,0 +1,13 @@
+pred vs plate on joint misses: |dz| med 0.000 m, |dy| med 0.000 m (n 23)
+joint: 64 pitches, pitch in zone 33, hits 37, fair 24 (fair with pitch in zone 14); diag: in zone 557, hits 408, fair 354
+set                       n   launch q25/50/75      pitch z q25/50/75                pitch y             timing (s)          dz at contact
+joint fair               24        -22/-12/+14   +0.729/+0.920/+1.053   -0.182/-0.076/+0.180                    n/a   -0.018/-0.008/+0.019
+joint fair, zone         14         -16/-8/+12   +0.751/+0.920/+0.980   -0.112/+0.059/+0.160                    n/a   -0.012/-0.004/+0.019
+joint fair, z<0.70        5        -34/-22/-16   +0.514/+0.546/+0.665   -0.088/-0.063/+0.251                    n/a   -0.026/-0.014/-0.012
+joint fair, z>=0.70      19         -20/+3/+19   +0.809/+0.972/+1.091   -0.184/-0.097/+0.156                    n/a   -0.015/+0.006/+0.029
+diag fair zone          354         -15/+9/+30   +0.696/+0.803/+0.972   -0.151/-0.012/+0.097                    n/a   -0.012/+0.010/+0.030
+diag fair, z<0.70       101         -29/-9/+14   +0.543/+0.665/+0.689   -0.210/-0.151/+0.088                    n/a   -0.024/-0.003/+0.015
+diag fair, z>=0.70      253         -8/+15/+39   +0.760/+0.893/+0.983   -0.107/+0.018/+0.097                    n/a   -0.008/+0.013/+0.034
+joint fair (n 24) r(launch,pitch_z) +0.49 r(launch,pitch_y) -0.20 r(launch,dz) +0.98 | launch vs dz 11.2 deg/cm
+diag fair (n 306) r(launch,pitch_z) +0.33 r(launch,pitch_y) +0.03 r(launch,dz) +0.98 | launch vs dz 12.1 deg/cm
+joint misses timing (s) q: -0.062/-0.039/-0.026 | diag all in-zone timing q: -0.054/-0.039/-0.030

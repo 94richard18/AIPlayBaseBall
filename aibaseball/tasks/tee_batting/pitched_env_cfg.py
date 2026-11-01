@@ -544,6 +544,13 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
     carry_ref: float = float(os.environ.get("AIB_CARRY_REF", "10.0"))
     carry_span: float = float(os.environ.get("AIB_CARRY_SPAN", "30.0"))
     w_track: float = 0.5
+    if os.environ.get("AIB_FOLLOW_THROUGH_S"):  # segment 6 option (14, 11-01 12:4x), off: the episode outlives the follow-through
+        # so w_fall_after_hit bites (the diag falls by its 9 s end on 0.44 of the in-zone pitches, training ends 0.4 s after contact
+        # / at the clip end); the phase input stays on the 2.6 s training scale
+        follow_through_s: float = float(os.environ["AIB_FOLLOW_THROUGH_S"])
+        episode_length_s = float(os.environ.get("AIB_EPISODE_S", "4.0"))
+        settle_tail_s: float = float(os.environ.get("AIB_SETTLE_TAIL_S", "1.5"))
+        phase_horizon_s: float | None = 2.6
 
 
 @configclass
