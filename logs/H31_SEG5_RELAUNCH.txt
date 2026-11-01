@@ -1,0 +1,1 @@
+H31_SEG5_RELAUNCH 16:12 relaunched segment 5 from 2026-11-01_11-42-57_human_pitched_h31_4/model_14496.pt (exit 29.0 hit 0.844), ramp 18-32, hinge cap 20, carry knee 0 -> run_h31b.sh, logs/h31_chain5.txt
