@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**06:55 11-02 H32 第 3 段結果（H32_1500_END 06:52，model_15993，`logs/rsl_rl/aib1_tee_batting_mimic/2026-11-02_04-02-58_human_pitched_h32_3/model_15993.pt`）→ 4 過 2 敗，chain 停（H32_END）：** 過：hit 0.914、exit 28.5（≥ 27.1）、**da 0.4916（首次 < 0.50）**、wait_da 0.536（≤ 0.696）。敗：wait_torso_hp 3.80（> 1.05 × REF 3.4155 = 3.586，+11%；15494 3.34）、fell by end 0.680（> 0.60；15494 0.598）。進步：fair carry 中位 37.8 m（24.8）、launch 19.7（12.0）、滾地 0.30（0.42）；分區 fair launch 中位 low +13.8（+2.3）、inside +16.3（+1.5）、away +13.8、high +16.4 → 滾地下限修好了 low / inside 的弱點；pop-up 0.162（0.112）。Joint s6（R6b）：hits 53、fair 46、**外野 18/64（11）**、carry 中位 22.2（proxy > 25 未達）、max 87.8 m、fell 8 = before done 4（上限）+ after 4、ground 3、tilt ok 56。
+
+決定：(1) 第 4 段從 15993 +500，依預定規則（fell by end > 0.60）加站立項（fell-by-end 懲罰）＋等待段 torso L1（把 wait_torso_hp 壓回 REF）；其餘獎勵同第 3 段。門檻：同第 3 段六項，另加 exit ≥ 27.5、fair carry 中位 ≥ 30（站立項不得吃掉揮棒，過去六個站立設計都是靠揮弱降倒地）。(2) 15993 的遊戲場景雙欄表以「資訊」身份跟第 4 段並行（有敗項不可改配對；看外野 18/64 是否換成勝率）。(3) **film7 = 15993 + R6b**（FILM7_GO 06:58：ENVS "51 59" = 87.8 m 中外野 / 80.7 m，皆未倒、done_t 5.7-5.9 s），眼睛門檻 = 站姿不抖（15993 wait_torso +11%）；若抖則以 15494 重拍 film7b。順序：film7 先（GPU 空，無其他 Isaac）→ FILM7_END 後 15 啟動第 4 段 + 15993 表。15494 + R6b 仍為交付配對。
+
 **06:08 11-02 遊戲場景勝率表結果（H32TG_END 06:06；real height、4 joint clips、P3c、800 Hz、PH 2.6、saim off、每格 3 tables × 5 seeds；logs/h32/tables_game.txt）：**
 
 | ckpt | jitter 0.03 勝率 / 外野安打 | jitter 0（= 遊戲）勝率 / 外野安打 |
