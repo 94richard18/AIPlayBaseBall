@@ -1,1 +1,1 @@
-adopted by 14 00:2x, R4 rule not met (before-done falls are the batter's), recover share = 4 after-done grounds / 128, strict improvement over R5c (ground 9 -> 5+3, before-done 8 -> 2+2, tilt 44 -> 53/57)
+adopted by 14 03:34 (R6B_END PASS: after-done ground 3/128, tilt 59/61, on 15494); previous: h25r6 model_2792 (adopted 00:2x)
