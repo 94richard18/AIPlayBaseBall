@@ -93,6 +93,9 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_carry: float = 0.0  # x clamp((carry - carry_ref) / carry_span, 0, 1) on fair balls only (Human30c, 10-31)
     carry_ref: float = 10.0
     carry_span: float = 30.0
+    w_launch_hi: float = 0.0  # - x clamp((launch - launch_hi_ref) / launch_hi_span, 0, 1) on fair balls (pop-up ceiling, 11-01)
+    launch_hi_ref: float = 40.0
+    launch_hi_span: float = 15.0
     w_exit_band: float = 0.0  # x clamp((exit - exit_band_ref) / exit_band_span, 0, 1) x fair x launch trapezoid (Human30f, 10-31)
     exit_band_ref: float = 15.0  # m/s
     exit_band_span: float = 15.0  # m/s

@@ -117,7 +117,7 @@ class TeeBattingEnv(DirectRLEnv):
         # running statistics for logging (always the same keys for rsl_rl)
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
-                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge")}
+                       "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi")}
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -436,6 +436,10 @@ class TeeBattingEnv(DirectRLEnv):
             r_eh = cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap) * (fair.float() if cfg.exit_hinge_fair_only else 1.0)
             r = r + r_eh
             self.stats["exit_hinge"] = 0.95 * self.stats["exit_hinge"] + 0.05 * r_eh.median()
+        if cfg.w_launch_hi:  # fair-only pop-up ceiling: the carry term must not buy launch above launch_hi_ref
+            hi = ((la - cfg.launch_hi_ref) / cfg.launch_hi_span).clamp(0.0, 1.0) * fair.float()
+            r = r - cfg.w_launch_hi * hi
+            self.stats["launch_hi"] = 0.95 * self.stats["launch_hi"] + 0.05 * (hi > 0).float().mean()
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
         self.hit_reward[ids] = r
         self.carry[ids] = carry

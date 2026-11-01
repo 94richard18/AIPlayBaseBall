@@ -13,6 +13,7 @@ export AIB_H29_SIGMA_AX=0.20 AIB_H29_SIGMA_GAP=0.10 AIB_SAIM_BOUND=0.4
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_FOLLOW_THROUGH_S
 SEG5="AIB_SS_CA_WIN=0.01 AIB_SS_CA_LO=18.0 AIB_SS_CA_HI=32.0 AIB_EXIT_HINGE_W=3.0 AIB_EXIT_HINGE_REF=16.0 AIB_EXIT_HINGE_CAP=20.0 AIB_CARRY_REF=0.0 AIB_CARRY_SPAN=30.0"
 FT="AIB_FOLLOW_THROUGH_S=2.0 AIB_EPISODE_S=4.0 AIB_SETTLE_TAIL_S=1.5"
+LHI="AIB_LAUNCH_HI_W=10.0 AIB_LAUNCH_HI_REF=40.0 AIB_LAUNCH_HI_SPAN=15.0"
 B=logs/rsl_rl/aib1_tee_batting_mimic
 O=logs/h31; M=logs/H31_SEG6_RELAUNCH.txt; rm -f $M; MSG="aborted"
 trap 'echo "H31_SEG6_RELAUNCH $(date +%H:%M) $MSG" > $M; cat $M' EXIT
@@ -45,15 +46,24 @@ timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $D/$
 touch $O/joint_s6_$I.s65
 JR=$($P logs/film_pick.py $O/joint_s6_$I.csv $O/film_pick_scratch.txt | head -1)
 BD=$($P -c "import csv; print(sum(r['batter_fell_before_done'] == 'True' for r in csv.DictReader(open('$O/joint_s6_$I.csv'))))")
-V=""; NOTE="falls before done $BD < 10 -> carry line"
-if [ "$BD" -ge 10 ]; then
-  MSG="follow-through smoke"; idle
-  env $SEG5 $FT AIB_PHYSICS_DT=0.00125 timeout 1500 $P -u scripts/train.py --task AIB-PitchedBatting-Human31-v0 --headless --num_envs 64 \
-    --max_iterations 20 --run_name h31_ft_smoke --resume True --load_run $(basename $D) --checkpoint $L > $O/ft_smoke.txt 2>&1
-  if grep -q Traceback $O/ft_smoke.txt || ! grep -q "AIB_PHYSICS_DT: physics dt 0.001250" $O/ft_smoke.txt; then
-    NOTE="falls before done $BD >= 10 but the follow-through smoke failed ($(grep -A14 Traceback $O/ft_smoke.txt | tail -1)) -> carry line"
-  else V="$FT"; NOTE="falls before done $BD >= 10 -> follow-through ($FT; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/ft_smoke.txt | tail -1))"; fi
-fi
+# 14 (18:5x): pop-up rule first - diag fair-hit share >= 45 deg above 14496's 0.193 or fair launch q75 > 50 -> the launch ceiling
+# (AIB_LAUNCH_HI_W 10, ref 40, span 15) instead; otherwise the follow-through / carry rule on the joint falls before done
+read PS PQ PN <<< "$($P logs/popup_share.py logs/diag_bat_contact_h31_$I.json 2>/dev/null)"
+POP=$(awk -v s="$PS" -v q="$PQ" 'BEGIN{print (s ~ /^[0-9.]+$/ && (s + 0 > 0.193 || q + 0 > 50)) ? 1 : 0}')
+PNOTE="diag fair pop-ups >= 45 deg $PS (14496 0.193), fair launch q75 $PQ (n $PN)"
+smoke() {  # $1 variant env, $2 tag -> 0 if a 64-env 20-it smoke of the variant runs clean
+  MSG="$2 smoke"; idle
+  env $SEG5 $1 AIB_PHYSICS_DT=0.00125 timeout 1500 $P -u scripts/train.py --task AIB-PitchedBatting-Human31-v0 --headless --num_envs 64     --max_iterations 20 --run_name h31_${2}_smoke --resume True --load_run $(basename $D) --checkpoint $L > $O/${2}_smoke.txt 2>&1
+  ! grep -q Traceback $O/${2}_smoke.txt && grep -q "AIB_PHYSICS_DT: physics dt 0.001250" $O/${2}_smoke.txt
+}
+V=""
+if [ "$POP" = 1 ]; then
+  if smoke "$LHI" lhi; then V="$LHI"; NOTE="$PNOTE -> launch ceiling ($LHI; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/lhi_smoke.txt | tail -1))"
+  else NOTE="$PNOTE -> launch ceiling, but its smoke failed ($(grep -A14 Traceback $O/lhi_smoke.txt | tail -1)) -> carry line"; fi
+elif [ "$BD" -ge 10 ]; then
+  if smoke "$FT" ft; then V="$FT"; NOTE="$PNOTE; falls before done $BD >= 10 -> follow-through ($FT; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/ft_smoke.txt | tail -1))"
+  else NOTE="$PNOTE; falls before done $BD >= 10 but the follow-through smoke failed ($(grep -A14 Traceback $O/ft_smoke.txt | tail -1)) -> carry line"; fi
+else NOTE="$PNOTE; falls before done $BD < 10 -> carry line"; fi
 rm -f $O/STOP
 MSG="relaunched segment 6 from $(basename $D)/$L (exit $EX hit $HT); joint s6: $JR; $NOTE -> run_h31c.sh, logs/h31_chain6.txt"
 trap - EXIT; echo "H31_SEG6_RELAUNCH $(date +%H:%M) $MSG" > $M

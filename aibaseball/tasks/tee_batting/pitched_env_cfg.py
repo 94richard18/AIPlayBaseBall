@@ -543,6 +543,10 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
     # segment 5 (14, 11-01 12:2x): fair carry median 4 m sits under the 10 m knee -> knee 0 so every fair ball pays for carry
     carry_ref: float = float(os.environ.get("AIB_CARRY_REF", "10.0"))
     carry_span: float = float(os.environ.get("AIB_CARRY_SPAN", "30.0"))
+    # segment 6 option (14, 11-01 18:5x), off: fair-only pop-up ceiling so the knee-0 carry term cannot buy launch > 40 deg
+    w_launch_hi: float = float(os.environ.get("AIB_LAUNCH_HI_W", "0.0"))
+    launch_hi_ref: float = float(os.environ.get("AIB_LAUNCH_HI_REF", "40.0"))
+    launch_hi_span: float = float(os.environ.get("AIB_LAUNCH_HI_SPAN", "15.0"))
     w_track: float = 0.5
     if os.environ.get("AIB_FOLLOW_THROUGH_S"):  # segment 6 option (14, 11-01 12:4x), off: the episode outlives the follow-through
         # so w_fall_after_hit bites (the diag falls by its 9 s end on 0.44 of the in-zone pitches, training ends 0.4 s after contact
