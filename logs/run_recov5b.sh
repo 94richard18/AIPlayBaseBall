@@ -44,7 +44,9 @@ AIB_PHYSICS_DT=0.00125 AIB_RECOVER_BANK=$BK timeout 7200 $P -u scripts/train.py 
 TP=$!; while kill -0 $TP 2>/dev/null; do sleep 60
   tail -c 20000 $Q/train.txt | grep -o 'Iteration time: [0-9.]*' | tail -1 | awk '{exit !($3 > 120)}' && {
     powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.CommandLine -match 'h25r5b' -and \$_.CommandLine -match 'train.py' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
-    MSG="train: killed by the watchdog (iteration > 120 s beside $(isaac) Isaac, VRAM thrash)"; exit 1; }
+    # 14 (16:0x): report the batter trainer's iteration time before / 3 min after the kill; no auto-relaunch (14 decides at Isaac 0)
+    BT=$(ls -t logs/h31/train_*.txt | head -1); IT0=$(grep -o 'Iteration time: [0-9.]*s' $BT | tail -1); sleep 180
+    MSG="train: killed by the watchdog (R5b $(tail -c 20000 $Q/train.txt | grep -o 'Iteration time: [0-9.]*s' | tail -1) beside $(isaac) Isaac, VRAM thrash); $(basename $BT) at the kill: $IT0, +3 min: $(grep -o 'Iteration time: [0-9.]*s' $BT | tail -1); R5b not relaunched, waits for 14 at Isaac 0"; exit 1; }
 done
 grep -q Traceback $Q/train.txt && fail $Q/train.txt train
 grep -q "AIB_PHYSICS_DT: physics dt 0.001250" $Q/train.txt || { MSG="train: no AIB_PHYSICS_DT line"; exit 1; }
