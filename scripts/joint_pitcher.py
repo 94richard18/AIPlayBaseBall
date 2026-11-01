@@ -116,6 +116,13 @@ class JointFilm:
     CUT_AFTER_MISS_S = float(os.environ.get("AIB_FILM_CUT_AFTER_MISS_S", CUT_AFTER_S))
     # planning 14 11-01 (H31 carries 40-84 m, done_t 5.8-6.0 s > the clip): a hit cuts at min(done_t, hit_t + this) + CUT_AFTER_S
     HIT_VIEW_AFTER_S = 2.0
+    # planning 14 11-01 (the ball was a 3 px dot in every view): from hit_t + BALLCAM_AFTER_S the right panel follows the
+    # batted ball - eye BALLCAM_BACK m behind it along its horizontal velocity, BALLCAM_SIDE m to its left (a straight chase
+    # view turns the trail into a vertical stub, offline check 11-01) and BALLCAM_UP m above (never below field +
+    # BALLCAM_MIN_Z), aimed BALLCAM_AHEAD m ahead of it; frozen over the landing point once the flight ends. A white trail
+    # of the last TRAIL_S s is drawn on it, plus a circle while the ball is under CIRCLE_PX px across. Visual only
+    BALLCAM_AFTER_S, BALLCAM_BACK, BALLCAM_SIDE, BALLCAM_UP, BALLCAM_AHEAD, BALLCAM_ZOOM, BALLCAM_MIN_Z = 0.3, 6.0, 4.0, 2.5, 3.0, 1.5, 1.5
+    TRAIL_S, CIRCLE_PX = 0.5, 10.0
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
     CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
@@ -176,6 +183,8 @@ class JointFilm:
         self.plate_xy = g[:2] + np.array(rz(pd, zc))
         self.cut_at = None  # joint time of the first frame after the cut
         self.hit_t = None  # joint time of the first step with a hit
+        self.trail, self.ball_dir, self.ball_pose = [], None, None  # (t, world pos) of the batted ball; ball camera state
+        self.hap = self.cam.GetHorizontalApertureAttr().Get() if self.cam else None
         # film_wall: hidden for a camera behind it (the plate view, the high camera) - its back would fill the frame
         self.wall = stage.GetPrimAtPath(f"/World/envs/env_{E}/FilmWall") if getattr(base.cfg, "film_wall", False) else None
         self.wall_x, self.g, self.th = pd + base.cfg.flight_end_behind_plate_m, g, th
@@ -193,6 +202,9 @@ class JointFilm:
             pel = (b.robot.data.root_link_pos_w[E].cpu().numpy() + [0.0, 0.0, -0.1]).tolist()
             if which == "side":
                 eye, tgt, z = self.side_eye, pel, self.SIDE_ZOOM
+            elif which == "ball":
+                eye, tgt = self.ball_pose
+                z = self.BALLCAM_ZOOM
             elif hit and self._off_batter(self.high_eye, b.j_pos[E].cpu().numpy()) > self.MIN_BATTER_DEG:
                 ball = b.j_pos[E].cpu().numpy()
                 eye, tgt, z = self.high_eye, ball.tolist(), self.ball_zoom(np.linalg.norm(ball[:2] - self.plate_xy))
@@ -218,6 +230,61 @@ class JointFilm:
         a, c = np.asarray(tgt, dtype=float) - e, self.base.batter.data.root_pos_w[self.E].cpu().numpy().astype(float) - e
         return float(np.degrees(np.arccos(np.clip(a @ c / (np.linalg.norm(a) * np.linalg.norm(c) + 1e-9), -1.0, 1.0))))
 
+    def _ball_cam(self, t):
+        """Every step after a hit: log the batted ball and set self.ball_pose ((eye, target) or None while the ball cam is
+        not up). Direction = the ball's horizontal velocity while it flies, kept once the flight ends (frozen eye over the
+        landing point)."""
+        b, E = self.base, self.E
+        on = bool(b.j_fly[E]) or bool(b.j_done[E])
+        if not on:
+            return
+        p = b.j_pos[E].cpu().numpy().astype(float)
+        self.trail.append((t, p))
+        if bool(b.j_fly[E]):
+            v = b.j_vel[E].cpu().numpy().astype(float)
+            if np.hypot(v[0], v[1]) > 0.5:
+                self.ball_dir = np.array([v[0], v[1], 0.0]) / np.hypot(v[0], v[1])
+        if self.ball_dir is None or t < self.hit_t + self.BALLCAM_AFTER_S:
+            return
+        if bool(b.j_done[E]) and self.ball_pose is not None:
+            self.ball_pose = (self.ball_pose[0], p.tolist())  # landed: the eye stays, aimed at the landing point
+            return
+        left = np.array([-self.ball_dir[1], self.ball_dir[0], 0.0])
+        eye = p - self.BALLCAM_BACK * self.ball_dir + self.BALLCAM_SIDE * left + [0.0, 0.0, self.BALLCAM_UP]
+        eye[2] = max(eye[2], b.field_z + self.BALLCAM_MIN_Z)
+        self.ball_pose = (eye.tolist(), (p + self.BALLCAM_AHEAD * self.ball_dir).tolist())
+
+    def _project(self, pts, eye, tgt, zoom, w, h):
+        """World points -> pixel (x, y, depth) for a set_camera_view camera (world z up) of focal focal0 * zoom."""
+        e = np.asarray(eye, dtype=float)
+        f = np.asarray(tgt, dtype=float) - e
+        f /= np.linalg.norm(f)
+        r = np.cross(f, [0.0, 0.0, 1.0])
+        r /= np.linalg.norm(r)
+        u = np.cross(r, f)
+        d = np.asarray(pts, dtype=float) - e
+        k = self.focal0 * zoom / self.hap * w
+        zc = d @ f
+        return np.stack([w / 2 + k * (d @ r) / zc, h / 2 - k * (d @ u) / zc, zc], -1), k
+
+    def _draw_ball(self, im, t):
+        """The trail of the last TRAIL_S s and, for a small ball, a circle around it on the ball camera frame."""
+        import cv2
+        pts = [p for (s, p) in self.trail if s >= t - self.TRAIL_S]
+        if not pts or not self.focal0 or not self.hap:
+            return
+        eye, tgt = self.ball_pose
+        h, w = im.shape[:2]
+        xy, k = self._project(pts, eye, tgt, self.BALLCAM_ZOOM, w, h)
+        ok = xy[:, 2] > 1.5  # trail points next to / behind the eye project off the frame
+        line = np.round(xy[ok, :2]).astype(np.int32)
+        if len(line) > 1:
+            cv2.polylines(im, [line.reshape(-1, 1, 2)], False, (255, 255, 255), 2, cv2.LINE_AA)
+        if ok[-1]:
+            dia = 2 * self.base.phys.ball.radius * k / xy[-1, 2]
+            if dia < self.CIRCLE_PX:
+                cv2.circle(im, tuple(int(v) for v in np.round(xy[-1, :2])), 12, (255, 255, 255), 2, cv2.LINE_AA)
+
     def _grab(self):
         for _ in range(6):
             img = self.base.render()
@@ -233,6 +300,8 @@ class JointFilm:
         self._pose(t)
         if hit and self.hit_t is None:
             self.hit_t = t
+        if hit:
+            self._ball_cam(t)
         if k % self.every:
             return
         if hit and done_t is not None:  # planning 14 11-01: a long flight lands after the clip - cut by HIT_VIEW_AFTER_S at the latest
@@ -243,6 +312,9 @@ class JointFilm:
         if cut and self.cut_at is None:
             self.cut_at = t
         left, right = ("side", "high") if cut else ("cf", "pv")
+        ball_view = hit and self.ball_pose is not None
+        if ball_view:
+            right = "ball"
         self._view(left, hit)
         self.base.render()  # one stale render after the move
         img = self._grab()
@@ -254,8 +326,9 @@ class JointFilm:
         self._view(right, hit)
         self.base.render()
         pv = self._grab()
-        ball_view = cut and hit and self._off_batter(self.high_eye, self.base.j_pos[self.E].cpu().numpy()) > self.MIN_BATTER_DEG
-        labels = ("from home plate",) if not cut else ("the batted ball" if ball_view else "from behind home plate",)
+        if ball_view and pv is not None:
+            self._draw_ball(pv, t)
+        labels = ("the batted ball",) if ball_view else ("from behind home plate",) if cut else ("from home plate",)
         if cut:
             txt = (txt + "  " if txt else "") + "play over (batter shown until the play ends)"
         for im, s in ((img, None if self.CLEAN else f"t = {t:.2f} s" + (f"  {txt}" if txt else "")), (pv, labels[0])):
