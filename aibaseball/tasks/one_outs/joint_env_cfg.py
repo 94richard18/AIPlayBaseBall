@@ -62,6 +62,9 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
     # film_call_s, green = strike / red = ball (not on a batted ball) - visual only
     film_zone_frame: bool = False
     film_call_s: float = 0.6
+    # film (planning 14 11-01): foul lines, the ONE OUTS infield edge (38.9 m on the lines, 47.4 m to centre) and the
+    # engine's fence (100 / 122 m) on the grass - visual only (no collider: the batted ball's flight is unchanged)
+    film_field: bool = False
 
     def __post_init__(self):
         super().__post_init__()

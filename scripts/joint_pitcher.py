@@ -121,7 +121,9 @@ class JointFilm:
     # view turns the trail into a vertical stub, offline check 11-01) and BALLCAM_UP m above (never below field +
     # BALLCAM_MIN_Z), aimed BALLCAM_AHEAD m ahead of it; frozen over the landing point once the flight ends. A white trail
     # of the last TRAIL_S s is drawn on it, plus a circle while the ball is under CIRCLE_PX px across. Visual only
-    BALLCAM_AFTER_S, BALLCAM_BACK, BALLCAM_SIDE, BALLCAM_UP, BALLCAM_AHEAD, BALLCAM_ZOOM, BALLCAM_MIN_Z = 0.3, 6.0, 4.0, 2.5, 3.0, 1.5, 1.5
+    # 11-01 round 2 (offline mock with the film_field lines): 10 m back / 6 m side / 3 m up / zoom 1.2 keeps the ground under
+    # the ball, the infield edge and the fence in frame (the ball ~8 px: circled)
+    BALLCAM_AFTER_S, BALLCAM_BACK, BALLCAM_SIDE, BALLCAM_UP, BALLCAM_AHEAD, BALLCAM_ZOOM, BALLCAM_MIN_Z = 0.3, 10.0, 6.0, 3.0, 3.0, 1.2, 1.5
     TRAIL_S, CIRCLE_PX = 0.5, 10.0
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
@@ -184,6 +186,7 @@ class JointFilm:
         self.cut_at = None  # joint time of the first frame after the cut
         self.hit_t = None  # joint time of the first step with a hit
         self.trail, self.ball_dir, self.ball_pose = [], None, None  # (t, world pos) of the batted ball; ball camera state
+        self.launch_v = None  # the batted ball's velocity at its first logged flight step (exit speed / launch angle text)
         self.hap = self.cam.GetHorizontalApertureAttr().Get() if self.cam else None
         # film_wall: hidden for a camera behind it (the plate view, the high camera) - its back would fill the frame
         self.wall = stage.GetPrimAtPath(f"/World/envs/env_{E}/FilmWall") if getattr(base.cfg, "film_wall", False) else None
@@ -239,6 +242,8 @@ class JointFilm:
         if not on:
             return
         p = b.j_pos[E].cpu().numpy().astype(float)
+        if not self.trail:
+            self.launch_v = b.j_vel[E].cpu().numpy().astype(float)
         self.trail.append((t, p))
         if bool(b.j_fly[E]):
             v = b.j_vel[E].cpu().numpy().astype(float)
@@ -268,7 +273,9 @@ class JointFilm:
         return np.stack([w / 2 + k * (d @ r) / zc, h / 2 - k * (d @ u) / zc, zc], -1), k
 
     def _draw_ball(self, im, t):
-        """The trail of the last TRAIL_S s and, for a small ball, a circle around it on the ball camera frame."""
+        """The trail of the last TRAIL_S s, a dashed drop line from the ball to the ground under it and, for a small ball, a
+        circle around it on the ball camera frame; top right: distance from the contact point and height above the field
+        (live; "carry" once landed), exit speed and launch angle (planning 14 11-01: height and distance must read)."""
         import cv2
         pts = [p for (s, p) in self.trail if s >= t - self.TRAIL_S]
         if not pts or not self.focal0 or not self.hap:
@@ -284,6 +291,25 @@ class JointFilm:
             dia = 2 * self.base.phys.ball.radius * k / xy[-1, 2]
             if dia < self.CIRCLE_PX:
                 cv2.circle(im, tuple(int(v) for v in np.round(xy[-1, :2])), 12, (255, 255, 255), 2, cv2.LINE_AA)
+        p0, p = self.trail[0][1], self.trail[-1][1]
+        hgt = p[2] - self.base.field_z
+        g, _ = self._project([[p[0], p[1], self.base.field_z]], eye, tgt, self.BALLCAM_ZOOM, w, h)
+        if ok[-1] and g[0, 2] > 1.5 and hgt > 0.3:
+            a, c = xy[-1, :2], g[0, :2]
+            for i in range(0, 40, 2):  # dashed: 20 dashes, whatever falls in the frame is drawn
+                q0, q1 = a + (c - a) * i / 40, a + (c - a) * (i + 1) / 40
+                cv2.line(im, tuple(int(v) for v in q0), tuple(int(v) for v in q1), (255, 255, 255), 1, cv2.LINE_AA)
+        landed = bool(self.base.j_done[self.E])
+        dist = float(np.hypot(*(p[:2] - p0[:2])))
+        lines = [f"carry {dist:.1f} m" if landed else f"distance {dist:.1f} m   height {hgt:.1f} m"]
+        if self.launch_v is not None:
+            v = self.launch_v
+            lines.append(f"exit {np.linalg.norm(v) * 3.6:.0f} km/h   launch {np.degrees(np.arctan2(v[2], np.hypot(v[0], v[1]))):.0f} deg")
+        for i, txt in enumerate(lines):
+            (tw, _), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+            org = (w - tw - 18, 40 + 40 * i)
+            cv2.putText(im, txt, org, cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 5, cv2.LINE_AA)
+            cv2.putText(im, txt, org, cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
     def _grab(self):
         for _ in range(6):

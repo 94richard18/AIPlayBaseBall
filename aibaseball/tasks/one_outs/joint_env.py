@@ -100,6 +100,8 @@ class JointPitchEnv(StageEnv):
             self._spawn_film_wall("/World/envs/env_0")
         if c.film_zone_frame:
             self._spawn_zone_frame("/World/envs/env_0")
+        if c.film_field:
+            self._spawn_film_field("/World/envs/env_0")
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=["/World/ground"])
         self._filter_ball_batter()
@@ -161,6 +163,51 @@ class JointPitchEnv(StageEnv):
                                  ("ZoneLeft", -hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b)),
                                  ("ZoneRight", hw, (z0 + z1) / 2, (0.012, b, z1 - z0 + b))):
             put(name, xw - 0.008, y, z, size, red, glow)
+
+    def _spawn_film_field(self, env_path: str):
+        """film_field (planning 14 11-01: against plain grass a batted ball reads as motion only): chalk foul lines from the
+        plate to the fence, the ONE OUTS infield edge (INFIELD_RADIUS_M around the rubber: 38.9 m from the plate on the foul
+        lines, 47.4 m to centre - a fair ball landing past it is an outfield hit) and the engine's fence (FieldSpec: 100 m on
+        the lines, 122 m to centre, 2.5 m high), turned with plate_yaw_deg. Visual only: no collision / rigid-body props, so a
+        70-84 m ball flies through the fence exactly as in the rows."""
+        from aibaseball.game.field import FOUL_ANGLE_DEG, MOUND_DIST, FieldSpec
+        from aibaseball.game.one_outs import INFIELD_RADIUS_M
+
+        import omni.usd
+        from pxr import UsdGeom
+
+        c, fs = self.cfg, FieldSpec()
+        th = -math.radians(c.plate_yaw_deg)
+        UsdGeom.Xform.Define(omni.usd.get_context().get_stage(), f"{env_path}/FilmField")
+        chalk, fence = (0.95, 0.95, 0.92), (0.10, 0.22, 0.32)
+        n = [0]
+
+        def seg(a, b, width, height, z0, color):  # field frame (home origin, +X to centre field, +Y third base) a -> b
+            (x0, y0), (x1, y1) = a, b
+            L, yaw = math.hypot(x1 - x0, y1 - y0), math.atan2(y1 - y0, x1 - x0)
+            fx, fy = (x0 + x1) / 2, (y0 + y1) / 2
+            px, py = c.plate_distance - fx, c.zone_center_y + fy  # field -> plate frame (X runs from the plate to the rubber)
+            pos = (math.cos(th) * px - math.sin(th) * py, math.sin(th) * px + math.cos(th) * py, self.field_z + z0 + height / 2)
+            yw = th + math.pi - yaw  # X reversed: the segment's direction in the plate frame is (-cos yaw, sin yaw)
+            cfg = sim_utils.CuboidCfg(size=(L + width, width, height), visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=color, emissive_color=tuple(0.3 * v for v in color), roughness=0.8))
+            cfg.func(f"{env_path}/FilmField/S{n[0]}", cfg, translation=pos, orientation=(math.cos(yw / 2), 0.0, 0.0, math.sin(yw / 2)))
+            n[0] += 1
+
+        def polar(d, a):
+            return d * math.cos(math.radians(a)), d * math.sin(math.radians(a))
+
+        for s in (-1.0, 1.0):  # foul lines, 0.5 m past the plate to the fence
+            seg(polar(0.5, s * FOUL_ANGLE_DEG), polar(fs.fence_line_m, s * FOUL_ANGLE_DEG), 0.12, 0.004, 0.003, chalk)
+
+        def infield(a):  # distance from the plate to the infield edge along spray angle a
+            k = math.cos(math.radians(a)) * MOUND_DIST
+            return k + math.sqrt(k * k - MOUND_DIST ** 2 + INFIELD_RADIUS_M ** 2)
+
+        angles = [-FOUL_ANGLE_DEG + 90.0 * i / 36 for i in range(37)]
+        for a0, a1 in zip(angles, angles[1:]):
+            seg(polar(infield(a0), a0), polar(infield(a1), a1), 0.15, 0.004, 0.003, chalk)
+            seg(polar(fs.fence_distance(a0), a0), polar(fs.fence_distance(a1), a1), 0.3, fs.fence_height_m, 0.0, fence)
 
     def _spawn_zone_frame(self, env_path: str):
         """film_zone_frame (planning 14 10-29, user: a called strike missed the box painted 3 m back on the wall): the StrikeZone
