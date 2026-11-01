@@ -60,6 +60,14 @@
 
 ## 3. 打者目前進度
 
+### 11-01 16:4x R5c 準備好；第 6 段收棒選項修正並設好自動切換
+
+- **R5c：** 從 14496 重建恢復 bank（saim + percept_filter，800 Hz，PH 2.6），從 h25r5 model_2194 續訓 +300，用 14496 的 s6 + s7 驗證，對照 R4 在 14496 上的結果。腳本是 logs/run_recov5c.sh，要等 logs/recov5c/GO 和 H31_ADOPT_END 兩個條件都滿足才開始。
+- **R5b / R5c 二選一：** 由 14 在候選評估結束時決定。14496 過門檻就跑 R5c（恢復策略要配合實際交付的打者），沒過就跑 R5b。R5b 在 ADOPT_END 之後會等 20 分鐘，這段時間內出現 recov5c/GO 就自己跳過。
+- **第 6 段收棒選項原本不會生效：** Human31 這條繼承線的 ref_hold_end 和 lost_after_hit_is_fall 都是 False，所以參考動作一播完回合就結束（和 Human12 否證的發現相同）。光是延長回合或 follow_through，等於什麼都沒改。
+- **修正：** 在 AIB_FOLLOW_THROUGH_S 區塊裡把這兩項預設打開（可以用 AIB_FT_HOLD_END / AIB_FT_LOST_IS_FALL=0 關掉），clamp_ref_phase 維持關閉，和 play 一致。評估用的 diag / joint / showcase 用的是 Play / ArmAim cfg，不受影響。
+- **第 6 段自動切換（logs/run_h31_seg6.sh）：** 第 5 段開始後寫 STOP，評估出來後套用繼續規則（初速 ≥ 24、擊中率 ≥ 0.50）。接著跑第 5 段檢查點的同框 s6：done 之前跌倒 ≥ 10，就先做收棒選項的 20 it 冒煙測試，通過的話第 6 段用收棒選項；否則照 carry 線繼續。
+
 ### 11-01 16:2x 14496 投打同框模擬（s6 + R4）與 film4 拍攝場景
 
 - **調度（14 的決定）：** film4 和候選評估都改用 14496。第 5 段 16:12 開始後被停掉（4 分鐘，沒有存檔），因為它只在兩段之間才看暫停檔，會讓 film4 趕不上 18:03 的期限。之後順序是 film4 → 候選評估 → 解除暫停 → 第 5 段。
