@@ -492,6 +492,9 @@ class TeeBattingEnv(DirectRLEnv):
             pay = (self.new_hit | ((self.reset_terminated | self.reset_time_outs) & ~self.hit)) & ~self.ss_ca_paid
             if pay.any():
                 r_ss = cfg.w_ss_ca * ((self.ss_ca - cfg.ss_ca_lo) / cfg.ss_ca_span).clamp(0.0, 1.0)
+                if cfg.ss_ca_dx_sigma > 0:  # hits: only the speed delivered on the sweet spot counts
+                    g = torch.exp(-(((self.contact_x - self.bat_geom.sweet_spot_x) / cfg.ss_ca_dx_sigma) ** 2))
+                    r_ss = r_ss * torch.where(self.hit, g, torch.ones_like(g))
                 rew = rew + torch.where(pay, r_ss, torch.zeros_like(r_ss))
                 self.ss_ca_paid |= pay
                 for k, v in (("ss_ca", self.ss_ca[pay].median()), ("ss_ca_lt_lo", (self.ss_ca[pay] < cfg.ss_ca_lo).float().mean())):

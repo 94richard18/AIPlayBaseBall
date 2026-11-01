@@ -539,6 +539,7 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
     # 16.5 unchanged) - the peak came early inside the window; AIB_SS_CA_WIN=0.01 pays the closest-approach / impact step
     # and the step before it only
     ss_ca_window_s: float = float(os.environ.get("AIB_SS_CA_WIN", "0.05"))
+    ss_ca_dx_sigma: float = float(os.environ.get("AIB_SS_CA_DX_SIGMA", "0.0"))  # segment 4 fallback (14), off
     w_track: float = 0.5
 
 

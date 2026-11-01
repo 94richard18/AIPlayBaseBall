@@ -128,6 +128,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     ss_ca_lo: float = 12.0
     ss_ca_span: float = 10.0
     ss_ca_window_s: float = 0.05
+    ss_ca_dx_sigma: float = 0.0  # > 0: on hits the ss_ca pay x exp(-(dx / sigma)^2) (sweet-spot speed, not contact; misses unchanged)
     # hit quality: w_hit_q x exp(-(dx / sigma_hit_q_dx)^2) x exp(-((D - hit_q_D_target) / sigma_hit_q_D)^2) at the impact
     w_hit_q: float = 0.0
     sigma_hit_q_dx: float = 0.08
