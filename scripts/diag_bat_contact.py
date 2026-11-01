@@ -839,7 +839,8 @@ def main():
     # jitter (14, 11-01 20:2x; user: no body shaking in the swing): per first episode, from the release to contact / the end,
     # mean |a_t - a_t-1| over the body action dims (tempo excluded), mean |dq_target| per step over the body joints (shows an
     # injected PD offset such as saim, which the action misses), RMS of the torso angular velocity high-passed at 5 Hz
-    jit = {k: torch.zeros(n, device=dev) for k in ("da", "dqt", "hp2", "n")}
+    # + the wait phase (14, 20:5x: the swing-window torso HP is confounded by the swing): episode start -> release, same terms
+    jit = {k: torch.zeros(n, device=dev) for k in ("da", "dqt", "hp2", "n", "w_da", "w_hp2", "w_n")}
     jt_body = base.robot.find_bodies("torso")[0][0]
     jt_alpha = base.step_dt / (1.0 / (2 * math.pi * 5.0) + base.step_dt)
     jt_a = base.actions[:, :-1].clone()
@@ -870,6 +871,10 @@ def main():
         jit["dqt"] = jit["dqt"] + jt_m * (q_now - jt_q).abs().mean(-1)
         jit["hp2"] = jit["hp2"] + jt_m * ((jt_w - jt_lp) ** 2).sum(-1)
         jit["n"] = jit["n"] + jt_m
+        jt_wm = (~finished & ~dones.bool() & (base.phys_t < base.release_t)).float()
+        jit["w_da"] = jit["w_da"] + jt_wm * (a_now - jt_a).abs().mean(-1)
+        jit["w_hp2"] = jit["w_hp2"] + jt_wm * ((jt_w - jt_lp) ** 2).sum(-1)
+        jit["w_n"] = jit["w_n"] + jt_wm
         jt_a, jt_q = a_now.clone(), q_now.clone()
         if args.fall_state:
             bs = balance_state()
@@ -927,6 +932,8 @@ def main():
     rec["jit_da"], rec["jit_dqt"] = jit["da"] / jn, jit["dqt"] / jn
     rec["jit_torso_hp"] = (jit["hp2"] / jn).sqrt()
     rec["jit_n"] = jit["n"]
+    wn = jit["w_n"].clamp_min(1.0)
+    rec["jit_wait_da"], rec["jit_wait_torso_hp"] = jit["w_da"] / wn, (jit["w_hp2"] / wn).sqrt()
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
     r["kmh"] = kmh0.cpu().numpy()

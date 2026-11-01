@@ -2,7 +2,7 @@
 in zone = |plate_y| <= 0.2525, 0.50 <= plate_z <= 1.10; hits by `hit`, fair = |spray| <= 45; D share = D_contact in
 [0, 2.5 cm] on hits; fell by end = `fell` over in-zone pitches;
 jitter (median / q90 over in-zone pitches, release -> contact): da = mean |a_t - a_t-1|, dqt = mean |dq_target| per step,
-torso = RMS torso angular velocity high-passed at 5 Hz (rad/s). Usage: e10_row.py diag.json -> one line."""
+torso = RMS torso angular velocity high-passed at 5 Hz (rad/s); wait_da / wait_torso_hp = the same over episode start -> release. Usage: e10_row.py diag.json -> one line."""
 import json
 import sys
 
@@ -21,4 +21,4 @@ print(f"n {z.sum()} hit {h.sum() / max(z.sum(), 1):.3f} fair {f.sum() / max(h.su
       f"dx {md(P['dx_contact'][h]):+.3f} D share {np.mean((D[h] >= 0) & (D[h] <= 0.025)) if h.any() else float('nan'):.3f} "
       f"fell by end {np.mean(P['fell'][z] > 0):.3f}"
       + ("".join(f" {k[4:]} {np.nanmedian(P[k][z]):.4f} / q90 {np.nanpercentile(P[k][z], 90):.4f}"
-                 for k in ("jit_da", "jit_dqt", "jit_torso_hp")) if "jit_da" in P else " jitter n/a"))
+                 for k in ("jit_da", "jit_dqt", "jit_torso_hp", "jit_wait_da", "jit_wait_torso_hp") if k in P) if "jit_da" in P else " jitter n/a"))

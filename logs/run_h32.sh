@@ -6,12 +6,14 @@
 # AIB_LAUNCH_HI_W ...) - set from the E10 1.0x diag. 64-env 20-it smoke -> logs/H32_SMOKE_END.txt, then waits for logs/h32/GO.
 # Per segment: STOP before, HOLD between segments (waits while logs/h32/HOLD exists), RAM watchdog 30 GB; eval = diag 4 clips
 # (percept_filter, no saim, + jitter) and joint s6 (R5c, 6.5 s) -> logs/H32_<its>_END.txt; final logs/H32_END.txt.
-# Segment-1 rule (14): hit >= 0.40, exit median >= EXREF - 1, torso jitter median <= JREF (14496 saim-off 1.0x row); else STOP.
+# Rules (14, 20:5x), else STOP: segment 1 hit >= 0.40, exit >= EXREF - 1, da < 0.57; segment 2 exit >= EXREF, da < 0.50; both:
+# wait-phase (start -> release) da / torso HP not above the 14496 1.0x reference (logs/H32_REF.txt) + 5 %. The swing-window
+# torso HP is reported, not gated (confounded by the swing). AIB_DA_L1_W 0.1 (all steps) from the caller.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=100 AIB_EFFORT_SCALE=1.0 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_FOLLOW_THROUGH_S AIB_EFFORT_PROBE
-: ${EXREF:?} ${JREF:?}
+: ${EXREF:?}
 NSEG=${NSEG:-6}
 TASK=AIB-PitchedBatting-Human32-v0
 B=logs/rsl_rl/aib1_tee_batting_mimic
@@ -31,6 +33,16 @@ last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; ech
 priv() { powershell.exe -NoProfile -Command "\$x = Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match '$1' } | Select-Object -First 1; if (\$x) { [int]((Get-Process -Id \$x.ProcessId).PrivateMemorySize64/1GB) } else { -1 }" | tr -d '\r'; }
 REW="ramp ${AIB_SS_CA_LO:-12.0}-${AIB_SS_CA_HI:-22.0} win ${AIB_SS_CA_WIN:-0.05}, exit hinge ${AIB_EXIT_HINGE_W:-0.0} ref ${AIB_EXIT_HINGE_REF:-16.0} cap ${AIB_EXIT_HINGE_CAP:-14.0}, carry ${AIB_CARRY_REF:-10.0}/${AIB_CARRY_SPAN:-30.0}, launch ceiling ${AIB_LAUNCH_HI_W:-0.0}, da L1 ${AIB_DA_L1_W:-0.0}"
 LR=${LR0:-2026-11-01_11-42-57_human_pitched_h31_4}; LC=${LC0:-model_14496.pt}; PK=0
+fld() { echo "$2" | sed -n "s/.* $1 \([0-9.]*\) .*/\1/p"; }
+# wait-phase reference (14, 20:5x): 14496 + percept_filter at 1.0x with the wait-window jitter (diag da9bf98 + wait terms)
+MSG="wait-phase reference diag"; idle
+RT=e10_14496_pf_w
+[ -f logs/diag_bat_contact_$RT.json ] || timeout 1500 $P -u scripts/diag_bat_contact.py --headless --checkpoint $B/$LR/$LC --percept_filter \
+  --envs 1024 --seed 0 --tag $RT --timing_noise 0 --timing_bias 0.055 --aim_offset_z 0 --release_csv $R --phase_horizon 2.6 --real_height \
+  --clips $C4 --physics_dt 0.00125 --contact_log > $O/diag_$RT.txt 2>&1
+REF=$($P logs/e10_row.py logs/diag_bat_contact_$RT.json); WDREF=$(fld wait_da "$REF"); WTREF=$(fld wait_torso_hp "$REF")
+[ -n "$WDREF" ] && [ -n "$WTREF" ] || { MSG="reference diag failed: $(grep -A14 Traceback $O/diag_$RT.txt | tail -1)"; exit 1; }
+echo "H32_REF $(date +%H:%M) $RT: $REF" > logs/H32_REF.txt
 MSG="smoke"; idle
 if [ ! -f logs/H32_SMOKE_END.txt ]; then
   AIB_PHYSICS_DT=0.00125 timeout 1500 $P -u scripts/train.py --task $TASK --headless --num_envs 64 --max_iterations 20 \
@@ -86,11 +98,12 @@ for k in $(seq ${K0:-1} $NSEG); do
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
   echo "H32_$((k * 500))_END $(date +%H:%M) $ROW" > logs/H32_$((k * 500))_END.txt
   ROWS="$ROWS $ROW ||"
-  if [ $k -eq 1 ]; then  # segment-1 rule
-    HT=$(echo "$ER" | sed -n 's/.* hit \([0-9.]*\) .*/\1/p'); EX=$(echo "$ER" | sed -n 's/.* exit \([0-9.]*\) .*/\1/p')
-    JT=$(echo "$ER" | sed -n 's/.* torso_hp \([0-9.]*\) .*/\1/p')
-    awk -v h="$HT" -v e="$EX" -v j="$JT" -v er="$EXREF" -v jr="$JREF" 'BEGIN{exit !(h ~ /^[0-9.]+$/ && e ~ /^[0-9.]+$/ && j ~ /^[0-9.]+$/ && h + 0 >= 0.40 && e + 0 >= er - 1 && j + 0 <= jr + 0)}' \
-      || { MSG="segment-1 rule FAILED (hit '$HT' >= 0.40, exit '$EX' >= $EXREF - 1, torso jitter '$JT' <= $JREF) -> stopped"; exit 0; }
+  if [ $k -le 2 ]; then  # segment-1 / -2 rules (wait-phase terms: not above the 14496 reference + 5 %)
+    HT=$(fld hit "$ER"); EX=$(fld exit "$ER"); DA=$(fld da "$ER"); WD=$(fld wait_da "$ER"); WT=$(fld wait_torso_hp "$ER")
+    if [ $k -eq 1 ]; then EMIN=$(awk -v e="$EXREF" 'BEGIN{print e - 1}'); DMAX=0.57; else EMIN=$EXREF; DMAX=0.50; fi
+    awk -v h="$HT" -v e="$EX" -v a="$DA" -v wd="$WD" -v wt="$WT" -v em="$EMIN" -v dm="$DMAX" -v rd="$WDREF" -v rt="$WTREF" -v k=$k \
+      'BEGIN{n = "^[0-9.]+$"; exit !(h ~ n && e ~ n && a ~ n && wd ~ n && wt ~ n && (k > 1 || h + 0 >= 0.40) && e + 0 >= em && a + 0 < dm && wd + 0 <= 1.05 * rd && wt + 0 <= 1.05 * rt)}' \
+      || { MSG="segment-$k rule FAILED (hit '$HT'$([ $k -eq 1 ] && echo ' >= 0.40'), exit '$EX' >= $EMIN, da '$DA' < $DMAX, wait da '$WD' <= 1.05 x $WDREF, wait torso '$WT' <= 1.05 x $WTREF) -> stopped"; exit 0; }
   fi
   LR=$(basename $D); LC=model_$I.pt
 done
