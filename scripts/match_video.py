@@ -28,6 +28,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from aibaseball.robot.effort import AIB_DELIVERY_EFFORT  # noqa: E402
+
 import cv2  # noqa: E402
 import imageio  # noqa: E402
 import numpy as np  # noqa: E402
@@ -90,7 +92,7 @@ def batter_clip(release_path: str, take: bool, tag: str):
     out, res = os.path.join(args.work, f"{tag}.mp4"), os.path.join(args.work, f"{tag}.json")
     cmd = [P, "-u", *SHOW, "--checkpoint", args.checkpoint, "--release_csv", release_path, "--out", out,
            "--result_json", res] + (["--take"] if take else []) + (["--hold_after_hit", "2.0"] if args.variant == "B" else [])
-    env = dict(os.environ, AIB_EFFORT_SCALE=os.environ.get("AIB_EFFORT_SCALE", "1.5"))
+    env = dict(os.environ, AIB_EFFORT_SCALE=os.environ.get("AIB_EFFORT_SCALE", AIB_DELIVERY_EFFORT))
     subprocess.run(cmd, check=True, env=env, timeout=1800)
     with open(res, encoding="utf-8") as f:
         return out, json.load(f)[0]

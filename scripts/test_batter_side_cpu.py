@@ -207,7 +207,8 @@ def main():
     ap.add_argument("--own_timing", action="store_true", help="the two-pass oracle timing falsifier only")
     ap.add_argument("--saim", default=None, help="scripted arm aim gain JSON (BatterSide saim, + cfg.percept_filter)")
     a = ap.parse_args()
-    os.environ["AIB_EFFORT_SCALE"] = "1.5"
+    from aibaseball.robot.effort import AIB_DELIVERY_EFFORT
+    os.environ["AIB_EFFORT_SCALE"] = AIB_DELIVERY_EFFORT
     cfg = PitchedBattingHumanPlayEnvCfg()
     cfg.pitch_release_csv = a.release_csv
     cfg.scene.num_envs = N

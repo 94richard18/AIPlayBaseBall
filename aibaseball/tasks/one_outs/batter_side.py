@@ -209,7 +209,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         assert after_done in ("policy", "hold", "blend", "recover", "recover_low", "recover_rl"), after_done
         assert (after_done == "recover_rl") == (recover_ckpt is not None), "recover_rl needs recover_ckpt (and only it)"
         self.after_done = after_done
-        assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or os.environ.get("AIB_EFFORT_PROBE") == "1",             "the delivery batter runs at AIB_EFFORT_SCALE 1.5 (AIB_EFFORT_PROBE=1: a zero-shot strength probe, never a delivery)"
+        from aibaseball.robot.effort import AIB_DELIVERY_EFFORT, is_delivery_effort
+        assert is_delivery_effort() or os.environ.get("AIB_EFFORT_PROBE") == "1",             f"the delivery batter runs at AIB_EFFORT_SCALE {AIB_DELIVERY_EFFORT} (AIB_EFFORT_PROBE=1: a zero-shot strength probe, never a delivery)"
         assert cfg.pitch_release_csv, "the predicted pitch comes from the P3c release table"
         self._joint = joint
         cfg.motion_files = [f for f in cfg.motion_files if os.path.splitext(os.path.basename(f))[0] in JOINT_CLIPS]

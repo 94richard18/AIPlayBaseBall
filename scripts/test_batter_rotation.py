@@ -71,7 +71,8 @@ from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingHumanPlay
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5"
+    from aibaseball.robot.effort import AIB_DELIVERY_EFFORT, is_delivery_effort
+    assert is_delivery_effort(), f"the delivery batter runs at AIB_EFFORT_SCALE {AIB_DELIVERY_EFFORT}"
     cfg = PitchedBattingHumanPlayEnvCfg()
     cfg.scene.num_envs = args.envs
     cfg.seed = args.seed

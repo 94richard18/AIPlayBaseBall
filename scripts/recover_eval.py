@@ -3,7 +3,7 @@ state, no termination. Per hit / miss: on the ground within 2 s (pelvis < 0.35 m
 2 s (the env's fallen flag: pelvis < 0.55 m or tilt > 60 deg), tilted over (> 75 deg). --zero: a = 0 (the open-loop
 anchor blend, the baseline).
 
-    AIB_EFFORT_SCALE=1.5 python scripts/recover_eval.py --headless --checkpoint <model.pt> [--bank logs/recover_bank_s6.npz]
+    AIB_EFFORT_SCALE=1.0 python scripts/recover_eval.py --headless --checkpoint <model.pt> [--bank logs/recover_bank_s6.npz]
 Last line: REVAL <tag> ground <all> hits <h> misses <m>
 """
 
@@ -48,7 +48,8 @@ def load_actor(path, dev):
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5"
+    from aibaseball.robot.effort import AIB_DELIVERY_EFFORT, is_delivery_effort
+    assert is_delivery_effort(), f"the delivery batter runs at AIB_EFFORT_SCALE {AIB_DELIVERY_EFFORT}"
     cfg = RecoverEvalEnvCfg()
     cfg.bank_path = args.bank
     cfg.scene.num_envs = int(np.load(args.bank)["hit"].shape[0])

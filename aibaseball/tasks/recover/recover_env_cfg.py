@@ -19,7 +19,7 @@ class RecoverEnvCfg(TeeBattingEnvCfg):
     at the hand-off to the batting stance (default pose) - a = 0 is the open-loop after_done "recover" (100% on the
     ground in fall diag 3); the policy learns the feedback on top. No ball, no reference, no swing terms."""
 
-    robot: ArticulationCfg = make_aib1_cfg(human_strength=True)  # effort via AIB_EFFORT_SCALE (1.5 for the delivery)
+    robot: ArticulationCfg = make_aib1_cfg(human_strength=True)  # effort via AIB_EFFORT_SCALE (AIB_DELIVERY_EFFORT for the delivery)
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
     episode_length_s = 2.0
     action_space = 29

@@ -1,13 +1,13 @@
 """Human25-R stage 0 (planning 14, 10-29): the state bank for the post-contact recovery policy.
 
-The frozen delivery swing (h9b model_12500 at AIB_EFFORT_SCALE 1.5) bats in the standalone PitchedBattingEnv (play cfg,
+The frozen delivery swing (h9b model_12500 at AIB_EFFORT_SCALE = AIB_DELIVERY_EFFORT, 1.0 from 11-01 20:0x; 1.5 before) bats in the standalone PitchedBattingEnv (play cfg,
 P3c release table, the joint scene's four clips at real heights, the game's bias 0.055 / aim 0, diag-style timing noise
 +-0.03 s for spread). At the hand-off trigger of BatterSide._recover - the end of the first control step with a hit or
 the training episode's end (the pitch passed / time out) - every env's state is snapshot once:
 root state (env-local position, quaternion, lin / ang vel, world axes), all joint positions / velocities, the PD position
 targets applied in that step (the recovery anchor q0), the last swing action, hit label, fallen flag.
 
-    AIB_EFFORT_SCALE=1.5 python scripts/recover_bank.py --headless --checkpoint <12500.pt> --envs 2048 --seed 0 --out logs/recover_bank_s0.npz
+    AIB_EFFORT_SCALE=1.0 python scripts/recover_bank.py --headless --checkpoint <12500.pt> --envs 2048 --seed 0 --out logs/recover_bank_s0.npz
 """
 
 import argparse
@@ -51,7 +51,8 @@ from aibaseball.tasks.tee_batting.pitched_env_cfg import PitchedBattingHumanPlay
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5", "the delivery batter runs at AIB_EFFORT_SCALE 1.5"
+    from aibaseball.robot.effort import AIB_DELIVERY_EFFORT, is_delivery_effort
+    assert is_delivery_effort(), f"the delivery batter runs at AIB_EFFORT_SCALE {AIB_DELIVERY_EFFORT}"
     if args.armaim:
         from aibaseball.tasks.tee_batting.pitched_env_cfg import ArmAimPlayEnvCfg
 
