@@ -4,7 +4,8 @@
 # H32_500_END if it passed, else 14496): recover_bank.py (+ percept_filter, PH 2.6, 800 Hz, 2048 envs) -> AIB-Recover-R2-v0 at
 # 800 Hz (NENVS, default 4096; 120 s/it watchdog) -> joint s6 + s7 of BC + filter, no saim, 6.5 s -> logs/R6_END.txt.
 # Rule (R4's, 14): PASS = ground s6 + s7 <= 4, falls before done 0 in both, torso tilt +1.5 s <= 30 deg on >= 56/64 in each.
-# Gates: logs/recov6/GO for everything; bank at Isaac 0 + nofilm; training beside at most one Isaac (14 decides via GO whether
+# Gates (14, 21:0x): the bank runs at once (Isaac 0 + nofilm); training waits for logs/recov6/GO (written after FILM5_END, R6
+# alone on the GPU, inside the H32 HOLD window); training beside at most one Isaac (14 decides via GO whether
 # that is beside H32 segment 2 or inside the HOLD window). A relaunch keeps a finished bank.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
@@ -30,8 +31,6 @@ joint() {  # $1 seed, $2 recover ckpt, $3 out prefix
     --recover_ckpt $2 --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 --percept_filter $PH --seconds 6.5 --csv ${3}.csv > ${3}.txt 2>&1
   grep -q Traceback ${3}.txt && fail ${3}.txt $(basename $3)
 }
-MSG="waiting for logs/recov6/GO"
-until [ -f $Q/GO ]; do sleep 60; done
 BK=logs/recover_bank_r6_${HI}_s0.npz
 if [ -f $BK ] && grep -q "physics dt 0.001250" $Q/bank_$HI.txt 2>/dev/null && grep -q '^\[bank\] seed' $Q/bank_$HI.txt; then :; else
   MSG="bank ($HI)"; idle
@@ -42,6 +41,8 @@ if [ -f $BK ] && grep -q "physics dt 0.001250" $Q/bank_$HI.txt 2>/dev/null && gr
   grep -q "physics dt 0.001250" $Q/bank_$HI.txt || { MSG="bank: no 800 Hz line"; exit 1; }
 fi
 BL=$(grep '^\[bank\] seed' $Q/bank_$HI.txt)
+MSG="bank done ($BL), waiting for logs/recov6/GO"
+until [ -f $Q/GO ]; do sleep 60; done
 MSG="train ($BL)"; beside
 AIB_PHYSICS_DT=0.00125 AIB_RECOVER_BANK=$BK timeout 7200 $P -u scripts/train.py --task AIB-Recover-R2-v0 --headless --num_envs ${NENVS:-4096} \
   --max_iterations ${R6_ITS:-300} --run_name h25r6 --resume True --load_run ${R6_LOAD_RUN:-$(basename $R5)} --checkpoint ${R6_CKPT:-model_2493.pt} > $Q/train.txt 2>&1 &
