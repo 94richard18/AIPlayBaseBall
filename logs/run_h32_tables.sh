@@ -10,10 +10,10 @@ unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_EFFORT_PR
 R=assets/game/p3c_identical_t18_release.csv; T=assets/game/p3c_identical_t18_pitches.csv
 DT="--physics_dt 0.00125 --phase_horizon 2.6"
 B=logs/rsl_rl/aib1_tee_batting_mimic
-C14=$B/2026-11-01_20-56-20_human_pitched_h32_1/model_14995.pt
+C14=${CK:-$B/2026-11-01_20-56-20_human_pitched_h32_1/model_14995.pt}; HI=$(basename $C14 .pt); HI=${HI#model_}; TRIG=${TRIG:-logs/h32/train_2.txt}
 O=logs/h32/tables; mkdir -p $O
-M=logs/H32T_END.txt; rm -f $M; MSG="FAILED: aborted"
-trap 'echo "H32T_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
+M=logs/H32T_${HI}_END.txt; rm -f $M; MSG="FAILED: aborted"
+trap 'echo "H32T_${HI}_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
 isaac() { powershell.exe -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'isaaclab_env' -and \$_.CommandLine -match 'scripts/' }).Count" | tr -d '\r'; }
 freegb() { powershell.exe -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB)" | tr -d '\r'; }
 nofilm() { local g e; for g in logs/FILM*_GO.txt logs/PDT_GO.txt; do [ -f $g ] || continue; e=${g%_GO.txt}_END.txt; [ -f $e ] && [ $e -nt $g ] || return 1; done; return 0; }
@@ -46,10 +46,10 @@ tables() {  # $1 ckpt, $2 prefix, $3 hit rate, $4 out list, $5 flags
     echo "t_$j $(oo ${2}_$j.json $3)" >> $4
   done
 }
-MSG="FAILED: waiting for logs/h32/train_2.txt"
-until [ -f logs/h32/train_2.txt ]; do sleep 60; done
+MSG="FAILED: waiting for $TRIG"
+until [ -f $TRIG ]; do sleep 60; done
 S0=$(date +%s); BAR=16.73
-hitrate $C14 h32t_14995_j0 "--percept_filter"; H14=$HR
-tables $C14 $O/t3_14995 $H14 $O/t3_14995.txt "--percept_filter"
-read W14 O14 P14 <<< "$(t3 $O/t3_14995.txt)"
-MSG="1.0x, saim off, 800 Hz, PH 2.6, jitter 0.03: H32 14995 + percept_filter $W14% outfield $O14% (tables $P14), hit rate $H14, delta vs bar $BAR: $($P -c "print(f'{$W14 - $BAR:+.2f}')") (14496 was 16.57% / 2.91%) | $((($(date +%s) - S0) / 60)) min"
+hitrate $C14 h32t_${HI}_j0 "--percept_filter"; H14=$HR
+tables $C14 $O/t3_${HI} $H14 $O/t3_${HI}.txt "--percept_filter"
+read W14 O14 P14 <<< "$(t3 $O/t3_${HI}.txt)"
+MSG="1.0x, saim off, 800 Hz, PH 2.6, jitter 0.03: H32 $HI + percept_filter $W14% outfield $O14% (tables $P14), hit rate $H14, delta vs bar $BAR: $($P -c "print(f'{$W14 - $BAR:+.2f}')") (14496 was 16.57% / 2.91%) | $((($(date +%s) - S0) / 60)) min"

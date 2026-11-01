@@ -11,7 +11,7 @@ export AIB_EFFORT_SCALE=1.0 PYTHONPATH=.
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_EFFORT_PROBE
 PH="--phase_horizon 2.6"
 PC=logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt
-H=${BC:-logs/rsl_rl/aib1_tee_batting_mimic/2026-11-01_11-42-57_human_pitched_h31_4/model_14496.pt}; HI=$(basename $H .pt); HI=${HI#model_}
+H=${BC:?BC = the batter ckpt}; HI=$(basename $H .pt); HI=${HI#model_}
 R5=logs/rsl_rl/aib1_recover/2026-11-01_23-26-45_h25r6
 Q=logs/recov6b; mkdir -p $Q
 M=logs/R6B_END.txt; rm -f $M; MSG="aborted"
