@@ -114,6 +114,8 @@ class JointFilm:
     # planning 14 10-29 (recover_rl films: the batter now stays up): a pitch not hit keeps the batter views this long after
     # done_t - past the PA video's clip end (done_t + 1.0 s), so no cut is shown; a hit still cuts to the ball at CUT_AFTER_S
     CUT_AFTER_MISS_S = float(os.environ.get("AIB_FILM_CUT_AFTER_MISS_S", CUT_AFTER_S))
+    # planning 14 11-01 (H31 carries 40-84 m, done_t 5.8-6.0 s > the clip): a hit cuts at min(done_t, hit_t + this) + CUT_AFTER_S
+    HIT_VIEW_AFTER_S = 2.0
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
     CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
@@ -173,6 +175,7 @@ class JointFilm:
         self.high_eye = (g + np.array(rz(pd + self.HIGH_EYE[0], zc + self.HIGH_EYE[1]) + [self.HIGH_EYE[2]])).tolist()
         self.plate_xy = g[:2] + np.array(rz(pd, zc))
         self.cut_at = None  # joint time of the first frame after the cut
+        self.hit_t = None  # joint time of the first step with a hit
         # film_wall: hidden for a camera behind it (the plate view, the high camera) - its back would fill the frame
         self.wall = stage.GetPrimAtPath(f"/World/envs/env_{E}/FilmWall") if getattr(base.cfg, "film_wall", False) else None
         self.wall_x, self.g, self.th = pd + base.cfg.flight_end_behind_plate_m, g, th
@@ -228,9 +231,15 @@ class JointFilm:
         import cv2
         k, self.k = self.k, self.k + 1
         self._pose(t)
+        if hit and self.hit_t is None:
+            self.hit_t = t
         if k % self.every:
             return
-        cut = done_t is not None and done_t == done_t and t >= done_t + (self.CUT_AFTER_S if hit else self.CUT_AFTER_MISS_S)
+        if hit and done_t is not None:  # planning 14 11-01: a long flight lands after the clip - cut by HIT_VIEW_AFTER_S at the latest
+            d = done_t if done_t == done_t else float("inf")
+            cut = t >= min(d, self.hit_t + self.HIT_VIEW_AFTER_S) + self.CUT_AFTER_S
+        else:
+            cut = done_t is not None and done_t == done_t and t >= done_t + (self.CUT_AFTER_S if hit else self.CUT_AFTER_MISS_S)
         if cut and self.cut_at is None:
             self.cut_at = t
         left, right = ("side", "high") if cut else ("cf", "pv")
