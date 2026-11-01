@@ -2828,3 +2828,11 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `videos/film3_1101_s6_k52.mp4`：平飛球 exit 24.4 m/s、launch 19.3°、carry 32.8 m；沒跌倒，pelvis 0.855 m、tilt 1.9°。
 - 兩支皆對 `logs/h30c800/joint_s6.csv` 52 欄 64/64、blank 0、High（2560x720 30 fps，6.7 Mb/s）、淡白 0/343，縮圖正常。標記 `logs/FILM3_END.txt` 06:03。
 - 下一支（約 19:00–20:00，H31 最佳 checkpoint）：`logs/film4.sh` 已 armed，GO 檔需帶 BC= 與 ROWS=；拍前從 15 的 joint_smoke.py 重產 joint_smoke_20.py，有變動就停。期限 22:00。
+
+## 11-01 16:49 12 小時例行拍片 FILM4（H31 打者 model_14496，800 Hz 訓練）
+
+- 14 16:27 寫 `logs/FILM4_GO.txt`（BC = human_pitched_h31_4 model_14496、ROWS = `logs/h31/joint_s6_14496.csv`、PH 2.6、ENVS=35 7），16:29 開拍，腳本 `logs/film4.sh`；拍前重產 joint_smoke_20.py 無變動。恢復 R4 1895、投手 P3c 7600。
+- 腳本錯：GO 的 `ENVS=35 7` 沒加引號，eval 把它當成「帶 ENVS=35 執行指令 7」（command not found），ENVS 仍空 → 走預設 env 12 + 最遠界內球 env 35。env 7（平飛 exit 33.3、launch 14.2°、carry 45.6 m）沒拍。已改 film4.sh：GO 值一律加引號再 eval。
+- `videos/film4_1101_s6_k12.mp4`（例行那顆球）：exit 23.3 m/s、launch 59.7°、carry 36.1 m、spray −43.2°；沒跌倒，pelvis 0.888 m、tilt 2.3°。
+- `videos/film4_1101_s6_k35.mp4`：exit 36.4 m/s、launch 32.2°、carry 84.0 m（外野深處）；沒跌倒，pelvis 0.889 m、tilt 1.1°。影片 cut at none：5.6 s 內比賽未結束，沒有切到擊球飛行畫面，球的飛行只在前段看得到。
+- 兩支皆對 ROWS 52 欄 64/64、blank 0、High（2560x720 30 fps，6.7 Mb/s）、淡白 0/343，k35 縮圖正常。標記 `logs/FILM4_END.txt` 16:49。
