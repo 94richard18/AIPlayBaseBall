@@ -41,6 +41,8 @@ parser.add_argument("--aim_window", type=float, default=None, help="--armaim: cf
 parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the swing policy sees q - offset")
 parser.add_argument("--aim_obs_comp_full", action="store_true", help="--armaim: + the bat pose compensated")
 parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter (quadratic LSQ crossing prediction)")
+parser.add_argument("--clips", type=str, nargs="+", default=None, help="--eval_envs: restrict the MotionLib to these clips (the joint game's 4)")
+parser.add_argument("--real_height", action="store_true", help="--eval_envs: cfg.real_height, pitches cross at their own plate height (the game scene)")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
 parser.add_argument("--physics_dt", type=float, default=None, help="--eval_envs: physics dt (s), e.g. 0.00125 (800 Hz); 100 Hz control kept")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
@@ -310,6 +312,12 @@ def run_eval(ckpt: str):
             cfg.pitch_table_csv = args.pitch_csv
         if args.release_csv:
             cfg.pitch_release_csv = args.release_csv
+        if args.clips:  # game-scene tables (14, 11-02): the joint game's clips at the real plate height
+            cfg.motion_files = [f for f in cfg.motion_files if os.path.splitext(os.path.basename(f))[0] in args.clips]
+            assert len(cfg.motion_files) == len(args.clips), f"clips not found: {args.clips}"
+        if args.real_height:
+            cfg.real_height = True
+        print(f"[showcase] clips {len(cfg.motion_files)}, real_height {getattr(cfg, 'real_height', None)}", flush=True)
         cfg.clamp_ref_phase = args.clamp_ref_phase
         cfg.zero_ff_after_ref_end = args.zero_ff_after_ref_end
         if args.settle_tail is not None:
