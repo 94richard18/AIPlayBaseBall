@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**07:32 11-02 film7b（FILM7B_END 07:31）：** `videos/film7b_1102_s6_k59.mp4` 重拍成功，wash 0/372（14 複查），80.7 m；20 的 strict / High / 抖動判定隨後補。HOLD 於 07:32 移除 → 第 4 段 chain（run_h32_s4.sh）通過 nofilm + idle 後先跑 20-it smoke（H32S4_SMOKE_END），再從 15993 +500（H32_2000_END），15993 資訊表跟在 train_4.txt 後並行（H32TG2_END）。GPU 上目前無 Isaac。
+
 **07:20 11-02 film7 結果（FILM7_END 07:18，15993 + R6b，6.5 s，path-view 格式）：** `videos/film7_1102_s6_k51.mp4` **過**：87.8 m / exit 127 km/h / launch 28°，strict 64/64、High 7.6 Mb/s（20 查）、wash 0/372（14 複查）、無人倒地；眼睛門檻：站姿到擊球腿與軀幹穩定，無高頻抖動（只有同 14995 / 15494 的一次慢速壓棒），15993 的 wait_torso_hp +11% 在畫面上看不出。14 抽幀確認：擊球瞬間 HIT 兩人同框、路徑面板即時距離 / 高度 / exit / launch、落地弧線 + 落點環 + 外野牆、投手站穩。`videos/film7_1102_s6_k59.mp4` **洗白**（wash 124/343，兩面板灰藍無草地，rows 仍 64/64 80.7 m）→ 依洗白規則重拍一次：FILM7B_GO 07:21（同 GO，ENVS "59"，輸出 videos/film7b_1102_s6_k59.mp4，~11 min，16:30 SKIP），HOLD 維持到 FILM7B_END 後再移除，第 4 段隨後啟動。k51 已是 film7 交付片；12 小時錄影時鐘重設為 07:06，下次最晚 19:06。
 
 **06:55 11-02 H32 第 3 段結果（H32_1500_END 06:52，model_15993，`logs/rsl_rl/aib1_tee_batting_mimic/2026-11-02_04-02-58_human_pitched_h32_3/model_15993.pt`）→ 4 過 2 敗，chain 停（H32_END）：** 過：hit 0.914、exit 28.5（≥ 27.1）、**da 0.4916（首次 < 0.50）**、wait_da 0.536（≤ 0.696）。敗：wait_torso_hp 3.80（> 1.05 × REF 3.4155 = 3.586，+11%；15494 3.34）、fell by end 0.680（> 0.60；15494 0.598）。進步：fair carry 中位 37.8 m（24.8）、launch 19.7（12.0）、滾地 0.30（0.42）；分區 fair launch 中位 low +13.8（+2.3）、inside +16.3（+1.5）、away +13.8、high +16.4 → 滾地下限修好了 low / inside 的弱點；pop-up 0.162（0.112）。Joint s6（R6b）：hits 53、fair 46、**外野 18/64（11）**、carry 中位 22.2（proxy > 25 未達）、max 87.8 m、fell 8 = before done 4（上限）+ after 4、ground 3、tilt ok 56。
