@@ -1,7 +1,8 @@
 """ONE OUTS joint scene (user 2026-10-28, Route 2): the P3c pitcher and the batter in one env, one ball.
 
 One episode = one pitch. The pitcher is the P3c deliverable (ho2 7600 on the TW2PL task, release 2.5 ms early, plate yaw
-18 deg, identical start); the batter (make_aib1_cfg human strength, effort 1.5, implicit PD) stands at the plate in the
+18 deg, identical start); the batter (make_aib1_cfg human strength, effort AIB_EFFORT_SCALE = the
+delivery AIB_DELIVERY_EFFORT, 1.0 since the user 11-01; 1.5 before; implicit PD) stands at the plate in the
 plate frame. Ball: PhysX while in the pitcher's hand, then the batter's RK4 drag + Magnus flight from the live release
 state (the model the batter was trained under and the pitcher's aero tiers use), mirrored into the same PhysX body."""
 
@@ -28,7 +29,8 @@ class JointPitchEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLEnvCfg):
 
     # not replicated: the ball-batter collision filter is set per env on the USD stage
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=64, env_spacing=4.0, replicate_physics=False)
-    batter: ArticulationCfg = make_aib1_cfg(human_strength=True, effort_scale=1.5).replace(prim_path="/World/envs/env_.*/Batter")
+    # effort None: make_aib1_cfg reads AIB_EFFORT_SCALE (default 1.0 = AIB_DELIVERY_EFFORT, user 11-01; was pinned 1.5)
+    batter: ArticulationCfg = make_aib1_cfg(human_strength=True, effort_scale=None).replace(prim_path="/World/envs/env_.*/Batter")
     # batter root in the plate frame (origin: plate centre at field level, +x away from the mound, +y to the plate
     # batter session 10-28: its frame is this plate frame turned 180 deg (pitch along -x, +y third base); clip root0 at
     # x -0.19..-0.38, y +0.87..+0.94 there, i.e. x +0.19..+0.38, y -0.87..-0.94 here; yaw = the clip's + pi

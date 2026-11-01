@@ -47,7 +47,7 @@ parser.add_argument("--no_shift_hist", action="store_true", help="BatterSide shi
 parser.add_argument("--timing_bias", type=float, default=None, help="batter cfg.timing_bias_s (default 0.055)")
 parser.add_argument("--diag", type=str, default=None, help="fall diag CSV: per env first fall time + root / foot heights by phase")
 parser.add_argument("--effort_probe", type=float, default=None,
-                    help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery 1.5 (spec value; not for delivery)")
+                    help="zero-shot strength probe (planning 14): the batter's effort scale instead of the delivery AIB_DELIVERY_EFFORT (spec value; not for delivery)")
 parser.add_argument("--contact_dump", type=str, default=None,
                     help="npz: every bat-ball impact's resolve_impact inputs + outputs (env, time; read-only, contact_offset.py)")
 parser.add_argument("--saim", type=str, default=None,
@@ -95,12 +95,13 @@ TASK = "AIB-OneOutsJoint-v0"
 
 
 def main():
-    assert os.environ.get("AIB_EFFORT_SCALE") == "1.5" or args.effort_probe is not None
+    from aibaseball.robot.effort import AIB_DELIVERY_EFFORT, is_delivery_effort
+    assert is_delivery_effort() or args.effort_probe is not None, f"the delivery batter runs at AIB_EFFORT_SCALE {AIB_DELIVERY_EFFORT}"
     cfg = load_cfg_from_registry(TASK, "env_cfg_entry_point")
-    if args.effort_probe is not None:  # the joint scene's batter articulation (the cfg pins 1.5)
+    if args.effort_probe is not None:  # the joint scene's batter articulation (the cfg pins the env's AIB_EFFORT_SCALE)
         from aibaseball.robot.aib1_cfg import make_aib1_cfg
         cfg.batter = make_aib1_cfg(human_strength=True, effort_scale=args.effort_probe).replace(prim_path="/World/envs/env_.*/Batter")
-        print(f"[joint] EFFORT PROBE: batter effort scale {args.effort_probe} (delivery 1.5)", flush=True)
+        print(f"[joint] EFFORT PROBE: batter effort scale {args.effort_probe} (delivery {AIB_DELIVERY_EFFORT})", flush=True)
     if args.batter_usd is not None:  # GRIP (10-31): a compliant top-hand loop; the copy keeps ExcludeFromArticulation
         cfg.batter.spawn.usd_path = os.path.abspath(args.batter_usd)
         print(f"[joint] batter USD {cfg.batter.spawn.usd_path}", flush=True)
