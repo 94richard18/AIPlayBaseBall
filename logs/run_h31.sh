@@ -16,7 +16,8 @@ P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export SAVE_EVERY=100 AIB_EFFORT_SCALE=1.5 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
 export AIB_H29_SIGMA_AX=0.20 AIB_H29_SIGMA_GAP=0.10 AIB_SAIM_BOUND=0.4
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT
-export AIB_SS_CA_LO=${AIB_SS_CA_LO:-12.0} AIB_SS_CA_WIN=${AIB_SS_CA_WIN:-0.05}
+export AIB_SS_CA_LO=${AIB_SS_CA_LO:-12.0} AIB_SS_CA_HI=${AIB_SS_CA_HI:-22.0} AIB_SS_CA_WIN=${AIB_SS_CA_WIN:-0.05}
+export AIB_EXIT_HINGE_W=${AIB_EXIT_HINGE_W:-0.0} AIB_EXIT_HINGE_REF=${AIB_EXIT_HINGE_REF:-16.0} AIB_EXIT_HINGE_CAP=${AIB_EXIT_HINGE_CAP:-14.0}
 NSEG=${NSEG:-6}
 TASK=AIB-PitchedBatting-Human31-v0
 B=logs/rsl_rl/aib1_tee_batting_mimic
@@ -111,10 +112,11 @@ for k in $(seq ${K0:-1} $NSEG); do
   if ! grep -q Traceback $O/diag_$T.txt && [ -f logs/diag_bat_contact_$T.json ]; then
     PS=$($P $SC/pool_stats.py logs/diag_bat_contact_$T.json)
     awk -v x="${PS%% *}" 'BEGIN{exit !(x >= 0.40)}' && echo "$D/model_$I.pt" >> $O/passed.txt
-    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) ($($P $SC/ssc.py logs/diag_bat_contact_$T.json)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
+    ROW="+$((k * 500)) model_$I (800 Hz, 4 clips): $(jl $PS) ($($P $SC/ssc.py logs/diag_bat_contact_$T.json $AIB_EXIT_HINGE_W $AIB_EXIT_HINGE_REF $AIB_EXIT_HINGE_CAP)) [N4_400: $J4 | B800: $B8] ; $($P scripts/armaim_gate.py --diag logs/diag_bat_contact_$T.json --stage 300 --label $T | head -1 | cut -c1-160)"
   else ROW="+$((k * 500)) model_$I: diag crash or no json"; fi
-  ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; lo $AIB_SS_CA_LO win $AIB_SS_CA_WIN"
+  ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; ramp $AIB_SS_CA_LO-$AIB_SS_CA_HI win $AIB_SS_CA_WIN exit hinge $AIB_EXIT_HINGE_W x clamp(exit - $AIB_EXIT_HINGE_REF, 0, $AIB_EXIT_HINGE_CAP)"
   SCA=$($P $SC/h31_curve.py $O/train_$k.txt 50 $((LI + 500)) | sed -n 's/.* ss_ca \([0-9.]*\).*/\1/p')  # 14: ss_ca < 14 -> lo 10
+  awk -v x="$SCA" -v h="$AIB_SS_CA_HI" 'BEGIN{exit !(x ~ /^[0-9.]+$/ && x + 0 >= h + 0)}' && ROW="$ROW ; ramp SATURATED (ss_ca $SCA >= $AIB_SS_CA_HI)"
   awk -v x="$SCA" 'BEGIN{exit !(x ~ /^[0-9.]+$/ && x + 0 < 14)}' && [ "$AIB_SS_CA_LO" != "10.0" ] && { export AIB_SS_CA_LO=10.0; ROW="$ROW ; ss_ca $SCA < 14 -> lo 10 from segment $((k + 1))"; }
   ROW="$ROW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt

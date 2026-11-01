@@ -6,7 +6,7 @@ import sys
 txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 every = int(sys.argv[2]) if len(sys.argv) > 2 else 50
 keys = {"ss_ca": "bat/ss_ca", "lt_lo": "bat/ss_ca_lt_lo", "hit": "bat/hit_rate", "track": "mimic/track_reward",
-        "fall": "bat/fall_rate"}
+        "fall": "bat/fall_rate", "eh": "bat/exit_hinge"}
 rows = []
 for blk in re.split(r"Learning iteration ", txt)[1:]:
     it = int(blk.split("/")[0])

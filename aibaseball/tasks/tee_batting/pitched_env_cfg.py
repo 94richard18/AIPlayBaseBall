@@ -529,7 +529,12 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
 
     w_ss_ca: float = 40.0
     ss_ca_lo: float = float(os.environ.get("AIB_SS_CA_LO", "12.0"))
-    ss_ca_span: float = 10.0
+    ss_ca_span: float = float(os.environ.get("AIB_SS_CA_HI", "22.0")) - float(os.environ.get("AIB_SS_CA_LO", "12.0"))
+    # 11-01 H31 +1000 (14): ramp saturated (ss_ca 24 > 22) and contact 11 cm off the sweet spot -> segment 3 ramp 16 -> 28 and
+    # the fair-only exit hinge w x clamp(exit - ref, 0, cap) (pays transferring bat speed into the ball, not contact)
+    w_exit_hinge: float = float(os.environ.get("AIB_EXIT_HINGE_W", "0.0"))
+    exit_hinge_ref: float = float(os.environ.get("AIB_EXIT_HINGE_REF", "16.0"))
+    exit_hinge_cap: float = float(os.environ.get("AIB_EXIT_HINGE_CAP", "14.0"))
     # 11-01 H31 +500: with the 50 ms window the swing max went 16.6 -> 25.2 but the speed at contact only 13.4 -> 15.7 (exit
     # 16.5 unchanged) - the peak came early inside the window; AIB_SS_CA_WIN=0.01 pays the closest-approach / impact step
     # and the step before it only
