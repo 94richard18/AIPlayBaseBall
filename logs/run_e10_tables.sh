@@ -47,8 +47,9 @@ tables() {  # $1 ckpt, $2 prefix, $3 hit rate, $4 out list, $5 flags
     echo "t_$j $(oo ${2}_$j.json $3)" >> $4
   done
 }
-MSG="FAILED: waiting for E10_JOINT_END"
-until [ -f logs/E10_JOINT_END.txt ]; do sleep 60; done
+# after E10_JOINT_END and once the H32 segment-1 trainer runs (a one_outs / diag stream at Isaac 0 would hold off H32 idle())
+MSG="FAILED: waiting for E10_JOINT_END + logs/h32/train_1.txt"
+until [ -f logs/E10_JOINT_END.txt ] && [ -f logs/h32/train_1.txt ]; do sleep 60; done
 S0=$(date +%s)
 hitrate $C12 e10t_12500_j0 ""; H12=$HR
 tables $C12 $O/t3_12500 $H12 $O/t3_12500.txt ""
