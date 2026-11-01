@@ -5,7 +5,7 @@
 # Reward bounds come in from the caller env (AIB_SS_CA_LO / HI / WIN, AIB_EXIT_HINGE_W / REF / CAP, AIB_CARRY_REF / SPAN,
 # AIB_LAUNCH_HI_W ...) - set from the E10 1.0x diag. 64-env 20-it smoke -> logs/H32_SMOKE_END.txt, then waits for logs/h32/GO.
 # Per segment: STOP before, HOLD between segments (waits while logs/h32/HOLD exists), RAM watchdog 30 GB; eval = diag 4 clips
-# (percept_filter, no saim, + jitter) and joint s6 (R5c, 6.5 s) -> logs/H32_<its>_END.txt; final logs/H32_END.txt.
+# (percept_filter, no saim, + jitter) and joint s6 (recover RC, 6.5 s) -> logs/H32_<its>_END.txt; final logs/H32_END.txt.
 # Rules (14, 20:5x), else STOP: segment 1 hit >= 0.40, exit >= EXREF - 1, da < 0.57; segment 2 exit >= EXREF, da < 0.50; both:
 # wait-phase (start -> release) da / torso HP not above the 14496 1.0x reference (logs/H32_REF.txt) + 5 %. The swing-window
 # torso HP is reported, not gated (confounded by the swing). AIB_DA_L1_W 0.1 (all steps) from the caller.
@@ -56,7 +56,7 @@ if [ ! -f logs/H32_SMOKE_END.txt ]; then
 fi
 MSG="smoke done, waiting for logs/h32/GO"
 until [ -f $O/GO ]; do [ -f $O/STOP ] && { MSG="stopped before segment 1"; exit 0; }; sleep 60; done
-RC=$(tr -d '\r\n' < logs/recov5c/recover_ckpt.txt)
+RC=${RC0:-$(tr -d '\r\n' < logs/recov6/recover_ckpt.txt)}  # 14, 11-02 00:2x: R6 model_2792 adopted for the seg-2+ joint rows
 for k in $(seq ${K0:-1} $NSEG); do
   [ -f $O/STOP ] && { MSG="stopped by 14 before segment $k"; exit 0; }
   while [ $k -gt 1 ] && [ -f $O/HOLD ]; do MSG="on HOLD before segment $k"; sleep 60; done
@@ -92,7 +92,7 @@ for k in $(seq ${K0:-1} $NSEG); do
     --recover_ckpt $RC --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 --percept_filter --phase_horizon 2.6 --seconds 6.5 \
     --csv $O/joint_s6_$I.csv > $O/joint_s6_$I.txt 2>&1
   if [ -f $O/joint_s6_$I.csv ] && ! grep -q Traceback $O/joint_s6_$I.txt; then
-    ROW="$ROW ; joint s6 (R5c): $($P logs/film_pick.py $O/joint_s6_$I.csv $O/film_pick_scratch.txt | head -1)"
+    ROW="$ROW ; joint s6 ($(basename $(dirname $RC)) $(basename $RC .pt)):$($P logs/film_pick.py $O/joint_s6_$I.csv $O/film_pick_scratch.txt | head -1)"
   else ROW="$ROW ; joint s6 crashed"; fi
   ROW="$ROW ; $($P $SC/h31_curve.py $O/train_$k.txt 100) ; $REW ; $(grep -o 'Iteration time: [0-9.]*s' $O/train_$k.txt | tail -1), private peak ${PK} GB"
   echo "$(date +%H:%M) $ROW" >> $O/progress.txt
