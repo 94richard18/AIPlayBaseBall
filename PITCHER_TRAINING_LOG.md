@@ -2836,3 +2836,10 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `videos/film4_1101_s6_k12.mp4`（例行那顆球）：exit 23.3 m/s、launch 59.7°、carry 36.1 m、spray −43.2°；沒跌倒，pelvis 0.888 m、tilt 2.3°。
 - `videos/film4_1101_s6_k35.mp4`：exit 36.4 m/s、launch 32.2°、carry 84.0 m（外野深處）；沒跌倒，pelvis 0.889 m、tilt 1.1°。影片 cut at none：5.6 s 內比賽未結束，沒有切到擊球飛行畫面，球的飛行只在前段看得到。
 - 兩支皆對 ROWS 52 欄 64/64、blank 0、High（2560x720 30 fps，6.7 Mb/s）、淡白 0/343，k35 縮圖正常。標記 `logs/FILM4_END.txt` 16:49。
+
+## 11-01 17:58 FILM4B 補拍 env 7 + 切鏡規則（14 核可 option a）
+
+- 14 17:4x 寫 `logs/FILM4B_GO.txt`（H31_ADOPT_END 後；ENVS="7" 加引號），17:48 開拍，腳本 `logs/film4b.sh`。
+- `videos/film4b_1101_s6_k7.mp4`：平飛球 exit 33.3 m/s、launch 14.2°、carry 45.6 m（外野）；沒跌倒，pelvis 0.909 m、tilt 6.1°。cut at 4.15 s（done_t 3.65 + 0.5），之後是擊球視角。對 `logs/h31/joint_s6_14496.csv` 52 欄 64/64、blank 0、High、淡白 0/343，縮圖正常。標記 `logs/FILM4B_END.txt`。
+- 切鏡規則（e5b7e77）：擊中時 cut = min(done_t, hit_t + 2.0) + 0.5 s，長飛球（H31 done_t 5.8–6.0 s，超過 6 s 片長）也能切到擊球視角；只改影片，rows 不變。env 7 新舊規則同為 4.15 s。
+- 下一步 `logs/cuttest.sh`（等 `logs/CUTTEST_GO.txt`）：env 35、--seconds 6.5、新切鏡；52 欄 64/64 相同 → 之後拍片用 6.5 s（看得到落地），否則維持 6.0 s。
