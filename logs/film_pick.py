@@ -13,7 +13,7 @@ q75 = lambda v: (lambda w: st.quantiles(w, n=4)[2] if len(w) > 1 else float('nan
 med = lambda v: (lambda w: st.median(w) if w else float('nan'))([x for x in v if x == x])  # NaN = ball still in flight at the end
 print(f"joint s6 n {len(b)}: hits {len(hits)}, fair {len(fair)}, carry fair median {med(car):.1f} max {max([c for c in car if c == c], default=float('nan')):.1f}, "
       f"outfield (fair, carry >= 38.9) {sum(c >= 38.9 for c in car)}, exit {med([f(x['exit_mps']) for x in hits]):.1f}, "
-      f"launch {med([f(x['launch_deg']) for x in hits]):.1f} (q75 {q75([f(x['launch_deg']) for x in hits]):.1f}, >= 45 deg {sum(f(x['launch_deg']) >= 45 for x in hits)}, carry nan {sum(f(x['carry_m']) != f(x['carry_m']) for x in hits)}), fell {fell} (before done {bd}, after {fell - bd}), ground {ground}, tilt ok {tilt}")
+      f"launch {med([f(x['launch_deg']) for x in hits]):.1f} (q75 {q75([f(x['launch_deg']) for x in hits]):.1f}, >= 45 deg {sum(f(x['launch_deg']) >= 45 for x in hits)}, carry nan {sum(f(x['carry_m']) != f(x['carry_m']) for x in hits)}; joint pop-ups (>= 45 deg or still airborne) {sum(f(x['launch_deg']) >= 45 or f(x['carry_m']) != f(x['carry_m']) for x in hits)}/{len(hits)}), fell {fell} (before done {bd}, after {fell - bd}), ground {ground}, tilt ok {tilt}")
 c = sorted([x for x in fair if not T(x['batter_fell'])], key=lambda x: -f(x['carry_m']))
 d = lambda x: f"env {x['env']} carry {f(x['carry_m']):.1f} launch {f(x['launch_deg']):.1f} exit {f(x['exit_mps']):.1f} spray {f(x['spray_deg']):.1f}"
 print(f"no-fall fair hits {len(c)}: " + " | ".join(d(x) for x in c[:6]))
