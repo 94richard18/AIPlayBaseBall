@@ -540,6 +540,9 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
     # and the step before it only
     ss_ca_window_s: float = float(os.environ.get("AIB_SS_CA_WIN", "0.05"))
     ss_ca_dx_sigma: float = float(os.environ.get("AIB_SS_CA_DX_SIGMA", "0.0"))  # segment 4 fallback (14), off
+    # segment 5 (14, 11-01 12:2x): fair carry median 4 m sits under the 10 m knee -> knee 0 so every fair ball pays for carry
+    carry_ref: float = float(os.environ.get("AIB_CARRY_REF", "10.0"))
+    carry_span: float = float(os.environ.get("AIB_CARRY_SPAN", "30.0"))
     w_track: float = 0.5
 
 

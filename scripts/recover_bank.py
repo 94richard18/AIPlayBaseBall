@@ -34,6 +34,7 @@ parser.add_argument("--aim_obs_comp", action="store_true")
 parser.add_argument("--aim_obs_comp_full", action="store_true")
 parser.add_argument("--phase_horizon", type=float, default=None, help="cfg.phase_horizon_s (s): the swing's phase input scale, training 2.6")
 parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter: ballistic LSQ crossing prediction")
+parser.add_argument("--physics_dt", type=float, default=None, help="physics dt (s), e.g. 0.00125 (the joint scene's 800 Hz); 100 Hz control kept")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True
@@ -76,6 +77,11 @@ def main():
     cfg.pitch_ramp_steps = 0
     cfg.scene.num_envs = args.envs
     cfg.seed = args.seed
+    if args.physics_dt is not None:
+        ctrl = cfg.sim.dt * cfg.decimation
+        cfg.sim.dt, cfg.decimation = args.physics_dt, int(round(ctrl / args.physics_dt))
+        cfg.sim.render_interval = cfg.decimation
+        print(f"[bank] physics dt {cfg.sim.dt:.6f} s, decimation {cfg.decimation} (control {cfg.sim.dt * cfg.decimation:.4f} s)", flush=True)
     env = gym.make("AIB-ArmAim-Play-v0" if args.armaim else "AIB-PitchedBatting-Human-Play-v0", cfg=cfg)
     base = env.unwrapped
     n, dev = base.num_envs, base.device
