@@ -1,0 +1,1 @@
+H31_ADOPT_END 17:46 model_14496 800 Hz jitter 0.03: 5x3 mean 23.69% outfield 14.77% (tables 23.2,24.4,23.5), delta vs base800 +9.80 (base 13.89%), hit rate 0.829 | jitter 0: 5x3 mean 26.59% outfield 18.16% (tables 27.7,26.7,25.4) | 54 min
