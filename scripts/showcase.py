@@ -42,6 +42,7 @@ parser.add_argument("--aim_obs_comp", action="store_true", help="--armaim: the s
 parser.add_argument("--aim_obs_comp_full", action="store_true", help="--armaim: + the bat pose compensated")
 parser.add_argument("--percept_filter", action="store_true", help="cfg.percept_filter (quadratic LSQ crossing prediction)")
 parser.add_argument("--eval_envs", type=int, default=0, help=">0: run statistics instead of a video")
+parser.add_argument("--physics_dt", type=float, default=None, help="--eval_envs: physics dt (s), e.g. 0.00125 (800 Hz); 100 Hz control kept")
 parser.add_argument("--post_ref_blend", type=float, default=None, help="cfg.post_ref_blend_s: after the clip, blend to a balanced pose over this many s")
 parser.add_argument("--post_ref_pose", type=str, default=None, help="cfg.post_ref_pose: contact | start")
 parser.add_argument("--post_ref_keep_residual", action="store_true", help="cfg.post_ref_keep_residual")
@@ -318,6 +319,11 @@ def run_eval(ckpt: str):
         if args.post_ref_pose:
             cfg.post_ref_pose = args.post_ref_pose
         cfg.post_ref_keep_residual = args.post_ref_keep_residual
+    if args.physics_dt is not None:  # as diag_bat_contact.py: ONE OUTS tables at the joint scene's dt, same 100 Hz control
+        ctrl = cfg.sim.dt * cfg.decimation
+        cfg.sim.dt, cfg.decimation = args.physics_dt, int(round(ctrl / args.physics_dt))
+        cfg.sim.render_interval = cfg.decimation
+        print(f"[showcase] physics dt {cfg.sim.dt:.6f} s, decimation {cfg.decimation} (control {cfg.sim.dt * cfg.decimation:.4f} s)", flush=True)
         if args.aim_offset_y is not None:
             cfg.aim_offset_y = args.aim_offset_y
     cfg.scene.num_envs = args.eval_envs
