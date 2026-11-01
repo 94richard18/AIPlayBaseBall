@@ -1,7 +1,7 @@
 #!/bin/bash
 # E10 (planning 14, 11-01 20:0x; user: batter strength back to human level + no axis-alignment signal): zero-shot rows at
 # AIB_EFFORT_SCALE 1.0, 800 Hz, phase 2.6, saim OFF everywhere. Isaac 0 for each step.
-#  (a) diag in-zone 4 clips (as the H31 rows): 14496 + percept_filter, 14496 raw (no filter), plain 12500 -> logs/E10_DIAG_END.txt
+#  (a) diag in-zone 4 clips (as the H31 rows) + jitter (14, 20:2x): 14496 saim ON (reference: the before), 14496 + percept_filter, 14496 raw (no filter), plain 12500 -> logs/E10_DIAG_END.txt
 #  (b) joint s6 14496 + percept_filter + R5c recover (1.5x-trained), 6.5 s, --effort_probe 1.0 -> logs/E10_JOINT_END.txt
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
@@ -28,7 +28,9 @@ diag() {  # $1 ckpt, $2 tag, $3 extra flags
   [ -f logs/diag_bat_contact_$2.json ] && ! grep -q Traceback $O/diag_$2.txt || { MSG="$MSG | $2 CRASH $(grep -A14 Traceback $O/diag_$2.txt | tail -1)"; return; }
   MSG="$MSG | $2: $($P logs/e10_row.py logs/diag_bat_contact_$2.json); all-pitch fair pop-up share / q75 / n $($P logs/popup_share.py logs/diag_bat_contact_$2.json)"
 }
-MSG="1.0x, 800 Hz, PH 2.6, saim off, 4 clips"
+MSG="1.0x, 800 Hz, PH 2.6, 4 clips"
+GY=logs/armaim_auth/scripted_gain.json; RES=$(ls -td logs/rsl_rl/aib1_armaim/*armaim_smoke | head -1)/model_1.pt
+diag $C14 e10_14496_saimON "--armaim $RES --aim_scripted $GY --aim_bound 0.4 --aim_window 0.60 --aim_obs_comp --aim_obs_comp_full --percept_filter"
 diag $C14 e10_14496_pf --percept_filter
 diag $C14 e10_14496_raw ""
 diag $C12 e10_12500 ""

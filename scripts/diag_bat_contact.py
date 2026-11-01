@@ -16,6 +16,7 @@ Output: one summary line per group + logs/diag_bat_contact_<tag>.json
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -835,6 +836,15 @@ def main():
     clip_first = base.clip.clone()  # the first episode's clip (the trace keeps that episode)
     prev.clear()
     trace = [] if args.trace else None
+    # jitter (14, 11-01 20:2x; user: no body shaking in the swing): per first episode, from the release to contact / the end,
+    # mean |a_t - a_t-1| over the body action dims (tempo excluded), mean |dq_target| per step over the body joints (shows an
+    # injected PD offset such as saim, which the action misses), RMS of the torso angular velocity high-passed at 5 Hz
+    jit = {k: torch.zeros(n, device=dev) for k in ("da", "dqt", "hp2", "n")}
+    jt_body = base.robot.find_bodies("torso")[0][0]
+    jt_alpha = base.step_dt / (1.0 / (2 * math.pi * 5.0) + base.step_dt)
+    jt_a = base.actions[:, :-1].clone()
+    jt_q = base.robot.data.joint_pos_target[:, base.body_joint_ids].clone()
+    jt_lp = base.robot.data.body_ang_vel_w[:, jt_body].clone()
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
             act = policy(obs)
@@ -852,6 +862,15 @@ def main():
         rec["t_fall"] = torch.where(new_fall, t_now, rec["t_fall"])  # time into the episode of the first fall
         rec["fall_past_end"] = torch.where(new_fall, past_end, rec["fall_past_end"])  # < 0 in the clip, then hold / tail
         rec["fell"] |= base.fallen & ~finished
+        jt_w = base.robot.data.body_ang_vel_w[:, jt_body]
+        jt_lp = jt_lp + jt_alpha * (jt_w - jt_lp)
+        jt_m = (~finished & ~dones.bool() & ~base.hit & (base.phys_t >= base.release_t)).float()
+        a_now, q_now = base.actions[:, :-1], base.robot.data.joint_pos_target[:, base.body_joint_ids]
+        jit["da"] = jit["da"] + jt_m * (a_now - jt_a).abs().mean(-1)
+        jit["dqt"] = jit["dqt"] + jt_m * (q_now - jt_q).abs().mean(-1)
+        jit["hp2"] = jit["hp2"] + jt_m * ((jt_w - jt_lp) ** 2).sum(-1)
+        jit["n"] = jit["n"] + jt_m
+        jt_a, jt_q = a_now.clone(), q_now.clone()
         if args.fall_state:
             bs = balance_state()
             at_end = ~finished & (base.ref_t >= base.ref.duration[base.clip]) & torch.isnan(rec["com_v_end"])
@@ -904,6 +923,10 @@ def main():
         if finished.all():
             break
 
+    jn = jit["n"].clamp_min(1.0)
+    rec["jit_da"], rec["jit_dqt"] = jit["da"] / jn, jit["dqt"] / jn
+    rec["jit_torso_hp"] = (jit["hp2"] / jn).sqrt()
+    rec["jit_n"] = jit["n"]
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
     r["kmh"] = kmh0.cpu().numpy()
