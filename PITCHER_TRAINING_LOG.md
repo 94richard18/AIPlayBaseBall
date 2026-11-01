@@ -2877,3 +2877,9 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - GO 03:34（14）：BC h32_2 model_15494、RC h25r6b model_3091、rows `logs/recov6b/joint_s6_15494.csv`、env 57 / 60、6.5 s。
 - `videos/film6_1102_s6_k57.mp4`（58.2 m、exit 26.9、launch 30.6）與 `videos/film6_1102_s6_k60.mp4`（47.6 m、exit 26.3、launch 24.8）：兩片 52 欄 64/64 全同、blank 0、High、7.6–7.7 Mb/s、淡白 0/343；打者、投手都沒倒。
 - 肉眼：界外線與內野弧線全段實線、與邊線接合；兩片落點柱子 + landing 字樣都清楚、不壓路徑；飛行中最後 1 s 為細線（略淡，但看得到）。打者抖動：兩片都沒有；k60 預備時同樣有一次慢的球棒下壓。
+
+## 11-02 07:18 FILM7（H32 第 3 段 15993 + R6b 3091，1.0x、無 saim）
+
+- GO 06:58（14）：BC h32_3 model_15993、RC h25r6b 3091、rows `logs/h32/joint_s6_15993.csv`、env 51 / 59、6.5 s；附眼檢條件：預備姿勢不能抖（15993 的 wait_torso_hp 比參考高 11%），不行就改拍 15494。
+- `videos/film7_1102_s6_k51.mp4`（87.8 m、exit 35.2、launch 28.0）：52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0；路徑畫面正常（實線、橘柱 + landing、carry 87.8 m）。打者抖動：沒有，腿與軀幹穩定，只有同樣一次慢的球棒下壓。
+- `videos/film7_1102_s6_k59.mp4`（80.7 m、exit 33.1、launch 29.5）：rows 64/64，但淡白 124/343（5.1 Mb/s，從 frame 0 兩邊都是灰藍天空，路徑畫面最後一格只剩疊圖、沒有草地）＝ 已知渲染問題。依規則重拍一次：`logs/film7b.sh` 已待命，等 14 的 FILM7B_GO。
