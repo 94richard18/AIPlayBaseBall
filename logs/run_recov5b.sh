@@ -36,9 +36,16 @@ MSG="waiting for logs/recov5b/GO"
 BK=logs/recover_bank_r5_s0.npz; until [ -f $Q/GO ]; do sleep 60; done
 BL=$(grep '^\[bank\] seed' logs/recov5/bank.txt)
 MSG="train ($BL)"
-until { [ "$(date +%H%M)" -lt 1500 ] || [ -f logs/H31_ADOPT_END.txt ]; } && [ "$(isaac)" -le 1 ] && [ "$(freegb)" -ge 20 ] && nofilm && noadopt; do sleep 60; done
+# 14 (15:4x): R5b beside seg 4 thrashed VRAM (2307 / 1516 s/it) -> killed at 2196; restart after H31_ADOPT_END only
+until [ -f logs/H31_ADOPT_END.txt ] && [ "$(isaac)" -le 1 ] && [ "$(freegb)" -ge 20 ] && nofilm && noadopt; do sleep 60; done
 AIB_PHYSICS_DT=0.00125 AIB_RECOVER_BANK=$BK timeout 7200 $P -u scripts/train.py --task AIB-Recover-R2-v0 --headless --num_envs 4096 \
-  --max_iterations 300 --run_name h25r5b --resume True --load_run $(basename $R4) --checkpoint model_2194.pt > $Q/train.txt 2>&1
+  --max_iterations 300 --run_name h25r5b --resume True --load_run $(basename $R4) --checkpoint model_2194.pt > $Q/train.txt 2>&1 &
+# watchdog: an iteration slower than 120 s means the pair thrashes VRAM again -> kill R5b, the batter trainer keeps the GPU
+TP=$!; while kill -0 $TP 2>/dev/null; do sleep 60
+  tail -c 20000 $Q/train.txt | grep -o 'Iteration time: [0-9.]*' | tail -1 | awk '{exit !($3 > 120)}' && {
+    powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.CommandLine -match 'h25r5b' -and \$_.CommandLine -match 'train.py' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
+    MSG="train: killed by the watchdog (iteration > 120 s beside $(isaac) Isaac, VRAM thrash)"; exit 1; }
+done
 grep -q Traceback $Q/train.txt && fail $Q/train.txt train
 grep -q "AIB_PHYSICS_DT: physics dt 0.001250" $Q/train.txt || { MSG="train: no AIB_PHYSICS_DT line"; exit 1; }
 RUN=$(ls -td logs/rsl_rl/aib1_recover/*_h25r5b 2>/dev/null | head -1)
