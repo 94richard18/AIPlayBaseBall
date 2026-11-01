@@ -570,6 +570,9 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
 
     # E10: saim on / off jitter equal (da 0.574 / 0.574) -> the roughness is the policy's own; optional L1 action-rate term
     w_da_l1: float = float(os.environ.get("AIB_DA_L1_W", "0.0"))
+    # seg 3 (14, 11-02 01:0x): 14995 lost ONE OUTS on infield outs (69.7%) -> step bonus for a fair ball landing past the
+    # ONE OUTS infield (28.96 m about the rubber), paid at the hit step from the training flight prediction
+    w_outfield: float = float(os.environ.get("AIB_OUTFIELD_W", "0.0"))
 
 
 @configclass
