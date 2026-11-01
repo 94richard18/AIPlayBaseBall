@@ -205,8 +205,10 @@ class JointPitchEnv(StageEnv):
             return k + math.sqrt(k * k - MOUND_DIST ** 2 + INFIELD_RADIUS_M ** 2)
 
         angles = [-FOUL_ANGLE_DEG + 90.0 * i / 36 for i in range(37)]
+        fine = [-FOUL_ANGLE_DEG + 90.0 * i / 90 for i in range(91)]  # 11-01: 36 thin chords read as dashes at range
+        for a0, a1 in zip(fine, fine[1:]):
+            seg(polar(infield(a0), a0), polar(infield(a1), a1), 0.3, 0.004, 0.004, chalk)
         for a0, a1 in zip(angles, angles[1:]):
-            seg(polar(infield(a0), a0), polar(infield(a1), a1), 0.15, 0.004, 0.003, chalk)
             seg(polar(fs.fence_distance(a0), a0), polar(fs.fence_distance(a1), a1), 0.3, fs.fence_height_m, 0.0, fence)
 
     def _spawn_zone_frame(self, env_path: str):
@@ -381,7 +383,9 @@ class JointPitchEnv(StageEnv):
 
     def _show_ring(self, ids):
         """film_landing_ring: a batted ball whose integrated flight ended on the ground gets a red-orange ring 1.2 m across (grass-coloured
-        centre) at its landing point; elsewhere / before the landing the ring is parked under the field."""
+        centre) at its landing point; elsewhere / before the landing the ring is parked under the field. planning 14 11-01 (the
+        path view sees an 84 m landing from ~100 m): the ring grows with the landing distance from the plate (x d / 32 m, 1-4x:
+        2.5 m radius at 80 m) and a 3 m red-orange post stands at its centre."""
         if self.ring_marker is None:
             from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 
@@ -389,15 +393,26 @@ class JointPitchEnv(StageEnv):
                 "ring": sim_utils.CylinderCfg(radius=0.60, height=0.004, visual_material=sim_utils.PreviewSurfaceCfg(
                     diffuse_color=(0.95, 0.12, 0.02), emissive_color=(0.6, 0.06, 0.0))),
                 "hole": sim_utils.CylinderCfg(radius=0.48, height=0.006, visual_material=sim_utils.PreviewSurfaceCfg(
-                    diffuse_color=(0.20, 0.42, 0.16), roughness=0.9))}))
+                    diffuse_color=(0.20, 0.42, 0.16), roughness=0.9)),
+                "post": sim_utils.CylinderCfg(radius=0.08, height=3.0, visual_material=sim_utils.PreviewSurfaceCfg(
+                    diffuse_color=(0.95, 0.12, 0.02), emissive_color=(0.6, 0.06, 0.0)))}))
         r = self.phys.ball.radius
         landed = self.j_done[ids] & self.batter_side.hit[ids] & (self.j_pos[ids, 2] <= self.field_z + r + 1e-3)
         p = self.j_pos[ids].clone()
         p[:, 2] = self.field_z + 0.006  # above the grass sheet (field + 2 mm, 2 mm thick)
         p = torch.where(landed.unsqueeze(-1), p, p * 0.0 + torch.tensor([0.0, 0.0, -50.0], device=self.device))
         k = len(ids)
-        self.ring_marker.visualize(translations=torch.cat([p, p], 0),
-                                   marker_indices=torch.cat([torch.zeros(k, dtype=torch.long), torch.ones(k, dtype=torch.long)]).to(self.device))
+        th = -math.radians(self.cfg.plate_yaw_deg)  # the plate in the env frame
+        px, py = self.cfg.plate_distance, self.cfg.zone_center_y
+        plate = self.scene.env_origins[ids, :2] + torch.tensor([math.cos(th) * px - math.sin(th) * py,
+                                                                math.sin(th) * px + math.cos(th) * py], device=self.device)
+        g = ((p[:, :2] - plate).norm(dim=-1) / 32.0).clamp(1.0, 4.0)
+        one = torch.ones_like(g)
+        sc = torch.stack([g, g, one], -1)
+        post = p.clone()
+        post[:, 2] = torch.where(landed, p[:, 2] + 1.5, p[:, 2])
+        self.ring_marker.visualize(translations=torch.cat([p, p, post], 0), scales=torch.cat([sc, sc, torch.stack([one, one, one], -1)], 0),
+                                   marker_indices=torch.cat([torch.full((k,), i, dtype=torch.long) for i in range(3)]).to(self.device))
 
     def _show_call(self):
         """film_zone_frame: from the plate-plane crossing for film_call_s, a disc on that plane at the judged (y, z) (j_cross)
