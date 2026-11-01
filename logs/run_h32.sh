@@ -29,7 +29,7 @@ idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(
 fail() { grep -A14 Traceback $1 | tail -10; MSG="crash $2"; exit 1; }
 last() { L=$(ls $1 | grep model | sort -t_ -k2 -n | tail -1); L=${L#model_}; echo ${L%.pt}; }
 priv() { powershell.exe -NoProfile -Command "\$x = Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match '$1' } | Select-Object -First 1; if (\$x) { [int]((Get-Process -Id \$x.ProcessId).PrivateMemorySize64/1GB) } else { -1 }" | tr -d '\r'; }
-REW="ramp ${AIB_SS_CA_LO:-12.0}-${AIB_SS_CA_HI:-22.0} win ${AIB_SS_CA_WIN:-0.05}, exit hinge ${AIB_EXIT_HINGE_W:-0.0} ref ${AIB_EXIT_HINGE_REF:-16.0} cap ${AIB_EXIT_HINGE_CAP:-14.0}, carry ${AIB_CARRY_REF:-10.0}/${AIB_CARRY_SPAN:-30.0}, launch ceiling ${AIB_LAUNCH_HI_W:-0.0}"
+REW="ramp ${AIB_SS_CA_LO:-12.0}-${AIB_SS_CA_HI:-22.0} win ${AIB_SS_CA_WIN:-0.05}, exit hinge ${AIB_EXIT_HINGE_W:-0.0} ref ${AIB_EXIT_HINGE_REF:-16.0} cap ${AIB_EXIT_HINGE_CAP:-14.0}, carry ${AIB_CARRY_REF:-10.0}/${AIB_CARRY_SPAN:-30.0}, launch ceiling ${AIB_LAUNCH_HI_W:-0.0}, da L1 ${AIB_DA_L1_W:-0.0}"
 LR=${LR0:-2026-11-01_11-42-57_human_pitched_h31_4}; LC=${LC0:-model_14496.pt}; PK=0
 MSG="smoke"; idle
 if [ ! -f logs/H32_SMOKE_END.txt ]; then

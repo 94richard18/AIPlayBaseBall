@@ -141,6 +141,7 @@ class TeeBattingEnvCfg(DirectRLEnvCfg):
     w_approach: float = 0.0  # potential: -distance(sweet spot, ball); off: it rewarded cheap taps
     w_bat_speed: float = 0.5  # (sweet-spot speed toward the field / 45)^2 near the ball
     w_action_rate: float = 0.002
+    w_da_l1: float = 0.0  # H32 option (14, 11-01): - w x mean |a_t - a_t-1| per step, all steps (body jitter)
     w_fall: float = 5.0
     w_fall_after_hit: float = 10.0
     follow_through_s: float = 0.4  # episode continues after contact; the batter must stay up

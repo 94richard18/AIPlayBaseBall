@@ -474,6 +474,8 @@ class TeeBattingEnv(DirectRLEnv):
                + cfg.w_approach * approach
                + cfg.w_bat_speed * bat_speed_r
                - cfg.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1))
+        if cfg.w_da_l1:
+            rew = rew - cfg.w_da_l1 * (self.actions - self.prev_actions).abs().mean(-1)
         # falling before contact, or during the follow-through (no "dive at the ball" swings)
         rew = rew - torch.where(self.hit, cfg.w_fall_after_hit, cfg.w_fall) * self.fallen.float()
         timeout_miss = self.reset_time_outs & ~self.hit

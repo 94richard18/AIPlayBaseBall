@@ -568,6 +568,9 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
     env vars) on the PLAIN PitchedBattingEnv - no scripted aim in the loop, the policy aims from its own percept; percept_filter
     stays on (Human29 lineage). Run with AIB_EFFORT_SCALE 1.0 and AIB_PHYSICS_DT=0.00125. From H31 model_14496."""
 
+    # E10: saim on / off jitter equal (da 0.574 / 0.574) -> the roughness is the policy's own; optional L1 action-rate term
+    w_da_l1: float = float(os.environ.get("AIB_DA_L1_W", "0.0"))
+
 
 @configclass
 class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
