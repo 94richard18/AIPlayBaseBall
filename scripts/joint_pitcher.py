@@ -124,6 +124,7 @@ class JointFilm:
     # landing the view holds (path + landing ring + carry text). A ball under CIRCLE_PX px across is circled. Visual only
     PATH_AFTER_S, PATH_BACK, PATH_SIDE, PATH_UP, PATH_ZOOM_MAX, PATH_ZOOM_MIN, PATH_FILL = 0.3, 15.0, 18.0, 12.0, 1.2, 0.3, 0.8
     CIRCLE_PX = 10.0
+    PATH_THIN_S, POST_M = 1.0, 3.0  # the path's last PATH_THIN_S s drawn 1 px; landing post height (joint_env _show_ring)
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
     CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
@@ -190,6 +191,23 @@ class JointFilm:
         # film_wall: hidden for a camera behind it (the plate view, the high camera) - its back would fill the frame
         self.wall = stage.GetPrimAtPath(f"/World/envs/env_{E}/FilmWall") if getattr(base.cfg, "film_wall", False) else None
         self.wall_x, self.g, self.th = pd + base.cfg.flight_end_behind_plate_m, g, th
+        # planning 14 11-02 (film5: the 0.3 m chalk of the far infield edge projects under 1 px and reads as dashes): the
+        # film_field foul lines and infield edge (joint_env._spawn_film_field) as world polylines, drawn 2 px in the path view
+        self.field_lines = []
+        if getattr(base.cfg, "film_field", False):
+            from aibaseball.game.field import FOUL_ANGLE_DEG, MOUND_DIST, FieldSpec
+            from aibaseball.game.one_outs import INFIELD_RADIUS_M
+
+            def world(d, a):  # field frame (home origin, spray angle a deg, + third base) -> world at field level
+                fx, fy = d * np.cos(np.radians(a)), d * np.sin(np.radians(a))
+                return g + np.array(rz(pd - fx, zc + fy) + [0.0])
+
+            def infield(a):
+                k = np.cos(np.radians(a)) * MOUND_DIST
+                return k + np.sqrt(k * k - MOUND_DIST ** 2 + INFIELD_RADIUS_M ** 2)
+            for s in (-1.0, 1.0):
+                self.field_lines.append(np.array([world(d, s * FOUL_ANGLE_DEG) for d in np.linspace(0.5, FieldSpec().fence_line_m, 60)]))
+            self.field_lines.append(np.array([world(infield(a), a) for a in np.linspace(-FOUL_ANGLE_DEG, FOUL_ANGLE_DEG, 91)]))
 
     def _focal(self, z):
         if self.focal0:
@@ -298,11 +316,32 @@ class JointFilm:
             return
         eye, tgt = self.ball_pose
         h, w = im.shape[:2]
+        for fl in self.field_lines:  # under the path; points next to / behind the eye are dropped
+            q, _ = self._project(fl, eye, tgt, self.bz, w, h)
+            q = np.round(q[q[:, 2] > 1.5, :2]).astype(np.int32)
+            if len(q) > 1:
+                cv2.polylines(im, [q.reshape(-1, 1, 2)], False, (242, 242, 235), 2, cv2.LINE_AA)
         xy, k = self._project(pts, eye, tgt, self.bz, w, h)
         ok = xy[:, 2] > 1.5  # path points next to / behind the eye project off the frame
+        # planning 14 11-02 (film5 k12: a steep ball's last drop covered the landing post): the last PATH_THIN_S s thinner
+        tt = np.array([s for (s, _) in self.trail])[ok]
         line = np.round(xy[ok, :2]).astype(np.int32)
-        if len(line) > 1:
-            cv2.polylines(im, [line.reshape(-1, 1, 2)], False, (255, 255, 255), 2, cv2.LINE_AA)
+        ne = int((tt < tt[-1] - self.PATH_THIN_S).sum()) if len(tt) else 0  # path points before the thin tail
+        for seg, px in ((line[:ne + 1] if ne else line[:0], 2), (line[max(ne - 1, 0):], 1)):
+            if len(seg) > 1:
+                cv2.polylines(im, [seg.reshape(-1, 1, 2)], False, (255, 255, 255), px, cv2.LINE_AA)
+        landed = bool(self.base.j_done[self.E])
+        if landed and ok[-1]:  # the landing post (joint_env _show_ring: POST_M tall) over the path, its label off to the side
+            lp = self.trail[-1][1]
+            q, _ = self._project([[lp[0], lp[1], self.base.field_z], [lp[0], lp[1], self.base.field_z + self.POST_M]],
+                                 eye, tgt, self.bz, w, h)
+            if (q[:, 2] > 1.5).all():
+                a, c = (tuple(int(v) for v in np.round(r[:2])) for r in q)
+                cv2.line(im, a, c, (255, 90, 30), 3, cv2.LINE_AA)
+                inc = line[-1] - line[max(0, len(line) - 8)]  # the path's last screen direction: the label goes the other side
+                org = (c[0] + 14, c[1]) if inc[0] <= 0 else (c[0] - 14 - cv2.getTextSize("landing", cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0][0], c[1])
+                cv2.putText(im, "landing", org, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4, cv2.LINE_AA)
+                cv2.putText(im, "landing", org, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 90, 30), 2, cv2.LINE_AA)
         if ok[-1]:
             dia = 2 * self.base.phys.ball.radius * k / xy[-1, 2]
             if dia < self.CIRCLE_PX:
@@ -315,7 +354,6 @@ class JointFilm:
             for i in range(0, 40, 2):  # dashed: 20 dashes, whatever falls in the frame is drawn
                 q0, q1 = a + (c - a) * i / 40, a + (c - a) * (i + 1) / 40
                 cv2.line(im, tuple(int(v) for v in q0), tuple(int(v) for v in q1), (255, 255, 255), 1, cv2.LINE_AA)
-        landed = bool(self.base.j_done[self.E])
         dist = float(np.hypot(*(p[:2] - p0[:2])))
         lines = [f"carry {dist:.1f} m" if landed else f"distance {dist:.1f} m   height {hgt:.1f} m"]
         if self.launch_v is not None:
