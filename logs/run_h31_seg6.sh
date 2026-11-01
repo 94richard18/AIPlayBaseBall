@@ -5,7 +5,7 @@
 # continue rule (exit >= 24 = 14's STOP bar, hit >= 0.50): joint s6 (64 envs, saim + R4 recover, PH 2.6) of the segment-5
 # checkpoint -> falls before done; >= 10 -> AIB_FOLLOW_THROUGH_S=2.0 AIB_EPISODE_S=4.0 AIB_SETTLE_TAIL_S=1.5 (cfg: ref_hold_end
 # + lost-after-hit-is-fall, phase 2.6) after a 64-env 20-it smoke of that variant (crash -> the carry line instead); relaunch
-# run_h31b.sh at K0=6 with the segment-5 bounds -> logs/H31_SEG6_RELAUNCH.txt, logs/h31_chain6.txt.
+# run_h31c.sh (= run_h31b.sh, joints at 6.5 s) at K0=6 with the segment-5 bounds; boundary joint at --seconds 6.5 (14, 18:1x) -> logs/H31_SEG6_RELAUNCH.txt, logs/h31_chain6.txt.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
 export AIB_EFFORT_SCALE=1.5 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
@@ -39,9 +39,10 @@ RC=$(cat logs/recov4/recover_ckpt.txt)
 JX="--saim logs/armaim_auth/scripted_gain.json --saim_bound 0.4 --saim_window 0.60 --saim_comp full --percept_filter"
 idle
 timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $D/$L --envs 64 --seed 6 --after_done recover_rl \
-  --recover_ckpt $RC --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX --phase_horizon 2.6 --csv $O/joint_s6_$I.csv \
+  --recover_ckpt $RC --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX --phase_horizon 2.6 --seconds 6.5 --csv $O/joint_s6_$I.csv \
   > $O/joint_s6_$I.txt 2>&1
 [ -f $O/joint_s6_$I.csv ] && ! grep -q Traceback $O/joint_s6_$I.txt || { MSG="joint s6 $I crashed: $(grep -A14 Traceback $O/joint_s6_$I.txt | tail -1)"; exit 1; }
+touch $O/joint_s6_$I.s65
 JR=$($P logs/film_pick.py $O/joint_s6_$I.csv $O/film_pick_scratch.txt | head -1)
 BD=$($P -c "import csv; print(sum(r['batter_fell_before_done'] == 'True' for r in csv.DictReader(open('$O/joint_s6_$I.csv'))))")
 V=""; NOTE="falls before done $BD < 10 -> carry line"
@@ -54,6 +55,6 @@ if [ "$BD" -ge 10 ]; then
   else V="$FT"; NOTE="falls before done $BD >= 10 -> follow-through ($FT; smoke $(grep -o 'Iteration time: [0-9.]*s' $O/ft_smoke.txt | tail -1))"; fi
 fi
 rm -f $O/STOP
-MSG="relaunched segment 6 from $(basename $D)/$L (exit $EX hit $HT); joint s6: $JR; $NOTE -> run_h31b.sh, logs/h31_chain6.txt"
+MSG="relaunched segment 6 from $(basename $D)/$L (exit $EX hit $HT); joint s6: $JR; $NOTE -> run_h31c.sh, logs/h31_chain6.txt"
 trap - EXIT; echo "H31_SEG6_RELAUNCH $(date +%H:%M) $MSG" > $M
-exec env K0=6 LR0=$(basename $D) LC0=$L $SEG5 $V bash logs/run_h31b.sh > logs/h31_chain6.txt 2>&1
+exec env K0=6 LR0=$(basename $D) LC0=$L $SEG5 $V bash logs/run_h31c.sh > logs/h31_chain6.txt 2>&1

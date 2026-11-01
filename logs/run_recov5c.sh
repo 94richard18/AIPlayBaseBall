@@ -34,7 +34,7 @@ fail() { grep -A14 Traceback $1 | tail -10; MSG="crash $2"; exit 1; }
 joint() {  # $1 seed, $2 recover ckpt, $3 out prefix
   beside
   timeout 1500 $P -u scripts/joint_smoke.py --headless --pitcher $PC --batter $H --envs 64 --seed $1 --after_done recover_rl \
-    --recover_ckpt $2 --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX $PH --csv ${3}.csv > ${3}.txt 2>&1
+    --recover_ckpt $2 --timing_csv logs/m2lite/timing.csv --timing_bias 0.055 $JX $PH --seconds 6.5 --csv ${3}.csv > ${3}.txt 2>&1
   grep -q Traceback ${3}.txt && fail ${3}.txt $(basename $3)
 }
 MSG="waiting for logs/recov5c/GO + H31_ADOPT_END"
@@ -67,6 +67,8 @@ CL=$([ -n "$RUN" ] && ls $RUN/model_*.pt | sed 's/.*model_//; s/\.pt//' | sort -
 MSG="joint ($BL; ckpt $RUN/model_$CL.pt)"
 joint 6 $RUN/model_$CL.pt $Q/joint_s6
 joint 7 $RUN/model_$CL.pt $Q/joint_s7
+# 14 (18:1x): joint rows at --seconds 6.5; the R4 row must be the 6.5 s rerun (logs/h31/joint_s6_<it>.s65), wait <= 60 min
+W0=$(date +%s); until [ -f logs/h31/joint_s6_$HI.s65 ]; do [ $(($(date +%s) - W0)) -gt 3600 ] && { MSG="verify: no 6.5 s R4 row for $HI"; exit 1; }; sleep 60; done
 MSG="$($P - <<PY
 import csv
 f = lambda x: float(x) if x not in ('', 'nan') else float('nan')
@@ -76,7 +78,7 @@ g = lambda b: sum(f(x['min_pelvis_z_2s']) < 0.35 for x in b); h = lambda b: sum(
 t30 = lambda b: sum(f(x['torso_tilt_1p5_deg']) <= 30 for x in b); fl = lambda b: sum(x['batter_fell'] == 'True' for x in b)
 bd = lambda b: sum(x['batter_fell_before_done'] == 'True' for x in b)
 ok = g(b6) + g(b7) <= 4 and t30(b6) >= 56 and t30(b7) >= 56
-print(("PASS" if ok else "FAIL") + f" R5c$TAG ($HI + saim + recover h25r5c$TAG model_$CL, 800 Hz): ground s6 {g(b6)}/64 s7 {g(b7)}/64, "
+print(("PASS" if ok else "FAIL") + f" R5c$TAG ($HI + saim, joints 6.5 s + recover h25r5c$TAG model_$CL, 800 Hz): ground s6 {g(b6)}/64 s7 {g(b7)}/64, "
       f"tilt +1.5 s <= 30 deg s6 {t30(b6)}/64 s7 {t30(b7)}/64 (bar 56), batter_fell s6 {fl(b6)} s7 {fl(b7)} (before done {bd(b6)} / {bd(b7)}), "
       f"hits s6 {h(b6)} s7 {h(b7)} | R4 on $HI s6: ground {g(r4)}, tilt ok {t30(r4)}, fell {fl(r4)} (before done {bd(r4)}), hits {h(r4)}")
 PY
