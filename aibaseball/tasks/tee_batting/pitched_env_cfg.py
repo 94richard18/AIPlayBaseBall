@@ -551,6 +551,10 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
         episode_length_s = float(os.environ.get("AIB_EPISODE_S", "4.0"))
         settle_tail_s: float = float(os.environ.get("AIB_SETTLE_TAIL_S", "1.5"))
         phase_horizon_s: float | None = 2.6
+        # without these the clip end still ends the episode (ref_end time-out, as the Human12 falsifier found) and a fall that
+        # starts as drift off the held pose is a penalty-free `lost`: hold the last pose like play, a lost after a hit is a fall
+        ref_hold_end: bool = os.environ.get("AIB_FT_HOLD_END", "1") == "1"
+        lost_after_hit_is_fall: bool = os.environ.get("AIB_FT_LOST_IS_FALL", "1") == "1"
 
 
 @configclass

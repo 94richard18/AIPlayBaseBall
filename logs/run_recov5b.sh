@@ -36,6 +36,9 @@ MSG="waiting for logs/recov5b/GO"
 BK=logs/recover_bank_r5_s0.npz; until [ -f $Q/GO ]; do sleep 60; done
 BL=$(grep '^\[bank\] seed' logs/recov5/bank.txt)
 MSG="train ($BL)"
+# 14 (16:3x): at H31_ADOPT_END 14 picks ONE of R5b / R5c -> R5b gives 14 20 min after ADOPT_END; logs/recov5c/GO by then = R5c chosen
+until [ -f logs/H31_ADOPT_END.txt ]; do sleep 60; done
+A0=$(date +%s); while [ $(($(date +%s) - A0)) -lt 1200 ]; do [ -f logs/recov5c/GO ] && { MSG="SKIPPED: 14 chose R5c (logs/recov5c/GO)"; exit 0; }; sleep 30; done
 # 14 (15:4x): R5b beside seg 4 thrashed VRAM (2307 / 1516 s/it) -> killed at 2196; restart after H31_ADOPT_END only
 until [ -f logs/H31_ADOPT_END.txt ] && [ "$(isaac)" -le 1 ] && [ "$(freegb)" -ge 20 ] && nofilm && noadopt; do sleep 60; done
 AIB_PHYSICS_DT=0.00125 AIB_RECOVER_BANK=$BK timeout 7200 $P -u scripts/train.py --task AIB-Recover-R2-v0 --headless --num_envs 4096 \
