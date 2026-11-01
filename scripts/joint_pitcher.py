@@ -116,15 +116,14 @@ class JointFilm:
     CUT_AFTER_MISS_S = float(os.environ.get("AIB_FILM_CUT_AFTER_MISS_S", CUT_AFTER_S))
     # planning 14 11-01 (H31 carries 40-84 m, done_t 5.8-6.0 s > the clip): a hit cuts at min(done_t, hit_t + this) + CUT_AFTER_S
     HIT_VIEW_AFTER_S = 2.0
-    # planning 14 11-01 (the ball was a 3 px dot in every view): from hit_t + BALLCAM_AFTER_S the right panel follows the
-    # batted ball - eye BALLCAM_BACK m behind it along its horizontal velocity, BALLCAM_SIDE m to its left (a straight chase
-    # view turns the trail into a vertical stub, offline check 11-01) and BALLCAM_UP m above (never below field +
-    # BALLCAM_MIN_Z), aimed BALLCAM_AHEAD m ahead of it; frozen over the landing point once the flight ends. A white trail
-    # of the last TRAIL_S s is drawn on it, plus a circle while the ball is under CIRCLE_PX px across. Visual only
-    # 11-01 round 2 (offline mock with the film_field lines): 10 m back / 6 m side / 3 m up / zoom 1.2 keeps the ground under
-    # the ball, the infield edge and the fence in frame (the ball ~8 px: circled)
-    BALLCAM_AFTER_S, BALLCAM_BACK, BALLCAM_SIDE, BALLCAM_UP, BALLCAM_AHEAD, BALLCAM_ZOOM, BALLCAM_MIN_Z = 0.3, 10.0, 6.0, 3.0, 3.0, 1.2, 1.5
-    TRAIL_S, CIRCLE_PX = 0.5, 10.0
+    # planning 14 11-01, user 18:3x ("after the hit show the ball's flight path and its final position"): from hit_t +
+    # PATH_AFTER_S the right panel is a flight view - one eye fixed at that moment PATH_BACK m behind the contact point along
+    # the ball's horizontal direction, PATH_SIDE m to its left and PATH_UP m above the field, aimed at the middle of the path
+    # so far and widened (zoom only ever falls, PATH_ZOOM_MAX..PATH_ZOOM_MIN) to keep the contact point, the apex, the ball
+    # and the ground under it inside PATH_FILL of the frame. The whole path from contact is drawn and stays; after the
+    # landing the view holds (path + landing ring + carry text). A ball under CIRCLE_PX px across is circled. Visual only
+    PATH_AFTER_S, PATH_BACK, PATH_SIDE, PATH_UP, PATH_ZOOM_MAX, PATH_ZOOM_MIN, PATH_FILL = 0.3, 15.0, 18.0, 12.0, 1.2, 0.3, 0.8
+    CIRCLE_PX = 10.0
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
     CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
@@ -207,7 +206,7 @@ class JointFilm:
                 eye, tgt, z = self.side_eye, pel, self.SIDE_ZOOM
             elif which == "ball":
                 eye, tgt = self.ball_pose
-                z = self.BALLCAM_ZOOM
+                z = self.bz
             elif hit and self._off_batter(self.high_eye, b.j_pos[E].cpu().numpy()) > self.MIN_BATTER_DEG:
                 ball = b.j_pos[E].cpu().numpy()
                 eye, tgt, z = self.high_eye, ball.tolist(), self.ball_zoom(np.linalg.norm(ball[:2] - self.plate_xy))
@@ -249,15 +248,32 @@ class JointFilm:
             v = b.j_vel[E].cpu().numpy().astype(float)
             if np.hypot(v[0], v[1]) > 0.5:
                 self.ball_dir = np.array([v[0], v[1], 0.0]) / np.hypot(v[0], v[1])
-        if self.ball_dir is None or t < self.hit_t + self.BALLCAM_AFTER_S:
+        if self.ball_dir is None or t < self.hit_t + self.PATH_AFTER_S:
             return
         if bool(b.j_done[E]) and self.ball_pose is not None:
-            self.ball_pose = (self.ball_pose[0], p.tolist())  # landed: the eye stays, aimed at the landing point
-            return
-        left = np.array([-self.ball_dir[1], self.ball_dir[0], 0.0])
-        eye = p - self.BALLCAM_BACK * self.ball_dir + self.BALLCAM_SIDE * left + [0.0, 0.0, self.BALLCAM_UP]
-        eye[2] = max(eye[2], b.field_z + self.BALLCAM_MIN_Z)
-        self.ball_pose = (eye.tolist(), (p + self.BALLCAM_AHEAD * self.ball_dir).tolist())
+            return  # landed: the view holds
+        p0 = self.trail[0][1]
+        if self.ball_pose is None:
+            left = np.array([-self.ball_dir[1], self.ball_dir[0], 0.0])
+            eye = p0 - self.PATH_BACK * self.ball_dir + self.PATH_SIDE * left
+            eye[2] = b.field_z + self.PATH_UP
+            self.path_eye, self.bz = eye, self.PATH_ZOOM_MAX
+        apex = max((q for _, q in self.trail), key=lambda q: q[2])
+        pts = np.array([p0, apex, p, [p[0], p[1], b.field_z]])
+        tgt = 0.5 * (pts.min(0) + pts.max(0))
+        e = self.path_eye
+        f = tgt - e
+        f /= np.linalg.norm(f)
+        r = np.cross(f, [0.0, 0.0, 1.0])
+        r /= np.linalg.norm(r)
+        u = np.cross(r, f)
+        d = pts - e
+        zc = np.maximum(d @ f, 0.1)
+        xr, yr = np.abs(d @ r / zc).max(), np.abs(d @ u / zc).max()
+        w_h = 720.0 / 1280.0  # panel aspect (h / w)
+        fit = min(self.PATH_FILL * self.hap / 2 / max(xr, 1e-6), self.PATH_FILL * self.hap * w_h / 2 / max(yr, 1e-6)) / self.focal0
+        self.bz = float(np.clip(min(self.bz, fit), self.PATH_ZOOM_MIN, self.PATH_ZOOM_MAX))
+        self.ball_pose = (e.tolist(), tgt.tolist())
 
     def _project(self, pts, eye, tgt, zoom, w, h):
         """World points -> pixel (x, y, depth) for a set_camera_view camera (world z up) of focal focal0 * zoom."""
@@ -273,17 +289,17 @@ class JointFilm:
         return np.stack([w / 2 + k * (d @ r) / zc, h / 2 - k * (d @ u) / zc, zc], -1), k
 
     def _draw_ball(self, im, t):
-        """The trail of the last TRAIL_S s, a dashed drop line from the ball to the ground under it and, for a small ball, a
+        """The whole path from contact (it stays after the landing), a dashed drop line from the ball to the ground under it and, for a small ball, a
         circle around it on the ball camera frame; top right: distance from the contact point and height above the field
         (live; "carry" once landed), exit speed and launch angle (planning 14 11-01: height and distance must read)."""
         import cv2
-        pts = [p for (s, p) in self.trail if s >= t - self.TRAIL_S]
+        pts = [p for (_, p) in self.trail]  # the whole path from contact
         if not pts or not self.focal0 or not self.hap:
             return
         eye, tgt = self.ball_pose
         h, w = im.shape[:2]
-        xy, k = self._project(pts, eye, tgt, self.BALLCAM_ZOOM, w, h)
-        ok = xy[:, 2] > 1.5  # trail points next to / behind the eye project off the frame
+        xy, k = self._project(pts, eye, tgt, self.bz, w, h)
+        ok = xy[:, 2] > 1.5  # path points next to / behind the eye project off the frame
         line = np.round(xy[ok, :2]).astype(np.int32)
         if len(line) > 1:
             cv2.polylines(im, [line.reshape(-1, 1, 2)], False, (255, 255, 255), 2, cv2.LINE_AA)
@@ -293,7 +309,7 @@ class JointFilm:
                 cv2.circle(im, tuple(int(v) for v in np.round(xy[-1, :2])), 12, (255, 255, 255), 2, cv2.LINE_AA)
         p0, p = self.trail[0][1], self.trail[-1][1]
         hgt = p[2] - self.base.field_z
-        g, _ = self._project([[p[0], p[1], self.base.field_z]], eye, tgt, self.BALLCAM_ZOOM, w, h)
+        g, _ = self._project([[p[0], p[1], self.base.field_z]], eye, tgt, self.bz, w, h)
         if ok[-1] and g[0, 2] > 1.5 and hgt > 0.3:
             a, c = xy[-1, :2], g[0, :2]
             for i in range(0, 40, 2):  # dashed: 20 dashes, whatever falls in the frame is drawn
