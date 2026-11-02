@@ -7,3 +7,6 @@
 05:25 15494 @0: 16.77% outfield 9.80% (tables 18.3,14.9,17.1)
 05:45 14995 @0.03: 14.11% outfield 4.68% (tables 14.1,13.1,15.1)
 06:06 14995 @0: 15.29% outfield 6.55% (tables 15.2,15.4,15.2)
+07:37 seg-3 ckpt model_15993 (hit rate 0.914, jitter-0 diag), bars 16.93 (0.03) / 16.76 (0); INFORMATION only (it failed 2 seg-3 gates), pair unchanged
+07:58 15993 @0.03: 23.25% outfield 15.64% (tables 24.8,23.4,21.6)
+08:21 15993 @0: 27.69% outfield 20.22% (tables 27.7,29.0,26.4)

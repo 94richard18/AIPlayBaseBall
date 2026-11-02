@@ -1,1 +1,1 @@
-H32TG2_END 06:52 skipped: model_15993 did not pass the segment-3 gates (H32_END 06:52 segment-3 rule FAILED (hit '0.914' >= 0.75, exit '28.5' >= 27.1, da '0.4916' < 0.50, wait da '0.5360' <= 1.05 x 0.6630, wait torso '3.8005' <= 1.05 x 3.4155, fell by end '0.680' <= 0.60) -> stopped | +1500 model_15993 (1.0x, 800 Hz, 4 clips, no saim): n 557 hit 0.914 fair 0.91 ss_conta)
+H32TG2_END 08:21 GAME SCENE model_15993 | jitter 0.03: 23.25% / OF 15.64% (bar 16.93, 15494 14.47) | jitter 0: 27.69% / OF 20.22% (bar 16.76, need 17.76) -> information only, pair unchanged | 43 min
