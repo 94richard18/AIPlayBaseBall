@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**09:46 11-02 H32 第 4 段結果（H32_2000_END 09:42，model_16492）→ 敗，chain 停（H32S4_END）：** hit 0.869、exit 28.0、fair carry 中位 48.0 m、da 0.4796、wait_da 0.525、**wait_torso_hp 3.19（修好，< 3.586；15993 3.80）**、**fell by end 0.749（更差；15993 0.680）**、launch 38.6（q75 60.8）、fair ≥ 45° 0.345、pop-up 0.289；分區 fair launch 中位 low +22 / inside +24 / away +32 / high +33（從太低變太高，5/40/15 的天花板壓不住）。Joint s6：hits 53、fair 41、外野 15、carry 中位 27.9、exit 30.0、fell 9（before 4 / after 5）、ground 3、tilt ok 55。根因（15 自查）：AIB_FOLLOW_THROUGH_S 同時把 lost_after_hit 算成 fall，擊球後離開 clip 參考就「倒地」→ 站立項變成每次擊中固定 −3、沒有站立訊號，且 lost 仍立即結束 episode（沒真的活過收尾）；訓練列 fall_rate == hit_rate 可證。等待段軀幹項有效。
+
+決定：(1) **第 4b 段**從 15993：wait torso 0.03 保留；站立項修正（AIB_FT_LOST_IS_FALL=0 + 擊球後 1.5 s 內 lost 不終止、只有真的骨盆 / 傾角倒地才算；fall after hit 3）；launch 天花板 ref 40 → 35；其餘同第 3 段。smoke 門檻：fall_rate 必須與 hit_rate 分開。段門檻 = 第 3 段六項 + exit ≥ 27.5 + fair carry 中位 ≥ 30 + **新增 in-zone fair launch 中位 ≤ 30、pop-up ≤ 0.20**。16492 不跑表。(2) GPU 順序：R6c 訓練 + joints（09:4x 起，~1 h）→ R6C_END → **film8**（14 立即寫 FILM8_GO：15993 + R6c 若過、否則 15993 + R6b）→ 第 4b 段（其 chain 另等 FILM8_END）。(3) R6c 過 → 14 改 logs/recov6/recover_ckpt.txt 指標、配對換 15993 + R6c 並公告。
+
 **08:38 11-02 15993 + R6b recover 兩 seed 檢查（H32_J7_15993_END 08:36，af77310）→ 差一球未過：** joint s7 hits 55、fair 46、外野 18、exit 27.5、fell 6（before 2 / after 4）、ground 5、tilt ok 58；後段 ground s6 2 + s7 3 = 5 > 4/128（tilt 56 / 58 過）。配對暫維持 15494 + R6b。**R6c 上膛**（run_recov6c.sh：BC 15993、從 R6b 3091 +300、run h25r6c）：bank `logs/recover_bank_r6c_15993_s0.npz` 現在在第 4 段旁產生，訓練等 H32S4_END 後 idle，再跑 15993 的 joint s6 + s7 → R6C_END（過 → 15 寫 logs/recov6c/recover_ckpt.txt，由 14 決定是否改 logs/recov6/recover_ckpt.txt 指標並換配對）。預計 ~11:15 前有結果；film8（19:06 前）候選 = 15993 或第 4 段 ckpt + R6c。第 4 段 ~16200/16493。
 
 **08:24 11-02 15993 遊戲場景雙欄表（H32TG2_END 08:21，43 min，與第 4 段並行）：** jitter 0.03 **23.25% / 外野 15.64%**（三表 24.8 / 23.4 / 21.6；門檻 16.93，15494 14.47）；jitter 0（= 遊戲）**27.69% / 外野 20.22%**（27.7 / 29.0 / 26.4；門檻 16.76）。兩欄都大幅過門檻（+6.3 / +10.9），每張表都在門檻之上，外野安打是 15494 的 2 倍。這是 1.0x 無 saim 以來第一個兩欄都過的打者；投手對它的勝率從 ~85% 掉到 ~72-77%。
