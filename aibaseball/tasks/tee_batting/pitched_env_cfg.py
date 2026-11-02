@@ -602,6 +602,8 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     form_on_hits: bool = os.environ.get("AIB_FORM_ON_HITS", "1") == "1"
     # H33E (14, 11-03 00:xx): H33D's missed episodes ended by a pre-hit `lost` before the ball passed (no penalty) -> charged as w_miss
     lost_is_miss: bool = os.environ.get("AIB_LOST_IS_MISS", "0") == "1"
+    # H33F (11-03 04:xx): the grounder floor on every hit, fair or foul (fair-only was dodged by fouling, fair 0.78 -> 0.55)
+    launch_lo_all: bool = os.environ.get("AIB_LAUNCH_LO_ALL", "0") == "1"
 
 
 @configclass

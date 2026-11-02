@@ -455,7 +455,9 @@ class TeeBattingEnv(DirectRLEnv):
             pen = pen + cfg.w_launch_hi * hi
             self.stats["launch_hi"] = 0.95 * self.stats["launch_hi"] + 0.05 * (hi > 0).float().mean()
         if cfg.w_launch_lo:  # fair-only grounder floor: launch below launch_lo_ref is an infield out in ONE OUTS
-            lo = ((cfg.launch_lo_ref - la) / cfg.launch_lo_span).clamp(0.0, 1.0) * fair.float()
+            lo = ((cfg.launch_lo_ref - la) / cfg.launch_lo_span).clamp(0.0, 1.0)
+            if not getattr(cfg, "launch_lo_all", False):  # H33F: fouls pay the floor too (H33E seg 2 fouled the low balls off)
+                lo = lo * fair.float()
             pen = pen + cfg.w_launch_lo * lo
             self.stats["launch_lo"] = 0.95 * self.stats["launch_lo"] + 0.05 * (lo > 0).float().mean()
         if cfg.w_outfield:  # ONE OUTS geometry with the launch point as the plate: past the infield arc and the mound distance
