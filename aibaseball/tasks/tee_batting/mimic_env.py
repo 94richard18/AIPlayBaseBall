@@ -217,6 +217,7 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         self.extras["log"]["mimic/speed"] = torch.tensor(self.speed, device=self.device)
         if self.cfg.post_clip_balance:
             rew, track = self._post_clip_balance(rew, track)
+        self.rt_sum["rt_track"] += self.cfg.w_track * track
         return (rew + self.cfg.w_track * track + self.cfg.w_contact * contact_r + self.cfg.w_ss_speed * ss_r
                 + self.cfg.w_cvel * cvel_r)
 

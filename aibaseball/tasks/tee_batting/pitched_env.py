@@ -215,11 +215,13 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             return rew
         c = self.cfg
         rew = rew - c.w_miss * self.passed.float() - c.w_tempo * self.actions[:, -1] ** 2
+        self.rt_sum["rt_miss"] -= c.w_miss * self.passed.float()
         if getattr(c, "w_wait_torso", 0.0):  # L1 on the 5 Hz high-passed torso angular velocity before the release
             w_t = self.robot.data.body_ang_vel_w[:, self.wt_body]
             self.wt_lp += self.step_dt / (1.0 / (2 * math.pi * 5.0) + self.step_dt) * (w_t - self.wt_lp)
             hp = (w_t - self.wt_lp).norm(dim=-1) * (self.phys_t < self.release_t).float()
             rew = rew - c.w_wait_torso * hp
+            self.rt_sum["rt_wait_torso"] -= c.w_wait_torso * hp
             self.track_stats["wait_torso_hp"] = 0.98 * self.track_stats["wait_torso_hp"] + 0.02 * hp.mean()
         if self.new_hit.any():
             # timing error: physical time of contact vs. when the ball reached the reference contact point

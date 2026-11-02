@@ -118,6 +118,10 @@ class TeeBattingEnv(DirectRLEnv):
         self.stats = {k: torch.zeros((), device=dev) for k in
                       ("hit_rate", "fall_rate", "carry", "carry_max", "exit_velo", "launch_angle", "backspin_rpm",
                        "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi", "launch_lo", "outfield")}
+        # per-term episode reward sums (14, 11-02 22:xx, H33 probes): EMA of the per-episode mean, logged as bat/rt_*
+        self.rt_sum = {k: torch.zeros(n, device=dev) for k in ("rt_ramp", "rt_hit", "rt_carry", "rt_exit_hinge", "rt_outfield",
+                                                                "rt_launch_pen", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track")}
+        self.stats.update({k: torch.zeros((), device=dev) for k in self.rt_sum})
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -426,9 +430,13 @@ class TeeBattingEnv(DirectRLEnv):
         g_D = torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2))
         r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
         r = r + cfg.w_hit_q * hq
+        f = self._form_factor()
+        fr = torch.ones_like(r) if f is None or not getattr(cfg, "form_on_hits", True) else f[ids]
         pen = torch.zeros_like(r)  # penalties stay outside the H33 form factor (bad form must not make them cheaper)
         if cfg.w_carry:  # fair-only carry hinge from the same flight that decides fair
-            r = r + cfg.w_carry * ((carry - cfg.carry_ref) / cfg.carry_span).clamp(0.0, 1.0) * fair.float()
+            r_c = cfg.w_carry * ((carry - cfg.carry_ref) / cfg.carry_span).clamp(0.0, 1.0) * fair.float()
+            r = r + r_c
+            self.rt_sum["rt_carry"][ids] += r_c * fr
         if cfg.w_exit_band:  # exit paid directly inside a launch band (no grounders, no pop-ups), fair balls only
             a0, a1, a2, a3 = cfg.exit_band_launch
             band = ((la - a0) / (a1 - a0)).clamp(0.0, 1.0) * ((a3 - la) / (a3 - a2)).clamp(0.0, 1.0)
@@ -436,6 +444,7 @@ class TeeBattingEnv(DirectRLEnv):
         if cfg.w_exit_hinge:
             r_eh = cfg.w_exit_hinge * (ev - cfg.exit_hinge_ref).clamp(0.0, cfg.exit_hinge_cap) * (fair.float() if cfg.exit_hinge_fair_only else 1.0)
             r = r + r_eh
+            self.rt_sum["rt_exit_hinge"][ids] += r_eh * fr
             self.stats["exit_hinge"] = 0.95 * self.stats["exit_hinge"] + 0.05 * r_eh.median()
         if cfg.w_launch_hi:  # fair-only pop-up ceiling: the carry term must not buy launch above launch_hi_ref
             hi = ((la - cfg.launch_hi_ref) / cfg.launch_hi_span).clamp(0.0, 1.0) * fair.float()
@@ -450,10 +459,12 @@ class TeeBattingEnv(DirectRLEnv):
             from aibaseball.game.one_outs import INFIELD_RADIUS_M
             of = fair & (torch.hypot(disp[:, 0] - MOUND_DIST, disp[:, 1]) > INFIELD_RADIUS_M) & (disp.norm(dim=-1) > MOUND_DIST)
             r = r + cfg.w_outfield * of.float()
+            self.rt_sum["rt_outfield"][ids] += cfg.w_outfield * of.float() * fr
             self.stats["outfield"] = 0.95 * self.stats["outfield"] + 0.05 * of.float().mean()
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
-        f = self._form_factor()
-        self.hit_reward[ids] = (r if f is None else r * f[ids]) - pen
+        self.hit_reward[ids] = r * fr - pen
+        self.rt_sum["rt_hit"][ids] += r * fr - pen
+        self.rt_sum["rt_launch_pen"][ids] -= pen
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)
         a = 0.05
@@ -491,9 +502,13 @@ class TeeBattingEnv(DirectRLEnv):
                + cfg.w_bat_speed * bat_speed_r
                - cfg.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1))
         if cfg.w_da_l1:
-            rew = rew - cfg.w_da_l1 * (self.actions - self.prev_actions).abs().mean(-1)
+            p_da = cfg.w_da_l1 * (self.actions - self.prev_actions).abs().mean(-1)
+            rew = rew - p_da
+            self.rt_sum["rt_da_l1"] -= p_da
         # falling before contact, or during the follow-through (no "dive at the ball" swings)
-        rew = rew - torch.where(self.hit, cfg.w_fall_after_hit, cfg.w_fall) * self.fallen.float()
+        p_f = torch.where(self.hit, cfg.w_fall_after_hit, cfg.w_fall) * self.fallen.float()
+        rew = rew - p_f
+        self.rt_sum["rt_fall"] -= p_f
         timeout_miss = self.reset_time_outs & ~self.hit
         if cfg.w_aim > 0:  # once per swing: at the hit, or at the episode end without one
             pay = (self.new_hit | ((self.reset_terminated | self.reset_time_outs) & ~self.hit)) & ~self.aim_paid
@@ -506,6 +521,7 @@ class TeeBattingEnv(DirectRLEnv):
                              ("aim_reward", r_aim[pay].mean())):
                     self.stats[k] = 0.98 * self.stats[k] + 0.02 * v
         rew = rew - cfg.w_miss * timeout_miss.float()
+        self.rt_sum["rt_miss"] -= cfg.w_miss * timeout_miss.float()
         if cfg.w_ss_ca > 0:  # once per swing, hit or not: sweet-spot speed where the ball is
             self.ss_ring = torch.cat([self.ss_ring[:, 1:], ss_v.norm(dim=-1, keepdim=True)], 1)
             closer = (~self.hit & (dist < self.ca_dist)) | self.new_hit
@@ -523,6 +539,7 @@ class TeeBattingEnv(DirectRLEnv):
                 if getattr(cfg, "ss_ca_hit_only", False):  # H33R: no bat-speed pay on a miss (H33 seg 1 swung fast past the ball)
                     r_ss = r_ss * self.hit.float()
                 rew = rew + torch.where(pay, r_ss, torch.zeros_like(r_ss))
+                self.rt_sum["rt_ramp"] += torch.where(pay, r_ss, torch.zeros_like(r_ss))
                 self.ss_ca_paid |= pay
                 for k, v in (("ss_ca", self.ss_ca[pay].median()), ("ss_ca_lt_lo", (self.ss_ca[pay] < cfg.ss_ca_lo).float().mean())):
                     self.stats[k] = 0.98 * self.stats[k] + 0.02 * v
@@ -557,6 +574,10 @@ class TeeBattingEnv(DirectRLEnv):
     def _reset_idx(self, env_ids: Sequence[int] | None):
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
+        if hasattr(self, "rt_sum") and len(env_ids) > 0:  # the finished episodes' per-term sums -> EMA, then zero
+            for k, v in self.rt_sum.items():
+                self.stats[k] = 0.98 * self.stats[k] + 0.02 * v[env_ids].mean()
+                v[env_ids] = 0.0
         super()._reset_idx(env_ids)
         n = len(env_ids)
         self.ball_obs_bias[env_ids] = torch.randn(n, 3, device=self.device) * self.cfg.ball_obs_bias_std

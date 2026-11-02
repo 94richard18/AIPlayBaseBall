@@ -598,6 +598,8 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     form_s: float = float(os.environ.get("AIB_FORM_S", str(0.20 / 0.6931471805599453 ** 0.5)))
     # H33R (14, 11-02 21:xx): seg 1 (12999) bought bat speed on misses (hit 0.47 -> 0.03, pose 0.25) -> the ss ramp pays hits only
     ss_ca_hit_only: bool = os.environ.get("AIB_SS_CA_HIT_ONLY", "0") == "1"
+    # probe P2 (14, 11-02 22:xx): 0 = the form factor stays on the ramp only, the hit rewards are paid in full
+    form_on_hits: bool = os.environ.get("AIB_FORM_ON_HITS", "1") == "1"
 
 
 @configclass
