@@ -1,0 +1,7 @@
+H32_FORM_END 18:18 5 ckpts, 22 min ([form] joints legs 12 waist 3 arms 14: waist ['waist_yaw', 'waist_roll', 'waist_pitch'])
+ckpt | hit | exit | carry | launch | pose_err mean/q90 | key_err mean/q90 | after contact | split
+12500 | n 557 hit 0.470 | exit 15.5 | carry 4.4 | launch +12.4 | pose 0.161/0.166 | key 0.085/0.094 | post pose 0.328/0.420 key 0.425/0.890 | legs 0.147/0.155 waist 0.089/0.101 arms 0.177/0.185
+14496 | n 557 hit 0.648 | exit 18.7 | carry 6.8 | launch +15.6 | pose 0.283/0.296 | key 0.145/0.164 | post pose 0.506/0.597 key 0.875/1.331 | legs 0.248/0.257 waist 0.141/0.156 arms 0.323/0.347
+14995 | n 557 hit 0.862 | exit 23.6 | carry 18.4 | launch +13.0 | pose 0.290/0.302 | key 0.146/0.162 | post pose 0.551/0.654 key 0.954/1.434 | legs 0.253/0.262 waist 0.149/0.168 arms 0.331/0.354
+15494 | n 557 hit 0.934 | exit 28.1 | carry 24.8 | launch +12.0 | pose 0.295/0.310 | key 0.139/0.158 | post pose 0.572/0.696 key 0.927/1.399 | legs 0.255/0.267 waist 0.161/0.178 arms 0.337/0.365
+15993 | n 557 hit 0.914 | exit 28.5 | carry 37.8 | launch +19.7 | pose 0.321/0.333 | key 0.150/0.166 | post pose 0.604/0.693 key 1.056/1.606 | legs 0.271/0.280 waist 0.169/0.187 arms 0.373/0.395
