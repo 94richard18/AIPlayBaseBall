@@ -596,6 +596,8 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     the launch ceiling / grounder floor, miss, fall, da L1 and wait-torso L1 stay additive."""
 
     form_s: float = float(os.environ.get("AIB_FORM_S", str(0.20 / 0.6931471805599453 ** 0.5)))
+    # H33R (14, 11-02 21:xx): seg 1 (12999) bought bat speed on misses (hit 0.47 -> 0.03, pose 0.25) -> the ss ramp pays hits only
+    ss_ca_hit_only: bool = os.environ.get("AIB_SS_CA_HIT_ONLY", "0") == "1"
 
 
 @configclass

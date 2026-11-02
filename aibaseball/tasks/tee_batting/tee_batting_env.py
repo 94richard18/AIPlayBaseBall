@@ -520,6 +520,8 @@ class TeeBattingEnv(DirectRLEnv):
                 f = self._form_factor()
                 if f is not None:  # H33: the bat-speed ramp is a distance reward too
                     r_ss = r_ss * f
+                if getattr(cfg, "ss_ca_hit_only", False):  # H33R: no bat-speed pay on a miss (H33 seg 1 swung fast past the ball)
+                    r_ss = r_ss * self.hit.float()
                 rew = rew + torch.where(pay, r_ss, torch.zeros_like(r_ss))
                 self.ss_ca_paid |= pay
                 for k, v in (("ss_ca", self.ss_ca[pay].median()), ("ss_ca_lt_lo", (self.ss_ca[pay] < cfg.ss_ca_lo).float().mean())):
