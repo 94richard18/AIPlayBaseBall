@@ -125,6 +125,7 @@ class JointFilm:
     PATH_AFTER_S, PATH_BACK, PATH_SIDE, PATH_UP, PATH_ZOOM_MAX, PATH_ZOOM_MIN, PATH_FILL = 0.3, 15.0, 18.0, 12.0, 1.2, 0.3, 0.8
     CIRCLE_PX = 10.0
     PATH_THIN_S, POST_M = 1.0, 3.0  # the path's last PATH_THIN_S s drawn 1 px; landing post height (joint_env _show_ring)
+    LAUNCH_JUMP_MPS = 3.0  # step-to-step speed change that marks the first logged sample as the pitch (free flight: < 0.1)
     # planning 14 10-29 (final cut): AIB_FILM_CLEAN=1 drops the QA overlay (time, HIT / FELL, play over) and keeps only the
     # right panel's view name; visual only. Default: the QA overlay
     CLEAN = os.environ.get("AIB_FILM_CLEAN") == "1"
@@ -259,8 +260,11 @@ class JointFilm:
         if not on:
             return
         p = b.j_pos[E].cpu().numpy().astype(float)
-        if not self.trail:
-            self.launch_v = b.j_vel[E].cpu().numpy().astype(float)
+        v = b.j_vel[E].cpu().numpy().astype(float)
+        # film12 k22 (11-03): the first logged step can still carry the pitch's velocity (text read 61 km/h / -20 deg vs the
+        # row's 73 / +1.3); a jump > LAUNCH_JUMP_MPS on the next step means that sample was the pitch - take the new one
+        if not self.trail or (len(self.trail) == 1 and np.linalg.norm(v - self.launch_v) > self.LAUNCH_JUMP_MPS):
+            self.launch_v = v
         self.trail.append((t, p))
         if bool(b.j_fly[E]):
             v = b.j_vel[E].cpu().numpy().astype(float)
