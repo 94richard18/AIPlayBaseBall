@@ -1,0 +1,1 @@
+H32S4B_SMOKE_END 11:03 fall_rate 0.4685 not apart from hit_rate 0.4753 ; wait torso  mimic/wait_torso_hp: 0.4685 (outfield 10.0, ramp 24.1-34.1 win 0.01, exit hinge 3.0 ref 18.7 cap 14.0, carry 15.0/35.0, launch ceiling 5.0, grounder floor 5.0, da L1 0.2, wait torso L1 0.03, follow-through 1.5 s / episode 4.0 s, fall after hit 3.0)
