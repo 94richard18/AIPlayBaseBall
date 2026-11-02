@@ -1,0 +1,1 @@
+H33F_END 05:37 segment-1 EARLY FALSIFIER at +250 (train hit '0.645' >= 0.60, pose_swing '0.213' <= 0.21): it 13249 ss_ca 20.323 lt_lo 0.043 hit 0.645 track 0.553 fall 0.001 eh 4.205 fc 17.896 lhi 0.090 llo 0.284 of 0.023 pose 0.213 f 0.379 -> trainer killed, stopped |
