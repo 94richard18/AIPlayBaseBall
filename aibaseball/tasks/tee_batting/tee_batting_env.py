@@ -426,6 +426,7 @@ class TeeBattingEnv(DirectRLEnv):
         g_D = torch.exp(-(((D - cfg.contact_D_target) / cfg.sigma_contact_D) ** 2))
         r = r + cfg.w_contact_dx * g_dx + cfg.w_contact_D * g_D * (g_dx if cfg.contact_D_times_dx else 1.0)
         r = r + cfg.w_hit_q * hq
+        pen = torch.zeros_like(r)  # penalties stay outside the H33 form factor (bad form must not make them cheaper)
         if cfg.w_carry:  # fair-only carry hinge from the same flight that decides fair
             r = r + cfg.w_carry * ((carry - cfg.carry_ref) / cfg.carry_span).clamp(0.0, 1.0) * fair.float()
         if cfg.w_exit_band:  # exit paid directly inside a launch band (no grounders, no pop-ups), fair balls only
@@ -438,11 +439,11 @@ class TeeBattingEnv(DirectRLEnv):
             self.stats["exit_hinge"] = 0.95 * self.stats["exit_hinge"] + 0.05 * r_eh.median()
         if cfg.w_launch_hi:  # fair-only pop-up ceiling: the carry term must not buy launch above launch_hi_ref
             hi = ((la - cfg.launch_hi_ref) / cfg.launch_hi_span).clamp(0.0, 1.0) * fair.float()
-            r = r - cfg.w_launch_hi * hi
+            pen = pen + cfg.w_launch_hi * hi
             self.stats["launch_hi"] = 0.95 * self.stats["launch_hi"] + 0.05 * (hi > 0).float().mean()
         if cfg.w_launch_lo:  # fair-only grounder floor: launch below launch_lo_ref is an infield out in ONE OUTS
             lo = ((cfg.launch_lo_ref - la) / cfg.launch_lo_span).clamp(0.0, 1.0) * fair.float()
-            r = r - cfg.w_launch_lo * lo
+            pen = pen + cfg.w_launch_lo * lo
             self.stats["launch_lo"] = 0.95 * self.stats["launch_lo"] + 0.05 * (lo > 0).float().mean()
         if cfg.w_outfield:  # ONE OUTS geometry with the launch point as the plate: past the infield arc and the mound distance
             from aibaseball.game.field import MOUND_DIST
@@ -451,7 +452,8 @@ class TeeBattingEnv(DirectRLEnv):
             r = r + cfg.w_outfield * of.float()
             self.stats["outfield"] = 0.95 * self.stats["outfield"] + 0.05 * of.float().mean()
         self.stats["hit_q"] = 0.95 * self.stats["hit_q"] + 0.05 * hq.mean()
-        self.hit_reward[ids] = r
+        f = self._form_factor()
+        self.hit_reward[ids] = (r if f is None else r * f[ids]) - pen
         self.carry[ids] = carry
         # stats (EMA so keys exist every step)
         a = 0.05
@@ -465,6 +467,10 @@ class TeeBattingEnv(DirectRLEnv):
             self.stats["fair_carry_lt10"] = (1 - a) * self.stats["fair_carry_lt10"] + a * (carry[fair] < 10.0).float().mean()
         self.stats["carry_max"] = torch.maximum(self.stats["carry_max"] * 0.999, (carry * fair).max())
         self.best_carry = max(self.best_carry, float((carry * fair).max()))
+
+    def _form_factor(self):
+        """Per-env multiplier on the positive distance rewards (the mimic env's H33 form factor); None = 1."""
+        return None
 
     def _get_rewards(self) -> torch.Tensor:
         cfg = self.cfg
@@ -511,6 +517,9 @@ class TeeBattingEnv(DirectRLEnv):
                 if cfg.ss_ca_dx_sigma > 0:  # hits: only the speed delivered on the sweet spot counts
                     g = torch.exp(-(((self.contact_x - self.bat_geom.sweet_spot_x) / cfg.ss_ca_dx_sigma) ** 2))
                     r_ss = r_ss * torch.where(self.hit, g, torch.ones_like(g))
+                f = self._form_factor()
+                if f is not None:  # H33: the bat-speed ramp is a distance reward too
+                    r_ss = r_ss * f
                 rew = rew + torch.where(pay, r_ss, torch.zeros_like(r_ss))
                 self.ss_ca_paid |= pay
                 for k, v in (("ss_ca", self.ss_ca[pay].median()), ("ss_ca_lt_lo", (self.ss_ca[pay] < cfg.ss_ca_lo).float().mean())):

@@ -589,6 +589,16 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
 
 
 @configclass
+class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
+    """Human33 (planning 14, 11-02 18:3x; user option B - the form looked awkward, pose_err 0.32 rad at 15993): Human32 from plain
+    12500 (h9b) with FORM FIRST - every positive distance reward (ss ramp, fair exit hinge, carry, outfield, spray) x
+    exp(-(pose_swing / form_s)^2), form_s = 0.20 / sqrt(ln 2) (f = 0.5 at 0.20 rad), so distance cannot be bought with form;
+    the launch ceiling / grounder floor, miss, fall, da L1 and wait-torso L1 stay additive."""
+
+    form_s: float = float(os.environ.get("AIB_FORM_S", str(0.20 / 0.6931471805599453 ** 0.5)))
+
+
+@configclass
 class PitchedBattingHuman30dEnvCfg(PitchedBattingHuman30cEnvCfg):
     """Human30d (planning 14, 10-31 07:25; armed behind H30C_300_END + logs/h30d/GO): Human30c + swing-start timing noise
     +-0.03 s uniform in training, the showcase tables' distribution (training was noise-free since Human6: the diag launch

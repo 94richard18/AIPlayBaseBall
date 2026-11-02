@@ -2,7 +2,7 @@
 logs/h32/form_<name>.csv (env, clip, hit, exit, launch, carry, pose_err_rad, key_err_m = swing window clip start -> contact,
 + the after-contact pair and the legs / waist / arms pose split) and one table row. hit / exit / launch / carry as e10_row /
 h31_carry: in zone, fair = |spray| <= 45, carry = drag + Magnus flight from contact (release 0.9 m); form = mean / q90 over all
-hit episodes. Usage: h32_form.py diag.json name -> one line"""
+hit episodes. Usage: h32_form.py diag.json name [out.csv] -> one line"""
 import csv
 import json
 import sys
@@ -26,7 +26,7 @@ if ok.any():
     pos = torch.zeros(int(ok.sum()), 3); pos[:, 2] = 0.9
     carry[ok] = simulate_flight(pos, v, w, PhysicsSpec()).carry.numpy()
 cols = ["pose_sw", "key_sw", "pose_post", "key_post", "legs_sw", "waist_sw", "arms_sw"]
-with open(f"logs/h32/form_{name}.csv", "w", newline="") as f:
+with open(sys.argv[3] if len(sys.argv) > 3 else f"logs/h32/form_{name}.csv", "w", newline="") as f:
     wr = csv.writer(f)
     wr.writerow(["env", "clip", "hit", "exit", "launch", "spray", "carry", "pose_err_rad", "key_err_m", "pose_err_post_rad",
                  "key_err_post_m", "pose_legs_rad", "pose_waist_rad", "pose_arms_rad"])

@@ -87,6 +87,10 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     cvel_joints: str = r"waist_|l_shoulder_|l_elbow|l_wrist_"
     max_key_err: float = 0.45  # terminate when key bodies drift this far (m RMS)
     lost_after_hit_is_fall: bool = False  # True: losing the reference after contact counts as a fall (w_fall_after_hit)
+    # H33 form factor (planning 14, 11-02 18:3x; user option B, form first): 0 = off; > 0 = the positive distance rewards (ss ramp,
+    # hit rewards) x exp(-(pose_swing / form_s)^2), pose_swing = this episode's mean unweighted joint RMS error (rad) from the clip
+    # start (reference clock >= 0) to contact
+    form_s: float = 0.0
     lost_ends_after_hit: bool = True  # False: after contact only a real fall (pelvis / tilt) ends the episode, not losing the reference
     ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)
     clamp_ref_phase: bool = False  # True: the reference-time input t / duration is held at 1 past the clip end

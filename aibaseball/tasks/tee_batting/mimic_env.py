@@ -45,6 +45,9 @@ class TeeBattingMimicEnv(TeeBattingEnv):
                             ("track_reward", "key_err_m", "pose_err_rad", "t0", "min_ball_dist_m",
                              "ss_speed_win", "ss_ref_speed_win", "cvel_err", "cvel_reward")}
         self.min_ball_dist = torch.full((self.num_envs,), 9.0, device=dev)
+        self.form_sum = torch.zeros(self.num_envs, device=dev)  # H33 form factor: swing-window pose error sum / steps
+        self.form_n = torch.zeros(self.num_envs, device=dev)
+        self.track_stats.update({k: torch.zeros((), device=dev) for k in ("form_pose_swing", "form_f")})
         self.ss_ref_contact_speed = None
         # contact-window joint-velocity tracking (Human23): body-joint columns of cfg.cvel_joints
         self.cvel_cols = [i for i, n in enumerate(self.body_joint_names) if re.match(cfg.cvel_joints, n)] if cfg.w_cvel > 0 else []
@@ -136,6 +139,7 @@ class TeeBattingMimicEnv(TeeBattingEnv):
             self.track_stats["arm_relax_frac"] = 0.99 * self.track_stats["arm_relax_frac"] + 0.01 * win.float().mean()
         else:
             wj = wk = 1.0
+        self.pose_rms_now = ((q - r["joint_pos"]) ** 2).mean(-1).sqrt()  # unweighted (the H33 form factor, the diag's --form_log)
         pose_err = (wj * (q - r["joint_pos"]) ** 2).mean(-1)
         vel_err = (wj * (qd - r["joint_vel"]) ** 2).mean(-1)
         key_err = (wk * ((key - r["key_pos"]) ** 2).sum(-1)).mean(-1)
@@ -150,6 +154,15 @@ class TeeBattingMimicEnv(TeeBattingEnv):
     def _get_rewards(self) -> torch.Tensor:
         rew = super()._get_rewards()
         track, key_err, pose_err = self._tracking()
+        if self.cfg.form_s > 0:  # accumulate after the base rewards: the factor they used covers the steps up to the last one
+            m = (~self.hit & (self._ref_time() >= 0)).float()
+            self.form_sum += m * self.pose_rms_now
+            self.form_n += m
+            if self.new_hit.any():
+                f = self._form_factor()
+                for k, v in (("form_pose_swing", (self.form_sum / self.form_n.clamp_min(1.0))[self.new_hit].mean()),
+                             ("form_f", f[self.new_hit].mean())):
+                    self.track_stats[k] = 0.95 * self.track_stats[k] + 0.05 * v
         # contact guidance: around the reference contact time, pull the sweet spot onto the ball
         knob, axis, cm, v_cm, w, _ = self._bat_state()
         ss_p, _ = self._sweet_spot(knob, axis, cm, v_cm, w)
@@ -235,6 +248,12 @@ class TeeBattingMimicEnv(TeeBattingEnv):
             self.extras["log"].update({f"mimic/{k}": self.track_stats[k].clone() for k in ("post_bal_score", "post_bal_reward")})
         return rew + bal, track
 
+    def _form_factor(self):
+        """H33: exp(-(swing-window mean pose RMS / form_s)^2) per env, or None when off (form_s 0)."""
+        if self.cfg.form_s <= 0:
+            return None
+        return torch.exp(-((self.form_sum / self.form_n.clamp_min(1.0)) / self.cfg.form_s) ** 2)
+
     def _stand_score(self):
         """0..1: mean of upright, whole-body COM over the feet line, low root speed, feet down."""
         c, d = self.cfg, self.robot.data
@@ -305,6 +324,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         rsi = torch.rand(n, device=dev) < self.cfg.rsi_prob
         t_max = (self.ref.contact_time[self.clip[env_ids]] - self.cfg.rsi_margin_before_contact).clamp_min(0.0)
         self.min_ball_dist[env_ids] = 9.0
+        self.form_sum[env_ids] = 0.0
+        self.form_n[env_ids] = 0.0
         if self.cfg.post_clip_balance:
             self.hit_reward_ep[env_ids] = 0.0
             self.foot_zmin[env_ids] = 9.0
