@@ -1,0 +1,1260 @@
+[INFO][AppLauncher]: Loading experience file: C:\Users\User\IsaacLab\apps\isaaclab.python.headless.kit
+[Warning] [simulation_app.simulation_app] Modules: ['omni.kit_app'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [simulation_app.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+Loading user config located at: 'c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/data/Kit/Isaac-Sim/4.5/user.config.json'
+[Info] [carb] Logging to file: c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/logs/Kit/Isaac-Sim/4.5/kit_20261102_185250.log
+2026-11-02 10:52:50 [0ms] [Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+2026-11-02 10:52:50 [12ms] [Warning] [omni.ext.plugin] [ext: src] Extensions config 'extension.toml' doesn't exist 'c:/users/user/isaaclab/source/src' or 'c:/users/user/isaaclab/source/src/config'
+2026-11-02 10:52:51 [359ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+2026-11-02 10:52:51 [891ms] [Warning] [omni.datastore] OmniHub is inaccessible
+2026-11-02 10:52:51 [1,037ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 560.94        | Graphics API: D3D12
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3080 Ti       | Yes: 0 |     | 12086   MB | 10de      | 6fbf0000.. |
+|     |                                  |        |     |            | 2208      | 0          |
+|     |                                  |        |     |            | 2d        |            |
+|=============================================================================================|
+| OS: Windows 11 Home, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9711
+| Processor: AMD Ryzen 7 5800X3D 8-Core Processor           
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 65461 | Free Memory: 42721
+| Total Page/Swap (MB): 69557 | Free Page/Swap: 39463
+|---------------------------------------------------------------------------------------------|
+[INFO]: Parsing configuration from: aibaseball.tasks.tee_batting.pitched_env_cfg:PitchedBattingHuman33EnvCfg
+[INFO]: Parsing configuration from: aibaseball.tasks.tee_batting.agents.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg
+[INFO]: AIB_PHYSICS_DT: physics dt 0.001250 s, decimation 8
+[INFO] Logging experiment in directory: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic
+Exact experiment name requested from command line: 2026-11-02_18-52-59
+Setting seed: 42
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.00125
+	Rendering step-size   : 0.01
+	Environment step-size : 0.01
+2026-11-02 10:52:59 [9,115ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPreviewSurface.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,116ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdUVTexture.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,116ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,116ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float2.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,117ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float3.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,117ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float4.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,117ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_int.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,117ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_string.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,118ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_normal.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,118ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_point.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,118ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_vector.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,119ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_matrix.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 10:52:59 [9,119ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdTransform2d.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+[INFO]: Time taken for scene creation : 1.056465 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 64
+	Environment spacing   : 4.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-11-02 10:53:01 [10,354ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/Robot/top_hand_grip
+[INFO]: Time taken for simulation start : 0.873546 seconds
+[INFO]: Completed setting up the environment...
+Actor MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+[INFO]: Loading model checkpoint from: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic\2026-10-25_13-56-51_human_pitched9b\model_12500.pt
+[INFO]: learning rate restored: 2.25e-05
+################################################################################
+                    [1m Learning iteration 12500/12520 [0m                    
+
+                       Computation: 289 steps/s (collection: 6.793s, learning 0.273s)
+               Value function loss: 36.1086
+                    Surrogate loss: -0.0493
+             Mean action noise std: 2.78
+                 Mean total reward: -7.86
+               Mean episode length: 16.80
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0000
+                     bat/carry_max: 0.0000
+                     bat/exit_velo: 0.0000
+                  bat/launch_angle: 0.0000
+                  bat/backspin_rpm: 0.0000
+                     bat/bat_speed: 0.0000
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0000
+                bat/contact_abs_dx: 0.0000
+                     bat/contact_D: 0.0000
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0000
+                    bat/fair_carry: 0.0000
+               bat/fair_carry_lt10: 0.0000
+                         bat/ss_ca: 0.0762
+                   bat/ss_ca_lt_lo: 0.0495
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0000
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.1110
+                   mimic/key_err_m: 0.0086
+                mimic/pose_err_rad: 0.0230
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.4452
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0000
+                      mimic/form_f: 0.0000
+              mimic/arm_relax_frac: 0.0000
+                   mimic/pitch_kmh: 0.0000
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.0332
+             mimic/ref_err_plate_s: 0.0000
+               mimic/wait_torso_hp: 0.5957
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 2048
+                    Iteration time: 7.07s
+                        Total time: 7.07s
+                               ETA: 141.3s
+
+Could not find git repository in C:\Users\User\anaconda3\envs\isaaclab_env\lib\site-packages\rsl_rl\__init__.py. Skipping.
+Storing git diff for 'AIPlayBaseBall' in: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic\2026-11-02_18-52-59_h33_smoke\git\AIPlayBaseBall.diff
+################################################################################
+                    [1m Learning iteration 12501/12520 [0m                    
+
+                       Computation: 348 steps/s (collection: 5.685s, learning 0.198s)
+               Value function loss: 33.1016
+                    Surrogate loss: -0.0022
+             Mean action noise std: 2.78
+                 Mean total reward: -10.07
+               Mean episode length: 34.91
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0000
+                     bat/carry_max: 0.0000
+                     bat/exit_velo: 0.0000
+                  bat/launch_angle: 0.0000
+                  bat/backspin_rpm: 0.0000
+                     bat/bat_speed: 0.0000
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0000
+                bat/contact_abs_dx: 0.0000
+                     bat/contact_D: 0.0000
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0000
+                    bat/fair_carry: 0.0000
+               bat/fair_carry_lt10: 0.0000
+                         bat/ss_ca: 0.2932
+                   bat/ss_ca_lt_lo: 0.1454
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0000
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.2701
+                   mimic/key_err_m: 0.0279
+                mimic/pose_err_rad: 0.0626
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.3084
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0000
+                      mimic/form_f: 0.0000
+              mimic/arm_relax_frac: 0.0000
+                   mimic/pitch_kmh: 0.0000
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.0835
+             mimic/ref_err_plate_s: 0.0000
+               mimic/wait_torso_hp: 0.6400
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 4096
+                    Iteration time: 5.88s
+                        Total time: 12.95s
+                               ETA: 123.0s
+
+################################################################################
+                    [1m Learning iteration 12502/12520 [0m                    
+
+                       Computation: 342 steps/s (collection: 5.757s, learning 0.214s)
+               Value function loss: 31.4606
+                    Surrogate loss: -0.0373
+             Mean action noise std: 2.78
+                 Mean total reward: -13.89
+               Mean episode length: 60.46
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0000
+                     bat/carry_max: 0.0000
+                     bat/exit_velo: 0.0000
+                  bat/launch_angle: 0.0000
+                  bat/backspin_rpm: 0.0000
+                     bat/bat_speed: 0.0000
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0000
+                bat/contact_abs_dx: 0.0000
+                     bat/contact_D: 0.0000
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0000
+                    bat/fair_carry: 0.0000
+               bat/fair_carry_lt10: 0.0000
+                         bat/ss_ca: 0.5591
+                   bat/ss_ca_lt_lo: 0.2745
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0000
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.3774
+                   mimic/key_err_m: 0.0446
+                mimic/pose_err_rad: 0.0924
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 2.3449
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0000
+                      mimic/form_f: 0.0000
+              mimic/arm_relax_frac: 0.0002
+                   mimic/pitch_kmh: 0.0000
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.1187
+             mimic/ref_err_plate_s: 0.0000
+               mimic/wait_torso_hp: 0.4430
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 6144
+                    Iteration time: 5.97s
+                        Total time: 18.92s
+                               ETA: 113.5s
+
+################################################################################
+                    [1m Learning iteration 12503/12520 [0m                    
+
+                       Computation: 344 steps/s (collection: 5.770s, learning 0.179s)
+               Value function loss: 104.2991
+                    Surrogate loss: -0.0202
+             Mean action noise std: 2.78
+                 Mean total reward: -16.74
+               Mean episode length: 81.27
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0324
+                     bat/carry_max: 0.1025
+                     bat/exit_velo: 0.1585
+                  bat/launch_angle: -0.3908
+                  bat/backspin_rpm: 8.2368
+                     bat/bat_speed: 0.1315
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0030
+                bat/contact_abs_dx: 0.0009
+                     bat/contact_D: -0.0003
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0021
+                    bat/fair_carry: 0.0051
+               bat/fair_carry_lt10: 0.0063
+                         bat/ss_ca: 1.6395
+                   bat/ss_ca_lt_lo: 0.4206
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0030
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.4419
+                   mimic/key_err_m: 0.0636
+                mimic/pose_err_rad: 0.1172
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 2.9577
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0020
+                      mimic/form_f: 0.0057
+              mimic/arm_relax_frac: 0.0211
+                   mimic/pitch_kmh: 0.7084
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.1497
+             mimic/ref_err_plate_s: 0.0015
+               mimic/wait_torso_hp: 0.4252
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 8192
+                    Iteration time: 5.95s
+                        Total time: 24.87s
+                               ETA: 105.7s
+
+################################################################################
+                    [1m Learning iteration 12504/12520 [0m                    
+
+                       Computation: 359 steps/s (collection: 5.520s, learning 0.183s)
+               Value function loss: 58.5123
+                    Surrogate loss: -0.0019
+             Mean action noise std: 2.78
+                 Mean total reward: -19.41
+               Mean episode length: 101.26
+                      bat/hit_rate: 0.0042
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.2615
+                     bat/carry_max: 0.8199
+                     bat/exit_velo: 1.6030
+                  bat/launch_angle: -4.7001
+                  bat/backspin_rpm: 59.2687
+                     bat/bat_speed: 1.3705
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0375
+                bat/contact_abs_dx: 0.0093
+                     bat/contact_D: -0.0035
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0165
+                    bat/fair_carry: 0.0469
+               bat/fair_carry_lt10: 0.0634
+                         bat/ss_ca: 5.0384
+                   bat/ss_ca_lt_lo: 0.4547
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0375
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.4851
+                   mimic/key_err_m: 0.0798
+                mimic/pose_err_rad: 0.1377
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 2.4602
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0208
+                      mimic/form_f: 0.0595
+              mimic/arm_relax_frac: 0.0591
+                   mimic/pitch_kmh: 7.1710
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.1791
+             mimic/ref_err_plate_s: 0.0068
+               mimic/wait_torso_hp: 0.5580
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 10240
+                    Iteration time: 5.70s
+                        Total time: 30.57s
+                               ETA: 97.8s
+
+################################################################################
+                    [1m Learning iteration 12505/12520 [0m                    
+
+                       Computation: 354 steps/s (collection: 5.598s, learning 0.175s)
+               Value function loss: 47.5598
+                    Surrogate loss: 0.0090
+             Mean action noise std: 2.78
+                 Mean total reward: -19.87
+               Mean episode length: 106.08
+                      bat/hit_rate: 0.0400
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.5270
+                     bat/carry_max: 0.8190
+                     bat/exit_velo: 2.3326
+                  bat/launch_angle: -5.9801
+                  bat/backspin_rpm: -89.4439
+                     bat/bat_speed: 2.1284
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0709
+                bat/contact_abs_dx: 0.0167
+                     bat/contact_D: -0.0047
+                  bat/contact_D_in: 0.0234
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0245
+                    bat/fair_carry: 0.0617
+               bat/fair_carry_lt10: 0.0975
+                         bat/ss_ca: 6.4363
+                   bat/ss_ca_lt_lo: 0.4510
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0709
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.5305
+                   mimic/key_err_m: 0.0853
+                mimic/pose_err_rad: 0.1488
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 2.1471
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0303
+                      mimic/form_f: 0.0891
+              mimic/arm_relax_frac: 0.0549
+                   mimic/pitch_kmh: 10.3481
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.1932
+             mimic/ref_err_plate_s: 0.0099
+               mimic/wait_torso_hp: 0.5502
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 12288
+                    Iteration time: 5.77s
+                        Total time: 36.35s
+                               ETA: 90.9s
+
+################################################################################
+                    [1m Learning iteration 12506/12520 [0m                    
+
+                       Computation: 363 steps/s (collection: 5.447s, learning 0.184s)
+               Value function loss: 82.1262
+                    Surrogate loss: -0.0037
+             Mean action noise std: 2.78
+                 Mean total reward: -20.21
+               Mean episode length: 110.21
+                      bat/hit_rate: 0.0729
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.8650
+                     bat/carry_max: 1.9596
+                     bat/exit_velo: 3.0808
+                  bat/launch_angle: -7.0892
+                  bat/backspin_rpm: -171.0322
+                     bat/bat_speed: 3.0524
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.1044
+                bat/contact_abs_dx: 0.0317
+                     bat/contact_D: -0.0056
+                  bat/contact_D_in: 0.0470
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0322
+                    bat/fair_carry: 0.1496
+               bat/fair_carry_lt10: 0.1342
+                         bat/ss_ca: 7.5824
+                   bat/ss_ca_lt_lo: 0.4673
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.1044
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.5568
+                   mimic/key_err_m: 0.0916
+                mimic/pose_err_rad: 0.1579
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.9195
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0446
+                      mimic/form_f: 0.1252
+              mimic/arm_relax_frac: 0.0607
+                   mimic/pitch_kmh: 15.2783
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2063
+             mimic/ref_err_plate_s: 0.0118
+               mimic/wait_torso_hp: 0.4099
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 14336
+                    Iteration time: 5.63s
+                        Total time: 41.98s
+                               ETA: 84.0s
+
+################################################################################
+                    [1m Learning iteration 12507/12520 [0m                    
+
+                       Computation: 345 steps/s (collection: 5.751s, learning 0.182s)
+               Value function loss: 127.4161
+                    Surrogate loss: 0.0092
+             Mean action noise std: 2.78
+                 Mean total reward: -21.21
+               Mean episode length: 120.06
+                      bat/hit_rate: 0.0837
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.8697
+                     bat/carry_max: 2.2216
+                     bat/exit_velo: 3.5040
+                  bat/launch_angle: -9.2011
+                  bat/backspin_rpm: -218.6978
+                     bat/bat_speed: 3.5315
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.1136
+                bat/contact_abs_dx: 0.0355
+                     bat/contact_D: -0.0073
+                  bat/contact_D_in: 0.0448
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0313
+                    bat/fair_carry: 0.1709
+               bat/fair_carry_lt10: 0.1466
+                         bat/ss_ca: 8.8347
+                   bat/ss_ca_lt_lo: 0.4841
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.1136
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.5666
+                   mimic/key_err_m: 0.1003
+                mimic/pose_err_rad: 0.1670
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.5709
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0511
+                      mimic/form_f: 0.1445
+              mimic/arm_relax_frac: 0.0838
+                   mimic/pitch_kmh: 17.7309
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2199
+             mimic/ref_err_plate_s: 0.0159
+               mimic/wait_torso_hp: 0.3999
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 16384
+                    Iteration time: 5.93s
+                        Total time: 47.91s
+                               ETA: 77.9s
+
+################################################################################
+                    [1m Learning iteration 12508/12520 [0m                    
+
+                       Computation: 342 steps/s (collection: 5.792s, learning 0.183s)
+               Value function loss: 67.7083
+                    Surrogate loss: -0.0017
+             Mean action noise std: 2.78
+                 Mean total reward: -22.01
+               Mean episode length: 130.36
+                      bat/hit_rate: 0.0650
+                     bat/fall_rate: 0.0000
+                         bat/carry: 1.9689
+                     bat/carry_max: 2.2143
+                     bat/exit_velo: 5.0001
+                  bat/launch_angle: -8.5510
+                  bat/backspin_rpm: -568.0991
+                     bat/bat_speed: 5.2655
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.1609
+                bat/contact_abs_dx: 0.0559
+                     bat/contact_D: -0.0042
+                  bat/contact_D_in: 0.0379
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0341
+                    bat/fair_carry: 0.1901
+               bat/fair_carry_lt10: 0.2054
+                         bat/ss_ca: 10.2412
+                   bat/ss_ca_lt_lo: 0.4875
+                    bat/exit_hinge: 0.0936
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.1609
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.5770
+                   mimic/key_err_m: 0.1059
+                mimic/pose_err_rad: 0.1743
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.2901
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0706
+                      mimic/form_f: 0.2114
+              mimic/arm_relax_frac: 0.1036
+                   mimic/pitch_kmh: 25.7753
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2294
+             mimic/ref_err_plate_s: 0.0195
+               mimic/wait_torso_hp: 0.5035
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 18432
+                    Iteration time: 5.97s
+                        Total time: 53.88s
+                               ETA: 71.8s
+
+################################################################################
+                    [1m Learning iteration 12509/12520 [0m                    
+
+                       Computation: 361 steps/s (collection: 5.477s, learning 0.184s)
+               Value function loss: 45.7098
+                    Surrogate loss: -0.0042
+             Mean action noise std: 2.78
+                 Mean total reward: -22.35
+               Mean episode length: 133.35
+                      bat/hit_rate: 0.0977
+                     bat/fall_rate: 0.0000
+                         bat/carry: 1.9406
+                     bat/carry_max: 2.2108
+                     bat/exit_velo: 5.8168
+                  bat/launch_angle: -11.9150
+                  bat/backspin_rpm: -762.6086
+                     bat/bat_speed: 5.8282
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2231
+                bat/contact_abs_dx: 0.0556
+                     bat/contact_D: -0.0066
+                  bat/contact_D_in: 0.0349
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0378
+                    bat/fair_carry: 0.2169
+               bat/fair_carry_lt10: 0.2649
+                         bat/ss_ca: 11.0198
+                   bat/ss_ca_lt_lo: 0.4790
+                    bat/exit_hinge: 0.4278
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2231
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.5984
+                   mimic/key_err_m: 0.1041
+                mimic/pose_err_rad: 0.1758
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.0779
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0803
+                      mimic/form_f: 0.2365
+              mimic/arm_relax_frac: 0.0904
+                   mimic/pitch_kmh: 28.8051
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2297
+             mimic/ref_err_plate_s: 0.0207
+               mimic/wait_torso_hp: 0.4670
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 20480
+                    Iteration time: 5.66s
+                        Total time: 59.55s
+                               ETA: 65.5s
+
+################################################################################
+                    [1m Learning iteration 12510/12520 [0m                    
+
+                       Computation: 338 steps/s (collection: 5.872s, learning 0.181s)
+               Value function loss: 89.3198
+                    Surrogate loss: 0.0008
+             Mean action noise std: 2.78
+                 Mean total reward: -22.00
+               Mean episode length: 133.67
+                      bat/hit_rate: 0.1158
+                     bat/fall_rate: 0.0000
+                         bat/carry: 2.7728
+                     bat/carry_max: 2.2068
+                     bat/exit_velo: 6.3194
+                  bat/launch_angle: -8.5829
+                  bat/backspin_rpm: -753.8186
+                     bat/bat_speed: 6.5625
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2038
+                bat/contact_abs_dx: 0.0665
+                     bat/contact_D: -0.0033
+                  bat/contact_D_in: 0.0604
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0458
+                    bat/fair_carry: 0.2169
+               bat/fair_carry_lt10: 0.2649
+                         bat/ss_ca: 11.4807
+                   bat/ss_ca_lt_lo: 0.4747
+                    bat/exit_hinge: 0.3908
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2038
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6075
+                   mimic/key_err_m: 0.1047
+                mimic/pose_err_rad: 0.1776
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.9698
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0891
+                      mimic/form_f: 0.2646
+              mimic/arm_relax_frac: 0.0883
+                   mimic/pitch_kmh: 31.3976
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2327
+             mimic/ref_err_plate_s: 0.0222
+               mimic/wait_torso_hp: 0.3759
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 22528
+                    Iteration time: 6.05s
+                        Total time: 65.60s
+                               ETA: 59.6s
+
+################################################################################
+                    [1m Learning iteration 12511/12520 [0m                    
+
+                       Computation: 344 steps/s (collection: 5.743s, learning 0.201s)
+               Value function loss: 94.3180
+                    Surrogate loss: -0.0065
+             Mean action noise std: 2.78
+                 Mean total reward: -21.93
+               Mean episode length: 133.57
+                      bat/hit_rate: 0.1123
+                     bat/fall_rate: 0.0000
+                         bat/carry: 3.3802
+                     bat/carry_max: 2.1999
+                     bat/exit_velo: 6.8936
+                  bat/launch_angle: -6.2543
+                  bat/backspin_rpm: -875.7290
+                     bat/bat_speed: 7.7182
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2120
+                bat/contact_abs_dx: 0.0978
+                     bat/contact_D: 0.0009
+                  bat/contact_D_in: 0.0763
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0438
+                    bat/fair_carry: 0.2543
+               bat/fair_carry_lt10: 0.2936
+                         bat/ss_ca: 11.8807
+                   bat/ss_ca_lt_lo: 0.5137
+                    bat/exit_hinge: 0.3322
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2120
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6015
+                   mimic/key_err_m: 0.1106
+                mimic/pose_err_rad: 0.1827
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.9320
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1033
+                      mimic/form_f: 0.3084
+              mimic/arm_relax_frac: 0.1025
+                   mimic/pitch_kmh: 35.9141
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2383
+             mimic/ref_err_plate_s: 0.0247
+               mimic/wait_torso_hp: 0.3794
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 24576
+                    Iteration time: 5.94s
+                        Total time: 71.54s
+                               ETA: 53.7s
+
+################################################################################
+                    [1m Learning iteration 12512/12520 [0m                    
+
+                       Computation: 347 steps/s (collection: 5.711s, learning 0.182s)
+               Value function loss: 66.1471
+                    Surrogate loss: -0.0168
+             Mean action noise std: 2.78
+                 Mean total reward: -21.62
+               Mean episode length: 133.65
+                      bat/hit_rate: 0.1347
+                     bat/fall_rate: 0.0000
+                         bat/carry: 4.6140
+                     bat/carry_max: 2.1888
+                     bat/exit_velo: 8.3094
+                  bat/launch_angle: -2.5037
+                  bat/backspin_rpm: -1013.7316
+                     bat/bat_speed: 9.0427
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2056
+                bat/contact_abs_dx: 0.1066
+                     bat/contact_D: 0.0064
+                  bat/contact_D_in: 0.0951
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0679
+                    bat/fair_carry: 0.2930
+               bat/fair_carry_lt10: 0.3246
+                         bat/ss_ca: 12.3127
+                   bat/ss_ca_lt_lo: 0.5779
+                    bat/exit_hinge: 0.8031
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2056
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6001
+                   mimic/key_err_m: 0.1141
+                mimic/pose_err_rad: 0.1862
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.7618
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1214
+                      mimic/form_f: 0.3655
+              mimic/arm_relax_frac: 0.1136
+                   mimic/pitch_kmh: 42.2169
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2419
+             mimic/ref_err_plate_s: 0.0264
+               mimic/wait_torso_hp: 0.4937
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 26624
+                    Iteration time: 5.89s
+                        Total time: 77.43s
+                               ETA: 47.7s
+
+################################################################################
+                    [1m Learning iteration 12513/12520 [0m                    
+
+                       Computation: 354 steps/s (collection: 5.571s, learning 0.208s)
+               Value function loss: 53.5435
+                    Surrogate loss: -0.0144
+             Mean action noise std: 2.78
+                 Mean total reward: -21.96
+               Mean episode length: 135.07
+                      bat/hit_rate: 0.1725
+                     bat/fall_rate: 0.0000
+                         bat/carry: 4.4874
+                     bat/carry_max: 2.1844
+                     bat/exit_velo: 8.8934
+                  bat/launch_angle: -4.9633
+                  bat/backspin_rpm: -1108.7799
+                     bat/bat_speed: 9.5003
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2530
+                bat/contact_abs_dx: 0.1095
+                     bat/contact_D: 0.0049
+                  bat/contact_D_in: 0.0856
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0797
+                    bat/fair_carry: 0.3250
+               bat/fair_carry_lt10: 0.3698
+                         bat/ss_ca: 12.7118
+                   bat/ss_ca_lt_lo: 0.5915
+                    bat/exit_hinge: 1.0218
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2530
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6091
+                   mimic/key_err_m: 0.1131
+                mimic/pose_err_rad: 0.1857
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.6396
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1287
+                      mimic/form_f: 0.3811
+              mimic/arm_relax_frac: 0.1032
+                   mimic/pitch_kmh: 44.2472
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2403
+             mimic/ref_err_plate_s: 0.0265
+               mimic/wait_torso_hp: 0.4940
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 28672
+                    Iteration time: 5.78s
+                        Total time: 83.21s
+                               ETA: 41.6s
+
+################################################################################
+                    [1m Learning iteration 12514/12520 [0m                    
+
+                       Computation: 356 steps/s (collection: 5.563s, learning 0.182s)
+               Value function loss: 64.3206
+                    Surrogate loss: -0.0234
+             Mean action noise std: 2.78
+                 Mean total reward: -21.91
+               Mean episode length: 135.24
+                      bat/hit_rate: 0.1802
+                     bat/fall_rate: 0.0000
+                         bat/carry: 4.5427
+                     bat/carry_max: 2.1838
+                     bat/exit_velo: 8.8988
+                  bat/launch_angle: -4.4279
+                  bat/backspin_rpm: -1118.0715
+                     bat/bat_speed: 9.5480
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2498
+                bat/contact_abs_dx: 0.1092
+                     bat/contact_D: 0.0056
+                  bat/contact_D_in: 0.0845
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0796
+                    bat/fair_carry: 0.3250
+               bat/fair_carry_lt10: 0.3698
+                         bat/ss_ca: 12.9390
+                   bat/ss_ca_lt_lo: 0.5968
+                    bat/exit_hinge: 1.0090
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2498
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6166
+                   mimic/key_err_m: 0.1107
+                mimic/pose_err_rad: 0.1842
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.5954
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1294
+                      mimic/form_f: 0.3831
+              mimic/arm_relax_frac: 0.0923
+                   mimic/pitch_kmh: 44.4676
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2389
+             mimic/ref_err_plate_s: 0.0268
+               mimic/wait_torso_hp: 0.4121
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 30720
+                    Iteration time: 5.75s
+                        Total time: 88.96s
+                               ETA: 35.6s
+
+################################################################################
+                    [1m Learning iteration 12515/12520 [0m                    
+
+                       Computation: 343 steps/s (collection: 5.766s, learning 0.188s)
+               Value function loss: 72.5833
+                    Surrogate loss: -0.0091
+             Mean action noise std: 2.78
+                 Mean total reward: -22.23
+               Mean episode length: 135.36
+                      bat/hit_rate: 0.1487
+                     bat/fall_rate: 0.0000
+                         bat/carry: 5.0916
+                     bat/carry_max: 2.1779
+                     bat/exit_velo: 9.3383
+                  bat/launch_angle: -1.1005
+                  bat/backspin_rpm: -1307.1823
+                     bat/bat_speed: 10.1054
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.2456
+                bat/contact_abs_dx: 0.1092
+                     bat/contact_D: 0.0097
+                  bat/contact_D_in: 0.0736
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0802
+                    bat/fair_carry: 0.3373
+               bat/fair_carry_lt10: 0.3873
+                         bat/ss_ca: 13.2142
+                   bat/ss_ca_lt_lo: 0.6021
+                    bat/exit_hinge: 1.1574
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.2456
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6141
+                   mimic/key_err_m: 0.1128
+                mimic/pose_err_rad: 0.1854
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.5482
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1363
+                      mimic/form_f: 0.4058
+              mimic/arm_relax_frac: 0.1023
+                   mimic/pitch_kmh: 47.4902
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2421
+             mimic/ref_err_plate_s: 0.0267
+               mimic/wait_torso_hp: 0.3886
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 32768
+                    Iteration time: 5.95s
+                        Total time: 94.91s
+                               ETA: 29.7s
+
+################################################################################
+                    [1m Learning iteration 12516/12520 [0m                    
+
+                       Computation: 334 steps/s (collection: 5.937s, learning 0.180s)
+               Value function loss: 67.1590
+                    Surrogate loss: -0.0126
+             Mean action noise std: 2.78
+                 Mean total reward: -22.44
+               Mean episode length: 135.36
+                      bat/hit_rate: 0.1641
+                     bat/fall_rate: 0.0000
+                         bat/carry: 4.7981
+                     bat/carry_max: 2.1712
+                     bat/exit_velo: 10.0821
+                  bat/launch_angle: -5.2534
+                  bat/backspin_rpm: -1581.5454
+                     bat/bat_speed: 10.5734
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.3281
+                bat/contact_abs_dx: 0.1070
+                     bat/contact_D: 0.0051
+                  bat/contact_D_in: 0.0628
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0797
+                    bat/fair_carry: 0.3949
+               bat/fair_carry_lt10: 0.4596
+                         bat/ss_ca: 13.3269
+                   bat/ss_ca_lt_lo: 0.6000
+                    bat/exit_hinge: 1.3479
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.3281
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6098
+                   mimic/key_err_m: 0.1156
+                mimic/pose_err_rad: 0.1881
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.4547
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1429
+                      mimic/form_f: 0.4292
+              mimic/arm_relax_frac: 0.1150
+                   mimic/pitch_kmh: 50.4075
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2463
+             mimic/ref_err_plate_s: 0.0265
+               mimic/wait_torso_hp: 0.4706
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 34816
+                    Iteration time: 6.12s
+                        Total time: 101.03s
+                               ETA: 23.8s
+
+################################################################################
+                    [1m Learning iteration 12517/12520 [0m                    
+
+                       Computation: 356 steps/s (collection: 5.555s, learning 0.185s)
+               Value function loss: 52.6603
+                    Surrogate loss: -0.0205
+             Mean action noise std: 2.78
+                 Mean total reward: -22.65
+               Mean episode length: 135.95
+                      bat/hit_rate: 0.1529
+                     bat/fall_rate: 0.0000
+                         bat/carry: 5.2160
+                     bat/carry_max: 7.7556
+                     bat/exit_velo: 10.2643
+                  bat/launch_angle: -4.7592
+                  bat/backspin_rpm: -1556.0541
+                     bat/bat_speed: 11.0474
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.3413
+                bat/contact_abs_dx: 0.1152
+                     bat/contact_D: 0.0073
+                  bat/contact_D_in: 0.0803
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0927
+                    bat/fair_carry: 0.7029
+               bat/fair_carry_lt10: 0.4605
+                         bat/ss_ca: 13.6696
+                   bat/ss_ca_lt_lo: 0.5494
+                    bat/exit_hinge: 1.3178
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.3177
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6182
+                   mimic/key_err_m: 0.1124
+                mimic/pose_err_rad: 0.1869
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.3934
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1464
+                      mimic/form_f: 0.4435
+              mimic/arm_relax_frac: 0.1112
+                   mimic/pitch_kmh: 51.4836
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2456
+             mimic/ref_err_plate_s: 0.0266
+               mimic/wait_torso_hp: 0.5278
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 36864
+                    Iteration time: 5.74s
+                        Total time: 106.77s
+                               ETA: 17.8s
+
+################################################################################
+                    [1m Learning iteration 12518/12520 [0m                    
+
+                       Computation: 352 steps/s (collection: 5.614s, learning 0.199s)
+               Value function loss: 39.9325
+                    Surrogate loss: -0.0222
+             Mean action noise std: 2.78
+                 Mean total reward: -22.39
+               Mean episode length: 136.16
+                      bat/hit_rate: 0.1818
+                     bat/fall_rate: 0.0000
+                         bat/carry: 5.8718
+                     bat/carry_max: 13.3147
+                     bat/exit_velo: 10.6410
+                  bat/launch_angle: -6.7144
+                  bat/backspin_rpm: -1448.6558
+                     bat/bat_speed: 11.5069
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.3675
+                bat/contact_abs_dx: 0.1263
+                     bat/contact_D: 0.0066
+                  bat/contact_D_in: 0.0908
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.1143
+                    bat/fair_carry: 0.9995
+               bat/fair_carry_lt10: 0.4799
+                         bat/ss_ca: 13.8508
+                   bat/ss_ca_lt_lo: 0.5342
+                    bat/exit_hinge: 1.2182
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.3250
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6234
+                   mimic/key_err_m: 0.1099
+                mimic/pose_err_rad: 0.1860
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.3520
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1523
+                      mimic/form_f: 0.4593
+              mimic/arm_relax_frac: 0.0994
+                   mimic/pitch_kmh: 53.2905
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2426
+             mimic/ref_err_plate_s: 0.0261
+               mimic/wait_torso_hp: 0.4493
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 38912
+                    Iteration time: 5.81s
+                        Total time: 112.58s
+                               ETA: 11.9s
+
+################################################################################
+                    [1m Learning iteration 12519/12520 [0m                    
+
+                       Computation: 336 steps/s (collection: 5.886s, learning 0.193s)
+               Value function loss: 69.4773
+                    Surrogate loss: -0.0141
+             Mean action noise std: 2.78
+                 Mean total reward: -22.55
+               Mean episode length: 135.81
+                      bat/hit_rate: 0.1879
+                     bat/fall_rate: 0.0000
+                         bat/carry: 6.4964
+                     bat/carry_max: 13.2801
+                     bat/exit_velo: 10.8034
+                  bat/launch_angle: -4.0469
+                  bat/backspin_rpm: -1363.2664
+                     bat/bat_speed: 11.8973
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.3428
+                bat/contact_abs_dx: 0.1385
+                     bat/contact_D: 0.0076
+                  bat/contact_D_in: 0.0967
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.1159
+                    bat/fair_carry: 0.9942
+               bat/fair_carry_lt10: 0.4916
+                         bat/ss_ca: 14.0116
+                   bat/ss_ca_lt_lo: 0.4980
+                    bat/exit_hinge: 1.0665
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.3056
+                      bat/outfield: 0.0000
+                mimic/track_reward: 0.6201
+                   mimic/key_err_m: 0.1111
+                mimic/pose_err_rad: 0.1866
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.3235
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.1563
+                      mimic/form_f: 0.4710
+              mimic/arm_relax_frac: 0.1044
+                   mimic/pitch_kmh: 55.4941
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.2445
+             mimic/ref_err_plate_s: 0.0257
+               mimic/wait_torso_hp: 0.4045
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 40960
+                    Iteration time: 6.08s
+                        Total time: 118.66s
+                               ETA: 5.9s
+

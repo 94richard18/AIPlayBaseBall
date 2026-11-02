@@ -1,0 +1,157 @@
+[INFO][AppLauncher]: Loading experience file: C:\Users\User\IsaacLab\apps\isaaclab.python.headless.kit
+[Warning] [simulation_app.simulation_app] Modules: ['omni.kit_app'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [simulation_app.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+Loading user config located at: 'c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/data/Kit/Isaac-Sim/4.5/user.config.json'
+[Info] [carb] Logging to file: c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/logs/Kit/Isaac-Sim/4.5/kit_20261102_204302.log
+2026-11-02 12:43:02 [0ms] [Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+2026-11-02 12:43:02 [13ms] [Warning] [omni.ext.plugin] [ext: src] Extensions config 'extension.toml' doesn't exist 'c:/users/user/isaaclab/source/src' or 'c:/users/user/isaaclab/source/src/config'
+2026-11-02 12:43:02 [379ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+2026-11-02 12:43:03 [906ms] [Warning] [omni.datastore] OmniHub is inaccessible
+2026-11-02 12:43:03 [1,060ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 560.94        | Graphics API: D3D12
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3080 Ti       | Yes: 0 |     | 12086   MB | 10de      | 6fbf0000.. |
+|     |                                  |        |     |            | 2208      | 0          |
+|     |                                  |        |     |            | 2d        |            |
+|=============================================================================================|
+| OS: Windows 11 Home, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9711
+| Processor: AMD Ryzen 7 5800X3D 8-Core Processor           
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 65461 | Free Memory: 44106
+| Total Page/Swap (MB): 69557 | Free Page/Swap: 40626
+|---------------------------------------------------------------------------------------------|
+[diag] physics dt 0.001250 s, decimation 8 (control 0.0100 s)
+Setting seed: 0
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 0
+	Physics step-size     : 0.00125
+	Rendering step-size   : 0.01
+	Environment step-size : 0.01
+2026-11-02 12:43:11 [8,686ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPreviewSurface.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,686ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdUVTexture.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,687ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,687ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float2.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,687ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float3.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,688ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float4.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,688ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_int.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,688ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_string.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,688ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_normal.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,689ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_point.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,689ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_vector.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,689ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_matrix.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-02 12:43:11 [8,690ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdTransform2d.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+[INFO]: Time taken for scene creation : 2.465424 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 1024
+	Environment spacing   : 4.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-11-02 12:43:13 [11,331ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/Robot/top_hand_grip
+[INFO]: Time taken for simulation start : 3.780511 seconds
+[INFO]: Completed setting up the environment...
+Actor MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+[form] joints legs 12 waist 3 arms 14: waist ['waist_yaw', 'waist_roll', 'waist_pitch']
+[play] env 551: carry    0.3 m | EV  26.0 m/s ( 58.2 mph) | LA -54.3 deg | spray  -5.1 deg | spin  5025 rpm (backspin -4763) 
+[play] env 283: carry    0.6 m | EV  21.9 m/s ( 48.9 mph) | LA -32.4 deg | spray -58.3 deg | spin  4555 rpm (backspin -1684) 
+[play] env 952: carry    0.3 m | EV  14.3 m/s ( 32.0 mph) | LA -52.5 deg | spray +168.2 deg | spin  2814 rpm (backspin +2212) 
+[play] env 100: carry    0.2 m | EV  15.6 m/s ( 35.0 mph) | LA -70.8 deg | spray +11.6 deg | spin  4582 rpm (backspin -4569) 
+[play] env 583: carry    0.3 m | EV  14.9 m/s ( 33.3 mph) | LA -46.7 deg | spray -158.5 deg | spin  2437 rpm (backspin +2218) 
+[play] env 524: carry    0.1 m | EV  12.1 m/s ( 27.1 mph) | LA -77.1 deg | spray +116.3 deg | spin  4866 rpm (backspin  +790) 
+[play] env 870: carry    0.6 m | EV  13.3 m/s ( 29.8 mph) | LA -47.2 deg | spray -175.8 deg | spin  2452 rpm (backspin +2348) 
+[play] env 945: carry    0.4 m | EV   7.9 m/s ( 17.6 mph) | LA -60.3 deg | spray -44.4 deg | spin  3364 rpm (backspin -1970) 
+[play] env 5: carry    0.9 m | EV   9.0 m/s ( 20.2 mph) | LA -36.3 deg | spray +82.2 deg | spin  5301 rpm (backspin -3250) 
+[play] env 820: carry    1.1 m | EV  12.8 m/s ( 28.5 mph) | LA -24.8 deg | spray -95.3 deg | spin  3386 rpm (backspin  -413) 
+[play] env 686: carry    1.9 m | EV  17.7 m/s ( 39.5 mph) | LA -15.8 deg | spray -50.4 deg | spin  3677 rpm (backspin -1167) 
+[play] env 449: carry    0.5 m | EV   7.4 m/s ( 16.5 mph) | LA -53.1 deg | spray -168.8 deg | spin  3226 rpm (backspin +3198) 
+[play] env 765: carry    1.5 m | EV  12.0 m/s ( 26.9 mph) | LA -18.8 deg | spray -128.3 deg | spin  3167 rpm (backspin   -97) 
+[play] env 205: carry    2.9 m | EV  21.5 m/s ( 48.1 mph) | LA  -5.7 deg | spray -62.6 deg | spin  4279 rpm (backspin  -527) 
+[play] env 463: carry    2.0 m | EV  13.4 m/s ( 30.1 mph) | LA -14.5 deg | spray -37.6 deg | spin  2686 rpm (backspin -1495) 
+[play] env 37: carry    0.4 m | EV   5.0 m/s ( 11.2 mph) | LA -60.6 deg | spray -140.6 deg | spin  4040 rpm (backspin +2394) 
+[play] env 281: carry    1.4 m | EV  11.4 m/s ( 25.5 mph) | LA -23.4 deg | spray -92.5 deg | spin  3152 rpm (backspin  -469) 
+[play] env 201: carry    3.0 m | EV  10.6 m/s ( 23.7 mph) | LA   0.1 deg | spray -133.7 deg | spin  3489 rpm (backspin -1176) 
+[play] env 745: carry    3.9 m | EV  13.4 m/s ( 30.1 mph) | LA  -3.8 deg | spray -159.3 deg | spin  1695 rpm (backspin -1007) 
+[play] env 263: carry    3.7 m | EV  12.5 m/s ( 28.1 mph) | LA  -3.5 deg | spray -39.0 deg | spin  2681 rpm (backspin -1879) 
+[play] env 374: carry    3.6 m | EV  10.3 m/s ( 23.1 mph) | LA   4.2 deg | spray -111.4 deg | spin  4193 rpm (backspin  -754) 
+[play] env 616: carry    4.7 m | EV  13.0 m/s ( 29.0 mph) | LA   0.7 deg | spray -150.6 deg | spin  2459 rpm (backspin -1360) 
+[play] env 932: carry    2.4 m | EV   5.5 m/s ( 12.3 mph) | LA   5.6 deg | spray -85.0 deg | spin  4219 rpm (backspin  -993) 
+[play] env 603: carry    8.5 m | EV  13.3 m/s ( 29.8 mph) | LA  10.6 deg | spray -77.2 deg | spin  3305 rpm (backspin -1025) 
+[play] env 227: carry    7.2 m | EV  11.2 m/s ( 25.1 mph) | LA  11.3 deg | spray -104.1 deg | spin  4383 rpm (backspin -1160) 
+[play] env 147: carry    8.1 m | EV  12.0 m/s ( 26.8 mph) | LA  13.9 deg | spray -143.2 deg | spin  3347 rpm (backspin -2106) 
+[play] env 13: carry    8.6 m | EV  12.2 m/s ( 27.2 mph) | LA  15.9 deg | spray -97.6 deg | spin  5544 rpm (backspin -1168) 
+[play] env 824: carry    8.6 m | EV  11.0 m/s ( 24.6 mph) | LA  17.6 deg | spray -97.5 deg | spin  3616 rpm (backspin -1297) 
+[play] env 473: carry   15.9 m | EV  14.7 m/s ( 32.9 mph) | LA  24.0 deg | spray +99.0 deg | spin  3192 rpm (backspin -1753) 
+[play] env 364: carry    0.2 m | EV  16.4 m/s ( 36.6 mph) | LA -70.9 deg | spray -20.8 deg | spin  4527 rpm (backspin -3903) 
+[play] env 84: carry    0.2 m | EV  10.9 m/s ( 24.3 mph) | LA -64.2 deg | spray -145.9 deg | spin  3631 rpm (backspin +3035) 
+[play] env 583: carry    0.2 m | EV  15.8 m/s ( 35.3 mph) | LA -71.0 deg | spray -20.5 deg | spin  4190 rpm (backspin -3609) 
+[play] env 564: carry    0.3 m | EV  20.1 m/s ( 45.0 mph) | LA -59.7 deg | spray -52.2 deg | spin  5018 rpm (backspin -2518) 
+[play] env 788: carry    0.2 m | EV  18.3 m/s ( 41.0 mph) | LA -58.9 deg | spray -23.3 deg | spin  3605 rpm (backspin -3038) 
+[play] env 764: carry    0.0 m | EV  14.5 m/s ( 32.4 mph) | LA -86.6 deg | spray -154.2 deg | spin  4422 rpm (backspin +4238) 
+[play] env 399: carry    0.8 m | EV  19.4 m/s ( 43.4 mph) | LA -35.7 deg | spray -55.8 deg | spin  3833 rpm (backspin  -989) 
+[play] env 1022: carry    0.5 m | EV  10.4 m/s ( 23.2 mph) | LA -52.5 deg | spray +170.2 deg | spin  3150 rpm (backspin +2680) 
+[play] env 282: carry    0.3 m | EV   8.4 m/s ( 18.8 mph) | LA -66.9 deg | spray -44.5 deg | spin  4795 rpm (backspin -2702) 
+[play] env 333: carry    0.5 m | EV  10.6 m/s ( 23.7 mph) | LA -54.8 deg | spray +157.9 deg | spin  3461 rpm (backspin +2215) 
+[play] env 553: carry    0.2 m | EV   8.0 m/s ( 17.9 mph) | LA -76.6 deg | spray +177.5 deg | spin  3911 rpm (backspin +3593) 
+[play] env 266: carry    1.8 m | EV  15.7 m/s ( 35.1 mph) | LA -17.6 deg | spray -175.5 deg | spin   681 rpm (backspin  -235) 
+[play] env 188: carry    0.6 m | EV   6.5 m/s ( 14.6 mph) | LA -47.0 deg | spray -146.7 deg | spin  3427 rpm (backspin +1759) 
+[play] env 325: carry    1.3 m | EV   9.1 m/s ( 20.4 mph) | LA -25.4 deg | spray -143.8 deg | spin  2699 rpm (backspin  +892) 
+[play] env 1004: carry    0.7 m | EV   4.6 m/s ( 10.2 mph) | LA -41.8 deg | spray -134.0 deg | spin  3865 rpm (backspin +1291) 
+[play] env 577: carry    2.0 m | EV   9.3 m/s ( 20.8 mph) | LA -13.6 deg | spray -112.7 deg | spin  3357 rpm (backspin  -381) 
+[play] env 582: carry   13.9 m | EV  12.0 m/s ( 26.9 mph) | LA  39.4 deg | spray -99.3 deg | spin  4370 rpm (backspin -1014) 
+[play] env 436: carry    1.9 m | EV   6.3 m/s ( 14.1 mph) | LA -10.0 deg | spray -142.2 deg | spin  2590 rpm (backspin  +107) 
+[play] env 855: carry    4.1 m | EV  11.2 m/s ( 25.1 mph) | LA   1.4 deg | spray -116.9 deg | spin  4117 rpm (backspin -1161) 
+[play] env 626: carry   22.9 m | EV  17.0 m/s ( 38.0 mph) | LA  30.4 deg | spray -97.7 deg | spin  3806 rpm (backspin -1382) 
+[bat] pitches 1024  hit rate 0.030  (quartiles 25/50/75)
+[bat] hits: {"n": 31, "gap_m": [-0.015, -0.009, -0.004], "dz_m": [-0.019, 0.0, 0.037], "dperp_m": [0.018, 0.032, 0.042], "x_minus_sweet_m": [-0.324, -0.168, -0.043], "timing_s": [-0.155, -0.143, -0.132], "ss_speed_max": [22.179, 22.953, 23.657], "fell": 12, "fall_t_s": [1.32, 1.35, 1.36, 1.46, 1.74], "fall_after_hit_s": [0.06, 0.11, 0.12, 0.22, 0.5], "fall_phase": {"in_clip": 8, "in_tail": 0, "after_tail": 4, "past_end_s": [-0.3, -0.11, 0.54]}}
+c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/isaacsim/extscache/omni.kit.pip_archive-0.0.0+d02c707b.wx64.cp310/pip_prebundle/numpy/lib/nanfunctions.py:1384: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+[bat] misses: {"n": 993, "gap_m": [0.202, 0.326, 0.431], "dz_m": [0.177, 0.288, 0.383], "dperp_m": [-0.013, 0.014, 0.049], "x_minus_sweet_m": [-0.531, -0.266, -0.042], "timing_s": [-0.155, -0.003, 0.013], "ss_speed_max": [22.631, 23.479, 24.228], "fell": 25, "fall_t_s": [0.0, 0.0, 0.0, 1.3, 1.31], "fall_after_hit_s": [NaN, NaN, NaN, NaN, NaN], "fall_phase": {"in_clip": 25, "in_tail": 0, "after_tail": 0, "past_end_s": [-0.37, -0.32, -0.21]}}
+[bat] miss dominant error: {"timing": 707, "height": 281, "reach": 5}  late 460/993  ball above bat 923/993
+[bat] slow < 80 km/h: {"n": 1024, "hit_rate": 0.03, "misses": 993, "early": 533, "late": 460, "tempo_q": [0.019, 0.033, 0.051], "ref_err_s_q": [0.061, 0.066, 0.072], "kmh_q": [63.0, 64.1, 64.9]}
+[bat] slow in zone: {"n": 557, "hit_rate": 0.032, "misses": 539, "early": 288, "late": 251, "tempo_q": [0.021, 0.035, 0.052], "ref_err_s_q": [0.061, 0.066, 0.072], "kmh_q": [63.4, 64.1, 64.7]}
+[bat] slow out of zone: {"n": 467, "hit_rate": 0.028, "misses": 454, "early": 245, "late": 209, "tempo_q": [0.016, 0.031, 0.049], "ref_err_s_q": [0.061, 0.065, 0.071], "kmh_q": [61.5, 64.1, 65.4]}
+[form] {"pose_sw_mean_q90": [0.2462, 0.2574], "key_sw_mean_q90": [0.1322, 0.1635], "legs_sw_mean_q90": [0.2161, 0.2245], "waist_sw_mean_q90": [0.1378, 0.1581], "arms_sw_mean_q90": [0.2787, 0.2987], "pose_post_mean_q90": [0.4919, 0.56], "key_post_mean_q90": [0.7627, 0.9896], "legs_post_mean_q90": [0.2932, 0.3398], "waist_post_mean_q90": [0.4784, 0.6737], "arms_post_mean_q90": [0.6039, 0.706], "clip_names": ["obp_167-7", "obp_282-1", "obp_42-1", "obp_42-2"]}
+[bat] contact_log: {"n": 31, "ss_contact": [13.792, 16.092, 21.534], "ss_max": [22.179, 22.953, 23.657], "dx": [-0.293, -0.176, -0.088], "abs_dz": [0.015, 0.028, 0.041], "swing_pitch_deg": [14.385, 23.205, 31.315], "ev": [10.999, 12.159, 13.45], "ref_phase_hit": [0.038, 0.051, 0.054], "squared_up": 0.0}
+[bat] contact_geom hits: {"n": 31, "abs_dx_med": 0.1757, "D": [-0.025, 0.009, 0.048], "D_in_0_25": 0.161, "launch": [-47.216, -15.815, 5.637], "ev": [10.999, 12.159, 13.45]}
+[bat] contact_geom in-zone hits: {"n": 18, "abs_dx_med": 0.2026, "D": [-0.003, 0.019, 0.046], "D_in_0_25": 0.222, "launch": [-24.421, -9.139, 11.103], "ev": [11.554, 12.327, 13.414]}
+[bat] wrote D:\MyProject\AIPlayBaseBall\logs\diag_bat_contact_h33_12999.json
+[INFO]: Simulation is stopped. Shutting down the app.
