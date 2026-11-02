@@ -68,6 +68,10 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10:37 11-02 R6c 結果（R6C_END 10:36）→ 差一球未過，與 R6b 相同：** h25r6c model_3390（R6b +300，15993 bank）在 15993 上 after-done ground s6 3 + s7 2 = 5/128（bar 4），tilt ok 56 / 59，before-done 3 / 2；R6b 同打者 2 + 3 = 5。兩個獨立 recover 在 15993 上得到同一個數字，差距在 seed 雜訊內，表示這 1/128 不是 recover 能補的（擊球後交棒時的身體狀態是打者的事，第 4b 段的站立項正是修這個）。
+
+**配對決定（14，自主授權內）：影片 / 交付配對改為 15993 + R6b model_3091**，理由：遊戲場景雙欄表 23.25 / 27.69（15494 14.47 / 16.77）、外野 15.6 / 20.2%，film7 兩片無抖動；recover 規則差 1/128（3.9% vs 15494 的 2.3%）如實記錄，不再加訓 R6d，由第 4b 段的站立項處理。`logs/recov6/recover_ckpt.txt` 不變（仍 R6b）。FILM8_GO 10:40 寫出：15993 + R6b，ENVS "44 14"（80.1 m / 77.6 m，皆未倒、尚未拍過），到期 19:06。第 4b 段 chain（a37c7aa）等 FILM8_END 後 smoke（fall_rate 與 hit_rate 須分開 > 0.05）再 +500（run h32_4b、train_4b.txt、H32_2000B_END、H32S4B_END）；其 joint RC = R6b 不需重跑。使用者層面：投手對目前交付打者的勝率 ≈ 72%（遊戲條件）/ 77%（有時間抖動）。
+
 **09:47 11-02 三小時檢查：** Isaac 1（R6c trainer h25r6c 09:44 起，4096 envs +300，RAM 39 GB 空）；第 4b 段 chain 由 15 編寫中（env 檔有未提交修改，屬 15）；film8 已上膛等 FILM8_GO（R6C_END 後由 14 寫；到期 19:06，SKIP 19:40）；配對仍 15494 + R6b；日誌到 0ca0f48。今天是自主授權最後一天（11-02 結束）：之後新設計 / 規格 / 排程先問使用者。
 
 **09:46 11-02 H32 第 4 段結果（H32_2000_END 09:42，model_16492）→ 敗，chain 停（H32S4_END）：** hit 0.869、exit 28.0、fair carry 中位 48.0 m、da 0.4796、wait_da 0.525、**wait_torso_hp 3.19（修好，< 3.586；15993 3.80）**、**fell by end 0.749（更差；15993 0.680）**、launch 38.6（q75 60.8）、fair ≥ 45° 0.345、pop-up 0.289；分區 fair launch 中位 low +22 / inside +24 / away +32 / high +33（從太低變太高，5/40/15 的天花板壓不住）。Joint s6：hits 53、fair 41、外野 15、carry 中位 27.9、exit 30.0、fell 9（before 4 / after 5）、ground 3、tilt ok 55。根因（15 自查）：AIB_FOLLOW_THROUGH_S 同時把 lost_after_hit 算成 fall，擊球後離開 clip 參考就「倒地」→ 站立項變成每次擊中固定 −3、沒有站立訊號，且 lost 仍立即結束 episode（沒真的活過收尾）；訓練列 fall_rate == hit_rate 可證。等待段軀幹項有效。
