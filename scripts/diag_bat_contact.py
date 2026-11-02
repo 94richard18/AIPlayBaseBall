@@ -71,6 +71,9 @@ parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
+parser.add_argument("--form_log", action="store_true",
+                    help="per first episode: reference-tracking pose_err (rad RMS over the body joints) / key_err (m RMS over the key "
+                    "points), time-mean over the swing (clip start -> contact) and after contact (-> done), + legs / waist / arms split")
 parser.add_argument("--fall_probe", action="store_true",
                     help="(14, 11-02) per hit: pelvis z / tilt of the robot and the reference at hit + 0.5 / 1.0 / 1.5 s, the first "
                          "z < 0.55 and tilt > 60 deg after the hit, min pelvis z within 2 s; the episode runs past the ball landing")
@@ -868,6 +871,17 @@ def main():
     jt_a = base.actions[:, :-1].clone()
     jt_q = base.robot.data.joint_pos_target[:, base.body_joint_ids].clone()
     jt_lp = base.robot.data.body_ang_vel_w[:, jt_body].clone()
+    if args.form_log:  # 14, 11-02 16:4x (user: the form looks awkward): unweighted tracking errors, the trainer's mimic/* terms
+        import re
+        jn_ = [base.robot.joint_names[j] for j in base.body_joint_ids]
+        grp = lambda pat: torch.tensor([bool(re.search(pat, x)) for x in jn_], device=dev)
+        fm_legs = grp("hip|knee|ankle|toe|foot")
+        fm_waist = grp("waist|torso|abdomen|spine|pelvis|neck|head") & ~fm_legs
+        fm_arms = ~fm_legs & ~fm_waist
+        print(f"[form] joints legs {int(fm_legs.sum())} waist {int(fm_waist.sum())} arms {int(fm_arms.sum())}: "
+              f"waist {[x for x, m in zip(jn_, fm_waist.tolist()) if m]}", flush=True)
+        fm_parts = dict(legs=fm_legs, waist=fm_waist, arms=fm_arms)
+        fm = {f"{k}_{w}": torch.zeros(n, device=dev) for w in ("sw", "post") for k in ("pose", "key", "n", *fm_parts)}
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
             act = policy(obs)
@@ -898,6 +912,21 @@ def main():
         jit["w_hp2"] = jit["w_hp2"] + jt_wm * ((jt_w - jt_lp) ** 2).sum(-1)
         jit["w_n"] = jit["w_n"] + jt_wm
         jt_a, jt_q = a_now.clone(), q_now.clone()
+        if args.form_log:
+            d_ = base.robot.data
+            rr = base._ref(base._ref_time())
+            e2 = (d_.joint_pos[:, base.body_joint_ids] - rr["joint_pos"]) ** 2
+            kn_, ax_, *_ = base._bat_state()
+            key_ = torch.cat([d_.body_link_pos_w[:, base.key_body_ids], (kn_ + ax_ * base.bat_geom.length).unsqueeze(1)], 1)
+            ke = ((key_ - rr["key_pos"]) ** 2).sum(-1).mean(-1).sqrt()
+            live_ = ~finished & ~dones.bool()
+            for w, m in (("sw", live_ & ~base.hit & (base._ref_time() >= 0)), ("post", live_ & base.hit)):
+                mf = m.float()
+                fm[f"pose_{w}"] += mf * e2.mean(-1).sqrt()
+                fm[f"key_{w}"] += mf * ke
+                fm[f"n_{w}"] += mf
+                for k, g in fm_parts.items():
+                    fm[f"{k}_{w}"] += mf * e2[:, g].mean(-1).sqrt()
         if args.fall_probe:
             ds = t_now - rec["t_hit"]  # nan before the hit
             live = ~finished & (ds >= 0)
@@ -970,6 +999,12 @@ def main():
     rec["jit_n"] = jit["n"]
     wn = jit["w_n"].clamp_min(1.0)
     rec["jit_wait_da"], rec["jit_wait_torso_hp"] = jit["w_da"] / wn, (jit["w_hp2"] / wn).sqrt()
+    if args.form_log:
+        for w in ("sw", "post"):
+            nn_ = fm[f"n_{w}"]
+            for k in ("pose", "key", *fm_parts):
+                rec[f"form_{k}_{w}"] = torch.where(nn_ > 0, fm[f"{k}_{w}"] / nn_.clamp_min(1.0), torch.full_like(nn_, float("nan")))
+        rec["clip_first"] = clip_first.float()
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
     r["kmh"] = kmh0.cpu().numpy()
@@ -1051,6 +1086,12 @@ def main():
                   share_fell_9s=sh(r["fell"].astype(bool)))
         out["fall_probe"] = fp
         print("[fallprobe] " + json.dumps(fp), flush=True)
+    if args.form_log:
+        hm = r["hit"].astype(bool)
+        qf = lambda x: [round(float(v), 4) for v in (np.nanmean(x[hm]), np.nanpercentile(x[hm], 90))] if np.isfinite(x[hm]).any() else None
+        out["form"] = {f"{k}_{w}_mean_q90": qf(r[f"form_{k}_{w}"]) for w in ("sw", "post") for k in ("pose", "key", *fm_parts)}
+        out["form"]["clip_names"] = [os.path.splitext(os.path.basename(f))[0] for f in base.cfg.motion_files]
+        print("[form] " + json.dumps(out["form"]), flush=True)
     if args.fall_state:
         hm = r["hit"].astype(bool)
         fall_auc = {}
