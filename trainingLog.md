@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**10:59 11-02 film8 結果（FILM8_END 10:58，15993 + R6b，交付配對首拍）：** `videos/film8_1102_s6_k44.mp4` 80.1 m / exit 34.0 / launch 32.1 與 `videos/film8_1102_s6_k14.mp4` 77.6 m / 32.3 / 29.3 皆過：strict 64/64、High 7.6 Mb/s、wash 0/343、無人倒地、站姿到擊球無抖動（同一個慢速壓棒）；路徑面板實線 + 落地柱 + carry 文字。無需重拍。12 小時時鐘：下次最晚 22:48（film9 由 20 上膛，GO logs/FILM9_GO.txt，SKIP 23:20；候選 = 第 4b 段若取代 15993，否則 15993 + R6b）。GPU 交給第 4b 段 chain（smoke → +500）。
+
 **10:37 11-02 R6c 結果（R6C_END 10:36）→ 差一球未過，與 R6b 相同：** h25r6c model_3390（R6b +300，15993 bank）在 15993 上 after-done ground s6 3 + s7 2 = 5/128（bar 4），tilt ok 56 / 59，before-done 3 / 2；R6b 同打者 2 + 3 = 5。兩個獨立 recover 在 15993 上得到同一個數字，差距在 seed 雜訊內，表示這 1/128 不是 recover 能補的（擊球後交棒時的身體狀態是打者的事，第 4b 段的站立項正是修這個）。
 
 **配對決定（14，自主授權內）：影片 / 交付配對改為 15993 + R6b model_3091**，理由：遊戲場景雙欄表 23.25 / 27.69（15494 14.47 / 16.77）、外野 15.6 / 20.2%，film7 兩片無抖動；recover 規則差 1/128（3.9% vs 15494 的 2.3%）如實記錄，不再加訓 R6d，由第 4b 段的站立項處理。`logs/recov6/recover_ckpt.txt` 不變（仍 R6b）。FILM8_GO 10:40 寫出：15993 + R6b，ENVS "44 14"（80.1 m / 77.6 m，皆未倒、尚未拍過），到期 19:06。第 4b 段 chain（a37c7aa）等 FILM8_END 後 smoke（fall_rate 與 hit_rate 須分開 > 0.05）再 +500（run h32_4b、train_4b.txt、H32_2000B_END、H32S4B_END）；其 joint RC = R6b 不需重跑。使用者層面：投手對目前交付打者的勝率 ≈ 72%（遊戲條件）/ 77%（有時間抖動）。
