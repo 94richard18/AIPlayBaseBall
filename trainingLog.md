@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**18:47 11-02 三小時檢查：** Isaac 0、RAM 42.6 GB 空；H33 線由 15 實作中（形狀因子需改 env，chain 未現身，GPU 閒置自 18:18 起 < 1 h）；film11 已上膛（GO logs/FILM11_GO.txt，到期 04:09 11-03，SKIP 04:40）；交付備援 15993 + R6b；日誌到 7d1994b。無變動需處理。
+
 **18:47 11-02 使用者決定：選項 B（原文「B」）→ 新訓練線 H33（15 命名 / 實作），14 給設計框架並授權啟動：** 從 plain 12500 在 1.0x、no saim、filter、800 Hz、PH 2.6、4 clips、real heights 起訓；**姿勢優先**：揮棒窗 pose_err ≤ 0.20 rad、key_err ≤ 0.11 m 為硬門檻（越線即停線）；建議機制 = 所有距離獎勵（ss ramp、exit hinge、carry 15/35、outfield w 10、grounder floor、launch ceiling ref 35）乘上形狀因子 f = exp(-(pose_err/s)²)，s 使 0.20 rad 時 f ≈ 0.5，距離買不到形狀；da L1 0.2、wait torso 0.03 保留為加法項。500 it 一段、2048 envs、markers H33_<its>_END、列格式同 H32 + form 指標 + bins + joint s6（R6b）。段門檻：pose / key 硬門檻、seg 1 hit ≥ 0.40 之後不退、exit 不退、da ≤ 0.60、in-zone fair launch 中位 5-30、pop-up ≤ 0.20；fell by end 不設門檻（recover 的事）。授權預算：最多 4 段（+2000 its，約 1 GPU 日），超過或改框架再問使用者。GPU 規則同 H32（idle + nofilm，HOLD logs/h33/HOLD 供 12 小時錄影：下次 04:09 11-03，候選 15993 + R6b 或過關的 H33 ckpt，選片 = pose_err 最低的遠安打且兩倒地旗標 False）。成功標準：pose ≤ 0.20 且 fair carry 中位 ≥ 20 m 且雙欄表過門檻（16.93 / 16.76）；失敗條件：carry 到 15 m 前形狀門檻先觸 → 框架錯，停下回報。15993 + R6b 仍為交付備援。
 
 **18:20 11-02 FORM diag 結果（H32_FORM_END 18:18，3dd9836；1.0x、filter、no saim、800 Hz、PH 2.6、4 clips、1024 球；pose_err = 身體關節 RMS rad、key_err = 6 關鍵點含棒頭 RMS m，揮棒窗時間平均）：**
