@@ -2884,3 +2884,8 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - `videos/film7_1102_s6_k51.mp4`（87.8 m、exit 35.2、launch 28.0）：52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0；路徑畫面正常（實線、橘柱 + landing、carry 87.8 m）。打者抖動：沒有，腿與軀幹穩定，只有同樣一次慢的球棒下壓。
 - `videos/film7_1102_s6_k59.mp4`（80.7 m、exit 33.1、launch 29.5）：rows 64/64，但淡白 124/343（5.1 Mb/s，從 frame 0 兩邊都是灰藍天空，路徑畫面最後一格只剩疊圖、沒有草地）＝ 已知渲染問題。依規則重拍一次：`logs/film7b.sh` 已待命，等 14 的 FILM7B_GO。
 - FILM7B 07:32（重拍 k59，GO 07:21）：`videos/film7b_1102_s6_k59.mp4` 52 欄 64/64、blank 0、High 7.5 Mb/s、淡白 0/343；路徑畫面正常（carry 80.6 m、橘柱 + landing）。打者抖動：沒有，同樣只有一次慢的球棒下壓。film7 兩顆都合格（k51 + film7b k59）。
+
+## 11-02 10:58 FILM8（H32 15993 + R6b 3091，1.0x、無 saim；R6c 未過）
+
+- GO 10:40（14）：BC 15993、RC R6b 3091（明寫）、rows `logs/h32/joint_s6_15993.csv`、env 44 / 14、6.5 s。RC 預設改為開拍時讀 `logs/recov6/recover_ckpt.txt`。
+- `videos/film8_1102_s6_k44.mp4`（80.1 m、exit 34.0、launch 32.1）與 `videos/film8_1102_s6_k14.mp4`（77.6 m、exit 32.3、launch 29.3）：兩片 52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0/343；打者、投手都沒倒；路徑畫面正常（實線、橘柱 + landing、carry 文字）。打者抖動：兩片都沒有，腿與軀幹穩定（k44 同樣有一次慢的球棒下壓）。
