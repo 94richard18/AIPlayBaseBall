@@ -120,7 +120,7 @@ class TeeBattingEnv(DirectRLEnv):
                        "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi", "launch_lo", "outfield")}
         # per-term episode reward sums (14, 11-02 22:xx, H33 probes): EMA of the per-episode mean, logged as bat/rt_*
         self.rt_sum = {k: torch.zeros(n, device=dev) for k in ("rt_ramp", "rt_hit", "rt_carry", "rt_exit_hinge", "rt_outfield",
-                                                                "rt_launch_pen", "rt_launch_lo", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track",
+                                                                "rt_launch_pen", "rt_launch_lo", "rt_lift", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track",
                                                                 "rt_da_unit", "rt_wt_unit")}  # *_unit: the term at weight 1 (H33D weight rule)
         self.stats.update({k: torch.zeros((), device=dev) for k in self.rt_sum})
         # how episodes end (14, 11-03 00:xx): shares of the finished episodes, first match of hit / fall / passed (miss) /
@@ -461,6 +461,10 @@ class TeeBattingEnv(DirectRLEnv):
             pen = pen + cfg.w_launch_lo * lo
             self.rt_sum["rt_launch_lo"][ids] -= cfg.w_launch_lo * lo  # the floor alone (H33F: is it paid now?)
             self.stats["launch_lo"] = 0.95 * self.stats["launch_lo"] + 0.05 * (lo > 0).float().mean()
+        if getattr(cfg, "w_lift", 0.0):  # H33G: lift paid on every hit inside r, so x f - lifting with bad form buys little
+            r_l = cfg.w_lift * ((la - cfg.lift_ref) / cfg.lift_span).clamp(0.0, 1.0)
+            r = r + r_l
+            self.rt_sum["rt_lift"][ids] += r_l * fr
         if cfg.w_outfield:  # ONE OUTS geometry with the launch point as the plate: past the infield arc and the mound distance
             from aibaseball.game.field import MOUND_DIST
             from aibaseball.game.one_outs import INFIELD_RADIUS_M

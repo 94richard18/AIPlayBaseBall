@@ -604,6 +604,10 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     lost_is_miss: bool = os.environ.get("AIB_LOST_IS_MISS", "0") == "1"
     # H33F (11-03 04:xx): the grounder floor on every hit, fair or foul (fair-only was dodged by fouling, fair 0.78 -> 0.55)
     launch_lo_all: bool = os.environ.get("AIB_LAUNCH_LO_ALL", "0") == "1"
+    # H33G (11-03 06:xx): + w_lift x clamp((launch - lift_ref) / lift_span, 0, 1) on every hit, inside the x f hit rewards
+    w_lift: float = float(os.environ.get("AIB_LIFT_W", "0.0"))
+    lift_ref: float = float(os.environ.get("AIB_LIFT_REF", "5.0"))
+    lift_span: float = float(os.environ.get("AIB_LIFT_SPAN", "15.0"))
 
 
 @configclass
