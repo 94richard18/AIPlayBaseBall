@@ -559,6 +559,9 @@ class PitchedBattingHuman31EnvCfg(PitchedBattingHuman30cEnvCfg):
         # starts as drift off the held pose is a penalty-free `lost`: hold the last pose like play, a lost after a hit is a fall
         ref_hold_end: bool = os.environ.get("AIB_FT_HOLD_END", "1") == "1"
         lost_after_hit_is_fall: bool = os.environ.get("AIB_FT_LOST_IS_FALL", "1") == "1"
+        # seg 4b (14, 11-02 10:0x): 16492 showed every hit drifting off the follow-through reference (fall_rate == hit_rate),
+        # so the standing term needs the post-hit episode to run on until a real fall or the follow-through end
+        lost_ends_after_hit: bool = os.environ.get("AIB_FT_LOST_ENDS", "1") == "1"
 
 
 @configclass

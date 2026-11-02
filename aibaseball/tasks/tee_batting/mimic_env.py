@@ -280,6 +280,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         if self.cfg.post_clip_balance:  # no reference to stay on past the clip end after a hit
             lost = lost & ((self._ref_time() < self.ref.duration[self.clip])
                            | (~self.hit & (self.cfg.post_clip_stand_w <= 0)))  # Human21: no reference for misses either
+        if not self.cfg.lost_ends_after_hit:  # the follow-through is free: only a real fall ends it (H32 seg 4b)
+            lost = lost & ~self.hit
         self.lost = lost
         if self.cfg.lost_after_hit_is_fall:  # drifting off the follow-through is how a fall starts: penalise it as one
             self.fallen = self.fallen | (lost & self.hit)
