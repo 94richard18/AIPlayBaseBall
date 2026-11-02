@@ -2889,3 +2889,9 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 
 - GO 10:40（14）：BC 15993、RC R6b 3091（明寫）、rows `logs/h32/joint_s6_15993.csv`、env 44 / 14、6.5 s。RC 預設改為開拍時讀 `logs/recov6/recover_ckpt.txt`。
 - `videos/film8_1102_s6_k44.mp4`（80.1 m、exit 34.0、launch 32.1）與 `videos/film8_1102_s6_k14.mp4`（77.6 m、exit 32.3、launch 29.3）：兩片 52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0/343；打者、投手都沒倒；路徑畫面正常（實線、橘柱 + landing、carry 文字）。打者抖動：兩片都沒有，腿與軀幹穩定（k44 同樣有一次慢的球棒下壓）。
+
+## 11-02 11:34 FILM9（H32 15993 + R6b 3091，提早在空閒顯卡拍）
+
+- GO 11:16（14）：BC 15993、RC R6b 3091、rows `logs/h32/joint_s6_15993.csv`、env 56 / 63（未拍過的遠球）、6.5 s。
+- `videos/film9_1102_s6_k56.mp4`（74.6 m、exit 31.3、launch 31.0）與 `videos/film9_1102_s6_k63.mp4`（70.9 m、exit 29.9、launch 37.9）：兩片 52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0/343；打者、投手都沒倒；路徑畫面正常。打者抖動：兩片都沒有（k56 的慢壓棒維持較久，約 0.6 s 水平，仍是慢動作、無高頻抖動）。
+- 14：明天的拍片由使用者決定（自主期限今晚結束），film10 等 14 指名才排。
