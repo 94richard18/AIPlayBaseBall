@@ -71,6 +71,9 @@ parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
+parser.add_argument("--fall_probe", action="store_true",
+                    help="(14, 11-02) per hit: pelvis z / tilt of the robot and the reference at hit + 0.5 / 1.0 / 1.5 s, the first "
+                         "z < 0.55 and tilt > 60 deg after the hit, min pelvis z within 2 s; the episode runs past the ball landing")
 parser.add_argument("--contact_log", action="store_true",
                     help="per hit, at the contact step: sweet-spot speed, contact station dx, swing-vs-pitch angle, exit speed")
 parser.add_argument("--body_log", action="store_true",
@@ -198,6 +201,8 @@ def main():
               "w_miss", "w_tempo"):
         setattr(cfg, k, getattr(train, k))
     cfg.pitch_ramp_steps = 0  # full speed range and timing noise
+    if args.fall_probe:
+        cfg.terminate_on_land = False
     if args.percept_filter:
         cfg.percept_filter = True
     if args.percept_clean:  # the percept split: noise / bias off, the delay kept
@@ -454,6 +459,23 @@ def main():
         for k in ("ss_contact", "dx_contact", "swing_pitch_deg", "ev_contact", "ref_phase_hit", "D_contact", "launch_contact",
                   "ev_any", "launch_any", "dx_any", "D_any", "spray_contact", "backspin_contact"):
             rec[k] = torch.full((n,), float("nan"), device=dev)
+    if args.fall_probe:
+        FP_OFF = (0.5, 1.0, 1.5)
+        for k in ("z", "tilt", "refz", "reftilt"):
+            for o in FP_OFF:
+                rec[f"fp_{k}_{o}"] = torch.full((n,), float("nan"), device=dev)
+        for k in ("fp_t_z55", "fp_t_tilt60", "fp_t_refz55", "fp_t_reftilt60"):
+            rec[k] = torch.full((n,), float("nan"), device=dev)
+        rec["fp_minz2"] = torch.full((n,), float("inf"), device=dev)
+
+        def fp_state():
+            d = base.robot.data
+            z = d.body_link_pos_w[:, base.pelvis_id, 2]
+            tilt = torch.rad2deg(torch.acos((-d.projected_gravity_b[:, 2]).clamp(-1.0, 1.0)))
+            rr = base._ref(base.ref_t)
+            q = rr["root_quat"]  # (w, x, y, z): body z axis . world z = 1 - 2 (x^2 + y^2)
+            rtilt = torch.rad2deg(torch.acos((1 - 2 * (q[:, 1] ** 2 + q[:, 2] ** 2)).clamp(-1.0, 1.0)))
+            return z, tilt, rr["root_pos"][:, 2], rtilt
     if args.fall_state:
         rob = base.robot
         mass = rob.root_physx_view.get_masses().to(dev)  # (n, bodies)
@@ -876,6 +898,20 @@ def main():
         jit["w_hp2"] = jit["w_hp2"] + jt_wm * ((jt_w - jt_lp) ** 2).sum(-1)
         jit["w_n"] = jit["w_n"] + jt_wm
         jt_a, jt_q = a_now.clone(), q_now.clone()
+        if args.fall_probe:
+            ds = t_now - rec["t_hit"]  # nan before the hit
+            live = ~finished & (ds >= 0)
+            if live.any():
+                z, tilt, rz, rt = fp_state()
+                for o in FP_OFF:
+                    m = live & (ds >= o) & torch.isnan(rec[f"fp_z_{o}"])
+                    for k, v in (("z", z), ("tilt", tilt), ("refz", rz), ("reftilt", rt)):
+                        rec[f"fp_{k}_{o}"] = torch.where(m, v, rec[f"fp_{k}_{o}"])
+                w2 = live & (ds <= 2.0)
+                rec["fp_minz2"] = torch.where(w2, torch.minimum(rec["fp_minz2"], z), rec["fp_minz2"])
+                w15 = live & (ds <= 1.5)
+                for k, c in (("fp_t_z55", z < 0.55), ("fp_t_tilt60", tilt > 60), ("fp_t_refz55", rz < 0.55), ("fp_t_reftilt60", rt > 60)):
+                    rec[k] = torch.where(w15 & c & torch.isnan(rec[k]), ds, rec[k])
         if args.fall_state:
             bs = balance_state()
             at_end = ~finished & (base.ref_t >= base.ref.duration[base.clip]) & torch.isnan(rec["com_v_end"])
@@ -998,6 +1034,23 @@ def main():
                  kmh_q=np.nanpercentile(r["kmh"][m], [10, 50, 90]).round(1).tolist())
         out["by_speed"][name] = g
         print(f"[bat] {name}: " + json.dumps(g), flush=True)
+    if args.fall_probe:
+        hm = r["hit"].astype(bool) & np.isfinite(r["t_hit"])
+        nh = max(int(hm.sum()), 1)
+        qq = lambda x: [round(float(v), 3) for v in np.nanpercentile(x[hm], [50, 90])] if np.isfinite(x[hm]).any() else None
+        fp = dict(hits=int(hm.sum()))
+        for k in ("z", "tilt", "refz", "reftilt"):
+            for o in FP_OFF:
+                fp[f"{k}_{o}_med_q90"] = qq(r[f"fp_{k}_{o}"])
+        sh = lambda m: round(float((m & hm).sum()) / nh, 3)
+        tz, tt = r["fp_t_z55"], r["fp_t_tilt60"]
+        fp.update(share_z55=sh(np.isfinite(tz)), share_tilt60=sh(np.isfinite(tt)), share_either=sh(np.isfinite(tz) | np.isfinite(tt)),
+                  first_z55=sh(np.isfinite(tz) & ~(np.isfinite(tt) & (tt < tz))), first_tilt60=sh(np.isfinite(tt) & ~(np.isfinite(tz) & (tz <= tt))),
+                  t_first_med_q90=qq(np.fmin(tz, tt)), share_ref_z55=sh(np.isfinite(r["fp_t_refz55"])), share_ref_tilt60=sh(np.isfinite(r["fp_t_reftilt60"])),
+                  share_ground_035_2s=sh(r["fp_minz2"] < 0.35), minz2_med_q10=[round(float(v), 3) for v in np.nanpercentile(np.where(np.isinf(r["fp_minz2"]), np.nan, r["fp_minz2"])[hm], [50, 10])],
+                  share_fell_9s=sh(r["fell"].astype(bool)))
+        out["fall_probe"] = fp
+        print("[fallprobe] " + json.dumps(fp), flush=True)
     if args.fall_state:
         hm = r["hit"].astype(bool)
         fall_auc = {}
