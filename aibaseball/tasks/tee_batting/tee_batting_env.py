@@ -586,7 +586,7 @@ class TeeBattingEnv(DirectRLEnv):
         if hasattr(self, "rt_sum") and len(env_ids) > 0 and hasattr(self, "reset_time_outs"):
             z = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
             h = self.hit[env_ids]
-            fl = self.fallen[env_ids] & ~h
+            fl = getattr(self, "fallen", z)[env_ids] & ~h  # not set before the first _get_dones
             ps = getattr(self, "passed", z)[env_ids] & ~h & ~fl
             ls = getattr(self, "lost", z)[env_ids] & ~h & ~fl & ~ps
             to = self.reset_time_outs[env_ids] & ~h & ~fl & ~ps & ~ls
