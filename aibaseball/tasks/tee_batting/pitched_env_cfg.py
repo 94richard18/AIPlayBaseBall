@@ -600,6 +600,8 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     ss_ca_hit_only: bool = os.environ.get("AIB_SS_CA_HIT_ONLY", "0") == "1"
     # probe P2 (14, 11-02 22:xx): 0 = the form factor stays on the ramp only, the hit rewards are paid in full
     form_on_hits: bool = os.environ.get("AIB_FORM_ON_HITS", "1") == "1"
+    # H33E (14, 11-03 00:xx): H33D's missed episodes ended by a pre-hit `lost` before the ball passed (no penalty) -> charged as w_miss
+    lost_is_miss: bool = os.environ.get("AIB_LOST_IS_MISS", "0") == "1"
 
 
 @configclass

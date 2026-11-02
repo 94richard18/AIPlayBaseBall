@@ -216,6 +216,10 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         c = self.cfg
         rew = rew - c.w_miss * self.passed.float() - c.w_tempo * self.actions[:, -1] ** 2
         self.rt_sum["rt_miss"] -= c.w_miss * self.passed.float()
+        if getattr(c, "lost_is_miss", False) and hasattr(self, "lost"):  # H33E: drifting off the reference before contact = a miss
+            lm = (self.lost & ~self.hit & ~self.passed & ~self.fallen).float()
+            rew = rew - c.w_miss * lm
+            self.rt_sum["rt_miss"] -= c.w_miss * lm
         if hasattr(c, "w_wait_torso"):  # L1 on the 5 Hz high-passed torso angular velocity before the release (also at 0: rt_wt_unit)
             w_t = self.robot.data.body_ang_vel_w[:, self.wt_body]
             self.wt_lp += self.step_dt / (1.0 / (2 * math.pi * 5.0) + self.step_dt) * (w_t - self.wt_lp)

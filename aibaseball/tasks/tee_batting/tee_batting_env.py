@@ -123,6 +123,9 @@ class TeeBattingEnv(DirectRLEnv):
                                                                 "rt_launch_pen", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track",
                                                                 "rt_da_unit", "rt_wt_unit")}  # *_unit: the term at weight 1 (H33D weight rule)
         self.stats.update({k: torch.zeros((), device=dev) for k in self.rt_sum})
+        # how episodes end (14, 11-03 00:xx): shares of the finished episodes, first match of hit / fall / passed (miss) /
+        # lost (pre-hit drift off the reference) / time-out (clip end) / other, EMA as bat/end_*
+        self.stats.update({k: torch.zeros((), device=dev) for k in ("end_hit", "end_fall", "end_passed", "end_lost", "end_timeout", "end_other")})
         self.best_carry = 0.0
         self.play_log: list[dict] = []
 
@@ -580,6 +583,16 @@ class TeeBattingEnv(DirectRLEnv):
             for k, v in self.rt_sum.items():
                 self.stats[k] = 0.98 * self.stats[k] + 0.02 * v[env_ids].mean()
                 v[env_ids] = 0.0
+        if hasattr(self, "rt_sum") and len(env_ids) > 0 and hasattr(self, "reset_time_outs"):
+            z = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+            h = self.hit[env_ids]
+            fl = self.fallen[env_ids] & ~h
+            ps = getattr(self, "passed", z)[env_ids] & ~h & ~fl
+            ls = getattr(self, "lost", z)[env_ids] & ~h & ~fl & ~ps
+            to = self.reset_time_outs[env_ids] & ~h & ~fl & ~ps & ~ls
+            ot = ~(h | fl | ps | ls | to)
+            for k, m in (("end_hit", h), ("end_fall", fl), ("end_passed", ps), ("end_lost", ls), ("end_timeout", to), ("end_other", ot)):
+                self.stats[k] = 0.98 * self.stats[k] + 0.02 * m.float().mean()
         super()._reset_idx(env_ids)
         n = len(env_ids)
         self.ball_obs_bias[env_ids] = torch.randn(n, 3, device=self.device) * self.cfg.ball_obs_bias_std
