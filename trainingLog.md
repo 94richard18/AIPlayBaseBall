@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**08:38 11-02 15993 + R6b recover 兩 seed 檢查（H32_J7_15993_END 08:36，af77310）→ 差一球未過：** joint s7 hits 55、fair 46、外野 18、exit 27.5、fell 6（before 2 / after 4）、ground 5、tilt ok 58；後段 ground s6 2 + s7 3 = 5 > 4/128（tilt 56 / 58 過）。配對暫維持 15494 + R6b。**R6c 上膛**（run_recov6c.sh：BC 15993、從 R6b 3091 +300、run h25r6c）：bank `logs/recover_bank_r6c_15993_s0.npz` 現在在第 4 段旁產生，訓練等 H32S4_END 後 idle，再跑 15993 的 joint s6 + s7 → R6C_END（過 → 15 寫 logs/recov6c/recover_ckpt.txt，由 14 決定是否改 logs/recov6/recover_ckpt.txt 指標並換配對）。預計 ~11:15 前有結果；film8（19:06 前）候選 = 15993 或第 4 段 ckpt + R6c。第 4 段 ~16200/16493。
+
 **08:24 11-02 15993 遊戲場景雙欄表（H32TG2_END 08:21，43 min，與第 4 段並行）：** jitter 0.03 **23.25% / 外野 15.64%**（三表 24.8 / 23.4 / 21.6；門檻 16.93，15494 14.47）；jitter 0（= 遊戲）**27.69% / 外野 20.22%**（27.7 / 29.0 / 26.4；門檻 16.76）。兩欄都大幅過門檻（+6.3 / +10.9），每張表都在門檻之上，外野安打是 15494 的 2 倍。這是 1.0x 無 saim 以來第一個兩欄都過的打者；投手對它的勝率從 ~85% 掉到 ~72-77%。
 
 判定與決定：15993 在第 3 段訓練門檻敗兩項（fell by end 0.68 無 recover 的 diag；wait_torso_hp +11%），但交付用的是 15993 + recover，而且 (a) joint s6 後段倒地 ground 3/64、tilt ok 56，(b) film7 k51 / k59 兩片 20 與 14 都看不到站姿抖動（使用者的驗收標準是畫面上身體穩）。訓練門檻管「下一段從哪裡接」，採用看雙欄表 + recover 規則 + 影片眼睛門檻。→ **15993 + R6b 預定取代 15494 + R6b 成為影片 / 交付配對**，條件：R6b（15494 bank 訓練）在 15993 上過兩 seed recover 規則：請 15 在第 4 段旁跑 joint s7（15993 + R6b，Isaac ≤ 1）；s6 + s7 後段 ground ≤ 4/128 且 tilt ok ≥ 52 → 改 `logs/recov6/recover_ckpt.txt` 不動、配對改 15993；否則 R6c（15993 bank +300）後再換。第 4 段 ckpt 若過自己的門檻且雙欄表不低於 15993 − 1.5，再取代 15993。第 4 段 173/500 its（08:23）。
