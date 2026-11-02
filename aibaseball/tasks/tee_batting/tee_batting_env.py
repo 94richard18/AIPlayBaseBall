@@ -120,7 +120,8 @@ class TeeBattingEnv(DirectRLEnv):
                        "bat_speed", "success_rate", "fair_rate", "contact_abs_dx", "contact_D", "contact_D_in", "aim_abs_ax", "aim_gap", "aim_reward", "hit_q", "fair_carry", "fair_carry_lt10", "ss_ca", "ss_ca_lt_lo", "exit_hinge", "launch_hi", "launch_lo", "outfield")}
         # per-term episode reward sums (14, 11-02 22:xx, H33 probes): EMA of the per-episode mean, logged as bat/rt_*
         self.rt_sum = {k: torch.zeros(n, device=dev) for k in ("rt_ramp", "rt_hit", "rt_carry", "rt_exit_hinge", "rt_outfield",
-                                                                "rt_launch_pen", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track")}
+                                                                "rt_launch_pen", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track",
+                                                                "rt_da_unit", "rt_wt_unit")}  # *_unit: the term at weight 1 (H33D weight rule)
         self.stats.update({k: torch.zeros((), device=dev) for k in self.rt_sum})
         self.best_carry = 0.0
         self.play_log: list[dict] = []
@@ -501,6 +502,7 @@ class TeeBattingEnv(DirectRLEnv):
                + cfg.w_approach * approach
                + cfg.w_bat_speed * bat_speed_r
                - cfg.w_action_rate * ((self.actions - self.prev_actions) ** 2).sum(-1))
+        self.rt_sum["rt_da_unit"] += (self.actions - self.prev_actions).abs().mean(-1)
         if cfg.w_da_l1:
             p_da = cfg.w_da_l1 * (self.actions - self.prev_actions).abs().mean(-1)
             rew = rew - p_da
