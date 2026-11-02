@@ -68,6 +68,8 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+**11:05 11-02 第 4b 段在 smoke 門檻停下（H32S4B_END 11:03，未訓練；e1f7032）：** 修正 lost 之後，smoke 最後三個 it 的 hit / fall = 0.398 / 0.388、0.432 / 0.423、0.475 / 0.469 → 幾乎每個擊中 episode 在 1.5 s 收尾內都觸發「真的倒地」flag（骨盆 z < 0.55 m 或傾角 > 60°，tee cfg 的 min_pelvis_height / max_tilt_cos）。兩種解讀未分：(1) 正常收尾的下蹲 / 旋轉觸發 0.55 / 60° 檢查（不是倒地）；(2) 參考動作一停打者真的倒（diag fell by end 0.68）。14 核准量測探針（非新設計，5 min GPU）：64-env diag-only 15993，記錄每個擊中 episode 在 hit + 0.5 / 1.0 / 1.5 s 的骨盆 z 與傾角、哪個檢查先觸發、10-29 的「on the ground」（骨盆 < 0.35 m，2 s 內）比例，以及 clip 參考姿勢在相同時刻的同三個數字；marker H32_FALLPROBE_END。決策規則：若參考姿勢 / on-the-ground 比例顯示 0.55 / 60° 在正常收尾誤觸（on-the-ground ≪ fallen）→ 今天開第 4c 段 = 4b 但收尾期倒地改用 on-the-ground 定義、1.5 s 內不因 0.55 / 60° 終止；若打者真的倒（兩比例接近）→ 不開 4c，配對維持 15993 + R6b，向使用者回報。GPU 目前無工作（film9 等候選）。
+
 **10:59 11-02 film8 結果（FILM8_END 10:58，15993 + R6b，交付配對首拍）：** `videos/film8_1102_s6_k44.mp4` 80.1 m / exit 34.0 / launch 32.1 與 `videos/film8_1102_s6_k14.mp4` 77.6 m / 32.3 / 29.3 皆過：strict 64/64、High 7.6 Mb/s、wash 0/343、無人倒地、站姿到擊球無抖動（同一個慢速壓棒）；路徑面板實線 + 落地柱 + carry 文字。無需重拍。12 小時時鐘：下次最晚 22:48（film9 由 20 上膛，GO logs/FILM9_GO.txt，SKIP 23:20；候選 = 第 4b 段若取代 15993，否則 15993 + R6b）。GPU 交給第 4b 段 chain（smoke → +500）。
 
 **10:37 11-02 R6c 結果（R6C_END 10:36）→ 差一球未過，與 R6b 相同：** h25r6c model_3390（R6b +300，15993 bank）在 15993 上 after-done ground s6 3 + s7 2 = 5/128（bar 4），tilt ok 56 / 59，before-done 3 / 2；R6b 同打者 2 + 3 = 5。兩個獨立 recover 在 15993 上得到同一個數字，差距在 seed 雜訊內，表示這 1/128 不是 recover 能補的（擊球後交棒時的身體狀態是打者的事，第 4b 段的站立項正是修這個）。
