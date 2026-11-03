@@ -1,0 +1,2 @@
+H32Q_16200_DIAG_END 01:35  ref: hit 0.856 exit 28.4 launch +15.3 fell by end 0.622 da 0.487 wait_da 0.525 dqt 0.219 torso_hp 3.79 wait_torso_hp 3.64 | test: hit 0.824 exit 27.9 launch +25.3 fell by end 0.667 da 0.489 wait_da 0.548 dqt 0.220 torso_hp 3.59 wait_torso_hp 3.17  | FORM 16200 | n 557 hit 0.862 | exit 27.9 | carry 45.0 | launch +32.8 | pose 0.318/0.331 | key 0.146/0.164 | post pose 0.623/0.699 key 1.120/1.646 | legs 0.271/0.279 waist 0.185/0.207 arms 0.366/0.390
+RESUME DECISION 01:35: RESUME (hit 0.824 >= 0.82, wait_torso_hp 3.17 < 3.64, exit 27.9 >= 27.9)
