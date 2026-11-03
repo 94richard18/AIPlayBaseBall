@@ -1,0 +1,1 @@
+PIN_CMP_END 22:52 DIFFER: 2744 identical cells, 34/64 envs differ; max |delta| exit_mps inf, launch_deg inf, spray_deg inf, carry_m inf, backspin_rpm inf, done_t inf, hit_t inf, ball_body_min_m inf
