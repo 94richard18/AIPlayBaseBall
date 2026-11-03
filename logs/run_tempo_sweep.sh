@@ -1,7 +1,7 @@
 #!/bin/bash
 # run_tempo_sweep.sh (14, 11-03 14:2x): is the reference the lever? Diags of 12500 (h9b) and 13498 (h33g_1) with the reference
 # played x tempo_script 1.0 / 1.15 / 1.30 (re-timed to contact), 256 envs, jitter 0, 11-02 protocol, --form_log --sat_log.
-# Pose / key are measured against the reference AT that tempo_script (same ref_t). No training. Runs after H33J_CHAIN_END
+# Pose / key are measured against the reference AT that tempo_script (same ref_t). No training. Runs after H33JT_CHAIN_END (run_h33j_t.sh)
 # (GPU gap), idle() + nofilm before each diag. Rows -> logs/h33/tempo_sweep.txt, marker logs/TEMPO_SWEEP_END.txt.
 cd /d/MyProject/AIPlayBaseBall
 P=/c/Users/User/anaconda3/envs/isaaclab_env/python.exe
@@ -14,7 +14,7 @@ isaac() { powershell.exe -NoProfile -Command "@(Get-CimInstance Win32_Process -F
 freegb() { powershell.exe -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB)" | tr -d '\r'; }
 nofilm() { local g e; for g in logs/FILM*_GO.txt logs/PDT_GO.txt; do [ -f $g ] || continue; e=${g%_GO.txt}_END.txt; [ -f $e ] && [ $e -nt $g ] || return 1; done; return 0; }
 idle() { until [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(freegb)" -ge 20 ] && nofilm; do sleep 30; done; }
-MSG="waiting for H33J_CHAIN_END"; until [ -f logs/H33J_CHAIN_END.txt ] && [ logs/H33J_CHAIN_END.txt -nt logs/run_tempo_sweep.sh ]; do sleep 60; done
+MSG="waiting for H33JT_CHAIN_END"; until [ -f logs/H33JT_CHAIN_END.txt ] && [ logs/H33JT_CHAIN_END.txt -nt logs/run_tempo_sweep.sh ]; do sleep 60; done
 for ck in "12500 $B/2026-10-25_13-56-51_human_pitched9b/model_12500.pt" "13498 $B/2026-11-03_06-50-43_human_pitched_h33g_1/model_13498.pt"; do
   set -- $ck
   for ts in 1.0 1.15 1.30; do
