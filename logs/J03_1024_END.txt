@@ -1,0 +1,1 @@
+J03_1024_END 16:45 13498 diag j0.03 1024 envs: bins all-fair launch +17.5 (256 envs: +26.5; diag j0 1024: +20.2; tables j0.03 +10.6 / j0 +15.9) | pop-ups 0.181 38.9 613 | hit 0.853 ss_contact 21.2 ss_max 22.1 fair exit 21.8 fair launch +17.5 pose 0.215 key 0.114 fell 0.540 torque_sat top3 []
