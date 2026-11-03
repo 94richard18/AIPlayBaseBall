@@ -1,0 +1,1 @@
+H33J_JOINT_END 16:54 h33j_1/model_13997 joint s6 (R6b, 64 envs): joint s6 n 64: hits 55, fair 46, carry fair median 26.2 max 62.8, outfield (fair, carry >= 38.9) 15, exit 22.6, launch 31.8 (q75 49.2, >= 45 deg 15, carry nan 0; joint pop-ups (>= 45 deg or still airborne) 15/55), fell 11 (before done 2, after 9), ground 5, tilt ok 53 | csv logs/h33/joint_s6_13997j.csv
