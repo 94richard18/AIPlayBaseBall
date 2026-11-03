@@ -2939,3 +2939,10 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 
 - H32 Pareto 候選 = 通過兩項比賽場景標準的 H32 checkpoint 中 pose 最低者；這次是 15993，也就是交付組合本身。GO 20:25（14，自動寫入）：rows `logs/h33/joint_s6_15993_h32.csv`、env 51 / 41（三個跌倒旗標都 False）、6.5 s；20:27 開拍，20:50 結束。joint_s6_15993_h32 的 pitcher_fell 仍是那 11 個 env。
 - `videos/film16_1103_s6_k51.mp4`（87.8 m 正中高飛、exit 35.2、launch 28.0）與 `videos/film16_1103_s6_k41.mp4`（57.0 m 平飛、exit 32.2、launch 20.6）：兩片 52 欄 64/64、blank 0、High 7.6–7.7 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒（骨盆最低 0.91 / 0.94 m）；畫面文字 127 km/h / 28° 與 116 km/h / 21°，與 rows 一致；打者抖動：兩片都沒有。下一支 film17 期限 08:50（11-04）。
+
+## 11-04 07:53 FILM17（H33J h33j_1 model_13997 + R6b 3091，開 AIB_PRESTART_PIN=1；不是交付候選）
+
+- 使用者回饋（經 14）：投手準備時打者先前傾、開始揮棒那刻瞬間跳回。原因在 15 的 batter_side.py：開始前只用 PD 撐 clip 第 0 幀、無前饋，身體下垂（film16 k51 上身 10° → 25°）；開始時 _reset_idx 把 root + 關節直接寫回第 0 幀（25° → 11°）。15 加了 AIB_PRESTART_PIN=1（d438f13，開始前每步把姿勢寫在第 0 幀、速度 0），strict 64/64 比對通過後用於本片。film17.sh 改成讀 GO 的 ENV= 行並 export（只收 AIB_NAME=value）。
+- GO（14）：rows `logs/h33/joint_s6_13997j_pin.csv`、env 7 / 25（三個跌倒旗標都 False）、6.5 s、ENV AIB_PRESTART_PIN=1；07:32 開拍，07:53 結束。pitcher_fell 仍是那 11 個 env。
+- `videos/film17_1104_s6_k7.mp4`（55.0 m 高飛、exit 27.5、launch 33.4）與 `videos/film17_1104_s6_k25.mp4`（47.4 m 平飛、exit 27.9、launch 23.2）：兩片 52 欄 64/64、blank 0、High 7.6–7.7 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 99 km/h / 33° 與 101 km/h / 23°，與 rows 一致（k25 的 carry 文字 47.3 vs row 47.4，四捨五入差）；打者抖動：兩片都沒有。
+- 前傾修正確認：開始前上身傾角 k7 10.2–10.3°、k25 18.5°，全程不變；開始那步變化 < 1°（film16 是 25° → 11°）。下一支 film18 期限 19:53（11-04）。
