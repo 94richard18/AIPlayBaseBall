@@ -1,0 +1,1 @@
+H32P_END 00:32 H32P FALSIFIER at +250: KILL ss_ca 23.39 < 24.3 | start (16043): ss 23.063 hit 0.465 fall 0.001 dapre 50.808 da 67.876 | check (16243): ss 23.389 hit 0.578 fall 0.005 dapre 40.601 da 55.579 -> trainer killed
