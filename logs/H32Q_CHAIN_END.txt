@@ -1,1 +1,1 @@
-H32Q_CHAIN_END 01:30 H32Q FALSIFIER at +250: KILL hit 0.614 < start 0.731 - 0.08 | start (16043): ss 24.464 hit 0.731 fall 0.000 dapre 0.000 da 75.128 | check (16243): ss 24.402 hit 0.614 fall 0.000 dapre 0.000 da 74.906 -> trainer killed
+H32Q_CHAIN_END 01:57 H32Q FALSIFIER at 16300 (50-it means): KILL hit 0.626 < start 0.710 - 0.08 | start 16018-16068: ss 24.488 hit 0.710 fall 0.000 wt_unit 72.075 | check 16250-16300: ss 24.431 hit 0.626 fall 0.000 wt_unit 60.269 -> trainer killed
