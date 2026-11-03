@@ -5,7 +5,7 @@
 #    H31 (12500 -> 14496) was trained at 1.5x + saim (history) and is not on the 1.0x line, so it is not surveyed.
 #    -> logs/h33/h32_form_sweep.txt, marker H32_FORM_SWEEP_END.
 # 2. Game-scene tables (both columns, run_h33_tables.sh) on the up to 3 lowest-pose ckpts with hit >= 0.85 and fair carry median
-#    >= 25 m, lowest pose first; stop at the first that passes 16.93 / 16.76 with OF >= 3 (= the Pareto candidate).
+#    >= 24 m (14: 15494 at 24.8 gets tabled), lowest pose first; stop at the first that passes 16.93 / 16.76 with OF >= 3 (= the Pareto candidate).
 #    15993's tables are the 11-02 ones (23.25 / 27.69, OF 15.6 / 20.2), not re-run.
 # 3. Joint s6 (R6b, 64 envs) of the candidate -> logs/h33/joint_s6_<I>_h32.csv, marker H32_PARETO_JOINT_END. idle() + nofilm throughout.
 cd /d/MyProject/AIPlayBaseBall
@@ -42,8 +42,8 @@ for I in $LIST; do
   $P logs/h32_form.py logs/diag_bat_contact_$T.json $I logs/h32/form_$I.csv 2>&1 | tail -1 >> $S
 done
 CAND=$(tail -n +3 $S | while read -r L; do I=${L%% *}; [ "$I" = 12500 ] && continue; h=$(hitf "$L"); c=$(fv carry "$L"); p=$(fv pose "$L")
-  awk -v h="$h" -v c="$c" 'BEGIN{exit !(h ~ /^[0-9.]+$/ && c ~ /^[0-9.]+$/ && h + 0 >= 0.85 && c + 0 >= 25)}' && echo "$p $I"; done | sort -n | head -3 | awk '{print $2}' | tr '\n' ' ')
-echo "$(date +%H:%M) table candidates (hit >= 0.85, fair carry >= 25, lowest pose first): ${CAND:-none}" >> $S
+  awk -v h="$h" -v c="$c" 'BEGIN{exit !(h ~ /^[0-9.]+$/ && c ~ /^[0-9.]+$/ && h + 0 >= 0.85 && c + 0 >= 24)}' && echo "$p $I"; done | sort -n | head -3 | awk '{print $2}' | tr '\n' ' ')
+echo "$(date +%H:%M) table candidates (hit >= 0.85, fair carry >= 24, lowest pose first): ${CAND:-none}" >> $S
 ST=0; echo "H32_FORM_SWEEP_END $(date +%H:%M) $(tail -n +3 $S | tr '\n' '#' | cut -c1-2500)" > $M
 PAR=""; TR=""
 for I in $CAND; do
