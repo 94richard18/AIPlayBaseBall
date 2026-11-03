@@ -1,0 +1,1 @@
+H33JT_CHAIN_END 16:18 H33J ends at +500: jitter training did not move the fragile column (j0.03 '15.46' >= 15.8, pose '0.213' <= 0.215, key '0.113' <= 0.113, hit '0.973' >= 0.85)
