@@ -55,6 +55,9 @@ RECOVER_S = 0.8  # after_done "recover": policy targets -> batting stance from c
 RECOVER_LOW_S = 0.4  # after_done "recover_low": the same, faster, to a lower stance
 RECOVER_LOW_KNEE_DEG = 10.0  # recover_low: knees this much more bent, hip / ankle pitch half each (feet and trunk as the stance)
 N_LEG_WAIST = 15  # body joints 0..14: legs (12) + waist (3); 15.. arms
+# film fix (14 / 20, 11-03 21:xx): the PD-only pre-start hold sags (torso 10 -> 25 deg by 0.78 s) and the episode start then
+# teleports it back; AIB_PRESTART_PIN=1 writes root + joints to the clip's frame 0 with zero velocity every hold step instead
+PRESTART_PIN = os.environ.get("AIB_PRESTART_PIN", "0") == "1"
 
 
 class _RotatedData:
@@ -363,8 +366,18 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         self.flight_time[ids] = tp - h  # until the hand-off replaces it with the live fly_to_x time
         self.ref_t[ids] = self.ref.contact_time[self.clip[ids]] - (tp - self.cfg.timing_bias_s - ts) * self.speed
 
+    def _pin_stance(self, ids):
+        """AIB_PRESTART_PIN: kinematic pre-start hold - root + body joints at the clip's frame t0 (the stance the episode start
+        writes), zero velocity; the PD targets stay on that pose."""
+        r = self.ref.sample(self.t0[ids], self.clip[ids])
+        root = torch.cat([r["root_pos"] + self.scene.env_origins[ids], r["root_quat"], torch.zeros(len(ids), 6, device=self.device)], -1)
+        self.robot.write_root_state_to_sim(root, ids)
+        jp = self.robot.data.default_joint_pos[ids].clone()
+        jp[:, self.body_joint_ids] = r["joint_pos"][:, self.ref_cols]
+        self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=ids)
+
     def control(self):
-        start = ~self.active & (self._joint_time() >= self.start_t - 1e-6) & (self.take_mode != 4)
+        start =~self.active & (self._joint_time() >= self.start_t - 1e-6) & (self.take_mode != 4)
         if start.any():  # the training episode starts now: the stance again (it was held there), ref clock, phys_t 0
             ids = start.nonzero(as_tuple=False).squeeze(-1)
             PitchedBattingEnv._reset_idx(self, ids)
@@ -373,6 +386,8 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self.active[ids] = True
             self._saim_reset(ids)
             self._obs = None
+        if PRESTART_PIN and (~self.active).any():
+            self._pin_stance((~self.active).nonzero(as_tuple=False).squeeze(-1))
         if self._obs is None:
             self._obs = self._get_observations()["policy"]
         q_prev, a_prev = self.joint_targets[:, self.body_joint_ids].clone(), self.actions[:, :-1].clone()
