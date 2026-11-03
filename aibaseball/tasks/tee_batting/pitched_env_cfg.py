@@ -598,6 +598,9 @@ class PitchedBattingHuman33EnvCfg(PitchedBattingHuman32EnvCfg):
     form_s: float = float(os.environ.get("AIB_FORM_S", str(0.20 / 0.6931471805599453 ** 0.5)))
     form_hinge_hi: float = float(os.environ.get("AIB_FORM_HINGE_HI", "0"))  # H33H: 0.245 / 0.045 -> f 1 at 0.200, 0 at 0.245
     form_hinge_w: float = float(os.environ.get("AIB_FORM_HINGE_W", "0.045"))
+    # H33J (14, 11-03 12:4x): swing-start timing noise U(+-AIB_TIMING_NOISE) s in training = the tables' jitter column, not ramped
+    timing_noise_s: float = float(os.environ.get("AIB_TIMING_NOISE", "0.0"))
+    timing_noise_ramp: bool = "AIB_TIMING_NOISE" not in os.environ
     # H33R (14, 11-02 21:xx): seg 1 (12999) bought bat speed on misses (hit 0.47 -> 0.03, pose 0.25) -> the ss ramp pays hits only
     ss_ca_hit_only: bool = os.environ.get("AIB_SS_CA_HIT_ONLY", "0") == "1"
     # probe P2 (14, 11-02 22:xx): 0 = the form factor stays on the ramp only, the hit rewards are paid in full
