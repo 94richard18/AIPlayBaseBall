@@ -1,0 +1,1 @@
+H33H_END 14:08 segment-1 FALSIFIER at +500 (train pose_swing '' < 0.22: form did not move, the lever is wrong): it 14497 ss_ca 21.648 lt_lo 0.024 hit 0.890 track 0.520 fall 0.000 eh 15.817 fc 17.032 lhi 0.100 llo 0.473 of 0.065 pose 0.225 f 0.454 la 6.422 -> trainer killed, stopped |

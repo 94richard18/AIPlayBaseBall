@@ -110,7 +110,7 @@ for k in 1; do
     fi
     if [ $EF5 -eq 0 ] && grep -aq "Learning iteration $((I0 + 500))/" $TF; then  # second falsifier (14): +500 its, form must move
       EF5=1; CV=$($P logs/h33_curve.py $TF 50 $((I0 + 500)))
-      PV=$(echo "$CV" | sed -n 's/.* pose \([0-9.]*\) .*//p')
+      PV=$(echo "$CV" | sed -n 's/.* pose \([0-9.]*\) .*/\1/p')
       echo "$(date +%H:%M) segment $k +500 check: $CV" >> $O/progress.txt; echo "H33H_500_END $(date +%H:%M) $CV" > logs/H33H_500_END.txt
       if ! awk -v p="$PV" 'BEGIN{exit !(p ~ /^[0-9.]+$/ && p + 0 < 0.22)}'; then
         powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match '$RN' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"

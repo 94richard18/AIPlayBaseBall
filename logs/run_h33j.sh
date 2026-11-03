@@ -57,7 +57,7 @@ diag() {  # $1 ckpt, $2 tag, $3 envs, $4 timing noise
     --physics_dt 0.00125 --contact_log --form_log > $O/diag_$2.txt 2>&1
   ! grep -q Traceback $O/diag_$2.txt && [ -f logs/diag_bat_contact_$2.json ]
 }
-binl() { $P logs/h33_bins.py $1 2>/dev/null | grep "all fair" | head -1 | sed -n 's/.*launch med *\([-+0-9.]*\) .*//p'; }  # all-fair launch median
+binl() { $P logs/h33_bins.py $1 2>/dev/null | grep "all fair" | head -1 | sed -n 's/.*launch med *\([-+0-9.]*\) .*/\1/p'; }  # all-fair launch median
 form() { $P logs/h32_form.py logs/diag_bat_contact_$1.json $2 $O/form_$2$3.csv | tail -1; }
 fv() { echo "$2" | sed -n "s/.*| $1 \([-+0-9.na]*\)[ \/].*/\1/p"; }  # one field of the h32_form row
 TF1=$O/train_j1.txt; TF2=$O/train_j2.txt
