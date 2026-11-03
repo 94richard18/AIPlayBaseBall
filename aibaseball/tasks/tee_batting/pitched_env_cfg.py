@@ -591,6 +591,8 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
     # velocity high-passed at 5 Hz before the release (the diag's wait-phase term), and a smaller fall-after-hit penalty that
     # bites once AIB_FOLLOW_THROUGH_S lets the episode outlive the follow-through (small: the 10-27 standing designs weakened the swing)
     w_wait_torso: float = float(os.environ.get("AIB_WAIT_TORSO_W", "0.0"))
+    # H32Q (14, 11-04): w_wait_torso ramped linearly from 0 over this many env steps after (re)start (32 steps / it); 0 = full at once
+    wait_torso_ramp_steps: int = int(os.environ.get("AIB_WAIT_TORSO_RAMP_STEPS", "0"))
     w_fall_after_hit: float = float(os.environ.get("AIB_FALL_AFTER_HIT_W", "10.0"))
     # H32P (14, 11-03): extra L1 action rate before the swing commits (reference > act_ema_commit_s from contact) against the
     # pre-start tremble (da 0.49 / step); the swing window keeps w_da_l1 only. 0 = off

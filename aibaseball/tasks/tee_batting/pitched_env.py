@@ -229,9 +229,11 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             w_t = self.robot.data.body_ang_vel_w[:, self.wt_body]
             self.wt_lp += self.step_dt / (1.0 / (2 * math.pi * 5.0) + self.step_dt) * (w_t - self.wt_lp)
             hp = (w_t - self.wt_lp).norm(dim=-1) * (self.phys_t < self.release_t).float()
-            rew = rew - c.w_wait_torso * hp
+            rs = getattr(c, "wait_torso_ramp_steps", 0)
+            ww = c.w_wait_torso * (min(1.0, self.common_step_counter / rs) if rs > 0 else 1.0)
+            rew = rew - ww * hp
             self.rt_sum["rt_wt_unit"] += hp
-            self.rt_sum["rt_wait_torso"] -= c.w_wait_torso * hp
+            self.rt_sum["rt_wait_torso"] -= ww * hp
             self.track_stats["wait_torso_hp"] = 0.98 * self.track_stats["wait_torso_hp"] + 0.02 * hp.mean()
         if getattr(c, "w_da_pre", 0.0) > 0:  # H32P: pre-commit action rate (same clock as act_ema)
             tc = (self.ref.contact_time[self.clip] - self.ref_t) / self.speed
