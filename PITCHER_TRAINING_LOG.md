@@ -2918,3 +2918,8 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - **k22 畫面文字錯**：寫「exit 61 km/h、launch -20 deg」，rows 是 73 km/h、+1.3°（落點與 carry 8.8 m 正確）。61 km/h 下墜 20° 正是投進來的球（投球 64.4 km/h）在本壘前的速度：擊中後記錄的第一步還是投球的速度。之前 9 支片的文字都和 rows 一致，這是第一次出現。只影響文字，rows 與路徑不受影響。
 - 修正（scripts/joint_pitcher.py）：第二步的速度若比第一步變化 > 3 m/s（自由飛行每步 < 0.1），就以第二步為擊球初速。離線測試：「投球 → 擊球」與「一開始就是擊球」兩種序列都讀出 73 km/h / 1°。k22 重拍為 film12b（`logs/film12b.sh`，等 14 的 GO）。
 - FILM12B 04:49（GO 04:4x，14；04:38 閘門通過）：`videos/film12b_1103_s6_k22.mp4` 畫面文字讀 **exit 73 km/h、launch 1 deg**，與 rows（20.37 m/s、1.3°）一致，修正有效（否證條件通過）。52 欄 64/64、blank 0、High 7.8 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；打者抖動：沒有。film12 = k52 + film12b k22。下一支 film13 期限 16:33。
+
+## 11-03 09:17 FILM13（H33G seg-1 model_13498 + R6b 3091；形態由使用者目視判斷）
+
+- GO 09:0x（14）：BC H33G 13498（pose 0.215、hit 0.959、carry 28.2 m）、rows `logs/h33/joint_s6_13498.csv`、env 44 / 34（三個跌倒旗標都 False）、6.5 s；08:56 閘門通過開拍，09:17 結束。joint_s6_13498 的 pitcher_fell 仍是那 11 個 env。
+- `videos/film13_1103_s6_k44.mp4`（55.1 m 正中高飛、exit 29.3、launch 28.9）與 `videos/film13_1103_s6_k34.mp4`（43.9 m 平飛、exit 28.6、launch 20.4）：兩片 52 欄 64/64、blank 0、High 7.6–7.8 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 105 km/h / 29° 與 103 km/h / 20°，與 rows 一致；打者抖動：兩片都沒有。下一支 film14 期限 21:17。
