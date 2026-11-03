@@ -1,0 +1,1 @@
+H33_TABLES_15700_END 20:10 GAME SCENE model_15700 | jitter 0.03: 16.33% / OF 8.35% (bar 16.93) | jitter 0: 20.34% / OF 12.77% (bar 16.76) | 23 min
