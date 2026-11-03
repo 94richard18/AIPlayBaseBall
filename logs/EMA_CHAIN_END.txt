@@ -1,0 +1,1 @@
+EMA_CHAIN_END 23:28 no alpha passed the gate (EMA_03_END / EMA_05_END)

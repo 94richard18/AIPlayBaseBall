@@ -1,0 +1,1 @@
+NOISE_OFF_END 22:58 15993 ball percept noise / bias off:  ref: hit 0.856 exit 28.4 launch +15.3 fell by end 0.622 da 0.487 wait_da 0.525 dqt 0.219 torso_hp 3.79 wait_torso_hp 3.64 | test: hit 0.889 exit 29.0 launch +21.6 fell by end 0.672 da 0.484 wait_da 0.525 dqt 0.218 torso_hp 3.76 wait_torso_hp 3.65 
