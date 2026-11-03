@@ -89,6 +89,11 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         a = actions.clamp(-c.action_clip, c.action_clip)
         if c.take_hold:  # a take (match video): no residual, no tempo
             a = torch.zeros_like(a)
+        if c.act_ema > 0:  # pre-commit residual low-pass (eval polish); self.actions = the applied (filtered) action, 0 at reset
+            tc = (self.ref.contact_time[self.clip] - self.ref_t) / self.speed  # reference seconds to contact
+            w = ((tc - c.act_ema_commit_s) / c.act_ema_ramp_s).clamp(0.0, 1.0)  # 1 before the ramp, 0 from the commit
+            al = (1.0 - w * (1.0 - c.act_ema)).unsqueeze(-1)
+            a = torch.cat([self.actions[:, :-1] + al * (a[:, :-1] - self.actions[:, :-1]), a[:, -1:]], -1)
         tempo = a[:, -1].clamp(-1.0, 1.0)
         if c.tempo_zero_after_release:  # eval: the reference plays at nominal speed once the ball is in the air
             tempo = torch.where(self.phys_t >= self.release_t, torch.zeros_like(tempo), tempo)

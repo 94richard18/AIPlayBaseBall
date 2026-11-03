@@ -46,6 +46,12 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     # table rows, speed drawn in pitch_mix_speed_kmh, near-zone only); the rest from the analytic library
     pitch_mix_release_csv: str | None = None
     tempo_zero_after_release: bool = False  # eval: tempo action held at 0 once the pitch is released
+    # eval polish (14, 11-03 22:xx; the films' hands / feet tremble = 0.2 rad / step residual chatter): AIB_ACT_EMA=<alpha> > 0
+    # low-passes the joint residual a_f += alpha (a - a_f) until the swing commits, alpha ramped to 1 over act_ema_ramp_s before
+    # the reference is act_ema_commit_s from contact (joint t_commit median 0.18 s before the hit); tempo unfiltered. 0 = off
+    act_ema: float = float(os.environ.get("AIB_ACT_EMA", "0"))
+    act_ema_commit_s: float = 0.20
+    act_ema_ramp_s: float = 0.05
     # 10-30 (planning 14): the crossing prediction from a ballistic least-squares fit over all seen samples since release
     # instead of a one-step finite difference (1.4 m/s velocity noise per axis at 1 cm / 10 ms); delay / noise / bias unchanged
     percept_filter: bool = False
