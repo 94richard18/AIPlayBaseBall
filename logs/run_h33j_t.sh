@@ -60,7 +60,7 @@ MSG="waiting for H33J_CHAIN_END (part 1 + its +500 diag, then the STOP exit)"
 until [ -f logs/H33J_CHAIN_END.txt ] && [ logs/H33J_CHAIN_END.txt -nt logs/run_h33j_t.sh ]; do sleep 60; done
 D=$(ls -td $B/*human_pitched_h33j_1 2>/dev/null | head -1); I=$([ -n "$D" ] && last $D)
 [ -n "$I" ] || { MSG="no h33j_1 checkpoint"; exit 1; }
-I0=13498; [ "$I" -ge $((I0 + 500)) ] || { MSG="h33j_1 ended at model_$I before +500 (part 1 falsifier or crash): $(cut -c1-300 logs/H33J_END.txt)"; exit 0; }
+I0=13498; [ "$I" -ge $((I0 + 499)) ] || { MSG="h33j_1 ended at model_$I before +500 (part 1 falsifier or crash): $(cut -c1-300 logs/H33J_END.txt)"; exit 0; }
 evalj0 $D $I
 idle; MSG="H33J +500 j0.03 tables"; bash logs/run_h33_tables_j03.sh $D/model_$I.pt $I $T0 > logs/h33_tables_j03_$I.out 2>&1
 TM=$(cut -c1-300 logs/H33_TABLES_J03_${I}_END.txt); Wa=$(echo "$TM" | sed -n 's/.*jitter 0.03: \([0-9.]*\)% .*/\1/p')

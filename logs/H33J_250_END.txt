@@ -1,0 +1,1 @@
+H33J_250_END 15:05 it 13748 ss_ca 20.722 lt_lo 0.043 hit 0.765 track 0.540 fall 0.000 eh 7.076 fc 14.751 lhi 0.097 llo 0.425 of 0.030 pose 0.219 f 0.571 la 10.286
