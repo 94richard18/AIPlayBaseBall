@@ -1,0 +1,1 @@
+H33_TABLES_13997_END 12:09 GAME SCENE model_13997 | jitter 0.03: 14.89% / OF 6.71% (bar 16.93) | jitter 0: 22.84% / OF 15.01% (bar 16.76) | 32 min
