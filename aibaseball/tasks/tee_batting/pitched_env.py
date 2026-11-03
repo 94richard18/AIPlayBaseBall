@@ -233,6 +233,12 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             self.rt_sum["rt_wt_unit"] += hp
             self.rt_sum["rt_wait_torso"] -= c.w_wait_torso * hp
             self.track_stats["wait_torso_hp"] = 0.98 * self.track_stats["wait_torso_hp"] + 0.02 * hp.mean()
+        if getattr(c, "w_da_pre", 0.0) > 0:  # H32P: pre-commit action rate (same clock as act_ema)
+            tc = (self.ref.contact_time[self.clip] - self.ref_t) / self.speed
+            dp = (self.actions - self.prev_actions).abs().mean(-1) * (tc > c.act_ema_commit_s).float()
+            rew = rew - c.w_da_pre * dp
+            self.rt_sum["rt_dapre_unit"] += dp
+            self.rt_sum["rt_da_pre"] -= c.w_da_pre * dp
         if self.new_hit.any():
             # timing error: physical time of contact vs. when the ball reached the reference contact point
             self.track_stats["pitch_kmh"] = 0.95 * self.track_stats["pitch_kmh"] + 0.05 * self.pitch_kmh[self.new_hit].mean()

@@ -1,0 +1,2 @@
+0.8
+# AIB_DA_PRE_W for H32P (14, 23:3x 11-03): pre-commit extra 0.8 (total 1.0 pre-commit, swing window stays 0.2); falsifiers +250 train ss_contact < 24.3 or hit < 0.80 or train fall share > 1.5x start

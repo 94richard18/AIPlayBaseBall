@@ -121,7 +121,7 @@ class TeeBattingEnv(DirectRLEnv):
         # per-term episode reward sums (14, 11-02 22:xx, H33 probes): EMA of the per-episode mean, logged as bat/rt_*
         self.rt_sum = {k: torch.zeros(n, device=dev) for k in ("rt_ramp", "rt_hit", "rt_carry", "rt_exit_hinge", "rt_outfield",
                                                                 "rt_launch_pen", "rt_launch_lo", "rt_lift", "rt_da_l1", "rt_wait_torso", "rt_miss", "rt_fall", "rt_track",
-                                                                "rt_da_unit", "rt_wt_unit")}  # *_unit: the term at weight 1 (H33D weight rule)
+                                                                "rt_da_unit", "rt_wt_unit", "rt_da_pre", "rt_dapre_unit")}  # *_unit: the term at weight 1 (H33D weight rule)
         self.stats.update({k: torch.zeros((), device=dev) for k in self.rt_sum})
         # how episodes end (14, 11-03 00:xx): shares of the finished episodes, first match of hit / fall / passed (miss) /
         # lost (pre-hit drift off the reference) / time-out (clip end) / other, EMA as bat/end_*
