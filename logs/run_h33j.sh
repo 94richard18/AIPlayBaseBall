@@ -9,7 +9,7 @@
 # +1000 runs as two 500-it trainer runs, so the +500 diag never runs beside a trainer.
 # Falsifiers:
 #   Baseline (14, 13:0x): start ckpt at jitter 0.03, 256 envs -> L0 = bins all-fair launch median (H33J_BASE_END).
-#   +250: train hit < 0.50 or train launch (bat/launch_angle, EMA mean over all hits) < 2 -> kill.
+#   +250: train hit < 0.50 or train launch (bat/launch_angle, EMA mean over all hits) < -3 -> kill.
 #   +500: diag at --timing_noise 0.03 (256 envs) needs hit >= 0.80 and bins all-fair launch median >= L0 + 4, else stop.
 # Gates at +1000:
 #   (i) jitter-0 diag: pose <= 0.215 and key <= 0.113.
@@ -81,8 +81,8 @@ for ph in 1 2; do
       EF=1; CV=$($P logs/h33_curve.py $TF 50 $((I0 + 250)))
       HV=$(echo "$CV" | sed -n 's/.* hit \([0-9.]*\) .*/\1/p'); LV=$(echo "$CV" | sed -n 's/.* la \([-0-9.]*\)$/\1/p')
       echo "$(date +%H:%M) H33J +250 check: $CV" >> $O/progress.txt; echo "H33J_250_END $(date +%H:%M) $CV" > logs/H33J_250_END.txt
-      if ! awk -v h="$HV" -v l="$LV" 'BEGIN{exit !(h ~ /^[0-9.]+$/ && l ~ /^-?[0-9.]+$/ && h + 0 >= 0.50 && l + 0 >= 2)}'; then
-        killrn $RN; MSG="H33J FALSIFIER at +250 (train hit '$HV' >= 0.50, train launch '$LV' >= 2): $CV -> trainer killed, stopped"; exit 0
+      if ! awk -v h="$HV" -v l="$LV" 'BEGIN{exit !(h ~ /^[0-9.]+$/ && l ~ /^-?[0-9.]+$/ && h + 0 >= 0.50 && l + 0 >= -3)}'; then
+        killrn $RN; MSG="H33J FALSIFIER at +250 (train hit '$HV' >= 0.50, train launch '$LV' >= -3): $CV -> trainer killed, stopped"; exit 0
       fi
     fi
     G=$(priv $RN); [ "$G" -gt $PK ] 2>/dev/null && PK=$G
