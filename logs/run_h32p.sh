@@ -51,7 +51,7 @@ AIB_PHYSICS_DT=0.00125 timeout 1500 $P -u scripts/train.py --task $TASK --headle
   --resume True --load_run $LR --checkpoint $LC > $O/smoke_h32p.txt 2>&1
 grep -q Traceback $O/smoke_h32p.txt && { MSG="smoke crash: $(grep -A14 Traceback $O/smoke_h32p.txt | tail -1)"; exit 1; }
 SD=$(ls -td $B/*h32p_smoke 2>/dev/null | head -1)
-YD=$($P logs/yaml_diff.py $B/$LR/params/env.yaml $SD/params/env.yaml w_da_pre)
+YD=$($P logs/yaml_diff.py $B/$LR/params/env.yaml $SD/params/env.yaml w_da_pre num_envs act_ema_commit_s act_ema_ramp_s form_hinge_w lost_ends_after_hit)  # inert: act_ema 0, form_s 0, lost_ends True = pre-field behaviour
 grep -q "bat/rt_dapre_unit" $O/smoke_h32p.txt || YD="DIFF no bat/rt_dapre_unit stat | $YD"
 grep -q "w_da_pre: $W" $SD/params/env.yaml || YD="DIFF w_da_pre not $W in env.yaml | $YD"
 echo "$(date +%H:%M) H32P smoke (AIB_DA_PRE_W $W): $YD" >> $O/progress.txt
