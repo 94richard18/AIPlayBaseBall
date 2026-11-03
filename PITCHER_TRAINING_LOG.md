@@ -2923,3 +2923,8 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 
 - GO 09:0x（14）：BC H33G 13498（pose 0.215、hit 0.959、carry 28.2 m）、rows `logs/h33/joint_s6_13498.csv`、env 44 / 34（三個跌倒旗標都 False）、6.5 s；08:56 閘門通過開拍，09:17 結束。joint_s6_13498 的 pitcher_fell 仍是那 11 個 env。
 - `videos/film13_1103_s6_k44.mp4`（55.1 m 正中高飛、exit 29.3、launch 28.9）與 `videos/film13_1103_s6_k34.mp4`（43.9 m 平飛、exit 28.6、launch 20.4）：兩片 52 欄 64/64、blank 0、High 7.6–7.8 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 105 km/h / 29° 與 103 km/h / 20°，與 rows 一致；打者抖動：兩片都沒有。下一支 film14 期限 21:17。
+
+## 11-03 12:33 FILM14（H33G seg-2 model_13997 + R6b 3091；對照片，不是交付候選）
+
+- 13997 未過形態檢查（pose 0.223）；拍來讓使用者目視比較 film13（0.215）與 film12（0.196），不是交付候選。GO（14，自動寫入）：rows `logs/h33/joint_s6_13997.csv`、env 21 / 59（三個跌倒旗標都 False）、6.5 s；12:11 開拍，12:33 結束。joint_s6_13997 的 pitcher_fell 仍是那 11 個 env。
+- `videos/film14_1103_s6_k21.mp4`（45.9 m 高飛、exit 24.7、launch 34.3）與 `videos/film14_1103_s6_k59.mp4`（43.1 m 平飛、exit 26.1、launch 23.7）：兩片 52 欄 64/64、blank 0、High 7.6–7.7 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 89 km/h / 34° 與 94 km/h / 24°，與 rows 一致；打者抖動：兩片都沒有。下一支 film15 期限 00:33（11-04）。
