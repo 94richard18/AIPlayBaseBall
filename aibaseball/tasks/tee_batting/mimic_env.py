@@ -253,6 +253,8 @@ class TeeBattingMimicEnv(TeeBattingEnv):
         """H33: exp(-(swing-window mean pose RMS / form_s)^2) per env, or None when off (form_s 0)."""
         if self.cfg.form_s <= 0:
             return None
+        if self.cfg.form_hinge_hi > 0:  # H33H: linear hinge, f = 1 at pose <= hi - width, 0 at pose >= hi
+            return ((self.cfg.form_hinge_hi - self.form_sum / self.form_n.clamp_min(1.0)) / self.cfg.form_hinge_w).clamp(0.0, 1.0)
         return torch.exp(-((self.form_sum / self.form_n.clamp_min(1.0)) / self.cfg.form_s) ** 2)
 
     def _stand_score(self):

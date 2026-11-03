@@ -91,6 +91,10 @@ class TeeBattingMimicEnvCfg(TeeBattingEnvCfg):
     # hit rewards) x exp(-(pose_swing / form_s)^2), pose_swing = this episode's mean unweighted joint RMS error (rad) from the clip
     # start (reference clock >= 0) to contact
     form_s: float = 0.0
+    # H33H (14, 11-03 11:5x): > 0 replaces the Gaussian with clamp((form_hinge_hi - pose_swing) / form_hinge_w, 0, 1), same
+    # pose input (form_s must stay > 0, it switches the accumulation on)
+    form_hinge_hi: float = 0.0
+    form_hinge_w: float = 0.045
     lost_ends_after_hit: bool = True  # False: after contact only a real fall (pelvis / tilt) ends the episode, not losing the reference
     ref_hold_end: bool = False  # True: the episode does not end with the reference clip (it holds its last pose, as in play)
     clamp_ref_phase: bool = False  # True: the reference-time input t / duration is held at 1 past the clip end
