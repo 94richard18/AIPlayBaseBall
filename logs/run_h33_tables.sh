@@ -9,7 +9,7 @@ export AIB_EFFORT_SCALE=1.0 AIB_ARMAIM_NOBOOK=1 PYTHONPATH=.
 unset AIB_FIX_STD AIB_STD_FROM AIB_SWING_STOCHASTIC AIB_PHYSICS_DT AIB_EFFORT_PROBE
 R=assets/game/p3c_identical_t18_release.csv; T=assets/game/p3c_identical_t18_pitches.csv
 DT="--physics_dt 0.00125 --phase_horizon 2.6"
-C=$1; I=$2
+C=$1; I=$2; DG=${3:-h33f_$2}  # $3: the jitter-0 diag tag for the hit rate (default h33f_<I>)
 O=logs/h33/tables_game; C4="obp_167-7 obp_282-1 obp_42-1 obp_42-2"; mkdir -p $O
 M=logs/H33_TABLES_${I}_END.txt; rm -f $M; MSG="FAILED: aborted"
 trap 'echo "H33_TABLES_${I}_END $(date +%H:%M) $MSG" > $M; cat $M' EXIT
@@ -42,8 +42,8 @@ tables() {  # $1 ckpt, $2 prefix, $3 hit rate, $4 out list, $5 flags, $6 jitter
 hr() { $P -c "import json; print(json.load(open('logs/diag_bat_contact_$1.json'))['summary']['by_speed']['slow in zone']['hit_rate'])"; }
 G=logs/h33/tables_game_$I.txt
 [ -f $C ] || { MSG="FAILED: $C missing"; exit 1; }
-S0=$(date +%s); H=$(hr h33f_$I)
-echo "$(date +%H:%M) H33 form-first ckpt model_$I (swing policy, 11-02 protocol; hit rate $H, jitter-0 diag h33f_$I), bars 16.93 (0.03) / 16.76 (0)" >> $G
+S0=$(date +%s); H=$(hr $DG)
+echo "$(date +%H:%M) H33 form-first ckpt model_$I (swing policy, 11-02 protocol; hit rate $H, jitter-0 diag $DG), bars 16.93 (0.03) / 16.76 (0)" >> $G
 one() {  # $1 jitter -> W O_ PT
   tables $C $O/t3_${I}_j$1 $H $O/t3_${I}_j$1.txt "--percept_filter" $1
   read W O_ PT <<< "$(t3 $O/t3_${I}_j$1.txt)"
