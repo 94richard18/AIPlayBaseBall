@@ -2952,3 +2952,9 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - GO 18:26（14）：rows `logs/h33/joint_s6_15993_h32_pin.csv`、env 59 / 21（避開 film11 / 16 的 8 37 51 41；三個跌倒旗標都 False）、6.5 s、ENV AIB_PRESTART_PIN=1；18:27 開拍，18:48 結束。pitcher_fell 仍是那 11 個 env。
 - `videos/film18_1104_s6_k59.mp4`（80.7 m 正中高飛、exit 33.1、launch 29.5）與 `videos/film18_1104_s6_k21.mp4`（45.9 m 平飛、exit 30.7、launch 18.7）：兩片 52 欄 64/64、blank 0、High 7.5–7.9 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 119 km/h / 29° 與 111 km/h / 19°，與 rows 一致（k59 的 carry 文字 80.6 vs row 80.7，四捨五入差）；打者抖動：兩片都沒有。
 - 防前傾確認：開始前上身傾角 k59 10.2–10.3°、k21 18.5°，開始那步變化 < 0.2°。下一支 film19 期限 06:48（11-05）。
+
+## 11-05 05:48 FILM19（新交付候選 H32E h32e/model_16300 + R6b 3091，開 AIB_PRESTART_PIN=1 + AIB_ACT_EMA=0.5）
+
+- GO 05:24（14）：16300 = H32E（動作低通 EMA 0.5 在訓練中就開著），14 給的數字：表 27.01 / 32.93、pinned joint fbd 1 fell 3、recover 2/128。rows `logs/h33/joint_s6_16300_h32e_pin_ema05.csv`、env 30 / 40（三個跌倒旗標都 False）、6.5 s、ENV 兩個 token 都 export；05:26 開拍，05:48 結束。pitcher_fell 仍是那 11 個 env。
+- `videos/film19_1105_s6_k30.mp4`（86.6 m 高飛、exit 34.5、launch 29.9）與 `videos/film19_1105_s6_k40.mp4`（68.0 m 平飛、exit 33.2、launch 22.4）：兩片 52 欄 64/64、blank 0、High 7.6 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒（k40 骨盆最低 0.78 m，在 2.07 s，旗標 False）；畫面文字 124 km/h / 30° 與 119 km/h / 22°，與 rows 一致（k30 carry 文字 86.5 vs 86.6，四捨五入差）；打者抖動：蒙太奇看不到。
+- 目視檢查「比 film18 更穩」：開始前上身固定（k30 9.4–9.6°、k40 7.3–7.4°）。開始到擊球的軀幹抖動（姿勢 CSV 二階差分 RMS）：film19 骨盆 0.15–0.17° / 上身 0.05–0.06°，film18 0.15–0.17° / 0.05–0.06°，film17 0.20° / 0.05°。打者畫面逐幀差分 film19 與 film18 也在同一範圍內（baseline 雜訊為主）。軀幹層級量不出差別；手腳的抖動不在姿勢 CSV 裡，蒙太奇尺度也看不出差異，交給使用者目視（建議 film18 k59 與 film19 k30 並排看擊球前 0.8–1.3 s）。下一支 film20 期限 17:48（11-05）。
