@@ -1,6 +1,6 @@
 """h32q_check.py <start log> <s_lo> <s_hi> <check log> <c_lo> <c_hi>: H32Q falsifier on 50-it means (14, 11-04 01:4x; the
 single-line H32P check killed H32Q on a noise dip). Means over iterations [lo, hi] of bat/ss_ca, bat/hit_rate, bat/end_fall,
-bat/rt_wt_unit. Kill: check ss_ca < 24.3, hit < start hit - 0.08, fall > 1.5 x start and > start + 0.01. Prints 'KILL ...' / 'OK ...'."""
+bat/rt_wt_unit. Kill: check ss_ca < 24.3 (or argv[7]), hit < start hit - 0.08, fall > 1.5 x start and > start + 0.01. Prints 'KILL ...' / 'OK ...'."""
 import re
 import sys
 
@@ -20,8 +20,9 @@ def means(f, lo, hi):
 
 
 s, c = means(sys.argv[1], int(sys.argv[2]), int(sys.argv[3])), means(sys.argv[4], int(sys.argv[5]), int(sys.argv[6]))
+SS = float(sys.argv[7]) if len(sys.argv) > 7 else 24.3  # optional 7th arg: ss_ca floor
 bad = []
-if not c["ss"] >= 24.3: bad.append(f"ss_ca {c['ss']:.2f} < 24.3")
+if not c["ss"] >= SS: bad.append(f"ss_ca {c['ss']:.2f} < {SS}")
 if not c["hit"] >= s["hit"] - 0.08: bad.append(f"hit {c['hit']:.3f} < start {s['hit']:.3f} - 0.08")
 if not (c["fall"] <= 1.5 * s["fall"] or c["fall"] <= s["fall"] + 0.01): bad.append(f"fall share {c['fall']:.3f} > 1.5 x start {s['fall']:.3f}")
 f = lambda r: " ".join(f"{k} {v:.3f}" for k, v in r.items())
