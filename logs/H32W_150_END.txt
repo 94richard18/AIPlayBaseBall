@@ -1,0 +1,1 @@
+H32W_150_END 06:41 check at 16450: OK | start 16300-16350: ss 22.526 hit 0.665 fall 0.000 wt_unit 59.160 | check 16400-16450: ss 25.105 hit 0.805 fall 0.000 wt_unit 61.338 | 16400-16450: rt_wwr_unit 207.008 rt_wait_wrist -6.812 rt_wt_unit 61.338
