@@ -597,6 +597,10 @@ class PitchedBattingHuman32EnvCfg(PitchedBattingHuman31EnvCfg):
     # H32P (14, 11-03): extra L1 action rate before the swing commits (reference > act_ema_commit_s from contact) against the
     # pre-start tremble (da 0.49 / step); the swing window keeps w_da_l1 only. 0 = off
     w_da_pre: float = float(os.environ.get("AIB_DA_PRE_W", "0.0"))
+    # H32W (14, 11-05; user: hands tremble, wrists = the largest + least EMA-reduced group): L1 on the 5 Hz high-passed wrist joint
+    # velocity (mean over the 6 wrist joints) before the release only, ramped linearly over this many env steps. 0 = off
+    w_wait_wrist: float = float(os.environ.get("AIB_WAIT_WRIST_W", "0.0"))
+    wait_wrist_ramp_steps: int = int(os.environ.get("AIB_WAIT_WRIST_RAMP_STEPS", "0"))
 
 
 @configclass

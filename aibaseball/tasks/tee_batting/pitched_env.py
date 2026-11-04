@@ -72,6 +72,9 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         self.wt_body = self.robot.find_bodies("torso")[0][0]
         self.wt_lp = torch.zeros(n, 3, device=dev)
         self.track_stats["wait_torso_hp"] = torch.zeros((), device=dev)
+        # H32W: the same 5 Hz low-pass state for the wrist joint velocities
+        self.ww_ids = torch.tensor(self.robot.find_joints(".*_wrist_.*")[0], device=dev)
+        self.ww_lp = torch.zeros(n, len(self.ww_ids), device=dev)
 
     # ------------------------------------------------------------------ curriculum
     def _progress(self) -> float:
@@ -235,6 +238,15 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             self.rt_sum["rt_wt_unit"] += hp
             self.rt_sum["rt_wait_torso"] -= ww * hp
             self.track_stats["wait_torso_hp"] = 0.98 * self.track_stats["wait_torso_hp"] + 0.02 * hp.mean()
+        if getattr(c, "w_wait_wrist", 0.0) > 0:  # H32W: L1 on the 5 Hz high-passed wrist joint velocity before the release
+            q_w = self.robot.data.joint_vel[:, self.ww_ids]
+            self.ww_lp += self.step_dt / (1.0 / (2 * math.pi * 5.0) + self.step_dt) * (q_w - self.ww_lp)
+            hw = (q_w - self.ww_lp).abs().mean(-1) * (self.phys_t < self.release_t).float()
+            rs = c.wait_wrist_ramp_steps
+            ww = c.w_wait_wrist * (min(1.0, self.common_step_counter / rs) if rs > 0 else 1.0)
+            rew = rew - ww * hw
+            self.rt_sum["rt_wwr_unit"] += hw
+            self.rt_sum["rt_wait_wrist"] -= ww * hw
         if getattr(c, "w_da_pre", 0.0) > 0:  # H32P: pre-commit action rate (same clock as act_ema)
             tc = (self.ref.contact_time[self.clip] - self.ref_t) / self.speed
             dp = (self.actions - self.prev_actions).abs().mean(-1) * (tc > c.act_ema_commit_s).float()
@@ -264,6 +276,7 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
             ids = slice(None)
         self.pf_s[ids] = 0.0
         self.wt_lp[ids] = 0.0
+        self.ww_lp[ids] = 0.0
         self.pf_p[ids] = 0.0
         if env_ids is None or len(env_ids) == self.num_envs:
             env_ids = self.robot._ALL_INDICES
