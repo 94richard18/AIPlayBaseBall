@@ -1,0 +1,1 @@
+H32E_RECOVER_END 21:52 recover rule PASS (pinned s6+s7 after-done ground 2/128 <= 4, tilt ok 62 / 62 >= 52)

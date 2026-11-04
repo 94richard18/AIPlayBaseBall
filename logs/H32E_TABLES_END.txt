@@ -1,0 +1,1 @@
+H32E_TABLES_END 21:42 H33_TABLES_16300_END 21:42 GAME SCENE model_16300 | jitter 0.03: 27.01% / OF 20.25% (bar 16.93) | jitter 0: 32.93% / OF 26.42% (bar 16.76) | 30 min | 15993 ref 23.25 / 27.69
