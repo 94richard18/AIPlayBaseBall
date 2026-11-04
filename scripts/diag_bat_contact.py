@@ -71,6 +71,9 @@ parser.add_argument("--post_clip_teacher", type=str, default=None, help="Human21
 parser.add_argument("--clamp_ref_phase", action="store_true", help="cfg.clamp_ref_phase: reference-time input held at 1 past the clip")
 parser.add_argument("--fall_state", action="store_true",
                     help="record whole-body balance state at contact and at the clip end; AUC of each for falls after a hit")
+parser.add_argument("--jit_groups", action="store_true",
+                    help="per first episode: body joint velocity high-passed at 5 Hz, RMS per group (wrists / arms / feet / legs / "
+                    "torso) over the wait (start -> release), the approach (release -> contact) and both")
 parser.add_argument("--form_log", action="store_true",
                     help="per first episode: reference-tracking pose_err (rad RMS over the body joints) / key_err (m RMS over the key "
                     "points), time-mean over the swing (clip start -> contact) and after contact (-> done), + legs / waist / arms split")
@@ -871,6 +874,12 @@ def main():
     jt_a = base.actions[:, :-1].clone()
     jt_q = base.robot.data.joint_pos_target[:, base.body_joint_ids].clone()
     jt_lp = base.robot.data.body_ang_vel_w[:, jt_body].clone()
+    if args.jit_groups:  # 14, 11-05 (user: hands / feet tremble): joint velocity high-passed at 5 Hz, RMS per joint group
+        jg_pat = dict(wrists=r"_wrist_", arms=r"_(shoulder_|elbow)", feet=r"_ankle_", legs=r"_(hip_|knee)", torso=r"^waist_")
+        jg_m = {k: torch.tensor([bool(re.search(p, x)) for x in base.body_joint_names], device=dev).float() for k, p in jg_pat.items()}
+        print("[jit_groups] joints " + " ".join(f"{k} {int(v.sum())}" for k, v in jg_m.items()), flush=True)
+        jg_lp = base.robot.data.joint_vel[:, base.body_joint_ids].clone()
+        jg = {f"{w}_{k}": torch.zeros(n, device=dev) for w in ("wait", "app") for k in jg_m}
     if args.form_log:  # 14, 11-02 16:4x (user: the form looks awkward): unweighted tracking errors, the trainer's mimic/* terms
         import re
         jn_ = [base.robot.joint_names[j] for j in base.body_joint_ids]
@@ -911,6 +920,14 @@ def main():
         jit["w_da"] = jit["w_da"] + jt_wm * (a_now - jt_a).abs().mean(-1)
         jit["w_hp2"] = jit["w_hp2"] + jt_wm * ((jt_w - jt_lp) ** 2).sum(-1)
         jit["w_n"] = jit["w_n"] + jt_wm
+        if args.jit_groups:  # wait = start -> release, app = release -> contact (the masks above)
+            qv = base.robot.data.joint_vel[:, base.body_joint_ids]
+            jg_lp = jg_lp + jt_alpha * (qv - jg_lp)
+            h2 = (qv - jg_lp) ** 2
+            for k, mk in jg_m.items():
+                g2 = (h2 * mk).sum(-1) / mk.sum()
+                jg[f"wait_{k}"] = jg[f"wait_{k}"] + jt_wm * g2
+                jg[f"app_{k}"] = jg[f"app_{k}"] + jt_m * g2
         jt_a, jt_q = a_now.clone(), q_now.clone()
         if args.form_log:
             d_ = base.robot.data
@@ -999,6 +1016,11 @@ def main():
     rec["jit_n"] = jit["n"]
     wn = jit["w_n"].clamp_min(1.0)
     rec["jit_wait_da"], rec["jit_wait_torso_hp"] = jit["w_da"] / wn, (jit["w_hp2"] / wn).sqrt()
+    if args.jit_groups:  # rad/s RMS per group: wait, app, all = start -> contact
+        for k in jg_m:
+            rec[f"jit_g_wait_{k}"] = (jg[f"wait_{k}"] / wn).sqrt()
+            rec[f"jit_g_app_{k}"] = (jg[f"app_{k}"] / jn).sqrt()
+            rec[f"jit_g_all_{k}"] = ((jg[f"wait_{k}"] + jg[f"app_{k}"]) / (jit["w_n"] + jit["n"]).clamp_min(1.0)).sqrt()
     if args.form_log:
         for w in ("sw", "post"):
             nn_ = fm[f"n_{w}"]
