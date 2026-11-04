@@ -2946,3 +2946,9 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - GO（14）：rows `logs/h33/joint_s6_13997j_pin.csv`、env 7 / 25（三個跌倒旗標都 False）、6.5 s、ENV AIB_PRESTART_PIN=1；07:32 開拍，07:53 結束。pitcher_fell 仍是那 11 個 env。
 - `videos/film17_1104_s6_k7.mp4`（55.0 m 高飛、exit 27.5、launch 33.4）與 `videos/film17_1104_s6_k25.mp4`（47.4 m 平飛、exit 27.9、launch 23.2）：兩片 52 欄 64/64、blank 0、High 7.6–7.7 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 99 km/h / 33° 與 101 km/h / 23°，與 rows 一致（k25 的 carry 文字 47.3 vs row 47.4，四捨五入差）；打者抖動：兩片都沒有。
 - 前傾修正確認：開始前上身傾角 k7 10.2–10.3°、k25 18.5°，全程不變；開始那步變化 < 1°（film16 是 25° → 11°）。下一支 film18 期限 19:53（11-04）。
+
+## 11-04 18:48 FILM18（交付組合 h32_3 model_15993 + R6b 3091，第一次開 AIB_PRESTART_PIN=1）
+
+- GO 18:26（14）：rows `logs/h33/joint_s6_15993_h32_pin.csv`、env 59 / 21（避開 film11 / 16 的 8 37 51 41；三個跌倒旗標都 False）、6.5 s、ENV AIB_PRESTART_PIN=1；18:27 開拍，18:48 結束。pitcher_fell 仍是那 11 個 env。
+- `videos/film18_1104_s6_k59.mp4`（80.7 m 正中高飛、exit 33.1、launch 29.5）與 `videos/film18_1104_s6_k21.mp4`（45.9 m 平飛、exit 30.7、launch 18.7）：兩片 52 欄 64/64、blank 0、High 7.5–7.9 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 119 km/h / 29° 與 111 km/h / 19°，與 rows 一致（k59 的 carry 文字 80.6 vs row 80.7，四捨五入差）；打者抖動：兩片都沒有。
+- 防前傾確認：開始前上身傾角 k59 10.2–10.3°、k21 18.5°，開始那步變化 < 0.2°。下一支 film19 期限 06:48（11-05）。
