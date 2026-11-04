@@ -1,0 +1,1 @@
+H32E_CHAIN_END 20:52 H32E FALSIFIER at 16393 (50-it means): KILL ss_ca 23.83 < 24.3 | start 16018-16068: ss 24.290 hit 0.692 fall 0.000 wt_unit 72.567 | check 16343-16393: ss 23.826 hit 0.799 fall 0.000 wt_unit 62.004 -> trainer killed

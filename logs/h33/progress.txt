@@ -28,3 +28,6 @@ H33J_500_END 15:56 model_13997 @jitter 0.03 (256 envs): n 143 hit 0.958 fair 0.8
 01:30 H32Q +250: KILL hit 0.614 < start 0.731 - 0.08 | start (16043): ss 24.464 hit 0.731 fall 0.000 dapre 0.000 da 75.128 | check (16243): ss 24.402 hit 0.614 fall 0.000 dapre 0.000 da 74.906
 01:37 H32Q smoke (AIB_WAIT_TORSO_W 0.12 resume, no ramp): OK (new keys: act_ema=0.0 act_ema_commit_s=0.2 act_ema_ramp_s=0.05 form_hinge_hi=0.0 form_hinge_w=0.045 form_s=0.0 lost_ends_after_hit=True w_da_pre=0.0 w_wait_torso=0.12 wait_torso_ramp_steps=0; removed: -)
 01:57 H32Q resume check 16300: KILL hit 0.626 < start 0.710 - 0.08 | start 16018-16068: ss 24.488 hit 0.710 fall 0.000 wt_unit 72.075 | check 16250-16300: ss 24.431 hit 0.626 fall 0.000 wt_unit 60.269
+19:14 H32E smoke (AIB_ACT_EMA 0.5 in training): OK (new keys: act_ema=0.5 act_ema_commit_s=0.2 act_ema_ramp_s=0.05 form_hinge_hi=0.0 form_hinge_w=0.045 form_s=0.0 lost_ends_after_hit=True w_da_pre=0.0 w_wait_torso=0.0 wait_torso_ramp_steps=0; removed: -)
+20:21 H32E check 16243: OK | start 16018-16068: ss 24.290 hit 0.692 fall 0.000 wt_unit 72.567 | check 16193-16243: ss 24.684 hit 0.759 fall 0.000 wt_unit 65.394
+20:52 H32E check 16393: KILL ss_ca 23.83 < 24.3 | start 16018-16068: ss 24.290 hit 0.692 fall 0.000 wt_unit 72.567 | check 16343-16393: ss 23.826 hit 0.799 fall 0.000 wt_unit 62.004
