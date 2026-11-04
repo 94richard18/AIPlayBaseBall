@@ -875,6 +875,7 @@ def main():
     jt_q = base.robot.data.joint_pos_target[:, base.body_joint_ids].clone()
     jt_lp = base.robot.data.body_ang_vel_w[:, jt_body].clone()
     if args.jit_groups:  # 14, 11-05 (user: hands / feet tremble): joint velocity high-passed at 5 Hz, RMS per joint group
+        import re  # main() imports re locally below (form_log), so re is a local name here
         jg_pat = dict(wrists=r"_wrist_", arms=r"_(shoulder_|elbow)", feet=r"_ankle_", legs=r"_(hip_|knee)", torso=r"^waist_")
         jg_m = {k: torch.tensor([bool(re.search(p, x)) for x in base.body_joint_names], device=dev).float() for k, p in jg_pat.items()}
         print("[jit_groups] joints " + " ".join(f"{k} {int(v.sum())}" for k, v in jg_m.items()), flush=True)
