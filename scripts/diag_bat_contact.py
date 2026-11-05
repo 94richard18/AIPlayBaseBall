@@ -892,6 +892,8 @@ def main():
               f"waist {[x for x, m in zip(jn_, fm_waist.tolist()) if m]}", flush=True)
         fm_parts = dict(legs=fm_legs, waist=fm_waist, arms=fm_arms)
         fm = {f"{k}_{w}": torch.zeros(n, device=dev) for w in ("sw", "post") for k in ("pose", "key", "n", *fm_parts)}
+        fm_ho = (0.0, 0.10, 0.25)  # H34P (14, 11-05): pose error from the pin hand-over (release - lead) to contact only
+        fm.update({f"{k}_ho{int(round(L * 100)):03d}": torch.zeros(n, device=dev) for L in fm_ho for k in ("pose", "n")})
     for _ in range(int(cfg.episode_length_s / base.step_dt) + 5):
         with torch.inference_mode():
             act = policy(obs)
@@ -945,6 +947,11 @@ def main():
                 fm[f"n_{w}"] += mf
                 for k, g in fm_parts.items():
                     fm[f"{k}_{w}"] += mf * e2[:, g].mean(-1).sqrt()
+            for L in fm_ho:
+                w = f"ho{int(round(L * 100)):03d}"
+                mf = (live_ & ~base.hit & (base._ref_time() >= 0) & (base.phys_t >= base.release_t - L - 1e-6)).float()
+                fm[f"pose_{w}"] += mf * e2.mean(-1).sqrt()
+                fm[f"n_{w}"] += mf
         if args.fall_probe:
             ds = t_now - rec["t_hit"]  # nan before the hit
             live = ~finished & (ds >= 0)
@@ -1027,6 +1034,10 @@ def main():
             nn_ = fm[f"n_{w}"]
             for k in ("pose", "key", *fm_parts):
                 rec[f"form_{k}_{w}"] = torch.where(nn_ > 0, fm[f"{k}_{w}"] / nn_.clamp_min(1.0), torch.full_like(nn_, float("nan")))
+        for L in fm_ho:
+            w = f"ho{int(round(L * 100)):03d}"
+            nn_ = fm[f"n_{w}"]
+            rec[f"form_pose_{w}"] = torch.where(nn_ > 0, fm[f"pose_{w}"] / nn_.clamp_min(1.0), torch.full_like(nn_, float("nan")))
         rec["clip_first"] = clip_first.float()
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
