@@ -13,12 +13,19 @@ once (libx264 crf 16, High, yuv420p).
 import argparse
 import csv
 import math
+import os
+import sys
 
 import imageio.v2 as imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from make_pa_video import clip_end, result_text
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from aibaseball.game.agents import StrikeZone  # noqa: E402
+from aibaseball.game.field import MOUND_DIST, FieldSpec  # noqa: E402
+from aibaseball.game.one_outs import INFIELD_RADIUS_M  # noqa: E402
 
 ZH, ZH_B = "C:/Windows/Fonts/msjh.ttc", "C:/Windows/Fonts/msjhbd.ttc"
 BG, FG, FG_EN = (16, 20, 28), (235, 238, 242), (160, 168, 180)
@@ -75,12 +82,40 @@ def label(f, text, font):
 
 
 def pa_outcome(plan, rows):
+    """Judged from the last film's simulated ball (planning 14 11-06): a fair first landing beyond the 95 ft infield
+    circle around the rubber is a hit (one_outs.judge_pitch's rule; the old carry >= 38.9 m stand-in is gone)."""
     last, row = plan[-1], rows[-1]
     if last["expected"] == "ball" and last["balls_before"] == "3":
         return "walk"
-    if last["expected"] == "in_play" and row and row.get("ball_fair") == "True" and float(row["carry_m"]) >= 38.9:
-        return "hit"  # outfield (memory: 29 m is still infield)
+    if last["expected"] == "in_play" and row:
+        x, y = float(row["ball_land_x_game"]), float(row["ball_land_y_game"])
+        if FieldSpec().is_fair(x, y) and math.hypot(x - MOUND_DIST, y) > INFIELD_RADIUS_M and math.hypot(x, y) > MOUND_DIST:
+            return "hit"
     return "out_in_play" if last["expected"] == "in_play" else "out"
+
+
+def film_check(p, row):
+    """The film's own ball against the plan's call: a take is a strike iff the simulated crossing is in the zone."""
+    if p["expected"] in ("ball", "called_strike"):
+        y, z = float(row["plate_y"]), float(row["plate_z"])
+        got = "called_strike" if StrikeZone().contains(y, z) else "ball"
+        return got == p["expected"], f"take crossing y {y:+.3f} z {z:.3f} -> {got}"
+    if p["expected"] == "in_play":
+        return row.get("hit") == "True" and row.get("ball_fair") == "True", f"hit {row.get('hit')} fair {row.get('ball_fair')}"
+    return True, ""
+
+
+def scoreboard(f, font, match, n_match, wins, b, s, kmh):
+    """20 11-06 band (planning 14): match k / N, pitcher-batter wins, the count before the pitch, the pitch speed;
+    bottom-left of the left (pitcher-side) view, over the mound dirt. No innings / outs / runs (ONE OUTS)."""
+    im = Image.fromarray(f)
+    d = ImageDraw.Draw(im, "RGBA")
+    text = f"第 {match} / {n_match} 場    投手 {wins[0]} - {wins[1]} 打者    球數 {b} 壞 {s} 好    球速 {kmh:.0f} km/h"
+    w = d.textlength(text, font=font)
+    x0, y0 = 16, im.height - font.size - 34
+    d.rectangle([x0, y0, x0 + w + 28, y0 + font.size + 20], fill=(10, 14, 22, 190))
+    d.text((x0 + 14, y0 + 8), text, font=font, fill=(240, 242, 245))
+    return np.asarray(im)
 
 
 def main():
@@ -89,6 +124,8 @@ def main():
     a.add_argument("--replay", nargs="*", default=[], help="PA:pitch (1-based PA) to replay at 0.5x")
     a.add_argument("--out", default="videos/final_cut_v1.mp4")
     a.add_argument("--frame_dt", type=float, default=0.0175)
+    a.add_argument("--end_card", default="logs/m3pa_endcard.txt", help="'none': no stats end card (its numbers are M2-era)")
+    a.add_argument("--match_cards", action="store_true", help="'match k / N' cards + the scoreboard band (20 11-06)")
     o = a.parse_args()
     replay = {tuple(int(x) for x in s.split(":")) for s in o.replay}
     pas = []
@@ -104,6 +141,9 @@ def main():
                             ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
     n_sec = {"s": 0.0}
     rfont = ImageFont.truetype(ZH_B, 44)
+    sfont = ImageFont.truetype(ZH_B, 30)
+    wins = [0, 0]  # pitcher, batter
+    bad = []
 
     def hold(img, sec):
         for _ in range(int(round(sec * fps))):
@@ -113,8 +153,16 @@ def main():
     hold(card(w, h, TITLE), 3.0)
     hold(card(w, h, RULE), 2.5)
     for i, (plan, clips, rows) in enumerate(pas, 1):
-        hold(card(w, h, [(f"第 {i} 個打席", f"Plate appearance {i}", 76)]), 1.5)
+        if o.match_cards:
+            hold(card(w, h, [(f"第 {i} / {len(pas)} 場", f"Match {i} / {len(pas)}", 76),
+                             (f"投手 {wins[0]} - {wins[1]} 打者", f"pitcher {wins[0]} - {wins[1]} batter", 48)]), 1.5)
+        else:
+            hold(card(w, h, [(f"第 {i} 個打席", f"Plate appearance {i}", 76)]), 1.5)
         for p, row in zip(plan, rows):
+            ok, why = film_check(p, row)
+            print(f"PA{i} pitch {p['pitch']}: film {'MATCHES' if ok else 'DIFFERS FROM'} the plan ({p['expected']}; {why})")
+            if not ok:
+                bad.append(f"PA{i} pitch {p['pitch']}")
             b, s = p["balls_before"], p["strikes_before"]
             hold(card(w, h, [(f"第 {p['pitch']} 球", f"Pitch {p['pitch']}", 76),
                              (f"球數 {b}-{s}（{b} 壞 {s} 好）", f"count {b}-{s}", 54)]), 1.0)
@@ -124,6 +172,8 @@ def main():
             for k, f in enumerate(rd):
                 if k * o.frame_dt > end + 1e-6:
                     break
+                if o.match_cards:
+                    f = scoreboard(f, sfont, i, len(pas), wins, b, s, float(row["kmh"]))
                 wr.append_data(f)
                 n_live += 1
             rd.close()
@@ -144,12 +194,19 @@ def main():
                 n_sec["s"] += len(seg) * REPLAY_SLOW / fps
                 print(f"PA{i} pitch {p['pitch']}: replay around t {t0:.3f} s, frames {max(k0, 0)}-{k1}")
             print(f"PA{i} pitch {p['pitch']}: {n_live} frames to t {end:.2f} s, {result_text(p, row)}")
-        zh, en = PA_RESULT[pa_outcome(plan, rows)]
-        hold(card(w, h, [(zh, en, 68)]), 2.0)
-    en = open("logs/m3pa_endcard.txt", encoding="utf-8").read().strip().split("|")
-    hold(card(w, h, [(END[0][0], en[0], END[0][2]), (END[1][0], en[1], END[1][2]), END[2]]), 4.0)
+        res = pa_outcome(plan, rows)
+        wins[res in ("walk", "hit")] += 1
+        zh, en = PA_RESULT[res]
+        lines = [(zh, en, 68)]
+        if o.match_cards:
+            lines.append((f"投手 {wins[0]} - {wins[1]} 打者", f"pitcher {wins[0]} - {wins[1]} batter", 48))
+        hold(card(w, h, lines), 2.0)
+        print(f"PA{i} result: {res} (pitcher {wins[0]} - {wins[1]} batter)")
+    if o.end_card != "none":
+        en = open(o.end_card, encoding="utf-8").read().strip().split("|")
+        hold(card(w, h, [(END[0][0], en[0], END[0][2]), (END[1][0], en[1], END[1][2]), END[2]]), 4.0)
     wr.close()
-    print(f"wrote {o.out} ({w}x{h} @ {fps} fps, {n_sec['s']:.1f} s)")
+    print(f"wrote {o.out} ({w}x{h} @ {fps} fps, {n_sec['s']:.1f} s); plan check: {'all films match' if not bad else 'DIFFER ' + ' '.join(bad)}")
 
 
 if __name__ == "__main__":

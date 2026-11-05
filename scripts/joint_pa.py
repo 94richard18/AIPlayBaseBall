@@ -83,6 +83,10 @@ def play_pa(envs, rng, zone):
         r = rng.choice(envs[e]) if sw else r0
         kind = "take" if not sw else "contact" if b(r, "hit") else "miss"
         ev.update(swing=int(sw), kind=kind, row=r)
+        if kind == "contact" and math.isnan(f(r["exit_mps"])):  # joint rows 11-06: contact without a batted-ball record
+            ev.update(kind="contact_nan", expected="foul")  # judged as a foul here; never in a showcase PA
+            strikes = min(strikes + 1, 2)
+            continue
         b2, s2, res, extra = oo.judge_pitch(balls, strikes, p, kind, batted(r) if kind == "contact" else None, zone, *SPECS)
         ev["expected"] = ("called_strike" if s2 > strikes else "ball") if kind == "take" else "swinging_strike" if kind == "miss" \
             else "in_play" if res is not None else "foul"
@@ -94,12 +98,17 @@ def play_pa(envs, rng, zone):
     return log, (None, "out_of_pitches")
 
 
-def showcase_ok(log, how, lo, hi, want="in_play"):
+def showcase_ok(log, how, lo, hi, want="in_play", need_take=False):
     """want: in_play (an end by a ball in play, carry >= 15 m), pitcher (an infield ball), batter (the batter wins: an
-    outfield hit / home run, or a walk - M2's 182 hits have no outfield ball, its longest carries ~40 m judge infield)."""
+    outfield hit / home run, or a walk - M2's 182 hits have no outfield ball, its longest carries ~40 m judge infield),
+    any (any end but a hit by pitch; planning 14 11-06: the engine decides, no hand pick). need_take: at least one take."""
     last = log[-1]
     clean = (lo <= len(log) <= hi and how != "hit_by_pitch" and not any(b(x["row"], "pitcher_fell") for x in log)
              and not any(x["swing"] and b(x["row"], "batter_fell_before_done") for x in log))
+    if any(x["kind"] == "contact_nan" for x in log) or (need_take and not any(x["kind"] == "take" for x in log)):
+        return False
+    if want == "any":
+        return clean and how != "out_of_pitches"
     in_play = last["expected"] == "in_play" and f(last["row"]["carry_m"]) >= 15.0
     if want == "batter":
         return clean and (how == "walk" or (in_play and how in ("outfield_hit", "home_run")))
@@ -116,17 +125,19 @@ def main():
     ap.add_argument("--tries", type=int, default=5000)
     ap.add_argument("--min_pitches", type=int, default=3)
     ap.add_argument("--max_pitches", type=int, default=7)
-    ap.add_argument("--want", default="in_play", choices=("in_play", "pitcher", "batter"),
+    ap.add_argument("--want", default="in_play", choices=("in_play", "pitcher", "batter", "any"),
                     help="the showcase PA's end: any ball in play, an infield ball (pitcher wins), an outfield hit (batter wins)")
+    ap.add_argument("--need_take", action="store_true", help="the showcase PA must contain a take (20 11-06 rehearsal)")
+    ap.add_argument("--first", action="store_true", help="the first engine rng seed passing the pick rule (no richer-PA search)")
     ap.add_argument("--plan", default="pa_plan.csv", help="plan file name inside --out")
     ap.add_argument("--take_mode", type=int, default=0, help="BatterSide take mode written into the masks for a take (see BatterSide swing)")
     ap.add_argument("--after_done", default="policy")
     ap.add_argument("--timing_csv", default="logs/m2lite/timing.csv")
     a = ap.parse_args()
     envs = {}
-    files = sorted(glob.glob(a.rows), key=lambda p: int(re.search(r"_s(\d+)\.csv", p).group(1)))
-    for p in files:
-        s = int(re.search(r"_s(\d+)\.csv", p).group(1))
+    files = sorted(glob.glob(a.rows), key=lambda p: int(re.search(r"_s(\d+)[_.]", p).group(1)))
+    for p in files:  # m2_s<seed>.csv or joint_s<seed>_<tag>.csv
+        s = int(re.search(r"_s(\d+)[_.]", p).group(1))
         for r in csv.DictReader(open(p)):
             if b(r, "handed"):
                 r["seed"] = s
@@ -150,8 +161,11 @@ def main():
     best = None
     for d in range(a.pa_seed, a.pa_seed + a.tries):
         log, (win, how) = play_pa(envs, random.Random(d), zone)
-        if not showcase_ok(log, how, a.min_pitches, a.max_pitches, a.want):
+        if not showcase_ok(log, how, a.min_pitches, a.max_pitches, a.want, a.need_take):
             continue
+        if a.first:
+            best = (d, log, win, how)
+            break
         rich = any(x["expected"] == "called_strike" for x in log) and any(x["expected"] == "swinging_strike" for x in log)
         if best is None or rich:
             best = (d, log, win, how)
