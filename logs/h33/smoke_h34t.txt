@@ -1,0 +1,266 @@
+[INFO][AppLauncher]: Loading experience file: C:\Users\User\IsaacLab\apps\isaaclab.python.headless.kit
+[Warning] [simulation_app.simulation_app] Modules: ['omni.kit_app'] were loaded before SimulationApp was started and might not be loaded correctly.
+[Warning] [simulation_app.simulation_app] Please check to make sure no extra omniverse or pxr modules are imported before the call to SimulationApp(...)
+Loading user config located at: 'c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/data/Kit/Isaac-Sim/4.5/user.config.json'
+[Info] [carb] Logging to file: c:/users/user/anaconda3/envs/isaaclab_env/lib/site-packages/omni/logs/Kit/Isaac-Sim/4.5/kit_20261106_034936.log
+2026-11-05 19:49:36 [0ms] [Warning] [omni.kit.app.plugin] No crash reporter present, dumps uploading isn't available.
+2026-11-05 19:49:36 [13ms] [Warning] [omni.ext.plugin] [ext: src] Extensions config 'extension.toml' doesn't exist 'c:/users/user/isaaclab/source/src' or 'c:/users/user/isaaclab/source/src/config'
+2026-11-05 19:49:37 [347ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+2026-11-05 19:49:37 [843ms] [Warning] [omni.datastore] OmniHub is inaccessible
+2026-11-05 19:49:37 [984ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 560.94        | Graphics API: D3D12
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3080 Ti       | Yes: 0 |     | 12086   MB | 10de      | 6fbf0000.. |
+|     |                                  |        |     |            | 2208      | 0          |
+|     |                                  |        |     |            | 2d        |            |
+|=============================================================================================|
+| OS: Windows 11 Home, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9711
+| Processor: AMD Ryzen 7 5800X3D 8-Core Processor           
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 65461 | Free Memory: 44290
+| Total Page/Swap (MB): 69557 | Free Page/Swap: 40615
+|---------------------------------------------------------------------------------------------|
+[INFO]: Parsing configuration from: aibaseball.tasks.tee_batting.pitched_env_cfg:PitchedBattingHuman32EnvCfg
+[INFO]: Parsing configuration from: aibaseball.tasks.tee_batting.agents.rsl_rl_ppo_cfg:TeeBattingMimicPPORunnerCfg
+[INFO]: AIB_PHYSICS_DT: physics dt 0.001250 s, decimation 8
+[INFO] Logging experiment in directory: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic
+Exact experiment name requested from command line: 2026-11-06_03-49-45
+Setting seed: 42
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.00125
+	Rendering step-size   : 0.01
+	Environment step-size : 0.01
+2026-11-05 19:49:46 [9,242ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPreviewSurface.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,242ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdUVTexture.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,242ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,243ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float2.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,243ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float3.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,243ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_float4.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,244ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_int.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,244ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_string.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,244ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_normal.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,244ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_point.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,245ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_vector.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,245ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdPrimvarReader_matrix.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+2026-11-05 19:49:46 [9,245ms] [Warning] [omni.usd] Warning: in GetNodeDiscoveryResults at line 136 of C:\g\122538378\USD\pxr\usd\usdShade\shaderDefUtils.cpp -- Unable to resolve info:sourceAsset </UsdTransform2d.info:mdl:sourceAsset> with value @UsdPreviewSurface.mdl@.
+
+[INFO]: Time taken for scene creation : 1.020751 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 64
+	Environment spacing   : 4.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-11-05 19:49:47 [10,371ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/Robot/top_hand_grip
+[INFO]: Time taken for simulation start : 0.830255 seconds
+[INFO]: Completed setting up the environment...
+Actor MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=152, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+[INFO]: Loading model checkpoint from: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic\2026-11-04_19-15-28_human_pitched_h32e\model_16300.pt
+[INFO]: learning rate restored: 1.14e-04
+################################################################################
+                    [1m Learning iteration 16300/16302 [0m                    
+
+                       Computation: 296 steps/s (collection: 6.653s, learning 0.262s)
+               Value function loss: 28.8522
+                    Surrogate loss: 0.1086
+             Mean action noise std: 5.18
+                 Mean total reward: 2.37
+               Mean episode length: 16.80
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0000
+                     bat/carry_max: 0.0000
+                     bat/exit_velo: 0.0000
+                  bat/launch_angle: 0.0000
+                  bat/backspin_rpm: 0.0000
+                     bat/bat_speed: 0.0000
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0000
+                bat/contact_abs_dx: 0.0000
+                     bat/contact_D: 0.0000
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0000
+                    bat/fair_carry: 0.0000
+               bat/fair_carry_lt10: 0.0000
+                         bat/ss_ca: 0.0296
+                   bat/ss_ca_lt_lo: 0.0495
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0000
+                      bat/outfield: 0.0000
+                       bat/rt_ramp: 0.0000
+                        bat/rt_hit: 0.0000
+                      bat/rt_carry: 0.0000
+                 bat/rt_exit_hinge: 0.0000
+                   bat/rt_outfield: 0.0000
+                 bat/rt_launch_pen: 0.0000
+                  bat/rt_launch_lo: 0.0000
+                       bat/rt_lift: 0.0000
+                      bat/rt_da_l1: -0.0016
+                 bat/rt_wait_torso: 0.0000
+                       bat/rt_miss: -0.2323
+                       bat/rt_fall: 0.0000
+                      bat/rt_track: 0.2450
+                    bat/rt_da_unit: 0.0078
+                    bat/rt_wt_unit: 0.0465
+                     bat/rt_da_pre: 0.0000
+                 bat/rt_dapre_unit: 0.0000
+                 bat/rt_wait_wrist: 0.0000
+                   bat/rt_wwr_unit: 0.0000
+                       bat/end_hit: 0.0000
+                      bat/end_fall: 0.0000
+                    bat/end_passed: 0.0000
+                      bat/end_lost: 0.0000
+                   bat/end_timeout: 0.0465
+                     bat/end_other: 0.0191
+                mimic/track_reward: 0.1431
+                   mimic/key_err_m: 0.0016
+                mimic/pose_err_rad: 0.0050
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 0.4452
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0000
+                      mimic/form_f: 0.0000
+              mimic/arm_relax_frac: 0.0000
+                   mimic/pitch_kmh: 0.0000
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.0259
+             mimic/ref_err_plate_s: 0.0000
+               mimic/wait_torso_hp: 0.0180
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 2048
+                    Iteration time: 6.92s
+                        Total time: 6.92s
+                               ETA: 13.8s
+
+Could not find git repository in C:\Users\User\anaconda3\envs\isaaclab_env\lib\site-packages\rsl_rl\__init__.py. Skipping.
+Storing git diff for 'AIPlayBaseBall' in: D:\MyProject\AIPlayBaseBall\logs\rsl_rl\aib1_tee_batting_mimic\2026-11-06_03-49-45_h34t_smoke\git\AIPlayBaseBall.diff
+################################################################################
+                    [1m Learning iteration 16301/16302 [0m                    
+
+                       Computation: 340 steps/s (collection: 5.827s, learning 0.185s)
+               Value function loss: 5.0783
+                    Surrogate loss: -0.0007
+             Mean action noise std: 5.18
+                 Mean total reward: 6.72
+               Mean episode length: 34.91
+                      bat/hit_rate: 0.0000
+                     bat/fall_rate: 0.0000
+                         bat/carry: 0.0000
+                     bat/carry_max: 0.0000
+                     bat/exit_velo: 0.0000
+                  bat/launch_angle: 0.0000
+                  bat/backspin_rpm: 0.0000
+                     bat/bat_speed: 0.0000
+                  bat/success_rate: 0.0000
+                     bat/fair_rate: 0.0000
+                bat/contact_abs_dx: 0.0000
+                     bat/contact_D: 0.0000
+                  bat/contact_D_in: 0.0000
+                    bat/aim_abs_ax: 0.0000
+                       bat/aim_gap: 0.0000
+                    bat/aim_reward: 0.0000
+                         bat/hit_q: 0.0000
+                    bat/fair_carry: 0.0000
+               bat/fair_carry_lt10: 0.0000
+                         bat/ss_ca: 0.2396
+                   bat/ss_ca_lt_lo: 0.1454
+                    bat/exit_hinge: 0.0000
+                     bat/launch_hi: 0.0000
+                     bat/launch_lo: 0.0000
+                      bat/outfield: 0.0000
+                       bat/rt_ramp: 0.0000
+                        bat/rt_hit: 0.0000
+                      bat/rt_carry: 0.0000
+                 bat/rt_exit_hinge: 0.0000
+                   bat/rt_outfield: 0.0000
+                 bat/rt_launch_pen: 0.0000
+                  bat/rt_launch_lo: 0.0000
+                       bat/rt_lift: 0.0000
+                      bat/rt_da_l1: -0.1348
+                 bat/rt_wait_torso: 0.0000
+                       bat/rt_miss: -0.7108
+                       bat/rt_fall: 0.0000
+                      bat/rt_track: 1.6531
+                    bat/rt_da_unit: 0.6738
+                    bat/rt_wt_unit: 0.1756
+                     bat/rt_da_pre: 0.0000
+                 bat/rt_dapre_unit: 0.0000
+                 bat/rt_wait_wrist: 0.0000
+                   bat/rt_wwr_unit: 0.0000
+                       bat/end_hit: 0.0000
+                      bat/end_fall: 0.0000
+                    bat/end_passed: 0.0000
+                      bat/end_lost: 0.0000
+                   bat/end_timeout: 0.1422
+                     bat/end_other: 0.0172
+                mimic/track_reward: 0.3015
+                   mimic/key_err_m: 0.0196
+                mimic/pose_err_rad: 0.0484
+                          mimic/t0: 0.0000
+             mimic/min_ball_dist_m: 1.3084
+                mimic/ss_speed_win: 0.0000
+            mimic/ss_ref_speed_win: 0.0000
+                    mimic/cvel_err: 0.0000
+                 mimic/cvel_reward: 0.0000
+             mimic/form_pose_swing: 0.0000
+                      mimic/form_f: 0.0000
+              mimic/arm_relax_frac: 0.0000
+                   mimic/pitch_kmh: 0.0000
+                mimic/timing_err_s: 0.0000
+                       mimic/tempo: 0.0668
+             mimic/ref_err_plate_s: 0.0000
+               mimic/wait_torso_hp: 0.0165
+                       mimic/speed: 1.0000
+--------------------------------------------------------------------------------
+                   Total timesteps: 4096
+                    Iteration time: 6.01s
+                        Total time: 12.93s
+                               ETA: 6.5s
+
