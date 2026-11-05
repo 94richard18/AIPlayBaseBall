@@ -18,16 +18,17 @@ rep('parser.add_argument("--swing_csv"',
     'parser.add_argument("--take_npz", type=str, default=None,\n'
     '                    help="take pre-check (11-06): npz per step root pos / torso tilt / max |body joint vel| + start_at")\n'
     'parser.add_argument("--swing_csv"')
-rep("    tt_tr = []  #", "    rp_tr, jv_tr = [], []  # take pre-check: root pos, max |body joint vel| per step\n    tt_tr = []  #")
+rep("    tt_tr = []  #", "    rp_tr, jv_tr, bz_tr = [], [], []  # take pre-check: root pos, max |body joint vel|, bat CM z per step\n    tt_tr = []  #")
 rep("            tt_tr.append(torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0))))\n",
     "            tt_tr.append(torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0))))\n"
     "            rp_tr.append(dd.root_pos_w.clone())\n"
+    "            bz_tr.append(dd.body_com_pos_w[:, side.bat_id, 2] - gz)\n"
     "            jv_tr.append(dd.joint_vel[:, side.body_joint_ids].abs().max(-1).values)\n")
 rep("    if args.dof_dump:  # again after the run",
     "    if args.take_npz:\n"
     "        import numpy as np\n"
     "        np.savez(args.take_npz, t=torch.stack(t_tr, 1).cpu().numpy(), root=torch.stack(rp_tr, 1).cpu().numpy(),\n"
-    "                 tilt=torch.stack(tt_tr, 1).cpu().numpy(), jv=torch.stack(jv_tr, 1).cpu().numpy(),\n"
+    "                 tilt=torch.stack(tt_tr, 1).cpu().numpy(), jv=torch.stack(jv_tr, 1).cpu().numpy(), batz=torch.stack(bz_tr, 1).cpu().numpy(),\n"
     "                 start_at=start_at.cpu().numpy(), start_t=side.start_t.cpu().numpy())\n"
     "        print(f\"[joint] take npz -> {args.take_npz}\", flush=True)\n"
     "    if args.dof_dump:  # again after the run")

@@ -30,6 +30,18 @@ def win(lo, hi):
     return f"torso {q(tr)} deg, root {q(rd)} cm, |qd| {q(jm)} rad/s (median / max)"
 
 
+def pose():  # where it settles: torso tilt + bat CM height at start, start + 0.5 s and the run's end (median over envs)
+    if "batz" not in d.files:
+        return "no bat z"
+    bz = d["batz"]
+    out = []
+    for lab_, dt in (("start", 0.0), ("+0.5 s", 0.5), ("+2.0 s", 2.0), ("end", None)):
+        k = [(-1 if dt is None else int(np.abs(t[e] - (st[e] + dt)).argmin())) for e in range(len(st))]
+        out.append(f"{lab_} torso {np.median([tilt[e, i] for e, i in enumerate(k)]):.1f} deg bat z "
+                   f"{np.median([bz[e, i] for e, i in enumerate(k)]):.2f} m")
+    return "; ".join(out)
+
+
 vm = np.array([float(r["take_bat_vmax"]) for r in rows])
 fell = sum(b(r, "batter_fell") for r in rows)
 dev = sum(r["take_dev_t"] not in ("", "nan") for r in rows)
@@ -38,4 +50,4 @@ modes = sorted({r["take_mode"] for r in rows})
 started = int((~np.isnan(st)).sum())
 print(f"{lab}: take_mode {modes}, started {started}/{len(rows)} | batter_fell {fell}/{len(rows)} (joint 0.3 rad off target {dev}), "
       f"pitcher_fell {pf} | take_bat_vmax max {vm.max():.2f} median {np.median(vm):.2f} m/s | "
-      f"start +-0.05 s: {win(-0.05, 0.05)} | start..+0.5 s: {win(0.0, 0.5)}")
+      f"start +-0.05 s: {win(-0.05, 0.05)} | start..+0.5 s: {win(0.0, 0.5)} | pose: {pose()}")

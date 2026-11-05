@@ -207,7 +207,7 @@ def main():
     pel = base.batter.find_bodies("pelvis")[0][0]
     pz_tr, t_tr = [], []  # read-only: pelvis z above field_z per step (min over the film window, after the run)
     tor = base.batter.find_bodies("torso")[0][0]
-    rp_tr, jv_tr = [], []  # take pre-check: root pos, max |body joint vel| per step
+    rp_tr, jv_tr, bz_tr = [], [], []  # take pre-check: root pos, max |body joint vel|, bat CM z per step
     tt_tr = []  # read-only: torso (chest) link tilt from world up per step, deg (Human25-R2: at t_ref + 1.5 s)
     arr_t = nan()  # the pitch's first plate-plane crossing (misses; j_cross)
     ball_body = torch.full((n,), float("inf"), device=base.device)  # read-only: batted ball to the nearest batter link origin, from hit_t + 0.05 s
@@ -260,6 +260,7 @@ def main():
             up = quat_apply(dd.body_link_quat_w[:, tor], torch.tensor([0.0, 0.0, 1.0], device=base.device).expand(n, 3))
             tt_tr.append(torch.rad2deg(torch.acos(up[:, 2].clamp(-1.0, 1.0))))
             rp_tr.append(dd.root_pos_w.clone())
+            bz_tr.append(dd.body_com_pos_w[:, side.bat_id, 2] - gz)
             jv_tr.append(dd.joint_vel[:, side.body_joint_ids].abs().max(-1).values)
             arr_t = torch.where(torch.isnan(arr_t) & ~torch.isnan(base.j_cross[:, 0]), now, arr_t)
             late_hit = side.hit & (now >= hit_t + 0.05)
@@ -269,7 +270,7 @@ def main():
     if args.take_npz:
         import numpy as np
         np.savez(args.take_npz, t=torch.stack(t_tr, 1).cpu().numpy(), root=torch.stack(rp_tr, 1).cpu().numpy(),
-                 tilt=torch.stack(tt_tr, 1).cpu().numpy(), jv=torch.stack(jv_tr, 1).cpu().numpy(),
+                 tilt=torch.stack(tt_tr, 1).cpu().numpy(), jv=torch.stack(jv_tr, 1).cpu().numpy(), batz=torch.stack(bz_tr, 1).cpu().numpy(),
                  start_at=start_at.cpu().numpy(), start_t=side.start_t.cpu().numpy())
         print(f"[joint] take npz -> {args.take_npz}", flush=True)
     if args.dof_dump:  # again after the run (anything written to the sim later)
