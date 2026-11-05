@@ -861,6 +861,7 @@ def main():
     obs, _ = wrapped.reset()
     # the pitch of each env's (first) episode: read now - finished envs are reset to a new pitch before the end
     kmh0, plate0 = base.pitch_kmh.clone(), base.pitch_plate.clone()
+    rel0 = base.release_t.clone()  # H34P: start -> release of each env's first pitch (pinned steps = those before release - lead)
     clip_first = base.clip.clone()  # the first episode's clip (the trace keeps that episode)
     prev.clear()
     trace = [] if args.trace else None
@@ -1042,6 +1043,7 @@ def main():
     r = {k: v.cpu().numpy() for k, v in rec.items()}
     r["timing"] = r["t_square"] - r["t_plane"]
     r["kmh"] = kmh0.cpu().numpy()
+    r["release_t0"] = rel0.cpu().numpy()
     r["plate_y"], r["plate_z"] = (v.cpu().numpy() for v in plate0.unbind(-1))
     ss = float(geom.sweet_spot_x)
 
