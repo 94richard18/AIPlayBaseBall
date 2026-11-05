@@ -20,7 +20,7 @@ import imageio.v2 as imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from make_pa_video import clip_end, result_text
+from make_pa_video import LAND_TAIL_S, clip_end, result_text
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aibaseball.game.agents import StrikeZone  # noqa: E402
@@ -125,6 +125,9 @@ def main():
     a.add_argument("--out", default="videos/final_cut_v1.mp4")
     a.add_argument("--frame_dt", type=float, default=0.0175)
     a.add_argument("--end_card", default="logs/m3pa_endcard.txt", help="'none': no stats end card (its numbers are M2-era)")
+    a.add_argument("--max_end", type=float, default=None,
+                   help="in-play clips run to the landing (done_t) + 0.3 s, capped here (planning 14 11-06: the path view's landing "
+                        "ring; the 4.5 s cap stays for the other pitches); default = make_pa_video's clip_end")
     a.add_argument("--match_cards", action="store_true", help="'match k / N' cards + the scoreboard band (20 11-06)")
     o = a.parse_args()
     replay = {tuple(int(x) for x in s.split(":")) for s in o.replay}
@@ -167,6 +170,8 @@ def main():
             hold(card(w, h, [(f"第 {p['pitch']} 球", f"Pitch {p['pitch']}", 76),
                              (f"球數 {b}-{s}（{b} 壞 {s} 好）", f"count {b}-{s}", 54)]), 1.0)
             end = clip_end(p, row)
+            if o.max_end is not None and p["expected"] == "in_play":
+                end = min(float(row["done_t"]) + LAND_TAIL_S, o.max_end)
             rd = imageio.get_reader(clips.format(**p))  # streamed: a 343-frame clip is ~1.9 GB decoded
             n_live = 0
             for k, f in enumerate(rd):
