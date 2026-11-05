@@ -2964,3 +2964,8 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 14 在 11-05 06:0x 把交付組合改為 16300 + R6b（ENV AIB_PRESTART_PIN=1 AIB_ACT_EMA=0.5），15993 + R6b 為備案；依據是 14 的 5 Hz 高通軀幹 / 骨盆角速度，film19 比 film18 低 15–25%。另做了 film18 k59 vs film19 k30 的打者並排圖 `videos/fixcheck_tiles/film18k59_vs_film19k30_0p8-1p3s.png`（0.8–1.3 s 每 0.1 s）：16300 的球棒全程接近水平、幾乎不動，15993 的球棒由直立晃到水平、約 1.0 s 前腳抬起；不同 env / 球，部分差別來自姿勢本身。
 - GO 16:25（14）：rows `logs/h33/joint_s6_16300_h32e_pin_ema05.csv`、env 22 / 50（避開 30 40；三個跌倒旗標都 False）、6.5 s；16:27 開拍，16:47 結束。pitcher_fell 仍是那 11 個 env。
 - `videos/film20_1105_s6_k22.mp4`（81.2 m 高飛、exit 32.8、launch 33.5）與 `videos/film20_1105_s6_k50.mp4`（67.4 m 平飛、exit 34.0、launch 24.6）：兩片 52 欄 64/64、blank 0、High 7.5 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 118 km/h / 33° 與 122 km/h / 25°，與 rows 一致；打者抖動：兩片都沒有；開始前上身固定 9.4–9.6°。下一支 film21 期限 04:47（11-06）。
+
+## 11-06 03:48 FILM21（交付組合 H32E h32e/model_16300 + R6b 3091，PIN + EMA 0.5）
+
+- GO 03:25（14）：rows `logs/h33/joint_s6_16300_h32e_pin_ema05.csv`、env 52 / 33（避開 22 30 40 50；三個跌倒旗標都 False）、6.5 s；03:27 開拍，03:48 結束。pitcher_fell 仍是那 11 個 env。使用者 11-05 選了方案丙（等球階段的平衡），15 夜間跑 AIB_PIN_UNTIL_RELEASE 短測試，本片不含。
+- `videos/film21_1106_s6_k52.mp4`（80.3 m 高飛、exit 33.4、launch 31.8）與 `videos/film21_1106_s6_k33.mp4`（52.9 m、exit 28.5、launch 24.2）：兩片 52 欄 64/64、blank 0、High 7.5–7.7 Mb/s、淡白 0（兩個參考）；打者、投手都沒倒；畫面文字 120 km/h / 32° 與 103 km/h / 24°，與 rows 一致（k33 carry 文字 52.8 vs 52.9，四捨五入差）；打者抖動：兩片都沒有；開始前上身固定（k52 7.3°、k33 18.5°）。下一支 film22 期限 15:48（11-06）。
