@@ -1,0 +1,1 @@
+H34P_000_RECOVER_END 21:13 recover rule PASS (s6+s7 after-done ground 1/128 <= 4, tilt ok 60 / 60 >= 52; 16300 ref 2/128, 62 / 62)

@@ -1,0 +1,3 @@
+20:34 H33 form-first ckpt model_16300_pin0 (swing policy, 11-02 protocol; hit rate 0.982, jitter-0 diag h34p_000), bars 16.93 (0.03) / 16.76 (0)
+20:48 16300_pin0 @0.03: 24.72% outfield 17.98% (tables 22.5,26.3,25.3)
+21:03 16300_pin0 @0: 31.57% outfield 25.15% (tables 32.9,30.8,31.0)
