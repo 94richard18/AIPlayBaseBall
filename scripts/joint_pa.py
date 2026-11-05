@@ -127,6 +127,9 @@ def main():
     ap.add_argument("--max_pitches", type=int, default=7)
     ap.add_argument("--want", default="in_play", choices=("in_play", "pitcher", "batter", "any"),
                     help="the showcase PA's end: any ball in play, an infield ball (pitcher wins), an outfield hit (batter wins)")
+    ap.add_argument("--landing_rows", default=None,
+                    help="glob of longer joint runs (joint_s<seed>_<tag>_12s.csv, planning 14 11-06): a contact row whose ball is "
+                         "still in the air at the film rows' end takes the batted ball of the same seed / env from here")
     ap.add_argument("--need_take", action="store_true", help="the showcase PA must contain a take (20 11-06 rehearsal)")
     ap.add_argument("--first", action="store_true", help="the first engine rng seed passing the pick rule (no richer-PA search)")
     ap.add_argument("--plan", default="pa_plan.csv", help="plan file name inside --out")
@@ -142,6 +145,21 @@ def main():
             if b(r, "handed"):
                 r["seed"] = s
                 envs.setdefault(int(r["env"]), []).append(r)
+    if a.landing_rows:
+        land, p_of = {}, {}
+        for p in glob.glob(a.landing_rows):
+            s = int(re.search(r"_s(\d+)[_.]", p).group(1))
+            p_of[s] = p.replace("\\", "/")
+            land.update({(s, int(r["env"])): r for r in csv.DictReader(open(p))})
+        cols, n = ("exit_mps", "launch_deg", "spray_deg", "carry_m", "backspin_rpm"), []
+        for e, rs in envs.items():
+            for r in rs:
+                L = land.get((r["seed"], e))
+                if b(r, "hit") and math.isnan(f(r["exit_mps"])) and L and b(L, "hit") and not math.isnan(f(L["exit_mps"])):
+                    # planning 14 11-06: judged by the engine; filmed with --seconds = landing + 0.5 s (cap 8.0) so the ring shows
+                    r.update({c: L[c] for c in cols}, sec=f"{min(f(L['done_t']) + 0.5, 8.0):.2f}", ref=p_of[r["seed"]])
+                    n.append(f"s{r['seed']} e{e} {f(L['carry_m']):.1f} m spray {f(L['spray_deg']):.0f} fair {fair(r)}")
+        print(f"[pa] landing rows {a.landing_rows}: {len(n)} airborne contacts relabelled: {'; '.join(n)}")
     for e, rs in envs.items():  # the pitch is the env's, whatever the seed
         assert len({(r["kmh"], r["pred_y"], r["pred_z"]) for r in rs}) == 1, f"env {e}: the pitch differs between seeds"
     zone = StrikeZone()
@@ -177,7 +195,7 @@ def main():
     d, log, win, how = best
     os.makedirs(a.out, exist_ok=True)
     keys = ["pitch", "seed", "env", "balls_before", "strikes_before", "swing", "expected", "swing_csv", "after_done",
-            "timing_csv", "exit_mps", "launch_deg", "carry_m", "spray_deg", "fair"]
+            "timing_csv", "exit_mps", "launch_deg", "carry_m", "spray_deg", "fair", "sec", "ref"]
     n_env = max(int(r["env"]) for p in files[:1] for r in csv.DictReader(open(p))) + 1
     with open(os.path.join(a.out, a.plan), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
@@ -193,7 +211,8 @@ def main():
                        strikes_before=x["strikes_before"], swing=x["swing"], expected=x["expected"], swing_csv=m,
                        after_done=a.after_done, timing_csv=a.timing_csv)
             if x["expected"] in ("in_play", "foul"):
-                row.update(exit_mps=r["exit_mps"], launch_deg=r["launch_deg"], carry_m=r["carry_m"], spray_deg=r["spray_deg"], fair=fair(r))
+                row.update(exit_mps=r["exit_mps"], launch_deg=r["launch_deg"], carry_m=r["carry_m"], spray_deg=r["spray_deg"], fair=fair(r),
+                           sec=r.get("sec", ""), ref=r.get("ref", ""))  # a late landing: film length + the compare rows
             w.writerow(row)
     print(f"[pa] showcase PA (engine rng seed {d}): {len(log)} pitches, {win} wins by {how}")
     for i, x in enumerate(log):
