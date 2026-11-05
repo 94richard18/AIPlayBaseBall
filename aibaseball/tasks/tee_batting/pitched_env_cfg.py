@@ -52,6 +52,10 @@ class PitchedBattingEnvCfg(TeeBattingPerceptionEnvCfg):
     act_ema: float = float(os.environ.get("AIB_ACT_EMA", "0"))
     act_ema_commit_s: float = 0.20
     act_ema_ramp_s: float = 0.05
+    # H34P (14, 11-05; user option C, wait-phase balance): AIB_PIN_UNTIL_RELEASE=<lead_s> >= 0 writes root + body joints to the
+    # reference at the current clock ref_t (clip velocities) every control step until lead_s before the release; the joint
+    # residual and its EMA state are held at 0 (targets = the pinned pose), obs and tempo keep running. < 0 = off
+    pin_until_release_s: float = float(os.environ.get("AIB_PIN_UNTIL_RELEASE", "-1"))
     # 10-30 (planning 14): the crossing prediction from a ballistic least-squares fit over all seen samples since release
     # instead of a one-step finite difference (1.4 m/s velocity noise per axis at 1 cm / 10 ms); delay / noise / bias unchanged
     percept_filter: bool = False

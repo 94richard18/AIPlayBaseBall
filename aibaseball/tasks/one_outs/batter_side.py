@@ -376,6 +376,11 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         jp[:, self.body_joint_ids] = r["joint_pos"][:, self.ref_cols]
         self.robot.write_joint_state_to_sim(jp, torch.zeros_like(jp), env_ids=ids)
 
+    def _pin_mask(self) -> torch.Tensor:
+        """H34P in the joint scene: swinging envs from their start until lead_s before the pitcher's release (the hand-off;
+        release_t is the predicted one until then); the pre-start hold stays AIB_PRESTART_PIN's."""
+        return self.active & self.swing & ~self.handed & PitchedBattingEnv._pin_mask(self)
+
     def control(self):
         start =~self.active & (self._joint_time() >= self.start_t - 1e-6) & (self.take_mode != 4)
         if start.any():  # the training episode starts now: the stance again (it was held there), ref clock, phys_t 0

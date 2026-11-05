@@ -92,6 +92,11 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         a = actions.clamp(-c.action_clip, c.action_clip)
         if c.take_hold:  # a take (match video): no residual, no tempo
             a = torch.zeros_like(a)
+        pin = self._pin_mask() if c.pin_until_release_s >= 0 else None
+        if pin is not None and pin.any():  # H34P: pinned to the reference - no residual, EMA state 0 at the hand-over
+            pm = pin.unsqueeze(-1)
+            self.actions[:, :-1] = torch.where(pm, torch.zeros_like(self.actions[:, :-1]), self.actions[:, :-1])
+            a = torch.cat([torch.where(pm, torch.zeros_like(a[:, :-1]), a[:, :-1]), a[:, -1:]], -1)
         if c.act_ema > 0:  # pre-commit residual low-pass (eval polish); self.actions = the applied (filtered) action, 0 at reset
             tc = (self.ref.contact_time[self.clip] - self.ref_t) / self.speed  # reference seconds to contact
             w = ((tc - c.act_ema_commit_s) / c.act_ema_ramp_s).clamp(0.0, 1.0)  # 1 before the ramp, 0 from the commit
@@ -122,9 +127,26 @@ class PitchedBattingEnv(TeeBattingMimicEnv):
         if c.zero_ff_after_ref_end:  # the held final pose has no velocity (the sampler repeats the last frame's)
             ff = torch.where((self.ref_t >= self.ref.duration[self.clip]).unsqueeze(-1), torch.zeros_like(ff), ff)
         self.joint_vel_targets[:, self.body_joint_ids] = ff
+        if pin is not None and pin.any():
+            self._pin_ref(pin.nonzero(as_tuple=False).squeeze(-1), nxt)
         self.new_hit[:] = False
         self.hit_reward[:] = 0.0
         self.track_stats["tempo"] = 0.99 * self.track_stats["tempo"] + 0.01 * tempo.abs().mean()
+
+    def _pin_mask(self) -> torch.Tensor:
+        """H34P: envs still pinned (more than pin_until_release_s before the release)."""
+        return self.phys_t < self.release_t - self.cfg.pin_until_release_s - 1e-6
+
+    def _pin_ref(self, ids, r):
+        """H34P: root + body joints at the reference r (self._ref at the new clock), its velocities at the current rate."""
+        k = torch.where(self.ref_t[ids] > 0, self.rate[ids] / self.speed, torch.zeros_like(self.rate[ids])).unsqueeze(-1)  # < 0: frame 0 held
+        root = torch.cat([r["root_pos"][ids], r["root_quat"][ids], r["root_lin_vel"][ids] * k, r["root_ang_vel"][ids] * k], -1)
+        self.robot.write_root_state_to_sim(root, ids)
+        jp = self.robot.data.default_joint_pos[ids].clone()
+        jv = torch.zeros_like(jp)
+        jp[:, self.body_joint_ids] = r["joint_pos"][ids]
+        jv[:, self.body_joint_ids] = r["joint_vel"][ids] * k
+        self.robot.write_joint_state_to_sim(jp, jv, env_ids=ids)
 
     # ------------------------------------------------------------------ ball
     def _true_ball_pos(self) -> torch.Tensor:
