@@ -1,0 +1,1 @@
+H33_TABLES_16449_h34t_END 05:37 GAME SCENE model_16449_h34t | jitter 0.03: 24.47% / OF 17.69% (bar 16.93) | jitter 0: 24.49% / OF 17.85% (bar 16.76) | 28 min
