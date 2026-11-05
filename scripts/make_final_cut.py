@@ -128,6 +128,8 @@ def main():
     a.add_argument("--max_end", type=float, default=None,
                    help="in-play clips run to the landing (done_t) + 0.3 s, capped here (planning 14 11-06: the path view's landing "
                         "ring; the 4.5 s cap stays for the other pitches); default = make_pa_video's clip_end")
+    a.add_argument("--take_tail", type=float, default=None, help="take clips end at done_t (or t_plane) + this (14 11-06: 0.2)")
+    a.add_argument("--comment", default=None, help="mp4 comment metadata (e.g. that takes are kinematic)")
     a.add_argument("--match_cards", action="store_true", help="'match k / N' cards + the scoreboard band (20 11-06)")
     o = a.parse_args()
     replay = {tuple(int(x) for x in s.split(":")) for s in o.replay}
@@ -141,7 +143,8 @@ def main():
     h, w = first.get_data(0).shape[:2]
     first.close()
     wr = imageio.get_writer(o.out, fps=fps, codec="libx264", pixelformat="yuv420p", macro_block_size=1,
-                            ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"])
+                            ffmpeg_params=["-crf", "16", "-profile:v", "high", "-preset", "slow"]
+                            + (["-metadata", f"comment={o.comment}"] if o.comment else []))
     n_sec = {"s": 0.0}
     rfont = ImageFont.truetype(ZH_B, 44)
     sfont = ImageFont.truetype(ZH_B, 30)
@@ -172,6 +175,11 @@ def main():
             end = clip_end(p, row)
             if o.max_end is not None and p["expected"] == "in_play":
                 end = min(float(row["done_t"]) + LAND_TAIL_S, o.max_end)
+            if o.take_tail is not None and p["expected"] in ("ball", "called_strike"):
+                # planning 14 11-06: take mode 11 holds the stance kinematically and R6b snaps on release after the pitch,
+                # so a take ends with the ball at the catcher and the call card follows
+                t_d = float(row["done_t"])
+                end = (t_d if t_d == t_d else float(row["t_plane"])) + o.take_tail
             rd = imageio.get_reader(clips.format(**p))  # streamed: a 343-frame clip is ~1.9 GB decoded
             n_live = 0
             for k, f in enumerate(rd):
