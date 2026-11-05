@@ -1,0 +1,4 @@
+TAKE_PRECHECK_END 06:19 done (16300 + R6b, EMA 0.5, all 64 envs take mode 10, seed 6)
+
+pin on: take_mode ['10'], started 64/64 | batter_fell 0/64 (joint 0.3 rad off target 64), pitcher_fell 11 | take_bat_vmax max 3.51 median 2.21 m/s | start +-0.05 s: torso 1.1 / 2.6 deg, root 4.2 / 4.4 cm, |qd| 28.9 / 29.6 rad/s (median / max) | start..+0.5 s: torso 10.4 / 11.4 deg, root 9.2 / 21.0 cm, |qd| 28.9 / 29.6 rad/s (median / max)
+pin off: take_mode ['10'], started 64/64 | batter_fell 0/64 (joint 0.3 rad off target 64), pitcher_fell 11 | take_bat_vmax max 3.51 median 2.21 m/s | start +-0.05 s: torso 12.2 / 21.2 deg, root 13.9 / 37.1 cm, |qd| 28.9 / 29.6 rad/s (median / max) | start..+0.5 s: torso 10.4 / 11.4 deg, root 9.2 / 21.0 cm, |qd| 28.9 / 29.6 rad/s (median / max)
