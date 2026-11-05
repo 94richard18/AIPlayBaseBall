@@ -14,7 +14,7 @@ trap 'printf "TAKE_PRECHECK_END %s %s\n%s\n" "$(date +%H:%M)" "$MSG" "$ROWS" > $
 isaac() { powershell.exe -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'isaaclab_env' -and \$_.CommandLine -match 'scripts/' }).Count" | tr -d '\r'; }
 freegb() { powershell.exe -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB)" | tr -d '\r'; }
 nofilm() { local g e; for g in logs/FILM*_GO.txt logs/PDT_GO.txt; do [ -f $g ] || continue; e=${g%_GO.txt}_END.txt; [ -f $e ] && [ $e -nt $g ] || return 1; done; return 0; }
-idle() { until [ -f logs/FILM22_END.txt ] && [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(freegb)" -ge 20 ] && nofilm; do sleep 30; done; }
+idle() { until { [ -f logs/FILM22_END.txt ] || [ -f $O/GO_NOW ]; } && [ "$(isaac)" -eq 0 ] && sleep 60 && [ "$(isaac)" -eq 0 ] && [ "$(freegb)" -ge 20 ] && nofilm; do sleep 30; done; }
 for f in $PC $RC $BC; do [ -f $f ] || { MSG="no $f"; exit 1; }; done
 { echo "env,swing"; for e in $(seq 0 63); do echo "$e,10"; done; } > $O/take10_all.csv
 MSG="waiting for FILM22_END + Isaac 0"
