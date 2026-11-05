@@ -1,0 +1,3 @@
+TAKE_MODE5_END 07:06 done (16300 + R6b, EMA 0.5, all 64 envs take mode 5, seed 6)
+
+pin on: take_mode ['5'], started 64/64 | batter_fell 32/64 (joint 0.3 rad off target 32), pitcher_fell 11 | take_bat_vmax max 4.63 median 2.42 m/s | start +-0.05 s: torso 0.3 / 0.4 deg, root 1.5 / 1.6 cm, |qd| 1.3 / 1.4 rad/s (median / max) | start..+0.5 s: torso 13.7 / 16.6 deg, root 13.8 / 31.1 cm, |qd| 4.4 / 5.1 rad/s (median / max) | pose: start torso 9.8 deg bat z 1.78 m; +0.5 s torso 22.1 deg bat z 1.70 m; +2.0 s torso 53.2 deg bat z 0.94 m; end torso 53.8 deg bat z 0.95 m

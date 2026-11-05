@@ -198,6 +198,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         6 = as 5 for the legs + waist only, the arms (bat) stay in the stance;
         7 = as 6 from the joint episode's start (t 0) instead of the scheduled batter start;
         8 = as 6 with a TAKE_BLEND_FAST_S blend;
+        11 = KINEMATIC take (11-06): the clip stance is written each control step (as AIB_PRESTART_PIN, with or without
+          the flag) from t 0 until the training episode is done (the pitch passed); then the body is released and the
+          after_done mode (recover_rl: R6b from that still stance) drives it - nothing physical holds it before;
         9 / 10 = all body joints blend to the default pose from t 0 over TAKE_BLEND_S / TAKE_BLEND_SLOW_S (diag 3: with
           the legs + waist at the default pose the obp_42 stance arms still tip it over, 8/8).
         Take diag 10-28 (64 envs, 16 per mode): the stance does not stand under PD alone - mode 4 falls 16/16 at 1.4-2.4 s,
@@ -292,7 +295,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
         assert self.own is None or self.own.shape == (n, 2), None if self.own is None else self.own.shape
         self._obs = None
         mode = torch.ones(n, dtype=torch.long, device=self.device) if swing is None else             torch.as_tensor(swing, device=self.device).long()
-        assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 10)).all()), mode
+        assert mode.shape == (n,) and bool(((mode >= 0) & (mode <= 11)).all()), mode
         self.take_dev_t = torch.full((n,), float("nan"), device=self.device)
         self.take_dev_joint = torch.full((n,), -1, dtype=torch.long, device=self.device)
         self.take_bat_vmax = torch.zeros(n, device=self.device)  # per env, max bat CM speed over the whole run (a take must not swing)
@@ -393,6 +396,9 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             self._obs = None
         if PRESTART_PIN and (~self.active).any():
             self._pin_stance((~self.active).nonzero(as_tuple=False).squeeze(-1))
+        kin = (self.take_mode == 11) & ~self.done & (self.active | (not PRESTART_PIN))
+        if kin.any():  # take mode 11: the kinematic stance hold until the pitch passed
+            self._pin_stance(kin.nonzero(as_tuple=False).squeeze(-1))
         if self._obs is None:
             self._obs = self._get_observations()["policy"]
         q_prev, a_prev = self.joint_targets[:, self.body_joint_ids].clone(), self.actions[:, :-1].clone()
@@ -438,7 +444,7 @@ class BatterSide(PitchedBattingEnv, _JointFramework):
             tgt = self.joint_targets[:, self.body_joint_ids]
             self.joint_targets[:, self.body_joint_ids] = torch.where(frz.unsqueeze(-1), q, tgt)
             self.joint_vel_targets[frz] = 0.0
-        take = ~self.swing
+        take = ~self.swing & ~((self.take_mode == 11) & self.done)  # mode 11 after the pitch: the after_done targets
         if take.any():  # a take (see __init__ swing): stance / policy around the stance / default pose
             z = torch.zeros(self.num_envs, device=self.device)
             pose = self._ref(z)["joint_pos"]
