@@ -1,0 +1,6 @@
+H34P_HO_END 20:21 done
+base check (h34p_base vs jg_16300, must be identical):  hit 0.915->0.915 exit 30.2->30.2 launch +16.7->+16.7 pose nan 
+lead 0.00 rerun check (h34p_000b vs h34p_000):  hit 0.933->0.933 exit 30.2->30.2 launch +17.4->+17.4 pose nan 
+lead 000: pose hand-over (release - 0.00 s) -> contact: h34p_base 0.290/0.304 | h34p_000b 0.282/0.296
+lead 010: pose hand-over (release - 0.10 s) -> contact: h34p_base 0.284/0.298 | h34p_010 0.277/0.291
+lead 025: pose hand-over (release - 0.25 s) -> contact: h34p_base 0.276/0.290 | h34p_025 0.276/0.290
