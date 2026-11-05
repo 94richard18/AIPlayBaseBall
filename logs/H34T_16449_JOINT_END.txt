@@ -1,0 +1,1 @@
+H34T_16449_JOINT_END 05:06 joint s6 (16449 EMA 0.35 + PRESTART_PIN + PIN_UNTIL_RELEASE 0.00, R6b) ref (16300 film19 setup) hits 59 fair 41 of 15 fbd 1 fell 3 | joint test hits 57 fair 45 of 14 fbd 3 fell 4
