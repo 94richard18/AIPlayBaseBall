@@ -131,6 +131,7 @@ def main():
                     help="glob of longer joint runs (joint_s<seed>_<tag>_12s.csv, planning 14 11-06): a contact row whose ball is "
                          "still in the air at the film rows' end takes the batted ball of the same seed / env from here")
     ap.add_argument("--need_take", action="store_true", help="the showcase PA must contain a take (20 11-06 rehearsal)")
+    ap.add_argument("--n_pa", type=int, default=1, help="N PAs: the first N engine rng seeds passing the rule, plan_<k>.csv each")
     ap.add_argument("--first", action="store_true", help="the first engine rng seed passing the pick rule (no richer-PA search)")
     ap.add_argument("--plan", default="pa_plan.csv", help="plan file name inside --out")
     ap.add_argument("--take_mode", type=int, default=0, help="BatterSide take mode written into the masks for a take (see BatterSide swing)")
@@ -176,51 +177,56 @@ def main():
           f"{a.stats} PAs (engine rng seed {a.seed}, no repeat inside a PA): batter wins {bw:.1%}, {npitch / a.stats:.2f} "
           f"pitches per PA, by outcome { {k: round(v / a.stats, 3) for k, v in sorted(hows.items())} }")
 
-    best = None
+    picks, best = [], None
     for d in range(a.pa_seed, a.pa_seed + a.tries):
         log, (win, how) = play_pa(envs, random.Random(d), zone)
         if not showcase_ok(log, how, a.min_pitches, a.max_pitches, a.want, a.need_take):
             continue
-        if a.first:
-            best = (d, log, win, how)
-            break
+        if a.first or a.n_pa > 1:  # --n_pa: the first N engine rng seeds passing the rule (20 11-06: the 3-PA block)
+            picks.append((d, log, win, how))
+            if len(picks) == a.n_pa:
+                break
+            continue
         rich = any(x["expected"] == "called_strike" for x in log) and any(x["expected"] == "swinging_strike" for x in log)
         if best is None or rich:
             best = (d, log, win, how)
         if rich:
             break
-    if best is None:
-        print(f"[pa] no PA passes the pick rule in engine rng seeds {a.pa_seed}..{a.pa_seed + a.tries - 1}")
+    if best is not None:
+        picks = [best]
+    if len(picks) < a.n_pa:
+        print(f"[pa] {len(picks)} of {a.n_pa} PAs pass the pick rule in engine rng seeds {a.pa_seed}..{a.pa_seed + a.tries - 1}")
         sys.exit(1)
-    d, log, win, how = best
     os.makedirs(a.out, exist_ok=True)
     keys = ["pitch", "seed", "env", "balls_before", "strikes_before", "swing", "expected", "swing_csv", "after_done",
             "timing_csv", "exit_mps", "launch_deg", "carry_m", "spray_deg", "fair", "sec", "ref"]
     n_env = max(int(r["env"]) for p in files[:1] for r in csv.DictReader(open(p))) + 1
-    with open(os.path.join(a.out, a.plan), "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=keys)
-        w.writeheader()
+    for k, (d, log, win, how) in enumerate(picks, 1):
+        plan, pre = (a.plan, "pa") if a.n_pa == 1 else (a.plan.replace(".csv", f"_{k}.csv"), f"pa{k}")
+        with open(os.path.join(a.out, plan), "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=keys)
+            w.writeheader()
+            for i, x in enumerate(log):
+                r = x["row"]
+                m = os.path.join(a.out, f"{pre}_swing_s{r['seed']}_e{x['env']}.csv").replace("\\", "/")
+                with open(m, "w", newline="") as fm:  # every env swings except this pitch's env when it is a take
+                    mw = csv.writer(fm)
+                    mw.writerow(["env", "swing"])
+                    mw.writerows([e, (1 if x["swing"] else a.take_mode) if e == x["env"] else 1] for e in range(n_env))
+                row = dict(pitch=i + 1, seed=r["seed"], env=x["env"], balls_before=x["balls_before"],
+                           strikes_before=x["strikes_before"], swing=x["swing"], expected=x["expected"], swing_csv=m,
+                           after_done=a.after_done, timing_csv=a.timing_csv)
+                if x["expected"] in ("in_play", "foul"):
+                    row.update(exit_mps=r["exit_mps"], launch_deg=r["launch_deg"], carry_m=r["carry_m"], spray_deg=r["spray_deg"],
+                               fair=fair(r), sec=r.get("sec", ""), ref=r.get("ref", ""))  # a late landing: film length + the compare rows
+                w.writerow(row)
+        print(f"[pa] showcase PA {k} (engine rng seed {d}): {len(log)} pitches, {win} wins by {how}")
         for i, x in enumerate(log):
             r = x["row"]
-            m = os.path.join(a.out, f"pa_swing_s{r['seed']}_e{x['env']}.csv").replace("\\", "/")
-            with open(m, "w", newline="") as fm:  # every env swings except this pitch's env when it is a take
-                mw = csv.writer(fm)
-                mw.writerow(["env", "swing"])
-                mw.writerows([e, (1 if x["swing"] else a.take_mode) if e == x["env"] else 1] for e in range(n_env))
-            row = dict(pitch=i + 1, seed=r["seed"], env=x["env"], balls_before=x["balls_before"],
-                       strikes_before=x["strikes_before"], swing=x["swing"], expected=x["expected"], swing_csv=m,
-                       after_done=a.after_done, timing_csv=a.timing_csv)
-            if x["expected"] in ("in_play", "foul"):
-                row.update(exit_mps=r["exit_mps"], launch_deg=r["launch_deg"], carry_m=r["carry_m"], spray_deg=r["spray_deg"], fair=fair(r),
-                           sec=r.get("sec", ""), ref=r.get("ref", ""))  # a late landing: film length + the compare rows
-            w.writerow(row)
-    print(f"[pa] showcase PA (engine rng seed {d}): {len(log)} pitches, {win} wins by {how}")
-    for i, x in enumerate(log):
-        r = x["row"]
-        extra = f" EV {f(r['exit_mps']):.1f} carry {f(r['carry_m']):.1f} m" if x["expected"] in ("in_play", "foul") else ""
-        print(f"[pa]   {i + 1}. seed {r['seed']:2d} env {x['env']:2d} {x['balls_before']}-{x['strikes_before']} "
-              f"{x['kmh']:.1f} km/h {'zone' if x['in_zone'] else 'out '} -> {x['expected']}{extra}")
-    print(f"[pa] wrote {a.out}/{a.plan} + {len(log)} swing masks")
-
+            extra = f" EV {f(r['exit_mps']):.1f} carry {f(r['carry_m']):.1f} m" if x["expected"] in ("in_play", "foul") else ""
+            extra += f" (lands late: sec {r['sec']})" if extra and r.get("sec") else ""
+            print(f"[pa]   {i + 1}. seed {r['seed']:2d} env {x['env']:2d} {x['balls_before']}-{x['strikes_before']} "
+                  f"{x['kmh']:.1f} km/h {'zone' if x['in_zone'] else 'out '} -> {x['expected']}{extra}")
+        print(f"[pa] wrote {a.out}/{plan} + {len(log)} swing masks")
 
 main()
