@@ -131,6 +131,7 @@ def main():
     a.add_argument("--take_tail", type=float, default=None, help="take clips end at done_t (or t_plane) + this (14 11-06: 0.2)")
     a.add_argument("--comment", default=None, help="mp4 comment metadata (e.g. that takes are kinematic)")
     a.add_argument("--match_cards", action="store_true", help="'match k / N' cards + the scoreboard band (20 11-06)")
+    a.add_argument("--final_tally", action="store_true", help="closing card: the W-L over all N matches (14 11-06: final video)")
     o = a.parse_args()
     replay = {tuple(int(x) for x in s.split(":")) for s in o.replay}
     pas = []
@@ -215,6 +216,11 @@ def main():
             lines.append((f"投手 {wins[0]} - {wins[1]} 打者", f"pitcher {wins[0]} - {wins[1]} batter", 48))
         hold(card(w, h, lines), 2.0)
         print(f"PA{i} result: {res} (pitcher {wins[0]} - {wins[1]} batter)")
+    if o.final_tally:
+        win = ("投手勝", "the pitcher wins") if wins[0] > wins[1] else ("打者勝", "the batter wins") if wins[1] > wins[0] else ("平手", "a tie")
+        hold(card(w, h, [("最終比分", f"Final score - {len(pas)} matches", 76),
+                         (f"投手 {wins[0]} - {wins[1]} 打者", f"pitcher {wins[0]} - {wins[1]} batter", 60),
+                         (win[0], win[1], 48)]), 4.0)
     if o.end_card != "none":
         en = open(o.end_card, encoding="utf-8").read().strip().split("|")
         hold(card(w, h, [(END[0][0], en[0], END[0][2]), (END[1][0], en[1], END[1][2]), END[2]]), 4.0)
