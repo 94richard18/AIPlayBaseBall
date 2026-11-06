@@ -695,6 +695,12 @@ class StageEnv(PitchEnv):
                 up = ((el - c.rel_elev_lo_deg) / (tgt - c.rel_elev_lo_deg)).clamp(0.0, 1.0)
                 score = torch.where(el <= tgt, up, torch.exp(-(((el - tgt) / c.rel_elev_above_sigma_deg) ** 2)))
                 rew_ball = rew_ball + pay.float() * c.w_stage_rel_elev * score
+            if c.w_stage_spin > 0:  # backspin at release, same pay condition: omega along b = unit(v_hat x z_hat) (Magnus lift up)
+                vh = self.rel_vel / self.rel_vel.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+                b = torch.cross(vh, torch.zeros_like(vh).index_fill_(1, torch.tensor([2], device=vh.device), 1.0), dim=-1)
+                b = b / b.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+                w_t = c.spin_target_rpm * 2.0 * math.pi / 60.0
+                rew_ball = rew_ball + pay.float() * c.w_stage_spin * ((self.rel_omega * b).sum(-1) / w_t).clamp(-1.0, 1.0)
         if c.w_finish_com > 0:
             # finish shaping (ha, peer decision 2026-10-20): over [release + t0, release + t1] keep the COM behind and
             # inboard (3B side) of the lead foot - diag_fall_release: at release + 0.3 s the standers had it ~8 cm behind

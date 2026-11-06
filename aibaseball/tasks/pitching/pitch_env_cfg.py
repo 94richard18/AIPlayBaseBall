@@ -727,6 +727,8 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
     rel_speed_lo_mps: float = 0.0  # w_stage_rel_speed pays (v - lo) / (full - lo), clipped to [0, 1] (0: the old v / full)
+    w_stage_spin: float = 0.0  # stage: x clip((omega . b) / spin_target_rpm, -1, 1) at release, b = unit(v_hat x z_hat), paid like w_stage_ball_rest
+    spin_target_rpm: float = 2200.0
     rel_speed_x_score: bool = False  # w_stage_rel_speed also x release_score() (only fast balls toward the zone pay; fb1a traded aim for an additive term)
     # stage: release elevation on its own, paid like w_stage_ball_rest: ramps 0 -> 1 from rel_elev_lo_deg to
     # rel_elev_target_deg, then exp(-((elev - target) / rel_elev_above_sigma_deg)^2) above it (ONE OUTS step 2, 2026-10-23)
@@ -2131,3 +2133,12 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1A2EnvCfg(Stage1dK70GW2MBASVRT
     rel_speed_lo_mps: float = 17.8
     rel_speed_full_mps: float = 19.8
     rel_speed_x_score: bool = True
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1BEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball stage 1b (user chose b 11-07, planning 14 GO 06:54): P3c + backspin at release, w_spin x clip((omega . b) /
+    2200 rpm, -1, 1), b = unit(v_hat x z_hat), paid with the ball score (x stand, released, set starts); linear; no speed term.
+    P3c: tilt 12:26 (+13 deg) already in the +-45 deg band, spin efficiency 0.21 (mostly gyro spin), omega . b ~ 150 rpm."""
+    w_stage_spin: float = 30.0
+    spin_target_rpm: float = 2200.0
