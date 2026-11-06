@@ -1780,6 +1780,25 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg(Stage1dK70GW2MBASVRT1SYW
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CWT12EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Four-seam fastball line stage 0 (user 11-06, criterion option (a)): P3c + waist torque limits x1.2 (240 Nm, the
+    10-21 approval). hk (WT12 from hf_avg3) lost the balance in 200 its; here a zero-shot lever on ho2 7600."""
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, waist=1.2)
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CF15EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball stage 0: P3c + finger / thumb torque limits x1.5 (the 10-21 approval; four-seam grip unchanged)."""
+    def __post_init__(self):
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        self.robot = _strength(self.robot, hand=1.5)
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CPEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
     """Pp (planning session 2026-10-26, user-approved set pause): C trained with a set pause of 0.2-0.6 s per episode, PD
     alone in the pause (mode zero). Zero-shot P 0.3 s on ho2 7600: identical 0/64 in every mode - the policy only starts
