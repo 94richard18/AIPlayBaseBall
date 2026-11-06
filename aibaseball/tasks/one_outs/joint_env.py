@@ -406,11 +406,14 @@ class JointPitchEnv(StageEnv):
         px, py = self.cfg.plate_distance, self.cfg.zone_center_y
         plate = self.scene.env_origins[ids, :2] + torch.tensor([math.cos(th) * px - math.sin(th) * py,
                                                                 math.sin(th) * px + math.cos(th) * py], device=self.device)
-        g = ((p[:, :2] - plate).norm(dim=-1) / 32.0).clamp(1.0, 4.0)
+        d = (p[:, :2] - plate).norm(dim=-1)
+        g = (d / 32.0).clamp(1.0, 4.0)
         one = torch.ones_like(g)
         sc = torch.stack([g, g, one], -1)
         post = p.clone()
-        post[:, 2] = torch.where(landed, p[:, 2] + 1.5, p[:, 2])
+        # planning 14 11-06 (rehearsal1 p4, a 7 m grounder): a landing within 20 m of the plate gets no post - in the pitcher
+        # view it stood in front of the pitcher and hid him; the ring stays, the path view draws its own post + label
+        post[:, 2] = torch.where(landed & (d >= 20.0), p[:, 2] + 1.5, p[:, 2] * 0.0 - 50.0)
         self.ring_marker.visualize(translations=torch.cat([p, p, post], 0), scales=torch.cat([sc, sc, torch.stack([one, one, one], -1)], 0),
                                    marker_indices=torch.cat([torch.full((k,), i, dtype=torch.long) for i in range(3)]).to(self.device))
 
