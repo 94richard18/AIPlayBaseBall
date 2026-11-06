@@ -726,6 +726,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     finish_com_sigma: float = 0.04
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
+    rel_speed_lo_mps: float = 0.0  # w_stage_rel_speed pays (v - lo) / (full - lo), clipped to [0, 1] (0: the old v / full)
     # stage: release elevation on its own, paid like w_stage_ball_rest: ramps 0 -> 1 from rel_elev_lo_deg to
     # rel_elev_target_deg, then exp(-((elev - target) / rel_elev_above_sigma_deg)^2) above it (ONE OUTS step 2, 2026-10-23)
     w_stage_rel_elev: float = 0.0
@@ -1777,6 +1778,17 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg(Stage1dK70GW2MBASVRT1SYW
 
     release_action_shift_s: float = 0.0025
     plate_yaw_deg: float = 18.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1AEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Four-seam fastball stage 1a (user 11-06 criterion (a), planning 14 GO 11-07): P3c + the release speed paid once
+    with the ball score (time-out, at rest, released, set starts - the stand outcome), linear from P3c's identical median
+    17.8 m/s to +2 m/s (25 per m/s at weight 50, vs ~2 per m/s in gw's v / 25); no lever, no backspin term. Stage 0: no
+    zero-shot lever gave >= +1.5 m/s (best arm blend 0.8 +0.63 with aim collapse)."""
+    w_stage_rel_speed: float = 50.0
+    rel_speed_lo_mps: float = 17.8
+    rel_speed_full_mps: float = 19.8
 
 
 @configclass

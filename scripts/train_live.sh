@@ -59,7 +59,8 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         while [ "$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { \$_.CommandLine -match 'scripts/' -and \$_.CommandLine -notmatch 'live_rules' }).Count" | tr -d '\r')" -ge 2 ]; do sleep 20; done
     fi
     # identical starts (start noise forced off: the Stage1dN tasks train with it on)
-    ev "logs/eval_${RUN}_$IT.txt" --task "$TASK" --envs 64 --checkpoint "$NEW" --set start_joint_noise=0.0 start_noise_ramp_steps=0 ${EVAL_SET}
+    # EVAL_RELEASE=1: also the release table of each eval (logs/eval_<run>_<it>[_noise]_release.csv, fastball_summary.py)
+    ev "logs/eval_${RUN}_$IT.txt" --task "$TASK" --envs 64 --checkpoint "$NEW" ${EVAL_RELEASE:+--release_csv logs/eval_${RUN}_${IT}_release.csv} --set start_joint_noise=0.0 start_noise_ramp_steps=0 ${EVAL_SET}
     # no video here: a 1-env render next to training stalled both (fp 3550: one training iteration 1586 s, the render
     # ~50 min); user 2026-10-17 "等70%結束再錄就好" - the best checkpoint is filmed when the task ends
     if [ -n "${LIVE_VIDEO:-}" ] && [ $(((IT - IT0) % 150)) -eq 0 ]; then
@@ -76,7 +77,7 @@ while [ $IT -lt $((IT0 + MAXIT)) ]; do
         # NOISY_ENVS=128: two draws' worth of independent starts in one launch, the score scaled back to /64 (a single
         # 64-run draw spreads ~+-4: fy r1 3875 drew 20, then 13)
         NE=${NOISY_ENVS:-64}
-        ev "logs/eval_${RUN}_${IT}_noise.txt" --task "$TASK" --envs $NE --checkpoint "$NEW" --set start_joint_noise=0.02 start_noise_ramp_steps=0 ${EVAL_SET}
+        ev "logs/eval_${RUN}_${IT}_noise.txt" --task "$TASK" --envs $NE --checkpoint "$NEW" ${EVAL_RELEASE:+--release_csv logs/eval_${RUN}_${IT}_noise_release.csv} --set start_joint_noise=0.02 start_noise_ramp_steps=0 ${EVAL_SET}
         SCORE=$(grep -o '^\[goal\] [0-9]*' "logs/eval_${RUN}_${IT}_noise.txt" | head -1 | cut -d' ' -f2)
         [ -n "$SCORE" ] && SCORE=$(((SCORE * 64 + NE / 2) / NE))
         echo "[cycles] $IT with start noise 0.02: ${SCORE:-?} up"
