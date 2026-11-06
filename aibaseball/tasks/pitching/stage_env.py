@@ -686,7 +686,8 @@ class StageEnv(PitchEnv):
             rew_ball = rew_ball + pay.float() * c.w_stage_ball_rest * score
             if c.w_stage_rel_speed > 0:  # release speed on its own, same pay condition (gw: speed was ~0.5 per m/s)
                 rew_ball = rew_ball + pay.float() * c.w_stage_rel_speed * (
-                    (self.rel_vel.norm(dim=-1) - c.rel_speed_lo_mps) / (c.rel_speed_full_mps - c.rel_speed_lo_mps)).clamp(0.0, 1.0)
+                    (self.rel_vel.norm(dim=-1) - c.rel_speed_lo_mps) / (c.rel_speed_full_mps - c.rel_speed_lo_mps)).clamp(0.0, 1.0) * (
+                    score if c.rel_speed_x_score else 1.0)
             if c.w_stage_rel_elev > 0:  # release elevation, same pay condition (ramp up to the target, bell above it)
                 v = self.rel_vel
                 el = torch.rad2deg(torch.atan2(v[:, 2], v[:, :2].norm(dim=-1)))

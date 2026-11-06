@@ -727,6 +727,7 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
     rel_speed_lo_mps: float = 0.0  # w_stage_rel_speed pays (v - lo) / (full - lo), clipped to [0, 1] (0: the old v / full)
+    rel_speed_x_score: bool = False  # w_stage_rel_speed also x release_score() (only fast balls toward the zone pay; fb1a traded aim for an additive term)
     # stage: release elevation on its own, paid like w_stage_ball_rest: ramps 0 -> 1 from rel_elev_lo_deg to
     # rel_elev_target_deg, then exp(-((elev - target) / rel_elev_above_sigma_deg)^2) above it (ONE OUTS step 2, 2026-10-23)
     w_stage_rel_elev: float = 0.0
@@ -2120,3 +2121,13 @@ class Stage1dREnvCfg(Stage1dBEnvCfg):
 @configclass
 class Stage1dR75EnvCfg(Stage1dREnvCfg):
     throw_upper_scale: float = 0.75
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1A2EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball stage 1a' (planning 14 GO 11-07 03:4x): S1A's speed ramp 17.8 -> 19.8 m/s, now x release_score() (and x the
+    stand outcome, as before), weight 25. fb1a (additive, weight 50) lost T3+stand 48 -> 7/64 in 100 its with no speed gain."""
+    w_stage_rel_speed: float = 25.0
+    rel_speed_lo_mps: float = 17.8
+    rel_speed_full_mps: float = 19.8
+    rel_speed_x_score: bool = True
