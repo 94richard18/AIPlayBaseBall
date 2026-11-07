@@ -3218,3 +3218,10 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 ## 11-07 19:10 使用者決定 D5：旋轉驗收用中位數
 
 - M3（最終採用）的旋轉條件 = noisy 128 的 tilt 中位在 ±45° 內且 η 中位 ≥ 0.85；逐球兩條件通過數只回報。fastball_summary.py --gate noisy128 拿掉 "(D5?)" 標記。M1 / M2 不看旋轉。
+
+## 11-07 19:20 基準重跑與判定改用 noisy 256（使用者同意）
+
+- 第一次重啟基準 FAIL 是腳本錯：identical 漏了 start_joint_noise=0.0（實為 noisy 64，站穩 23/64），站穩差值解析抓到 T3。noisy 128 第二次抽樣出手中位 17.09（fb0 17.65）、站穩 48、T3 5；bootstrap 單次 128 抽樣中位 sd 0.18–0.34 m/s，差距在抽樣誤差內。
+- 飽和基準（P3c 7600 noisy 128，n_valid 128/128）：肩 / 肘 / 手腕 roll 0.000；手腕 pitch 0.18、yaw 0.11；腰 yaw 0.41、pitch 0.37（全是力矩）。腰已 ≥ 0.3 → 腰改用「基準 + 0.15」。
+- 使用者同意：S1C 每個判定點改 noisy 256；基準 = fb0 + fb2 兩次 + 第三次 noisy 128 的合併中位（384 顆）；7900 證偽 ≥ 基準 − 0.05；段末 ≥ 基準 + 0.3 且站穩 ≥ 80/256。logs/fb_restart_base2.sh（identical 噪聲 0 + 第三次 noisy）→ logs/fb_restart_go.sh（identical 重現才寫 GO）→ logs/fastball_s1c_r.sh。
+- 計劃 docs/plans/fastball_restart.md 5-2 的數字（17.6 / 17.95 / 40/128）尚未同步。
