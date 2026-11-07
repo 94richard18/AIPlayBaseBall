@@ -2145,3 +2145,20 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1BEnvCfg(Stage1dK70GW2MBASVRT1
     clip((eta - 0.21) / 0.64, 0, 1) x [|tilt| <= 45 deg] x [rpm >= 400], paid with the ball score (x stand, released, set
     starts); no speed term. P3c: tilt 12:26 (+13 deg) already in the band, efficiency 0.21 (mostly gyro spin)."""
     w_stage_spin: float = 30.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball stage 1c (planning 14 option A, 11-07, pending the user): P3c + release speed on the noisy gate, linear ramp
+    16 -> 22 m/s x 100 (= the ball-rest weight), paid like w_stage_ball_rest (x stand, released, set starts), not x the
+    release score, no Gaussian, no anchor. The anchor line (lambda 1 / 1e4 / 1e5) held the identical pitch but not the noisy
+    speed (<= 17.1 vs 17.65): this stage accepts the resume loss and pushes the noisy release median directly."""
+    w_stage_rel_speed: float = 100.0
+    rel_speed_lo_mps: float = 16.0
+    rel_speed_full_mps: float = 22.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CW200EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg):
+    """Fastball stage 1c, weight 200: the option-A falsifier fallback (noisy release median < 17.6 at 7900 with weight 100)."""
+    w_stage_rel_speed: float = 200.0
