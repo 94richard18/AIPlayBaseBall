@@ -25,3 +25,6 @@ Thumbs.db
 .DS_Store
 assets/**/config.yaml
 ref_videos/
+
+# codex cross-model review state (thread ids, gate loop guard)
+.claude/codex-review-state/
