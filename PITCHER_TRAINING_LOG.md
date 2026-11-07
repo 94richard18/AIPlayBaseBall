@@ -3231,3 +3231,8 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 7 次 noisy 128 launch 出手中位 17.65 / 17.09 / 16.77 / 17.29 / 17.35 / 17.26 / 17.15：平均 17.22、launch 間 sd 0.27，與單次 bootstrap sd 0.21–0.29 一致。fb0 17.65 是偏高的一次，原基準高估 0.43 m/s。noisy 256 兩次 16.92 / 17.22。
 - 原「B − 0.05 單表」證偽在無變化時誤殺 35–42%（Codex 推算），S1C 鏈於訓練起跑前停止。
 - 新規則（docs/plans/fastball_restart.md 5-2，Codex 第 8 輪 APPROVED）：判定量 = launch 中位平均；基準 7 次；判定點 4 次 launch（未定補 4 次）；Welch t 90%；7900 hi < −0.05 判退步；8100 PASS = Δ ≥ 0.3 且 lo > 0 且站穩 ≥ 40/128。scripts/median_delta.py 改為 launch 版。模擬：無變化誤判退步 1%、誤判 PASS 0.9%。新增 D6（驗收閘兩批獨立 noisy 128 確認）待使用者決定。
+
+## 11-07 19:57 使用者同意新判定規則與 D6；S1C 起跑
+
+- 使用者同意 launch 層級判定（計劃 5-2）與 D6（M1–M3 需候選固定後兩批全新 noisy 128 各自過閘，不對同一 ckpt 重抽）。
+- 鏈 logs/fastball_s1c_l.sh：S1C w100 7600 → 8100（run fb1cl100），每 100 its identical 64 + noisy 128 監看；7900 / 8100 各 4 次 launch（未定補 4 次）→ scripts/median_delta.py 對 7 次 P3c launch。乾跑（7600 自己的 launch 當候選）：7900 未定（補樣後仍未定，不殺）、8100 FAIL，處置分支與讀檔正確。
