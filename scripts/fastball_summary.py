@@ -10,8 +10,8 @@ stand >= 48/64, T3+ and stand >= 32/64 (identical start); spin is reported, not 
 reference csv (P3c: assets/game/p3c_identical_t18_release.csv).
 --gate noisy128 (docs/plans/fastball_restart.md 1-2-1, the acceptance gate on the noisy 128 table): stand >= 0.75 n
 (96/128), T3+ and stand >= 0.25 n (32/128); M3 = final adoption also needs the tilt median within +-45 deg AND the
-efficiency median >= 0.85 (median statistic = the plan's proposal, pending the user's D5; until D5 is decided the M3
-mark carries "D5?"). The default gate and the default line are unchanged.
+efficiency median >= 0.85 (median statistic: the user's D5 decision, 11-07). The default gate and the default line are
+unchanged.
 
 python scripts/fastball_summary.py RELEASE_CSV [--ref REF_CSV] [--tag TAG] [--gate {default,noisy128}]
 """
@@ -71,7 +71,7 @@ def gate_marks(s, mode="default"):
     marks = []
     for g, k in GATES:
         ok = base(k) and (spin if g == "M3" else True)
-        marks.append(f"{g} {'pass' if ok else 'no'}" + (" (D5?)" if g == "M3" and ok else ""))
+        marks.append(f"{g} {'pass' if ok else 'no'}")
     return "noisy128 gate: " + " ".join(marks)
 
 

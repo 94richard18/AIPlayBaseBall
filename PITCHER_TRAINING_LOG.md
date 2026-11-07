@@ -3214,3 +3214,7 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 使用者 11-07 重啟投手訓練，選 D1 = 路線 A 先跑一段、D2 = 先不改規格。計劃 docs/plans/fastball_restart.md（Codex 審查通過）。
 - 工具（b32ee59）：fastball_summary.py 加 --gate noisy128（站穩 ≥ 96、T3+站穩 ≥ 32、M3 另需 tilt 中位 ±45° 且 η 中位 ≥ 0.85，旋轉口徑待使用者 D5）；diag_arm.py 加 [saturation] 區塊（力矩或速度達上限的子步聯集、逐環境比例中位 / 四分位、n_valid 與排除數）。預設輸出不變。
 - 鏈：logs/fb_restart_base.sh 先跑 P3c 7600 identical 64 + noisy 128，須重現 logs/fb0（identical 出手 ±0.1、站穩 / T3 ±2；noisy 出手 ±0.3、站穩 ±6、T3 ±4），再跑 diag_arm noisy 128 當飽和基準；過了才寫 PITCHER_S1C_GO.txt。接著 logs/fastball_s1c_r.sh（= fastball_s1c.sh 去掉 film25 時段）跑 S1C w100 7600 → 8100，規則不變（7900 證偽 < 17.6 → w200 重跑；8100 段規則 noisy 出手 ≥ 17.95 且站穩 ≥ 40）。
+
+## 11-07 19:10 使用者決定 D5：旋轉驗收用中位數
+
+- M3（最終採用）的旋轉條件 = noisy 128 的 tilt 中位在 ±45° 內且 η 中位 ≥ 0.85；逐球兩條件通過數只回報。fastball_summary.py --gate noisy128 拿掉 "(D5?)" 標記。M1 / M2 不看旋轉。
