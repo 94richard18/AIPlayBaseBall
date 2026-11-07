@@ -352,10 +352,86 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     update_kl = runner.alg.update
     kl_step = [runner.current_learning_iteration]
 
+    # diagnosis (plan fastball_restart 5-6, off by default): DIAG_JSON=<path> appends one json line per update with the
+    # per-column KL (no log offset), mean |d mu| / sigma_old per column, the unclipped surrogate gain mean(A (ratio - 1))
+    # and (REW_PARTS=1) the rollout's per-term reward sums; TF32_AB=<update index> runs that update twice from the same
+    # state (actor-critic, optimizer, learning rate, RNG), TF32 on then off, and logs both (the run goes on with the TF32
+    # off result, then TF32 is set back)
+    diag_path = os.environ.get("DIAG_JSON")
+    ab_idx = int(os.environ["TF32_AB"]) if os.environ.get("TF32_AB") else None
+    if os.environ.get("REW_PARTS"):
+        env.unwrapped.rew_parts_acc = {}
+
+    def diag_stats(mu0, sig0, obs, act, adv):
+        kl_c = torch.zeros(mu0.shape[-1], device=mu0.device)
+        dmu_c = torch.zeros_like(kl_c)
+        gain, n = 0.0, 0
+        with torch.inference_mode():
+            for i in range(obs.shape[0]):
+                ac_kl.update_distribution(obs[i])
+                mu, sig = ac_kl.action_mean, ac_kl.action_std
+                kld = torch.log(sig / sig0[i]) + (sig0[i] ** 2 + (mu0[i] - mu) ** 2) / (2.0 * sig**2) - 0.5
+                kl_c += kld.sum(0)
+                dmu_c += ((mu - mu0[i]).abs() / sig0[i]).sum(0)
+                lp_new = ac_kl.distribution.log_prob(act[i]).sum(-1)
+                lp_old = torch.distributions.Normal(mu0[i], sig0[i]).log_prob(act[i]).sum(-1)
+                gain += (adv[i].squeeze(-1) * (torch.exp(lp_new - lp_old) - 1.0)).sum().item()
+                n += obs.shape[1]
+        return dict(kl_col=(kl_c / n).tolist(), kl=float(kl_c.sum() / n), dmu_over_sig=(dmu_c / n).tolist(),
+                    surr_gain=gain / n)
+
+    def diag_dump(rec):
+        import json
+
+        with open(diag_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+
     def update_logged(*a, **k):
         st = runner.alg.storage
         mu0, sig0, obs, act = st.mu, st.sigma, st.observations, st.actions
+        rec = None
+        if diag_path:
+            rec = dict(update=kl_step[0], lr_before=runner.alg.learning_rate,
+                       std=ac_kl.std.detach().tolist() if hasattr(ac_kl, "std") else None)
+            acc = getattr(env.unwrapped, "rew_parts_acc", None)
+            if acc is not None:
+                rec["rew_parts"] = {kk: float(vv) for kk, vv in acc.items()}
+                acc.clear()
+            mu0, sig0, obs, act, adv = (x.clone() for x in (st.mu, st.sigma, st.observations, st.actions, st.advantages))
+        if ab_idx is not None and kl_step[0] == ab_idx:
+            import copy
+
+            snap = (copy.deepcopy(ac_kl.state_dict()), copy.deepcopy(runner.alg.optimizer.state_dict()),
+                    runner.alg.learning_rate, torch.cuda.get_rng_state(), torch.get_rng_state())
+            p0 = torch.cat([p.detach().flatten() for p in ac_kl.actor.parameters()]).clone()
+            res = {}
+            for tf in (True, False):
+                ac_kl.load_state_dict(snap[0])
+                runner.alg.optimizer.load_state_dict(snap[1])
+                runner.alg.learning_rate = snap[2]
+                for g in runner.alg.optimizer.param_groups:
+                    g["lr"] = snap[2]
+                torch.cuda.set_rng_state(snap[3])
+                torch.set_rng_state(snap[4])
+                torch.backends.cuda.matmul.allow_tf32 = tf
+                torch.backends.cudnn.allow_tf32 = tf
+                out = update_kl(*a, **k)
+                p1 = torch.cat([p.detach().flatten() for p in ac_kl.actor.parameters()])
+                res[f"tf32_{int(tf)}"] = dict(diag_stats(mu0, sig0, obs, act, adv), lr_after=runner.alg.learning_rate,
+                                              actor_rel_change=float((p1 - p0).norm() / p0.norm()), p1=p1.clone())
+            d = float((res["tf32_1"].pop("p1") - res["tf32_0"].pop("p1")).norm() / p0.norm())
+            torch.backends.cuda.matmul.allow_tf32 = tf32
+            torch.backends.cudnn.allow_tf32 = tf32
+            rec = dict(rec or {}, tf32_ab=res, ab_actor_rel_diff=d)
+            diag_dump(rec)
+            print(f"[diag] TF32 A/B at update {kl_step[0]}: KL on {res['tf32_1']['kl']:.3e} off {res['tf32_0']['kl']:.3e}, "
+                  f"actor rel diff {d:.2e}", flush=True)
+            kl_step[0] += 1
+            return out
         out = update_kl(*a, **k)
+        if rec is not None:
+            rec.update(diag_stats(mu0, sig0, obs, act, adv), lr_after=runner.alg.learning_rate)
+            diag_dump(rec)
         kl_sum, clip_n, n = 0.0, 0, 0
         kl_arm = kl_rest = 0.0  # arm teacher: the KL split into teacher columns / the rest (should be 0 / all of it)
         pr_n = [0]

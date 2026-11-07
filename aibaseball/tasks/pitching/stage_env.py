@@ -685,9 +685,10 @@ class StageEnv(PitchEnv):
                 pay = pay & (self.t0 <= 0.0)
             rew_ball = rew_ball + pay.float() * c.w_stage_ball_rest * score
             if c.w_stage_rel_speed > 0:  # release speed on its own, same pay condition (gw: speed was ~0.5 per m/s)
-                rew_ball = rew_ball + pay.float() * c.w_stage_rel_speed * (
+                r_speed = pay.float() * c.w_stage_rel_speed * (
                     (self.rel_vel.norm(dim=-1) - c.rel_speed_lo_mps) / (c.rel_speed_full_mps - c.rel_speed_lo_mps)).clamp(0.0, 1.0) * (
                     score if c.rel_speed_x_score else 1.0)
+                rew_ball = rew_ball + r_speed
             if c.w_stage_rel_elev > 0:  # release elevation, same pay condition (ramp up to the target, bell above it)
                 v = self.rel_vel
                 el = torch.rad2deg(torch.atan2(v[:, 2], v[:, :2].norm(dim=-1)))
@@ -722,6 +723,17 @@ class StageEnv(PitchEnv):
             rew_ball = rew_ball + on.float() * c.w_finish_com * 0.5 * (fx + fy) * self.step_dt / (c.finish_com_t1 - c.finish_com_t0)
         rew = (rew_ball + up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps + c.w_stage_stride * new.float()
                - c.w_stage_fall * (self.fallen | self.s_drop).float() - c.w_stage_rate * rate)
+        acc = getattr(self, "rew_parts_acc", None)
+        if acc is not None:  # diagnosis only (train.py REW_PARTS=1, plan fastball_restart 5-6): per-term reward sums
+            r_sp = locals().get("r_speed", torch.zeros_like(speed))
+            pay_n = locals().get("pay", torch.zeros_like(self.fallen))
+            for k, v in (("total", rew), ("ball_all", rew_ball), ("speed", r_sp),
+                         ("alive_quality", up.float() * (c.w_stage_alive + c.w_stage_quality * quality * q_on) / steps),
+                         ("stride", c.w_stage_stride * new.float()),
+                         ("fall", -c.w_stage_fall * (self.fallen | self.s_drop).float()), ("rate", -c.w_stage_rate * rate),
+                         ("n_pay", pay_n.float()), ("n_speed_paid", (r_sp > 0).float()),
+                         ("n_done", (self.reset_terminated | self.reset_time_outs).float())):
+                acc[k] = acc.get(k, 0.0) + v.sum()
         done = self.reset_terminated | self.reset_time_outs
         a = 0.02
         # by start type (the eval runs full pitches from the set position only; RSI starts mid-pitch at t0 > 0):
