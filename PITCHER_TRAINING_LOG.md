@@ -3257,3 +3257,15 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
   - 機制證偽：scripts/s1d_mech.py 看更新 7661–7670，條件為 lr > 1e-6 至少 8/10、欄 2 KL 中位 ≤ 1.5e-3、總 KL 中位 ≤ 0.025。FAIL → 殺。
   - 其餘沿用 5-2：每 100 its 監看站穩；7900 證偽、8100 段末用 launch 判定。
   - 摘要寫到 logs/fb1d_summary.txt，結束標記 logs/PITCHER_S1D_END.txt。
+
+## 11-07 22:4x S1D 機制證偽 FAIL；S1D-2 起跑（Codex 第 15 輪 APPROVED）
+
+- S1D（fb1d100）在 7671 依預定規則停掉。檢查 7661–7670 的三項條件：
+  - lr > 1e-6 只有 2/10（中位 4.5e-7）→ 不成立；
+  - 欄 2 KL 2.3e-4 → 成立；
+  - 總 KL 3.9e-3 → 成立。
+- scheduler 降 / 升 42 / 37 次，佔比 0.06。
+- KL 預算轉移：欄 2 / 4 合計 0.024 → 6e-4，其餘欄 < 7.5e-4 → 3.2e-3。5-7 的「兩欄造成學習率釘在下限」不成立；現在是 scheduler 在調節帶內正常運作，只是調出來的學習率在 1e-6 以下。
+- S1D-2（計劃 5-8）：同一設定從 7600 重跑到 8100，照 5-2 判球速，不設機制證偽，全段記錄 KL（scripts/kl_blocks.py，每 100 its 區段，總 KL 中位落在 [0.0015, 0.006] = 接近目標）。
+  - 結論分開報：launch REGRESS / 監看停訓 / KL 再次超標。
+  - 鏈 logs/fastball_s1d2.sh，run fb1d2w100，摘要寫到 logs/fb1d2_summary.txt，結束標記 logs/PITCHER_S1D2_END.txt。
