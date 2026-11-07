@@ -3225,3 +3225,9 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 飽和基準（P3c 7600 noisy 128，n_valid 128/128）：肩 / 肘 / 手腕 roll 0.000；手腕 pitch 0.18、yaw 0.11；腰 yaw 0.41、pitch 0.37（全是力矩）。腰已 ≥ 0.3 → 腰改用「基準 + 0.15」。
 - 使用者同意：S1C 每個判定點改 noisy 256；基準 = fb0 + fb2 兩次 + 第三次 noisy 128 的合併中位（384 顆）；7900 證偽 ≥ 基準 − 0.05；段末 ≥ 基準 + 0.3 且站穩 ≥ 80/256。logs/fb_restart_base2.sh（identical 噪聲 0 + 第三次 noisy）→ logs/fb_restart_go.sh（identical 重現才寫 GO）→ logs/fastball_s1c_r.sh。
 - 計劃 docs/plans/fastball_restart.md 5-2 的數字（17.6 / 17.95 / 40/128）尚未同步。
+
+## 11-07 19:49 P3c 7600 noisy 抽樣變異量測；判定規則改為 launch 層級（Codex 審查通過，待使用者同意）
+
+- 7 次 noisy 128 launch 出手中位 17.65 / 17.09 / 16.77 / 17.29 / 17.35 / 17.26 / 17.15：平均 17.22、launch 間 sd 0.27，與單次 bootstrap sd 0.21–0.29 一致。fb0 17.65 是偏高的一次，原基準高估 0.43 m/s。noisy 256 兩次 16.92 / 17.22。
+- 原「B − 0.05 單表」證偽在無變化時誤殺 35–42%（Codex 推算），S1C 鏈於訓練起跑前停止。
+- 新規則（docs/plans/fastball_restart.md 5-2，Codex 第 8 輪 APPROVED）：判定量 = launch 中位平均；基準 7 次；判定點 4 次 launch（未定補 4 次）；Welch t 90%；7900 hi < −0.05 判退步；8100 PASS = Δ ≥ 0.3 且 lo > 0 且站穩 ≥ 40/128。scripts/median_delta.py 改為 launch 版。模擬：無變化誤判退步 1%、誤判 PASS 0.9%。新增 D6（驗收閘兩批獨立 noisy 128 確認）待使用者決定。
