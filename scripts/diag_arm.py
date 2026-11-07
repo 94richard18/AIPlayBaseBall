@@ -94,6 +94,7 @@ def main():
     seas = base._seas()
     sat_t = torch.zeros(n, nj, device=dev)  # sub-steps at the limit this env step
     sat_v = torch.zeros(n, nj, device=dev)
+    sat_a = torch.zeros(n, nj, device=dev)  # sub-steps with motor torque OR motor speed at its limit (union per sub-step)
     sub_n = [0]
     j2c = {}  # robot joint index -> column in JOINTS
     for c_i, j in enumerate(jidx):
@@ -107,15 +108,19 @@ def main():
 
         def compute(action, joint_pos, joint_vel, a=a, cols=cols, orig_compute=orig_compute):
             c = a.cfg
+            t_flag = {}
             if not a.needs_sync.any():
                 qd_des = action.joint_velocities if action.joint_velocities is not None else torch.zeros_like(
                     action.joint_positions)
                 tau = c.motor_kp * (action.joint_positions - a.motor_pos) + c.motor_kd * (qd_des - a.motor_vel)
                 for k, ci in cols:
-                    sat_t[:, ci] += (tau[:, k].abs() >= c.motor_effort).float()
+                    t_flag[ci] = tau[:, k].abs() >= c.motor_effort
+                    sat_t[:, ci] += t_flag[ci].float()
             out = orig_compute(action, joint_pos, joint_vel)
             for k, ci in cols:
-                sat_v[:, ci] += (a.motor_vel[:, k].abs() >= c.motor_velocity * 0.999).float()
+                v_flag = a.motor_vel[:, k].abs() >= c.motor_velocity * 0.999
+                sat_v[:, ci] += v_flag.float()
+                sat_a[:, ci] += (v_flag | t_flag[ci]).float() if ci in t_flag else v_flag.float()
                 defl[:, ci] = a.deflection[:, k]
                 mlim[ci] = (c.motor_effort, c.motor_velocity)
             return out
@@ -132,8 +137,9 @@ def main():
         rob.root_physx_view.get_dof_max_velocities()[0, jidx].cpu().numpy()
 
     T = int(round(1.3 / base.step_dt))  # through the release (~1.0 s reference time)
-    rec = {k: [] for k in ("tr", "q", "qd", "base", "based", "ath", "athd", "act", "satt", "satv", "defl")}
+    rec = {k: [] for k in ("tr", "q", "qd", "base", "based", "ath", "athd", "act", "satt", "satv", "sata", "defl")}
     released_at = np.full(n, -1)
+    fell_at = np.full(n, -1)  # first step base.fallen is set (dones are off, so a fall does not reset the env)
     prev = np.zeros(n, dtype=bool)
     sp = torch.as_tensor(base.speed, device=dev)
     ascale = (base.action_scale[bcol] if torch.is_tensor(base.action_scale) else torch.tensor(base.action_scale)[bcol]).to(dev)
@@ -144,7 +150,7 @@ def main():
         obs, _ = w.reset()
         for k in range(T):
             act = pol(obs)
-            sat_t.zero_(); sat_v.zero_(); sub_n[0] = 0
+            sat_t.zero_(); sat_v.zero_(); sat_a.zero_(); sub_n[0] = 0
             obs, _, _, _ = w.step(act)
             d = rob.data
             tr = base._ref_time() - sp * base.step_dt  # the reference time this step's targets were sampled for (approx)
@@ -163,10 +169,13 @@ def main():
             rec["act"].append(act[:, bcol].cpu().numpy())
             rec["satt"].append((sat_t / ns).cpu().numpy())
             rec["satv"].append((sat_v / ns).cpu().numpy())
+            rec["sata"].append((sat_a / ns).cpu().numpy())
             rec["defl"].append(defl.cpu().numpy())
             rel = base.released.cpu().numpy()
             released_at[rel & ~prev] = k
             prev = rel
+            fl = base.fallen.cpu().numpy()
+            fell_at[fl & (fell_at < 0)] = k
         rel_off = (base.rel_ref_t - base.release_ref).cpu().numpy()
         relm = base.released.cpu().numpy()
     R = {k: np.stack(v, 1) for k, v in rec.items()}  # (n, T, ...)
@@ -238,6 +247,29 @@ def main():
     k5 = int(round(0.05 / base.step_dt))
     say("  last 50 ms: motor torque at limit % / motor speed at limit % per joint: " + ", ".join(
         f"{j} {np.mean(st[:, -k5:, c]) * 100:.0f}/{np.mean(sv[:, -k5:, c]) * 100:.0f}" for c, j in enumerate(JOINTS)))
+
+    # saturation share per env (docs/plans/fastball_restart.md 5-4): sub-steps in the window with motor torque OR motor
+    # speed at its limit, per env and joint; valid = released, window complete, no fall before the release
+    not_rel = released_at < 0
+    short = (released_at >= 0) & (released_at < W)
+    fell_pre = (released_at >= 0) & (fell_at >= 0) & (fell_at <= released_at)
+    valid = ~not_rel & ~short & ~fell_pre
+    say(f"[saturation] n_valid {int(valid.sum())}/{n} (excluded: not released {int(not_rel.sum())}, window incomplete "
+        f"{int(short.sum())}, fell before the release {int(fell_pre.sum())}); "
+        + ("EVIDENCE INSUFFICIENT (n_valid < 0.75 n)" if valid.sum() < 0.75 * n else "evidence ok"))
+    if valid.any():
+        vidx = np.array([np.arange(k - W, k + 1) for k in released_at[valid]])
+        vrows = np.nonzero(valid)[0][:, None]
+        share = {key: R[key][vrows, vidx].mean(1) for key in ("sata", "satt", "satv")}  # (m, nj) per-env window share
+        say("[saturation] per joint, share of window sub-steps at a limit, over valid envs: union median [p25, p75] | "
+            "torque median | speed median")
+        for c, j in enumerate(JOINTS):
+            if mlim.get(c) is None:
+                say(f"[saturation]   {j:18s} | no SEA")
+                continue
+            u = share["sata"][:, c]
+            say(f"[saturation]   {j:18s} | {np.median(u):.3f} [{np.percentile(u, 25):.3f}, {np.percentile(u, 75):.3f}] | "
+                f"{np.median(share['satt'][:, c]):.3f} | {np.median(share['satv'][:, c]):.3f}")
 
     # 1. kinematic hand speed split of the reference
     def fk_split(t, scaled):

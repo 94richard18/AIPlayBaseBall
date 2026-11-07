@@ -8,8 +8,12 @@ from pure backspin b (12:00 = 0 deg, 30 deg per hour), within +-45 deg (11:30-1:
 EFFICIENCY eta = |omega - (omega . v_hat) v_hat| / |omega| >= 0.85; the count passing both. Gates: M1 90 / M2 105 / M3 120 km/h release median,
 stand >= 48/64, T3+ and stand >= 32/64 (identical start); spin is reported, not gated. --ref prints the delta vs a
 reference csv (P3c: assets/game/p3c_identical_t18_release.csv).
+--gate noisy128 (docs/plans/fastball_restart.md 1-2-1, the acceptance gate on the noisy 128 table): stand >= 0.75 n
+(96/128), T3+ and stand >= 0.25 n (32/128); M3 = final adoption also needs the tilt median within +-45 deg AND the
+efficiency median >= 0.85 (median statistic = the plan's proposal, pending the user's D5; until D5 is decided the M3
+mark carries "D5?"). The default gate and the default line are unchanged.
 
-python scripts/fastball_summary.py RELEASE_CSV [--ref REF_CSV] [--tag TAG]
+python scripts/fastball_summary.py RELEASE_CSV [--ref REF_CSV] [--tag TAG] [--gate {default,noisy128}]
 """
 import argparse
 import csv
@@ -57,10 +61,23 @@ def clock(deg):
     return f"{(m // 60) or 12}:{m % 60:02d}"
 
 
-def line(s, tag):
+def gate_marks(s, mode="default"):
     p = s["sp"]
-    gate = " ".join(f"{g} {'pass' if p[1] * KMH >= k and s['stand'] >= 0.75 * s['n'] and s['t3'] >= 0.5 * s['n'] else 'no'}"
-                    for g, k in GATES)
+    t3_share = 0.5 if mode == "default" else 0.25
+    base = lambda k: p[1] * KMH >= k and s["stand"] >= 0.75 * s["n"] and s["t3"] >= t3_share * s["n"]
+    if mode == "default":
+        return " ".join(f"{g} {'pass' if base(k) else 'no'}" for g, k in GATES)
+    spin = abs(s["tilt"]) <= TILT_MAX and s["eff"] >= EFF_MIN  # NaN medians compare False
+    marks = []
+    for g, k in GATES:
+        ok = base(k) and (spin if g == "M3" else True)
+        marks.append(f"{g} {'pass' if ok else 'no'}" + (" (D5?)" if g == "M3" and ok else ""))
+    return "noisy128 gate: " + " ".join(marks)
+
+
+def line(s, tag, mode="default"):
+    p = s["sp"]
+    gate = gate_marks(s, mode)
     return (f"{tag}: release p10/50/90 {p[0]:.1f}/{p[1]:.1f}/{p[2]:.1f} m/s ({p[1] * KMH:.0f} km/h), stand+thrown "
             f"{s['stand']}/{s['n']}, T3+ stand {s['t3']}/{s['n']}, spin p10/50/90 {s['rpm'][0]:.0f}/{s['rpm'][1]:.0f}/"
             f"{s['rpm'][2]:.0f} rpm, axis vs backspin median {s['ang']:.0f} deg, within 30 deg {s['back30']}/{s['released']}, "
@@ -73,9 +90,10 @@ if __name__ == "__main__":
     ap.add_argument("csv")
     ap.add_argument("--ref", default=None)
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--gate", choices=("default", "noisy128"), default="default")
     a = ap.parse_args()
     s = stats(load(a.csv))
-    out = line(s, a.tag or a.csv)
+    out = line(s, a.tag or a.csv, a.gate)
     if a.ref:
         r = stats(load(a.ref))
         out += (f" | vs ref: release {s['sp'][1] - r['sp'][1]:+.2f} m/s, stand {s['stand'] - r['stand']:+d}, "
