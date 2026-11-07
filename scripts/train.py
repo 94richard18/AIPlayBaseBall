@@ -45,6 +45,9 @@ parser.add_argument("--post_clip_teacher", type=str, default=None,
                     help="batter PC (Human21, 2026-10-27): this checkpoint's frozen actor drives every column until the clip ends")
 parser.add_argument("--zero_actor_head", action="store_true", default=False,
                     help="zero the actor's output layer after loading: the policy starts as zero actions (the PD reference)")
+parser.add_argument("--anchor_ckpt", type=str, default=None,
+                    help="P3c anchor (11-07): PPO loss + anchor_coef x mean((mu - mu_ckpt)^2) over all states and columns")
+parser.add_argument("--anchor_coef", type=float, default=1.0, help="weight of the --anchor_ckpt term")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -257,6 +260,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         u = env.unwrapped
         arm_mask = attach_arm_teacher(runner.alg, args_cli.arm_teacher, list(u._arm_cols) + [29 + u.cfg.release_action_col],
                                       agent_cfg.device)
+    if args_cli.anchor_ckpt:
+        from aibaseball.rl.anchor import attach_anchor
+
+        # the stored rollout observations are normalized: the anchor is only valid with the checkpoint's frozen normalizer
+        nm = runner.obs_normalizer
+        assert not agent_cfg.empirical_normalization or (nm.until is not None and nm.count >= nm.until), "anchor: obs normalizer still learning"
+        attach_anchor(runner.alg, args_cli.anchor_ckpt, args_cli.anchor_coef, agent_cfg.device)
     pr_rows = None
     if args_cli.post_release_teacher:
         from aibaseball.rl.arm_teacher import attach_post_release_student, post_release_rows
