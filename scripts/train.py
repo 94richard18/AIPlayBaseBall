@@ -69,6 +69,8 @@ simulation_app = app_launcher.app
 
 import gymnasium as gym
 import os
+
+SCHED = {"down": 0, "up": 0}  # adaptive-schedule decisions per update (LR_FLOOR patch, DIAG_JSON)
 import torch
 from datetime import datetime
 
@@ -138,10 +140,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
         def ppo_max(a, b, *rest):
             if a == 1e-5 and not rest:
+                SCHED["down"] += 1  # the adaptive schedule saw mini-batch KL > 2 x desired
                 return builtins.max(lr_floor, b)
             return builtins.max(a, b, *rest)
 
+        def ppo_min(a, b, *rest):
+            if a == 1e-2 and not rest:
+                SCHED["up"] += 1  # mini-batch KL < desired / 2
+            return builtins.min(a, b, *rest)
+
         rsl_ppo.max = ppo_max
+        rsl_ppo.min = ppo_min
         print(f"[INFO]: adaptive learning-rate floor {lr_floor:.1e} (rsl_rl default 1e-5)", flush=True)
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
@@ -428,9 +437,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                   f"actor rel diff {d:.2e}", flush=True)
             kl_step[0] += 1
             return out
+        SCHED["down"] = SCHED["up"] = 0
         out = update_kl(*a, **k)
         if rec is not None:
-            rec.update(diag_stats(mu0, sig0, obs, act, adv), lr_after=runner.alg.learning_rate)
+            rec.update(diag_stats(mu0, sig0, obs, act, adv), lr_after=runner.alg.learning_rate,
+                       sched_down=SCHED["down"], sched_up=SCHED["up"])
             diag_dump(rec)
         kl_sum, clip_n, n = 0.0, 0, 0
         kl_arm = kl_rest = 0.0  # arm teacher: the KL split into teacher columns / the rest (should be 0 / all of it)
