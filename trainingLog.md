@@ -68,6 +68,7 @@
 
 ## 4. 正在執行（10-26 21:30 交接，新 session 先讀這段）
 
+- **11-07 19:05（使用者決定）重啟投手直球線：D1 = 路線 A 先跑一段、D2 = 先不改規格（D4 拍片 / cron、D5 旋轉口徑未決）。計劃 docs/plans/fastball_restart.md。工具 b32ee59（fastball_summary --gate noisy128、diag_arm [saturation]）；鏈 logs/fb_restart_base.sh（P3c 7600 基準重現 + 飽和基準，過了寫 PITCHER_S1C_GO）→ logs/fastball_s1c_r.sh（S1C w100 7600 → 8100，去掉 film25 時段，規則同 11-07 15:56 條）。批手、拍片維持停止。**
 - **11-07 16:04（使用者決定）專案暫停。所有訓練、拍片、鏈與排程停止；以下為暫停時的完整狀態與未解問題，重啟時從這裡讀。**
   - **已交付**：ONE OUTS 5 場正式影片 `videos/oneouts_final_1106.mp4`（11-06 23:44；3:13.77、2560×720、High；投手 4-1；引擎 rng 7/13/21/35/37；PA 規則 (c) 最少 3 球 + 一次不揮；不揮球 = take mode 11 於 done_t 切）。打者線已關閉：定案組 h32e/model_16300 + R6b model_3091、AIB_PRESTART_PIN=1 AIB_ACT_EMA=0.5、--phase_horizon 2.6、800 Hz；備援 15993 + R6b。投手 = P3c（ho2 7600，`logs/rsl_rl/aib1_stage/2026-10-25_14-41-27_ho2_tw2plw100/model_7600.pt`），聯合場景交接球速 64–65 km/h。最後一次例行拍片 film24 14:51 11-07 PASS。
   - **直球線的驗收標準（使用者 11-06 (a) + 11-07 兩次修訂）**：出手中位 ≥ 120 km/h（aero、eval_stage）；站穩 / 準度閘以 noisy 128 為準：noisy 站穩 ≥ 96/128、noisy T3（|y| ≤ 0.5、z 0.2–1.5）+站穩 ≥ 32/128，identical 64 只回報；旋轉：tilt 在 11:30–1:30（±45°）且旋轉效率 η ≥ 0.85，轉速回報不閘；四縫線握法（10-21 規格）；閘門 M1 90 / M2 105 / M3 120 km/h。評估工具 `scripts/fastball_summary.py`（40f5e25 起含 tilt / 效率 / 兩條件通過數）。
