@@ -43,6 +43,13 @@ class StageEnv(PitchEnv):
         self.s_hold = torch.zeros(n, len(self.body_ids), device=dev)  # robot's joint angles at the touchdown
         self.s_root_land = torch.zeros(n, 3, device=dev)  # robot's root at the touchdown (world)
         self.s_lift_t = torch.zeros(n, device=dev)  # 1b1: s on the back leg alone with the lead foot lifted
+        # SEP (plan 5-17): signed hip-shoulder separation wrap(pelvis yaw - torso yaw), deg, at the valid stride event
+        self.s_sep = torch.zeros(n, device=dev)
+        self.s_sep_set = torch.zeros(n, dtype=torch.bool, device=dev)
+        # last finished episode per env (rollout check): sep at the event, its event flag, pay mask, SEP and speed pay
+        self.s_last = {k: torch.zeros(n, device=dev) for k in ("sep", "sep_set", "pay", "sep_pay", "speed_pay", "land_t",
+                                                                "set_start")}
+        self.s_last_n = torch.zeros(n, dtype=torch.long, device=dev)
         self.s_slid = torch.zeros(n, dtype=torch.bool, device=dev)  # 1b1: back foot left its spot
         self.s_feet0 = torch.zeros(n, 2, 3, device=dev)  # feet / pelvis at the episode's first step (world)
         self.s_pelvis0 = torch.zeros(n, 3, device=dev)
@@ -482,6 +489,13 @@ class StageEnv(PitchEnv):
         new = (down & self.s_lifted & ~self.s_landed & (stride >= c.lead_stride_min_m) & ahead & kept
                & ~self.fallen)
         self.s_landed |= new
+        if new.any():
+            def yaw(q):  # wxyz -> heading of the body x axis, deg
+                w_, x_, y_, z_ = q.unbind(-1)
+                return torch.rad2deg(torch.atan2(2 * (x_ * y_ + w_ * z_), 1 - 2 * (y_ * y_ + z_ * z_)))
+            sep = (yaw(d.body_link_quat_w[:, self.pelvis_id]) - yaw(d.body_link_quat_w[:, self.torso_id]) + 180.0) % 360.0 - 180.0
+            self.s_sep = torch.where(new, sep, self.s_sep)
+            self.s_sep_set |= new
         self.s_land_t = torch.where(new, tr, self.s_land_t)
         self.s_land_step = torch.where(new, self.episode_length_buf, self.s_land_step)
         self.s_hold = torch.where(new.unsqueeze(-1), d.joint_pos[:, self.body_ids], self.s_hold)
@@ -689,6 +703,21 @@ class StageEnv(PitchEnv):
                     (self.rel_vel.norm(dim=-1) - c.rel_speed_lo_mps) / (c.rel_speed_full_mps - c.rel_speed_lo_mps)).clamp(0.0, 1.0) * (
                     score if c.rel_speed_x_score else 1.0)
                 rew_ball = rew_ball + r_speed
+            else:
+                r_speed = torch.zeros_like(speed)
+            if c.w_stage_sep > 0:  # SEP (plan 5-17): separation at the valid stride event, paid with the speed term's mask
+                r_sep = (pay & self.s_sep_set).float() * c.w_stage_sep * (
+                    (self.s_sep - c.sep_lo_deg) / (c.sep_full_deg - c.sep_lo_deg)).clamp(0.0, 1.0)
+                rew_ball = rew_ball + r_sep
+            else:
+                r_sep = torch.zeros_like(speed)
+            end = self.reset_time_outs | self.reset_terminated
+            if end.any():
+                for k, v in (("sep", self.s_sep), ("sep_set", self.s_sep_set.float()), ("pay", pay.float()),
+                             ("sep_pay", r_sep), ("speed_pay", r_speed), ("land_t", self.s_land_t),
+                             ("set_start", (self.t0 <= 0.0).float())):
+                    self.s_last[k] = torch.where(end, v, self.s_last[k])
+                self.s_last_n += end.long()
             if c.w_stage_rel_elev > 0:  # release elevation, same pay condition (ramp up to the target, bell above it)
                 v = self.rel_vel
                 el = torch.rad2deg(torch.atan2(v[:, 2], v[:, :2].norm(dim=-1)))
@@ -865,6 +894,8 @@ class StageEnv(PitchEnv):
         self.s_air[env_ids] = 0.0
         self.s_land_step[env_ids] = 0
         self.s_lift_t[env_ids] = 0.0
+        self.s_sep[env_ids] = 0.0
+        self.s_sep_set[env_ids] = False
         self.s_need0[env_ids] = True
         self.s_cut[env_ids] = int(self.max_episode_length)
         if hasattr(self, "_cat_init"):
