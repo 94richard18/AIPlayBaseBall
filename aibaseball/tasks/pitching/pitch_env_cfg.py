@@ -2159,6 +2159,15 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg(Stage1dK70GW2MBASVRT1
 
 
 @configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100S1EEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100EnvCfg):
+    """Fastball S1E (plan 5-11, Codex round 20): the S1C release-speed term on ho2's own task (TW2PLW100, no release
+    shift / plate yaw), so the only difference from the R1 plain-resume controls is this term. Evaluated zero-shot in P3C."""
+    w_stage_rel_speed: float = 100.0
+    rel_speed_lo_mps: float = 16.0
+    rel_speed_full_mps: float = 22.0
+
+
+@configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CW200EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg):
     """Fastball stage 1c, weight 200: the option-A falsifier fallback (noisy release median < 17.6 at 7900 with weight 100)."""
     w_stage_rel_speed: float = 200.0
