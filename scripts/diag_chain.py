@@ -40,6 +40,8 @@ parser.add_argument("--arm_teacher", type=str, default=None, help="checkpoint wh
 parser.add_argument("--envs", type=int, default=128)
 parser.add_argument("--set", nargs="*", default=[], help="env cfg overrides, key=value")
 parser.add_argument("--ref_only", action="store_true", help="tool check: the retargeted reference only")
+parser.add_argument("--waist_effort_scale", type=float, default=1.0,
+                    help="what-if (plan 5-16): waist_yaw / waist_pitch SEA motor_effort x this at evaluation (waist_roll unchanged)")
 parser.add_argument("--dump", type=str, default=None, help="save per-env results (.npz)")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
@@ -211,8 +213,14 @@ def main():
 
     # waist SEA limit flags per physics sub-step (as diag_arm: motor torque at its limit OR motor speed at its limit)
     sat = torch.zeros(n, 2, device=dev)
+    sat_t = torch.zeros(n, 2, device=dev)  # torque at limit / motor speed at limit, separately
+    sat_v = torch.zeros(n, 2, device=dev)
+    tau_pk = torch.zeros(n, 2, device=dev)  # this env step's max |motor torque| / |spring torque| / |motor speed|
+    spr_pk = torch.zeros(n, 2, device=dev)
+    vel_pk = torch.zeros(n, 2, device=dev)
     sub_n = [0]
     hooked = set()
+    scaled = set()
     for a in base._seas():
         if isinstance(a.joint_indices, slice):
             continue
@@ -220,6 +228,11 @@ def main():
         if not cols:
             continue
         hooked |= {c for _, c in cols}
+        if args.waist_effort_scale != 1.0 and id(a.cfg) not in scaled:
+            say(f"[whatif] {a.cfg.joint_names_expr} motor_effort {a.cfg.motor_effort:.1f} -> "
+                f"{a.cfg.motor_effort * args.waist_effort_scale:.1f} Nm")
+            a.cfg.motor_effort = a.cfg.motor_effort * args.waist_effort_scale
+            scaled.add(id(a.cfg))
         orig_compute = a.compute
 
         def compute(action, joint_pos, joint_vel, a=a, cols=cols, orig_compute=orig_compute):
@@ -231,10 +244,16 @@ def main():
                 tau = c.motor_kp * (action.joint_positions - a.motor_pos) + c.motor_kd * (qd_des - a.motor_vel)
                 for k, ci in cols:
                     tf[ci] = tau[:, k].abs() >= c.motor_effort
+                    sat_t[:, ci] += tf[ci].float()
+                    tau_pk[:, ci] = torch.maximum(tau_pk[:, ci], tau[:, k].abs().clamp(max=c.motor_effort))
             out = orig_compute(action, joint_pos, joint_vel)
             for k, ci in cols:
                 vf = a.motor_vel[:, k].abs() >= c.motor_velocity * 0.999
                 sat[:, ci] += (vf | tf[ci]).float() if ci in tf else vf.float()
+                sat_v[:, ci] += vf.float()
+                ts = c.spring_stiffness * (a.motor_pos[:, k] - joint_pos[:, k]) + c.spring_damping * (a.motor_vel[:, k] - joint_vel[:, k])
+                spr_pk[:, ci] = torch.maximum(spr_pk[:, ci], ts.abs())
+                vel_pk[:, ci] = torch.maximum(vel_pk[:, ci], a.motor_vel[:, k].abs())
             return out
         a.compute = compute
     if hooked != {0, 1}:
@@ -248,7 +267,7 @@ def main():
 
     T = int(round(1.3 / base.step_dt))
     dt = base.step_dt
-    rec = {k: [] for k in ("Rp", "Rt", "hand", "sh", "el", "sat")}
+    rec = {k: [] for k in ("Rp", "Rt", "hand", "sh", "el", "sat", "satt", "satv", "tau", "spr", "vel")}
     released_at = np.full(n, -1)
     fell_at = np.full(n, -1)
     strike_at = np.full(n, -1)
@@ -262,7 +281,9 @@ def main():
         obs, _ = w.reset()
         for k in range(T):
             act = pol(obs)
-            sat.zero_(); sub_n[0] = 0
+            for x in (sat, sat_t, sat_v, tau_pk, spr_pk, vel_pk):
+                x.zero_()
+            sub_n[0] = 0
             obs, _, _, _ = w.step(act)
             d = rob.data
             rec["Rp"].append(qmat(d.body_link_quat_w[:, base.pelvis_id]))
@@ -270,7 +291,13 @@ def main():
             rec["hand"].append(d.body_link_pos_w[:, base.hand_id].cpu().numpy())
             rec["sh"].append(d.joint_vel[:, j_sh].cpu().numpy())
             rec["el"].append(d.joint_vel[:, j_el].cpu().numpy())
-            rec["sat"].append((sat / max(sub_n[0], 1)).cpu().numpy())
+            ns = max(sub_n[0], 1)
+            rec["sat"].append((sat / ns).cpu().numpy())
+            rec["satt"].append((sat_t / ns).cpu().numpy())
+            rec["satv"].append((sat_v / ns).cpu().numpy())
+            rec["tau"].append(tau_pk.cpu().numpy())
+            rec["spr"].append(spr_pk.cpu().numpy())
+            rec["vel"].append(vel_pk.cpu().numpy())
             rel = base.released.cpu().numpy()
             released_at[rel & ~prev] = k
             prev = rel
@@ -279,6 +306,7 @@ def main():
             if hasattr(base, "s_landed"):
                 ld = base.s_landed.cpu().numpy()
                 strike_at[ld & (strike_at < 0)] = k
+        rel_speed = base.rel_vel.norm(dim=-1).cpu().numpy()
     R = {k: np.stack(v, 1) for k, v in rec.items()}  # (n, T, ...)
     t = (np.arange(T) + 1) * dt
     W = int(round(-LO / dt))
@@ -306,7 +334,10 @@ def main():
         sep = (PR.yaw_deg(R["Rp"][i]) - PR.yaw_deg(R["Rt"][i]) + 180) % 360 - 180
         sep_st = sep[strike_at[i]] if 0 <= strike_at[i] <= released_at[i] else np.nan
         rows.append(dict(env=i, pk=pk, cls=classify(pk, sh_), sat_w=sat_w, sat_h=sh_, sep_st=sep_st,
-                         sep_max=np.max(np.abs(sep[win]))))
+                         sep_max=np.max(np.abs(sep[win])), speed=float(rel_speed[i]),
+                         satt=R["satt"][i][win].mean(0), satv=R["satv"][i][win].mean(0),
+                         tau_pk=R["tau"][i][win].max(0), tau_mean=R["tau"][i][win].mean(0),
+                         spr_pk=R["spr"][i][win].max(0), vel_pk=R["vel"][i][win].max(0)))
     m = len(rows)
     if not m:
         return
@@ -335,6 +366,14 @@ def main():
     for c, lab in enumerate(("waist_yaw", "waist_pitch")):
         say(f"[chain]   {lab} saturation 450 ms window {q3([r_['sat_w'][c] for r_ in rows])} | handoff window "
             f"{q3([r_['sat_h'][c] if r_['sat_h'] is not None else None for r_ in rows])}")
+    say(f"[whatif] k {args.waist_effort_scale} | n_valid {m} | release speed median {np.median([r_['speed'] for r_ in rows]):.2f} m/s "
+        f"[{np.percentile([r_['speed'] for r_ in rows], 25):.2f}, {np.percentile([r_['speed'] for r_ in rows], 75):.2f}] | "
+        f"trunk/pelvis median {np.median([r_['pk'][1][1] / r_['pk'][0][1] for r_ in both]):.3f} (n {len(both)}) | "
+        f"not released {int(not_rel.sum())}, fell before the release {int(fell_pre.sum())}")
+    for c, lab in enumerate(("waist_yaw", "waist_pitch")):
+        say(f"[whatif]   {lab}: motor torque peak {q3([r_['tau_pk'][c] for r_ in rows])} Nm, mean {q3([r_['tau_mean'][c] for r_ in rows])} | "
+            f"spring torque peak {q3([r_['spr_pk'][c] for r_ in rows])} Nm | motor speed peak {q3([r_['vel_pk'][c] for r_ in rows])} rad/s | "
+            f"sat torque {np.median([r_['satt'][c] for r_ in rows]):.3f}, sat speed {np.median([r_['satv'][c] for r_ in rows]):.3f}")
     cnt = {k: sum(r_["cls"] == k for r_ in rows) for k in ("C1", "C2", "C3", "unreadable")}
     say(f"[chain] classes over {m} valid envs: " + ", ".join(f"{k} {v} ({v / m:.0%})" for k, v in cnt.items())
         + "  (C1 consistent with the waist-limit hypothesis, C2 timing difference observed; descriptive only)")
@@ -344,7 +383,9 @@ def main():
                  ok=np.array([[p[2] for p in r_["pk"]] for r_ in rows]),
                  sat_w=np.array([r_["sat_w"] for r_ in rows]),
                  sat_h=np.array([r_["sat_h"] if r_["sat_h"] is not None else [np.nan, np.nan] for r_ in rows]),
-                 sep_st=[r_["sep_st"] for r_ in rows], sep_max=[r_["sep_max"] for r_ in rows])
+                 sep_st=[r_["sep_st"] for r_ in rows], sep_max=[r_["sep_max"] for r_ in rows],
+                 speed=[r_["speed"] for r_ in rows], tau_pk=np.array([r_["tau_pk"] for r_ in rows]),
+                 fell_pre=int(fell_pre.sum()), not_rel=int(not_rel.sum()), k=args.waist_effort_scale)
 
 
 if __name__ == "__main__":
