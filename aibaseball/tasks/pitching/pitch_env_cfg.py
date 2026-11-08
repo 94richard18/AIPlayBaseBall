@@ -730,6 +730,9 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     # hip-shoulder separation at the valid stride event, paid at the time-out with w_stage_rel_speed's pay mask
     sep_lo_deg: float = 16.0
     sep_full_deg: float = 64.0
+    waist_yaw_clock_scale: float = 0.0  # RW (plan 5-19): > 0 puts waist_yaw's PD target on the throw clock from t = 0,
+    # set + k x throw_upper_scale x (athlete - set) (feed-forward alike), replacing the frozen set pose / trunk window for
+    # waist_yaw only; 0 = unchanged (waist_pitch / roll never touched)
     rel_speed_lo_mps: float = 0.0  # w_stage_rel_speed pays (v - lo) / (full - lo), clipped to [0, 1] (0: the old v / full)
     w_stage_spin: float = 0.0  # stage: x clip((eta - spin_eff_lo) / (spin_eff_full - spin_eff_lo), 0, 1) at release, eta = spin
     # efficiency (omega's share perpendicular to the velocity), only if |tilt| <= spin_tilt_max_deg and rpm >= spin_min_rpm; paid like w_stage_ball_rest
@@ -2183,3 +2186,35 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100S1ESEPEnvCfg(Stage1dK70GW2MBASVRT1
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CW200EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg):
     """Fastball stage 1c, weight 200: the option-A falsifier fallback (noisy release median < 17.6 at 7900 with weight 100)."""
     w_stage_rel_speed: float = 200.0
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW25EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball RW (plan 5-19, Codex round 40-43, user approved 11-09 with the 7600 start): P3C + waist_yaw on the throw
+    clock at k = 0.25 (waist pitch / roll unchanged)."""
+
+    waist_yaw_clock_scale: float = 0.25
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW50EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball RW (plan 5-19, Codex round 40-43, user approved 11-09 with the 7600 start): P3C + waist_yaw on the throw
+    clock at k = 0.5 (waist pitch / roll unchanged)."""
+
+    waist_yaw_clock_scale: float = 0.5
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW75EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball RW (plan 5-19, Codex round 40-43, user approved 11-09 with the 7600 start): P3C + waist_yaw on the throw
+    clock at k = 0.75 (waist pitch / roll unchanged)."""
+
+    waist_yaw_clock_scale: float = 0.75
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CEnvCfg):
+    """Fastball RW (plan 5-19, Codex round 40-43, user approved 11-09 with the 7600 start): P3C + waist_yaw on the throw
+    clock at k = 1 (waist pitch / roll unchanged)."""
+
+    waist_yaw_clock_scale: float = 1

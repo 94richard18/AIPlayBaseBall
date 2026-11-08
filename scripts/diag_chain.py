@@ -265,9 +265,30 @@ def main():
         orig_apply()
     base._apply_action = apply
 
+    # RW operation check (plan 5-19): the waist_yaw PD reference target this step's _pre_physics_step used (its first
+    # _ref call = nxt), the applied target (reference + residual, clamped) and the measured joint angle
+    by = base._jcol["waist_yaw"]
+    ry = jn.index("waist_yaw")
+    cap = {"on": False, "tgt": torch.zeros(n, device=dev)}
+    orig_ref, orig_pre = base._ref, base._pre_physics_step
+
+    def ref_cap(t, *a_, **k_):
+        out = orig_ref(t, *a_, **k_)
+        if cap["on"] and t.shape[0] == n:
+            cap["tgt"] = out["joint_pos"][:, by].clone()
+            cap["on"] = False
+        return out
+
+    def pre_cap(actions):
+        cap["on"] = True
+        orig_pre(actions)
+        cap["on"] = False
+    base._ref, base._pre_physics_step = ref_cap, pre_cap
+    with torch.inference_mode():
+        y_set = orig_ref(torch.zeros(n, device=dev))["joint_pos"][:, by].clone()
     T = int(round(1.3 / base.step_dt))
     dt = base.step_dt
-    rec = {k: [] for k in ("Rp", "Rt", "hand", "sh", "el", "sat", "satt", "satv", "tau", "spr", "vel")}
+    rec = {k: [] for k in ("Rp", "Rt", "hand", "sh", "el", "sat", "satt", "satv", "tau", "spr", "vel", "ytgt", "yapp", "yq")}
     released_at = np.full(n, -1)
     fell_at = np.full(n, -1)
     strike_at = np.full(n, -1)
@@ -298,6 +319,9 @@ def main():
             rec["tau"].append(tau_pk.cpu().numpy())
             rec["spr"].append(spr_pk.cpu().numpy())
             rec["vel"].append(vel_pk.cpu().numpy())
+            rec["ytgt"].append((cap["tgt"] - y_set).cpu().numpy())
+            rec["yapp"].append((base.q_target[:, base.body_ids[by]] - cap["tgt"]).cpu().numpy())
+            rec["yq"].append((d.joint_pos[:, ry] - y_set).cpu().numpy())
             rel = base.released.cpu().numpy()
             released_at[rel & ~prev] = k
             prev = rel
@@ -333,7 +357,10 @@ def main():
             sh_ = R["sat"][i][hw].mean(0)
         sep = (PR.yaw_deg(R["Rp"][i]) - PR.yaw_deg(R["Rt"][i]) + 180) % 360 - 180
         sep_st = sep[strike_at[i]] if 0 <= strike_at[i] <= released_at[i] else np.nan
+        ev = 0 <= strike_at[i] <= released_at[i]
+        yv = [np.degrees(R[k_][i][strike_at[i]]) if ev else np.nan for k_ in ("ytgt", "yq", "yapp")]
         rows.append(dict(env=i, pk=pk, cls=classify(pk, sh_), sat_w=sat_w, sat_h=sh_, sep_st=sep_st,
+                         d_tgt=yv[0], d_rob=yv[1], res=yv[2],
                          sep_max=np.max(np.abs(sep[win])), speed=float(rel_speed[i]),
                          satt=R["satt"][i][win].mean(0), satv=R["satv"][i][win].mean(0),
                          tau_pk=R["tau"][i][win].max(0), tau_mean=R["tau"][i][win].mean(0),
@@ -374,6 +401,13 @@ def main():
         say(f"[whatif]   {lab}: motor torque peak {q3([r_['tau_pk'][c] for r_ in rows])} Nm, mean {q3([r_['tau_mean'][c] for r_ in rows])} | "
             f"spring torque peak {q3([r_['spr_pk'][c] for r_ in rows])} Nm | motor speed peak {q3([r_['vel_pk'][c] for r_ in rows])} rad/s | "
             f"sat torque {np.median([r_['satt'][c] for r_ in rows]):.3f}, sat speed {np.median([r_['satv'][c] for r_ in rows]):.3f}")
+    dtg = np.array([r_["d_tgt"] for r_ in rows])
+    drb = np.array([r_["d_rob"] for r_ in rows])
+    ev = np.isfinite(dtg) & np.isfinite(drb)
+    tr_ok = ev & (np.abs(dtg) > 1.0)
+    say(f"[rw] waist_yaw at the valid stride event, deg rel. the set pose (k {getattr(base.cfg, 'waist_yaw_clock_scale', 0.0)}): "
+        f"n event {int(ev.sum())} | target {q3(dtg[ev])} | robot {q3(drb[ev])} | residual {q3([r_['res'] for r_ in rows])} | "
+        f"robot / target (|target| > 1 deg, n {int(tr_ok.sum())}) {q3(drb[tr_ok] / dtg[tr_ok])}")
     cnt = {k: sum(r_["cls"] == k for r_ in rows) for k in ("C1", "C2", "C3", "unreadable")}
     say(f"[chain] classes over {m} valid envs: " + ", ".join(f"{k} {v} ({v / m:.0%})" for k, v in cnt.items())
         + "  (C1 consistent with the waist-limit hypothesis, C2 timing difference observed; descriptive only)")
@@ -385,7 +419,9 @@ def main():
                  sat_h=np.array([r_["sat_h"] if r_["sat_h"] is not None else [np.nan, np.nan] for r_ in rows]),
                  sep_st=[r_["sep_st"] for r_ in rows], sep_max=[r_["sep_max"] for r_ in rows],
                  speed=[r_["speed"] for r_ in rows], tau_pk=np.array([r_["tau_pk"] for r_ in rows]),
-                 fell_pre=int(fell_pre.sum()), not_rel=int(not_rel.sum()), k=args.waist_effort_scale)
+                 fell_pre=int(fell_pre.sum()), not_rel=int(not_rel.sum()), k=args.waist_effort_scale,
+                 d_tgt=dtg, d_rob=drb, res=[r_["res"] for r_ in rows],
+                 kyaw=float(getattr(base.cfg, "waist_yaw_clock_scale", 0.0)))
 
 
 if __name__ == "__main__":
