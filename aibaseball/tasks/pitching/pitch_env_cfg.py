@@ -726,6 +726,10 @@ class Stage1aEnvCfg(PitchStand9EnvCfg):
     finish_com_sigma: float = 0.04
     w_stage_rel_speed: float = 0.0  # stage: x min(release speed / rel_speed_full_mps, 1), paid like w_stage_ball_rest
     rel_speed_full_mps: float = 25.0
+    w_stage_sep: float = 0.0  # SEP (plan 5-17): x clip((sep - sep_lo_deg) / (sep_full_deg - sep_lo_deg), 0, 1), sep = signed
+    # hip-shoulder separation at the valid stride event, paid at the time-out with w_stage_rel_speed's pay mask
+    sep_lo_deg: float = 16.0
+    sep_full_deg: float = 64.0
     rel_speed_lo_mps: float = 0.0  # w_stage_rel_speed pays (v - lo) / (full - lo), clipped to [0, 1] (0: the old v / full)
     w_stage_spin: float = 0.0  # stage: x clip((eta - spin_eff_lo) / (spin_eff_full - spin_eff_lo), 0, 1) at release, eta = spin
     # efficiency (omega's share perpendicular to the velocity), only if |tilt| <= spin_tilt_max_deg and rpm >= spin_min_rpm; paid like w_stage_ball_rest
@@ -2166,6 +2170,14 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100S1EEnvCfg(Stage1dK70GW2MBASVRT1SYW
     rel_speed_lo_mps: float = 16.0
     rel_speed_full_mps: float = 22.0
 
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100S1ESEPEnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100S1EEnvCfg):
+    """Fastball SEP (plan 5-17, Codex round 34-36, user approved 11-08): S1E + hip-shoulder separation at the valid
+    stride event, 16 -> 64 deg linear, weight 100, paid with the speed term's pay mask."""
+
+    w_stage_sep: float = 100.0
 
 @configclass
 class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CW200EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CS1CEnvCfg):
