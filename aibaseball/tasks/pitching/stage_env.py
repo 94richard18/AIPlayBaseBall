@@ -229,6 +229,7 @@ class StageEnv(PitchEnv):
                 tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
                 q[:, tc] = q[:, tc] + wt * (tgt - q[:, tc])
                 qd[:, tc] = wt * c.throw_upper_scale * r["joint_vel"][:, tc] * (t < self.ref.duration).float().unsqueeze(-1)
+            ww_y = None  # the trunk window's weight on waist_yaw (RW keeps the window on top of its clock target)
             if c.trunk_window_times is not None and c.throw_upper and not c.throw_upper_trunk:
                 import re as _re
                 tc = [i for i in self.trunk_cols if _re.fullmatch(c.trunk_window_joints, self.body_names[i])]
@@ -236,17 +237,26 @@ class StageEnv(PitchEnv):
                 sm = lambda x: x * x * (3.0 - 2.0 * x)  # noqa: E731
                 ww = sm(((t - t0) / (t1 - t0)).clamp(0.0, 1.0)) * (1.0 - sm(((t - t2) / (t3 - t2)).clamp(0.0, 1.0)))
                 ww = (ww * c.trunk_window_weight).unsqueeze(-1)
+                if self._jcol["waist_yaw"] in tc:
+                    ww_y = ww[:, 0]
                 tgt = q[:, tc] + c.throw_upper_scale * (r["joint_pos"][:, tc] - q[:, tc])
                 q[:, tc] = q[:, tc] + ww * (tgt - q[:, tc])
                 qd[:, tc] = qd[:, tc] + ww * (c.throw_upper_scale * r["joint_vel"][:, tc] - qd[:, tc])
             if c.waist_yaw_clock_scale > 0.0 and c.throw_upper and not c.throw_upper_trunk:
-                # RW (plan 5-19): waist_yaw on the throw clock from t = 0 (the set pose = frame 0), overriding the
-                # frozen set pose, the trunk window and the follow-through blend for this one joint
+                # RW (plan 5-19 / 5-20): waist_yaw on the throw clock from t = 0 (the set pose = frame 0) at k x
+                # throw_upper_scale, replacing the frozen set pose and the follow-through blend for this one joint; the
+                # trunk window (if it covers waist_yaw) still blends from there to the full set + throw_upper_scale x
+                # (athlete - set) target, so around the release the target is the same as with k = 0
                 jy = self._jcol["waist_yaw"]
                 ky = c.waist_yaw_clock_scale * c.throw_upper_scale
                 y0 = super()._ref(z)["joint_pos"][:, jy]
-                q[:, jy] = y0 + ky * (r["joint_pos"][:, jy] - y0)
-                qd[:, jy] = ky * r["joint_vel"][:, jy] * (t < self.ref.duration).float()
+                live = (t < self.ref.duration).float()
+                qy = y0 + ky * (r["joint_pos"][:, jy] - y0)
+                vy = ky * r["joint_vel"][:, jy] * live
+                if ww_y is not None:
+                    qy = qy + ww_y * (y0 + c.throw_upper_scale * (r["joint_pos"][:, jy] - y0) - qy)
+                    vy = vy + ww_y * (c.throw_upper_scale * r["joint_vel"][:, jy] - vy)
+                q[:, jy], qd[:, jy] = qy, vy
             if c.back_catch_target is not None:
                 self._back_catch_cartesian(q, qd, rs, relf)
             if c.back_catch_q is not None:
