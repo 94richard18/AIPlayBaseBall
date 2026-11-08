@@ -3328,3 +3328,10 @@ pf2_p3cpg（7900 起，k 0.60 → 0.50），trainer 單獨跑到 8150 停，事�
 - 依 5-11：一條無差別、一條低於對照 → (I)，100 its 內沒有一致的相對效果。沒有任何一條種子比對照快。
 - 解析錯誤：鏈用 `sed 's/.*\[(...), .*/'` 取 lo / hi，貪婪比對抓到行尾 cand 的 launch 清單（16.57 > 0），所以印出 (G)。已在 logs/fbs1e_summary.txt 與 PITCHER_S1E_END.txt 加 CORRECTION 行。R0 / R1 的終態用的是判定字串（R0 的 (A) 先要求 OK，未成立），不受影響。之後的鏈改用 median_delta 的結構化輸出或錨定 `delta x [` 再取值。
 - 後續依 5-11：(I) → 回報，另議。
+
+## 11-08 B1 起跑（計劃 5-12，Codex 第 22–23 輪 APPROVED，使用者核准）
+
+- B1 = S1E 任務（TW2PLW100 + 球速項 w100）+ `--arm_teacher` ho2 7600（手臂 15–28 欄與放球欄由凍結的 7600 actor 給 mean），訓練與評估都掛老師。種子 113、132，各 7600 → 7700，無暖機、LR_FLOOR 3e-7。對照 = R1 s113 / s132 的 7700。
+- 問題範圍：這個組合是否優於純續訓。固定的是手臂的政策映射，不是手臂軌跡；結果不歸因於腿 / 軀幹單獨提速。
+- 終態：(J) 兩種子 lo > 0；(K) 兩種子 hi < 0；(L) 其餘；任一條提前停止或評估失敗 = 不完整。lo / hi 改為錨定 `delta x [lo, hi]` 取值，已用 S1E 的兩行與一行人造字串乾跑（NONE / DOWN / UP）。
+- 鏈 logs/fb_b1.sh，run fbb1s113 / fbb1s132，摘要寫到 logs/fbb1_summary.txt，結束標記 logs/PITCHER_B1_END.txt。
