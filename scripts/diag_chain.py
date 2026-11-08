@@ -11,13 +11,16 @@ aibaseball/analysis/pitch_report.py (diag_pitch) for the robot and the retargete
     uses the same sign (hand speed is a magnitude);
   * peak window: release - 450 ms .. release (no follow-through); a peak within 5 ms of a window edge, or a signed
     peak <= 0, is unreadable for that env and curve;
-  * arm peak = the earlier of shoulder IR and elbow extension (both must be readable);
+  * arm peak = the elbow extension peak (plan 5-15 revision after the reference check: the reference's pre-release
+    shoulder-yaw peak is external rotation / layback, its internal-rotation peak is +20 ms after the release);
+    shoulder IR uses the anatomical direction (opposite to the layback peak) in release - 450 ms .. release + 50 ms,
+    reported only, not used in the order or the classes;
   * handoff window = [pelvis peak, trunk peak]; empty (trunk not after pelvis) -> handoff saturation unreadable;
   * waist yaw / pitch saturation = share of physics sub-steps with motor torque OR motor speed at its limit, in the
     handoff window and in the 450 ms window;
   * per-env class: (C1) order pelvis < trunk < arm with both gaps >= 10 ms AND handoff waist yaw or pitch saturation
     >= 0.3 ("consistent with the waist-limit hypothesis"); (C2) trunk peak < 10 ms after the pelvis peak or before it
-    ("timing difference observed"); (C3) other readable; unreadable listed apart. 10 ms / 0.3 are empirical
+    ("timing difference observed"); C1 uses pelvis < trunk < elbow; (C3) other readable; unreadable listed apart. 10 ms / 0.3 are empirical
     descriptive thresholds (no causal or error guarantee). n_valid < 96 (0.75 n) -> EVIDENCE INSUFFICIENT.
   * reported only (no thresholds): hip-shoulder separation at lead-foot strike and its max in the window, peak ratios
     trunk / pelvis and arm / trunk, peak times relative to the release.
@@ -54,6 +57,7 @@ import aibaseball.tasks  # noqa: F401, E402
 from aibaseball.analysis import pitch_report as PR  # noqa: E402
 
 LO, HI, EDGE, GAP, SAT = -0.45, 0.0, 0.005, 0.010, 0.3
+HI_IR = 0.05  # shoulder IR window end (reported only)
 NAMES = ["pelvis", "trunk", "shoulder IR", "elbow ext", "hand"]
 UNITS = ["deg/s", "deg/s", "deg/s", "deg/s", "m/s"]
 
@@ -102,13 +106,14 @@ def reference_signed(cfg):
 
 def peaks(t, s, t_rel, sign):
     """Per curve: (time rel. release, signed value, readable) in [t_rel + LO, t_rel + HI]."""
-    m = (t >= t_rel + LO - 1e-9) & (t <= t_rel + HI + 1e-9)
     out = []
     for j in range(s.shape[1]):
+        hi = HI_IR if j == 2 else HI
+        m = (t >= t_rel + LO - 1e-9) & (t <= t_rel + hi + 1e-9)
         v = s[:, j] * sign[j]
         i = int(np.argmax(np.where(m, v, -np.inf)))
         tp = t[i] - t_rel
-        ok = bool(m.any()) and v[i] > 0 and (tp - LO) > EDGE and (HI - tp) > EDGE
+        ok = bool(m.any()) and v[i] > 0 and (tp - LO) > EDGE and (hi - tp) > EDGE
         out.append((tp, v[i], ok))
     return out
 
@@ -120,9 +125,9 @@ def classify(pk, sat_hand):
         return "unreadable"
     if tt - tp < GAP:
         return "C2"
-    if not (pk[2][2] and pk[3][2]) or sat_hand is None:
+    if not pk[3][2] or sat_hand is None:
         return "unreadable"
-    ta = min(pk[2][0], pk[3][0])
+    ta = pk[3][0]
     if ta - tt >= GAP and max(sat_hand) >= SAT:
         return "C1"
     return "C3"
@@ -133,22 +138,24 @@ def ref_report(cfg):
     sign = np.where(np.array([ref["s"][np.argmax(np.abs(np.where(
         (ref["t"] >= ref["release"] + LO) & (ref["t"] <= ref["release"] + HI), ref["s"][:, j], 0))), j]
         for j in range(5)]) >= 0, 1.0, -1.0)
+    sign[2] = -sign[2]  # pre-release shoulder-yaw peak = layback (external rotation); IR is the opposite direction
     sign[4] = 1.0
     pk = peaks(ref["t"], ref["s"], ref["release"], sign)
     # wiring check: the unsigned curve of pitch_report (abs before the filter) in the same window
     prof = PR.reference_profile(cfg)
     chk = PR.chain_peaks(prof["t"], prof["chain"], prof["release"], LO, HI)
+    chk[2] = PR.chain_peaks(prof["t"], prof["chain"], prof["release"], LO, HI_IR)[2]
     say(f"[ref] retargeted reference ({os.path.basename(cfg.motion_file)}, ref_yaw {cfg.ref_yaw_deg}), release "
         f"{ref['release']:.3f} s, lead-foot strike {ref['strike'] - ref['release']:+.3f} s rel. release; signs {sign.tolist()}")
     for j in range(5):
         say(f"[ref]   {NAMES[j]:12s} peak {pk[j][0] * 1000:+6.0f} ms  {pk[j][1]:8.1f} {UNITS[j]:5s} readable {pk[j][2]} | "
             f"pitch_report |.| {chk[j][0] * 1000:+6.0f} ms {chk[j][1]:8.1f}")
     tp, tt = pk[0][0], pk[1][0]
-    ta = min(pk[2][0], pk[3][0])
-    say(f"[ref]   order pelvis < trunk < arm: {tp < tt < ta} (gaps {(tt - tp) * 1000:+.0f} / {(ta - tt) * 1000:+.0f} ms); "
+    ta = pk[3][0]
+    say(f"[ref]   order pelvis < trunk < elbow: {tp < tt < ta} (gaps {(tt - tp) * 1000:+.0f} / {(ta - tt) * 1000:+.0f} ms); "
         f"separation at strike {PR.at(ref['t'], ref['sep'], ref['strike']):+.1f} deg, max |.| in window "
         f"{np.max(np.abs(ref['sep'][(ref['t'] >= ref['release'] + LO) & (ref['t'] <= ref['release'])])):.1f} deg; "
-        f"ratios trunk/pelvis {pk[1][1] / pk[0][1]:.2f}, arm(IR)/trunk {pk[2][1] / pk[1][1]:.2f}")
+        f"ratios trunk/pelvis {pk[1][1] / pk[0][1]:.2f}, IR/trunk {pk[2][1] / pk[1][1]:.2f}")
     return ref, sign, pk
 
 
@@ -317,9 +324,9 @@ def main():
     both = [r_ for r_ in rows if r_["pk"][0][2] and r_["pk"][1][2]]
     say(f"[chain]   gap trunk - pelvis ms {q3([(r_['pk'][1][0] - r_['pk'][0][0]) * 1000 for r_ in both])} | ref "
         f"{(rpk[1][0] - rpk[0][0]) * 1000:+.0f}")
-    arm = [r_ for r_ in both if r_["pk"][2][2] and r_["pk"][3][2]]
-    say(f"[chain]   gap arm - trunk ms  {q3([(min(r_['pk'][2][0], r_['pk'][3][0]) - r_['pk'][1][0]) * 1000 for r_ in arm])} | "
-        f"ref {(min(rpk[2][0], rpk[3][0]) - rpk[1][0]) * 1000:+.0f}")
+    arm = [r_ for r_ in both if r_["pk"][3][2]]
+    say(f"[chain]   gap elbow - trunk ms {q3([(r_['pk'][3][0] - r_['pk'][1][0]) * 1000 for r_ in arm])} | "
+        f"ref {(rpk[3][0] - rpk[1][0]) * 1000:+.0f}")
     say(f"[chain]   ratio trunk / pelvis {q3([r_['pk'][1][1] / r_['pk'][0][1] for r_ in both])} | ref {rpk[1][1] / rpk[0][1]:.2f}")
     ir = [r_ for r_ in rows if r_["pk"][1][2] and r_["pk"][2][2]]
     say(f"[chain]   ratio IR / trunk     {q3([r_['pk'][2][1] / r_['pk'][1][1] for r_ in ir])} | ref {rpk[2][1] / rpk[1][1]:.2f}")
