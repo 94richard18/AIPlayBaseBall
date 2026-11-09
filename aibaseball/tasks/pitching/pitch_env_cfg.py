@@ -2218,3 +2218,39 @@ class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg(Stage1dK70GW2MBASVR
     clock at k = 1 (waist pitch / roll unchanged)."""
 
     waist_yaw_clock_scale: float = 1
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW2S25EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg):
+    """Fastball RW-2 (plan 5-23, Codex round 49-50, user approved 11-09): fresh from sfwdrf2 2200 on the P3C settings,
+    waist_yaw on the throw clock (k = 1), arm scale s = 0.25 with the right wrist at min(1, 1.25 s) = 0.3125 (s 0.8 = P3CRW100)."""
+
+    throw_upper_scale: float = 0.25
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 0.3125}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW2S50EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg):
+    """Fastball RW-2 (plan 5-23, Codex round 49-50, user approved 11-09): fresh from sfwdrf2 2200 on the P3C settings,
+    waist_yaw on the throw clock (k = 1), arm scale s = 0.5 with the right wrist at min(1, 1.25 s) = 0.625 (s 0.8 = P3CRW100)."""
+
+    throw_upper_scale: float = 0.5
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 0.625}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW2S75EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg):
+    """Fastball RW-2 (plan 5-23, Codex round 49-50, user approved 11-09): fresh from sfwdrf2 2200 on the P3C settings,
+    waist_yaw on the throw clock (k = 1), arm scale s = 0.75 with the right wrist at min(1, 1.25 s) = 0.9375 (s 0.8 = P3CRW100)."""
+
+    throw_upper_scale: float = 0.75
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 0.9375}
+
+
+@configclass
+class Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW2S80EnvCfg(Stage1dK70GW2MBASVRT1SYW110R5H5TW2PLW100P3CRW100EnvCfg):
+    """Fastball RW-2 (plan 5-23, Codex round 49-50, user approved 11-09): fresh from sfwdrf2 2200 on the P3C settings,
+    waist_yaw on the throw clock (k = 1), arm scale s = 0.8 with the right wrist at min(1, 1.25 s) = 1 (s 0.8 = P3CRW100)."""
+
+    throw_upper_scale: float = 0.8
+    throw_upper_scale_joints: dict | None = {"r_wrist_.*": 1}
