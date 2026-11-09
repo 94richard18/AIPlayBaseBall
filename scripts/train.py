@@ -37,6 +37,8 @@ parser.add_argument("--critic_warmup_lr", type=float, default=None,
                     help="learning rate during the critic warm-up (default: the loaded rate, held)")
 parser.add_argument("--zero_arm_actions", action="store_true", default=False,
                     help="zero the actor's output rows of the arm joints (arms were frozen in the previous stage)")
+parser.add_argument("--zero_release_action", action="store_true", default=False,
+                    help="zero the actor's output row of the release column (29 + release_action_col): a = 0 releases at release_ref (RW-2, plan 5-23)")
 parser.add_argument("--arm_teacher", type=str, default=None,
                     help="checkpoint whose frozen actor drives the arm + release columns (F, 2026-10-27; aibaseball/rl/arm_teacher.py)")
 parser.add_argument("--post_release_teacher", type=str, default=None,
@@ -262,6 +264,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             head.weight[rows] = 0.0
             head.bias[rows] = 0.0
         print(f"[INFO]: actor output rows of {len(rows)} arm joints zeroed", flush=True)
+    if args_cli.zero_release_action:
+        # RW-2 (plan 5-23): model_2200's finger columns were zeroed by the env and never trained
+        head = [m for m in runner.alg.actor_critic.actor if isinstance(m, torch.nn.Linear)][-1]
+        rc = 29 + env.unwrapped.cfg.release_action_col
+        with torch.no_grad():
+            head.weight[rc] = 0.0
+            head.bias[rc] = 0.0
+        print(f"[INFO]: actor output row {rc} (release column) zeroed", flush=True)
     arm_mask = None
     if args_cli.arm_teacher:
         from aibaseball.rl.arm_teacher import attach_arm_teacher
